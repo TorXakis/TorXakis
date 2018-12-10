@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  ValExprConstructor
+-- Module      :  ValExprBasis
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -13,11 +13,16 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Smart constructors for Value Expressions.
+-- Smart constructors, Substitutions, and Context for Value Expressions.
 -----------------------------------------------------------------------------
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns        #-}
-module TorXakis.ValExpr.ValExprConstructor
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE ViewPatterns          #-}
+module TorXakis.ValExpr.ValExprBasis
 ( -- ** Constructors to create Value Expression
   -- *** Constant Value
   mkConst
@@ -72,26 +77,38 @@ module TorXakis.ValExpr.ValExprConstructor
 , partSubst
   -- *** Complete Substitution
 , compSubst
+  -- ** Context
+  -- *** ValExpr Context
+, ValExprContext (..)
+  -- *** Minimal ValExpr Context
+, MinimalValExprContext
 )
 where
+import           Control.DeepSeq        (NFData)
+import           Data.Data              (Data)
 import           Data.Either
 import qualified Data.HashMap    as HashMap
 import qualified Data.Map        as Map
 import           Data.Maybe
 import qualified Data.Set        as Set
 import qualified Data.Text       as T
+import           GHC.Generics           (Generic)
 import           Text.Regex.TDFA
 
 import           TorXakis.Error
-import qualified TorXakis.FuncDef
+import           TorXakis.FreeVars
+import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.Value
 import           TorXakis.ValExpr.RegexXSD2Posix
 import           TorXakis.ValExpr.ValExpr
-import           TorXakis.ValExpr.ValExprContext
 import           TorXakis.VarDef
+
+------------------------------------------------------------------------------------------------------------------
+-- Constructors
+------------------------------------------------------------------------------------------------------------------
 
 trueValExpr :: ValExpr v
 trueValExpr = ValExpr $ Vconst (Cbool True)
@@ -131,7 +148,7 @@ unsafeEqual :: Ord v => ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: a == a <==> True
 unsafeEqual ve1 ve2 | ve1 == ve2                    = Right trueValExpr
 -- Simplification: Different Values <==> False : use Same Values are already detected in previous step
-unsafeEqual (view -> Vconst {}) (view -> Vconst {}) = Right falseValExpr
+unsafeEqual (TorXakis.ValExpr.ValExpr.view -> Vconst {}) (TorXakis.ValExpr.ValExpr.view -> Vconst {}) = Right falseValExpr
 -- Simplification: True == e <==> e (twice)
 unsafeEqual b e | b == trueValExpr                = Right e
 unsafeEqual e b | b == trueValExpr                = Right e
@@ -139,17 +156,17 @@ unsafeEqual e b | b == trueValExpr                = Right e
 unsafeEqual b e | b == falseValExpr               = unsafeNot e
 unsafeEqual e b | b == falseValExpr               = unsafeNot e
 -- Simplification: Not x == x <==> false (twice)
-unsafeEqual e (view -> Vnot n) | e == n             = Right falseValExpr
-unsafeEqual (view -> Vnot n) e | e == n             = Right falseValExpr
+unsafeEqual e (TorXakis.ValExpr.ValExpr.view -> Vnot n) | e == n             = Right falseValExpr
+unsafeEqual (TorXakis.ValExpr.ValExpr.view -> Vnot n) e | e == n             = Right falseValExpr
 -- Simplification: Not x == Not y <==> x == y
-unsafeEqual (view -> Vnot n1) (view -> Vnot n2)     = unsafeEqual n1 n2
+unsafeEqual (TorXakis.ValExpr.ValExpr.view -> Vnot n1) (TorXakis.ValExpr.ValExpr.view -> Vnot n2)     = unsafeEqual n1 n2
 -- Same representation: Not a == b <==> a == Not b (twice)
-unsafeEqual x@(view -> Vnot n) e                    = if n <= e
+unsafeEqual x@(TorXakis.ValExpr.ValExpr.view -> Vnot n) e = if n <= e
                                                             then Right $ ValExpr (Vequal x e)
                                                             else case unsafeNot e of
                                                                     Left m  -> error ("Unexpected error in Equal: " ++ show m)
                                                                     Right m -> Right $ ValExpr (Vequal m n)
-unsafeEqual e x@(view -> Vnot n)                    = if n <= e
+unsafeEqual e x@(TorXakis.ValExpr.ValExpr.view -> Vnot n) = if n <= e
                                                             then Right $ ValExpr (Vequal x e)
                                                             else case unsafeNot e of
                                                                     Left m  -> error ("Unexpected error in Equal: " ++ show m)
@@ -176,7 +193,7 @@ unsafeITE b _ fb | b == falseValExpr        = Right fb
 -- Simplification: if c then a else a <==> a
 unsafeITE _ tb fb | tb == fb                  = Right tb
 -- Simplification: if (not c) then tb else fb <==> if c then fb else tb
-unsafeITE (view -> Vnot n) tb fb              = Right $ ValExpr (Vite n fb tb)
+unsafeITE (TorXakis.ValExpr.ValExpr.view -> Vnot n) tb fb              = Right $ ValExpr (Vite n fb tb)
 -- Simplification: if c then True else False <==> c
 unsafeITE b tb fb | tb == trueValExpr && fb == falseValExpr = Right b
 -- Simplification: if c then False else True <==> not c
@@ -198,12 +215,12 @@ unsafeFunc ctx fs vs = case HashMap.lookup fs (funcDefs ctx) of
                                        -- When a new function is added to the context, all function calls will be checked to refer to existing functions.
                                        Right $ ValExpr (Vfunc fs vs)
                             Just fd -> let vw = TorXakis.FuncDef.view fd in
-                                         case TorXakis.FuncDef.body vw of
-                                            (view -> Vconst x)  -> unsafeConst x
-                                            _                   -> case toMaybeValues vs of
+                                         case body vw of
+                                            (TorXakis.ValExpr.ValExpr.view -> Vconst x)  -> unsafeConst x
+                                            _                                            -> case toMaybeValues vs of
                                                                         Just _  -> compSubst ctx 
-                                                                                             (Map.fromList (zip (TorXakis.FuncDef.paramDefs vw) vs))
-                                                                                             (TorXakis.FuncDef.body vw)
+                                                                                             (HashMap.fromList (zip (paramDefs vw) vs))
+                                                                                             (body vw)
                                                                         Nothing -> Right $ ValExpr (Vfunc fs vs)
 
 -- | Make a call to some predefined functions
@@ -259,16 +276,16 @@ mkNot _ n                         = Left $ MinError (T.pack ("Argument of Not is
 
 unsafeNot :: Eq v => ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: not True <==> False
-unsafeNot b | b == trueValExpr              = Right falseValExpr
+unsafeNot b | b == trueValExpr                              = Right falseValExpr
 -- Simplification: not False <==> True
-unsafeNot b | b == falseValExpr             = Right trueValExpr
+unsafeNot b | b == falseValExpr                             = Right trueValExpr
 -- Simplification: not (not x) <==> x
-unsafeNot (view -> Vnot ve)                   = Right ve
+unsafeNot (TorXakis.ValExpr.ValExpr.view -> Vnot ve)        = Right ve
 -- Simplification: not (if cs then tb else fb) <==> if cs then not (tb) else not (fb)
-unsafeNot (view -> Vite cs tb fb)             = case (unsafeNot tb, unsafeNot fb) of
-                                                    (Right nt, Right nf) -> Right $ ValExpr (Vite cs nt nf)
-                                                    _                    -> error "Unexpected error in NOT with ITE"
-unsafeNot ve                                  = Right $ ValExpr (Vnot ve)
+unsafeNot (TorXakis.ValExpr.ValExpr.view -> Vite cs tb fb)  = case (unsafeNot tb, unsafeNot fb) of
+                                                                (Right nt, Right nf) -> Right $ ValExpr (Vite cs nt nf)
+                                                                _                    -> error "Unexpected error in NOT with ITE"
+unsafeNot ve                                                = Right $ ValExpr (Vnot ve)
 
 -- | Apply operator And on the provided list of value expressions.
 -- TODO: generalize to Traversable instead of list?
@@ -283,8 +300,8 @@ unsafeAnd = unsafeAnd' . flattenAnd
         flattenAnd = Set.unions . map fromValExpr . Set.toList
         
         fromValExpr :: ValExpr v -> Set.Set (ValExpr v)
-        fromValExpr (view -> Vand a) = a
-        fromValExpr x                = Set.singleton x
+        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vand a) = a
+        fromValExpr x                                         = Set.singleton x
 
 -- And doesn't contain elements of type Vand.
 unsafeAnd' :: forall v . Ord v => Set.Set (ValExpr v) -> Either MinError (ValExpr v)
@@ -321,20 +338,20 @@ unsafeAnd' s =
         mergeConditional :: ValExpr v 
                          -> Either MinError (Set.Set (ValExpr v), Set.Set (ValExpr v), Set.Set (ValExpr v))
                          -> Either MinError (Set.Set (ValExpr v), Set.Set (ValExpr v), Set.Set (ValExpr v))
-        mergeConditional _                      (Left e)                                  = Left e
-        mergeConditional (view -> Vite c tb fb) (Right (s', cs, ds)) | tb == falseValExpr = unsafeNot c >>= (\nc -> Right (s', Set.insert nc cs, Set.insert fb ds))
-        mergeConditional (view -> Vite c tb fb) (Right (s', cs, ds)) | fb == falseValExpr = Right (s', Set.insert c cs, Set.insert tb ds)
-        mergeConditional x                      (Right (s', cs, ds))                      = Right (Set.insert x s', cs, ds)
+        mergeConditional _                                               (Left e)                                  = Left e
+        mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | tb == falseValExpr = unsafeNot c >>= (\nc -> Right (s', Set.insert nc cs, Set.insert fb ds))
+        mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | fb == falseValExpr = Right (s', Set.insert c cs, Set.insert tb ds)
+        mergeConditional x                                               (Right (s', cs, ds))                      = Right (Set.insert x s', cs, ds)
 
         filterNot :: [ValExpr v] -> [ValExpr v]
         filterNot [] = []
-        filterNot (x:xs) = case view x of
+        filterNot (x:xs) = case TorXakis.ValExpr.ValExpr.view x of
                             Vnot n -> n : filterNot xs
                             _      ->     filterNot xs
 
         contains :: Set.Set (ValExpr v) -> ValExpr v -> Bool
-        contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
-        contains set a                = Set.member a set
+        contains set (TorXakis.ValExpr.ValExpr.view -> Vand a) = all (`Set.member` set) (Set.toList a)
+        contains set a                                         = Set.member a set
 
 -- | Apply unary operator Minus on the provided value expression.
 mkUnaryMinus :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
@@ -342,8 +359,8 @@ mkUnaryMinus _ v | getSort v == SortInt = unsafeUnaryMinus v
 mkUnaryMinus _ v                        = Left $ MinError (T.pack ("Unary Minus argument not of expected Sort Int but " ++ show (getSort v)))
 
 unsafeUnaryMinus :: Ord v => ValExpr v -> Either MinError (ValExpr v)
-unsafeUnaryMinus (view -> Vsum m) = unsafeSumFromMap (Map.map (* (-1)) m)
-unsafeUnaryMinus x                = unsafeSumFromMap (Map.singleton x (-1))
+unsafeUnaryMinus (TorXakis.ValExpr.ValExpr.view -> Vsum m) = unsafeSumFromMap (Map.map (* (-1)) m)
+unsafeUnaryMinus x                                         = unsafeSumFromMap (Map.singleton x (-1))
 
 -- | Apply operator Divide on the provided value expressions.
 mkDivide :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
@@ -352,9 +369,9 @@ mkDivide _ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Divisor not of
 mkDivide _ t n                        = unsafeDivide t n
 
 unsafeDivide :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
-unsafeDivide _                          (view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Divide")
-unsafeDivide (view ->  Vconst (Cint t)) (view -> Vconst (Cint n))          = unsafeConst (Cint (t `div` n) )
-unsafeDivide vet                        ven                                = Right $ ValExpr (Vdivide vet ven)
+unsafeDivide _                                                   (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Divide")
+unsafeDivide (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n))          = unsafeConst (Cint (t `div` n) )
+unsafeDivide vet                                                 ven                                                         = Right $ ValExpr (Vdivide vet ven)
 
 -- | Apply operator Modulo on the provided value expressions.
 mkModulo :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
@@ -363,14 +380,14 @@ mkModulo _ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Divisor not of
 mkModulo _ t n                        = unsafeModulo t n
 
 unsafeModulo :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
-unsafeModulo _                          (view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Modulo")
-unsafeModulo (view ->  Vconst (Cint t)) (view -> Vconst (Cint n))          = unsafeConst (Cint (t `mod` n) )
-unsafeModulo vet                        ven                                = Right $ ValExpr (Vmodulo vet ven)
+unsafeModulo _                                                   (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Modulo")
+unsafeModulo (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n))          = unsafeConst (Cint (t `mod` n) )
+unsafeModulo vet                                                 ven                                                         = Right $ ValExpr (Vmodulo vet ven)
 
 -- is key a constant?
 isKeyConst :: ValExpr v -> Integer -> Bool
-isKeyConst (view -> Vconst{}) _ = True
-isKeyConst _                  _ = False
+isKeyConst (TorXakis.ValExpr.ValExpr.view -> Vconst{}) _ = True
+isKeyConst _                                           _ = False
 
 -- | Apply operator sum on the provided list of value expressions.
 mkSum :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
@@ -391,8 +408,8 @@ unsafeSum = unsafeSumFromMap . flattenSum
         flattenSum = Map.filter (0 ==) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
         
         fromValExpr :: ValExpr v -> Map.Map (ValExpr v) Integer
-        fromValExpr (view -> Vsum m) = m
-        fromValExpr x                = Map.singleton x 1
+        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m) = m
+        fromValExpr x                                         = Map.singleton x 1
 
 -- unsafeSumFromMap doesn't contain elements of type Vsum.
 unsafeSumFromMap :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
@@ -411,8 +428,8 @@ unsafeSumFromMap m =
             _           -> Right (ValExpr (Vsum m))
     where
         toValue :: (ValExpr v, Integer) -> Integer
-        toValue (view -> Vconst (Cint i), o) = i * o
-        toValue (_                      , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeSum"
+        toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o) = i * o
+        toValue (_                                               , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeSum"
 
 -- | Apply operator product on the provided list of value expressions.
 mkProduct :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
@@ -433,8 +450,8 @@ unsafeProduct = unsafeProductFromMap  . flattenProduct
         flattenProduct = Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted)
         
         fromValExpr :: ValExpr v -> Map.Map (ValExpr v) Integer
-        fromValExpr (view -> Vproduct m) = m
-        fromValExpr x                    = Map.singleton x 1
+        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vproduct m) = m
+        fromValExpr x                                             = Map.singleton x 1
 
 -- Flatten Product doesn't contain elements of type Vproduct.
 unsafeProductFromMap  :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
@@ -450,8 +467,8 @@ unsafeProductFromMap  m =
             _          -> unsafeSumFromMap $ Map.singleton (ValExpr (Vproduct nonvals)) value
     where
         toValue :: (ValExpr v, Integer) -> Integer
-        toValue (view -> Vconst (Cint i), o) = i ^ o
-        toValue (_                      , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
+        toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o) = i ^ o
+        toValue (_                                               , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
 
 -- | Apply operator GEZ (Greater Equal Zero) on the provided value expression.
 mkGEZ :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
@@ -460,10 +477,10 @@ mkGEZ _ d                        = unsafeGEZ d
 
 unsafeGEZ :: ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: Integer Value to Boolean
-unsafeGEZ (view -> Vconst (Cint v)) = unsafeConst (Cbool (0 <= v))
+unsafeGEZ (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint v)) = unsafeConst (Cbool (0 <= v))
 -- Simplification: length of string is always Greater or equal to zero
-unsafeGEZ (view -> Vlength {})      = Right trueValExpr        
-unsafeGEZ ve                        = Right $ ValExpr (Vgez ve)
+unsafeGEZ (TorXakis.ValExpr.ValExpr.view -> Vlength {})      = Right trueValExpr
+unsafeGEZ ve                                                 = Right $ ValExpr (Vgez ve)
 
 -- | Apply operator Length on the provided value expression.
 mkLength :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
@@ -471,20 +488,20 @@ mkLength _ s | getSort s /= SortString = Left $ MinError (T.pack ("Argument of L
 mkLength _ s                           = unsafeLength s
 
 unsafeLength :: ValExpr v -> Either MinError (ValExpr v)
-unsafeLength (view -> Vconst (Cstring s)) = unsafeConst (Cint (Prelude.toInteger (T.length s)))
-unsafeLength v                            = Right $ ValExpr (Vlength v)
+unsafeLength (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) = unsafeConst (Cint (Prelude.toInteger (T.length s)))
+unsafeLength v                                                     = Right $ ValExpr (Vlength v)
 
 -- | Apply operator At on the provided value expressions.
 mkAt :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
-mkAt _ s _ | getSort s /= SortString = Left $ MinError (T.pack ("First argument of At not of expected Sort String but " ++ show (getSort s)))
-mkAt _ _ i | getSort i /= SortInt    = Left $ MinError (T.pack ("Second argument of At not of expected Sort Int but " ++ show (getSort i)))
-mkAt _ s i                           = unsafeAt s i
+mkAt _ s i | getSort s /= SortString = Left $ MinError (T.pack ("First argument of At not of expected Sort String but " ++ show (getSort s)))
+           | getSort i /= SortInt    = Left $ MinError (T.pack ("Second argument of At not of expected Sort Int but " ++ show (getSort i)))
+           | otherwise               = unsafeAt s i
 
 unsafeAt :: (Eq v) => ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
-unsafeAt _                            (view -> Vconst (Cint i)) | i < 0                                 = Right stringEmptyValExpr
-unsafeAt (view -> Vconst (Cstring s)) (view -> Vconst (Cint i)) | i >= Prelude.toInteger (T.length s)   = Right stringEmptyValExpr
-unsafeAt (view -> Vconst (Cstring s)) (view -> Vconst (Cint i))                                         = unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
-unsafeAt (view -> Vconcat ((view -> Vconst (Cstring s)):xs)) (view -> Vconst (Cint i)) =
+unsafeAt _                                                     (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) | i < 0                                 = Right stringEmptyValExpr
+unsafeAt (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) | i >= Prelude.toInteger (T.length s)   = Right stringEmptyValExpr
+unsafeAt (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i))                                         = unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
+unsafeAt (TorXakis.ValExpr.ValExpr.view -> Vconcat ((TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)):xs)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) =
     let lengthS = Prelude.toInteger (T.length s) in
         if i < lengthS 
             then unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))
@@ -514,8 +531,9 @@ unsafeConcat l =
     mergeVals :: [ValExpr v] -> [ValExpr v]
     mergeVals []            = []
     mergeVals [x]           = [x]
-    mergeVals ( (view -> Vconst (Cstring s1)) : (view -> Vconst (Cstring s2)) : xs) =
-                                case unsafeConst (Cstring (T.append s1 s2)) of
+    mergeVals ( (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s1)) 
+              : (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s2)) 
+              : xs)         = case unsafeConst (Cstring (T.append s1 s2)) of
                                     Right x -> mergeVals (x:xs)
                                     Left e  -> error ("Unexpected error in mergeVals of Concat" ++ show e)
     mergeVals (x1:x2:xs)    = x1 : mergeVals (x2:xs)
@@ -524,8 +542,8 @@ unsafeConcat l =
     flatten = concatMap fromValExpr
 
     fromValExpr :: ValExpr v -> [ValExpr v]
-    fromValExpr (view -> Vconcat cs) = cs
-    fromValExpr x                    = [x]
+    fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vconcat cs) = cs
+    fromValExpr x                                             = [x]
 
 -- | Apply String In Regular Expression operator on the provided value expressions.
 mkStrInRe :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
@@ -534,8 +552,9 @@ mkStrInRe _ _ r | getSort r /= SortRegex  = Left $ MinError (T.pack ("Second arg
 mkStrInRe _ s r                           = unsafeStrInRe s r
 
 unsafeStrInRe :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
-unsafeStrInRe (view -> Vconst (Cstring s)) (view -> Vconst (Cregex r)) = unsafeConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
-unsafeStrInRe s r                                                      = Right $ ValExpr (Vstrinre s r)
+unsafeStrInRe (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) 
+              (TorXakis.ValExpr.ValExpr.view -> Vconst (Cregex r))  = unsafeConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
+unsafeStrInRe s r                                                   = Right $ ValExpr (Vstrinre s r)
 
 -- get ConstructorDef when possible
 getCstr :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> Either MinError (ADTDef, ConstructorDef)
@@ -550,9 +569,9 @@ toMaybeValues :: [ValExpr v] -> Maybe [Value]
 toMaybeValues = foldl toMaybeValue (Just [])
     where
         toMaybeValue :: Maybe [Value] -> ValExpr v -> Maybe [Value]
-        toMaybeValue Nothing   _                  = Nothing
-        toMaybeValue (Just vs) (view -> Vconst v) = Just (v:vs)
-        toMaybeValue _         _                  = Nothing
+        toMaybeValue Nothing   _                                           = Nothing
+        toMaybeValue (Just vs) (TorXakis.ValExpr.ValExpr.view -> Vconst v) = Just (v:vs)
+        toMaybeValue _         _                                           = Nothing
 
 -- | Apply ADT Constructor of the given ADT Name and Constructor Name on the provided arguments (the list of value expressions).
 mkCstr :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
@@ -576,9 +595,9 @@ structuralIsCstr aName cName v (aDef,_) = case HashMap.toList ( (constructors . 
                                                     _   -> unsafeIsCstr aName cName v
 
 unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
-unsafeIsCstr aName cName (view -> Vcstr a c _)          = unsafeConst (Cbool (aName == a && cName == c))
-unsafeIsCstr aName cName (view -> Vconst (Ccstr a c _)) = unsafeConst (Cbool (aName == a && cName == c))
-unsafeIsCstr aName cName v                              = Right $ ValExpr (Viscstr aName cName v)
+unsafeIsCstr aName cName (TorXakis.ValExpr.ValExpr.view -> Vcstr a c _)          = unsafeConst (Cbool (aName == a && cName == c))
+unsafeIsCstr aName cName (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr a c _)) = unsafeConst (Cbool (aName == a && cName == c))
+unsafeIsCstr aName cName v                                                       = Right $ ValExpr (Viscstr aName cName v)
 
 -- | Access field made by ADT Constructor of the given ADT Name and Constructor Name on the provided argument.
 mkAccess :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpr v -> Either MinError (ValExpr v)
@@ -597,143 +616,278 @@ mkAccess ctx aName cName fName v = getCstr ctx aName cName >>= getFieldInfo . sn
 
 unsafeAccess :: RefByName ADTDef -> RefByName ConstructorDef -> Sort -> Int -> ValExpr v -> Either MinError (ValExpr v)
 -- Note: different sort is impossible so aName for both the same
-unsafeAccess _ cName _ pos (view -> Vcstr _ c fs) = 
+unsafeAccess _ cName _ pos (TorXakis.ValExpr.ValExpr.view -> Vcstr _ c fs) = 
     if cName == c
         then Right $ fs !! pos
         else Left $ MinError (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on instance from constructor " ++ show c
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
-unsafeAccess _ cName _ pos (view -> Vconst (Ccstr _ c fs)) = 
+unsafeAccess _ cName _ pos (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr _ c fs)) = 
     if cName == c
         then unsafeConst $ fs !! pos
         else Left $ MinError (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on value from constructor " ++ show c
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
 unsafeAccess aName cName srt pos v = Right $ ValExpr (Vaccess aName cName srt pos v)
 
+------------------------------------------------------------------------------------------------------------------
+-- Substitution
+------------------------------------------------------------------------------------------------------------------
+
 -- | find mismatches in sort in mapping
-mismatchesSort :: (HasSort a, HasSort b) => Map.Map a b -> [ (a, b) ]
-mismatchesSort = filter (\(a,b) -> getSort a /= getSort b) . Map.toList
+mismatchesSort :: (HasSort a, HasSort b) => HashMap.Map a b -> [ (a, b) ]
+mismatchesSort = filter (\(a,b) -> getSort a /= getSort b) . HashMap.toList
 
 -- | Partial Substitution: Substitute some variables by value expressions in a value expression.
-partSubst :: forall c v . ValExprContext c v => c v -> Map.Map v (ValExpr v) -> ValExpr v -> Either MinError (ValExpr v)
-partSubst ctx mp ve | Map.null mp              = Right ve
+-- The Either is needed since substitution can cause an invalid ValExpr. 
+-- For example, substitution of a variable by zero can cause a division by zero error
+partSubst :: forall c v . ValExprContext c v => c v -> HashMap.Map v (ValExpr v) -> ValExpr v -> Either MinError (ValExpr v)
+partSubst ctx mp ve | HashMap.null mp          = Right ve
                     | not (null mismatches)    = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
-                    | otherwise                = partSubstView (view ve)
+                    | otherwise                = partSubstView (TorXakis.ValExpr.ValExpr.view ve)
   where
     mismatches :: [ (v, ValExpr v) ]
     mismatches = mismatchesSort mp
     
     partSubstView :: ValExprView v -> Either MinError (ValExpr v)
     partSubstView (Vconst c)                = unsafeConst c
-    partSubstView (Vvar v)                  = case Map.lookup v mp of
+    partSubstView (Vvar v)                  = case HashMap.lookup v mp of
                                                     Nothing -> unsafeVar v
                                                     Just x  -> Right x
-    partSubstView (Vequal ve1 ve2)          = partSubstView (view ve1) >>= (\ne1 ->
-                                              partSubstView (view ve2) >>= 
+    partSubstView (Vequal ve1 ve2)          = partSubstView (TorXakis.ValExpr.ValExpr.view ve1) >>= (\ne1 ->
+                                              partSubstView (TorXakis.ValExpr.ValExpr.view ve2) >>= 
                                               unsafeEqual ne1)
-    partSubstView (Vite c tb fb)            = partSubstView (view tb) >>= (\ntb ->
-                                              partSubstView (view fb) >>= (\nfb ->
-                                              partSubstView (view c) >>= (\nc ->
+    partSubstView (Vite c tb fb)            = partSubstView (TorXakis.ValExpr.ValExpr.view tb) >>= (\ntb ->
+                                              partSubstView (TorXakis.ValExpr.ValExpr.view fb) >>= (\nfb ->
+                                              partSubstView (TorXakis.ValExpr.ValExpr.view c) >>= (\nc ->
                                               unsafeITE nc ntb nfb)))
-    partSubstView (Vfunc fs vs)             = case partitionEithers (map (partSubstView . view) vs) of
-                                                ([] , nvs) -> unsafeFunc ctx fs nvs
-                                                (es, _)    -> Left $ MinError (T.pack ("Subst partSubst 'func' failed\n" ++ show es))
-    partSubstView (Vpredef fs vs)           = case partitionEithers (map (partSubstView . view) vs) of
-                                                ([] , nvs) -> unsafePredefNonSolvable ctx fs nvs
-                                                (es, _)    -> Left $ MinError (T.pack ("Subst partSubst 'predef' failed\n" ++ show es))
-    partSubstView (Vnot v)                  = partSubstView (view v) >>= unsafeNot
-    partSubstView (Vand s)                  = case partitionEithers (map (partSubstView . view) (Set.toList s)) of
-                                                ([] , ns) -> unsafeAnd (Set.fromList ns)
-                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'and' failed\n" ++ show es))
-    partSubstView (Vdivide t n)             = partSubstView (view t) >>= (\nt ->
-                                              partSubstView (view n) >>=
+    partSubstView (Vfunc fs vs)             = case partitionEithers (map (partSubstView . TorXakis.ValExpr.ValExpr.view) vs) of
+                                                ([], nvs) -> unsafeFunc ctx fs nvs
+                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'func' failed\n" ++ show es))
+    partSubstView (Vpredef fs vs)           = case partitionEithers (map (partSubstView . TorXakis.ValExpr.ValExpr.view) vs) of
+                                                ([], nvs) -> unsafePredefNonSolvable ctx fs nvs
+                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'predef' failed\n" ++ show es))
+    partSubstView (Vnot v)                  = partSubstView (TorXakis.ValExpr.ValExpr.view v) >>= unsafeNot
+    partSubstView (Vand s)                  = case partitionEithers (map (partSubstView . TorXakis.ValExpr.ValExpr.view) (Set.toList s)) of
+                                                ([], ns) -> unsafeAnd (Set.fromList ns)
+                                                (es, _)  -> Left $ MinError (T.pack ("Subst partSubst 'and' failed\n" ++ show es))
+    partSubstView (Vdivide t n)             = partSubstView (TorXakis.ValExpr.ValExpr.view t) >>= (\nt ->
+                                              partSubstView (TorXakis.ValExpr.ValExpr.view n) >>=
                                               unsafeDivide nt)
-    partSubstView (Vmodulo t n)             = partSubstView (view t) >>= (\nt ->
-                                              partSubstView (view n) >>=
+    partSubstView (Vmodulo t n)             = partSubstView (TorXakis.ValExpr.ValExpr.view t) >>= (\nt ->
+                                              partSubstView (TorXakis.ValExpr.ValExpr.view n) >>=
                                               unsafeModulo nt)
-    partSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> partSubstView (view x) >>= (\nx -> Right (nx,i)))
+    partSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> partSubstView (TorXakis.ValExpr.ValExpr.view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                 ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
                                                 (es, _) -> Left $ MinError (T.pack ("Subst partSubst 'sum' failed\n" ++ show es))
-    partSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> partSubstView (view x) >>= (\nx -> Right (nx,i)))
+    partSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> partSubstView (TorXakis.ValExpr.ValExpr.view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                 ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
                                                 (es, _) -> Left $ MinError (T.pack ("Subst partSubst 'product' failed\n" ++ show es))
-    partSubstView (Vgez v)                  = partSubstView (view v) >>= unsafeGEZ
-    partSubstView (Vlength s)               = partSubstView (view s) >>= unsafeLength
-    partSubstView (Vat s i)                 = partSubstView (view s) >>= (\ns ->
-                                              partSubstView (view i) >>= 
+    partSubstView (Vgez v)                  = partSubstView (TorXakis.ValExpr.ValExpr.view v) >>= unsafeGEZ
+    partSubstView (Vlength s)               = partSubstView (TorXakis.ValExpr.ValExpr.view s) >>= unsafeLength
+    partSubstView (Vat s i)                 = partSubstView (TorXakis.ValExpr.ValExpr.view s) >>= (\ns ->
+                                              partSubstView (TorXakis.ValExpr.ValExpr.view i) >>= 
                                               unsafeAt ns)
-    partSubstView (Vconcat s)               = case partitionEithers (map (partSubstView . view) s) of
-                                                ([] , ns) -> unsafeConcat ns
-                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'concat' failed\n" ++ show es))
-    partSubstView (Vstrinre s r)            = partSubstView (view s) >>= (\ns ->
-                                              partSubstView (view r) >>= 
+    partSubstView (Vconcat s)               = case partitionEithers (map (partSubstView . TorXakis.ValExpr.ValExpr.view) s) of
+                                                ([], ns) -> unsafeConcat ns
+                                                (es, _)  -> Left $ MinError (T.pack ("Subst partSubst 'concat' failed\n" ++ show es))
+    partSubstView (Vstrinre s r)            = partSubstView (TorXakis.ValExpr.ValExpr.view s) >>= (\ns ->
+                                              partSubstView (TorXakis.ValExpr.ValExpr.view r) >>= 
                                               unsafeStrInRe ns)
-    partSubstView (Vcstr a c l)             = case partitionEithers (map (partSubstView . view) l) of
-                                                ([] , nl) -> unsafeCstr a c nl
-                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'cstr' failed\n" ++ show es))
-    partSubstView (Viscstr a c v)           = partSubstView (view v) >>= unsafeIsCstr a c
-    partSubstView (Vaccess a c s p v)       = partSubstView (view v) >>= unsafeAccess a c s p
+    partSubstView (Vcstr a c l)             = case partitionEithers (map (partSubstView . TorXakis.ValExpr.ValExpr.view) l) of
+                                                ([], nl) -> unsafeCstr a c nl
+                                                (es, _)  -> Left $ MinError (T.pack ("Subst partSubst 'cstr' failed\n" ++ show es))
+    partSubstView (Viscstr a c v)           = partSubstView (TorXakis.ValExpr.ValExpr.view v) >>= unsafeIsCstr a c
+    partSubstView (Vaccess a c s p v)       = partSubstView (TorXakis.ValExpr.ValExpr.view v) >>= unsafeAccess a c s p
 
 
 -- | Complete Substitution: Substitute all variables by value expressions in a value expression.
 -- Since all variables are changed, one can change the kind of variables.
-compSubst :: forall c v w . (ValExprContext c v, VarDef w) => c v -> Map.Map v (ValExpr w) -> ValExpr v -> Either MinError (ValExpr w)
+compSubst :: forall c v w . (ValExprContext c v, VarDef w) => c v -> HashMap.Map v (ValExpr w) -> ValExpr v -> Either MinError (ValExpr w)
 compSubst ctx mp ve | not (null mismatches)    = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
-                    | otherwise                = compSubstView (view ve)
+                    | otherwise                = compSubstView (TorXakis.ValExpr.ValExpr.view ve)
   where
     mismatches :: [ (v, ValExpr w) ]
     mismatches = mismatchesSort mp
 
     compSubstView :: ValExprView v -> Either MinError (ValExpr w)
     compSubstView (Vconst c)                = unsafeConst c
-    compSubstView (Vvar v)                  = case Map.lookup v mp of
+    compSubstView (Vvar v)                  = case HashMap.lookup v mp of
                                                     Nothing -> Left $ MinError (T.pack ("Subst compSubst: incomplete. Missing " ++ show v))
                                                     Just w  -> Right w
-    compSubstView (Vequal ve1 ve2)          = compSubstView (view ve1) >>= (\ne1 ->
-                                              compSubstView (view ve2) >>= 
+    compSubstView (Vequal ve1 ve2)          = compSubstView (TorXakis.ValExpr.ValExpr.view ve1) >>= (\ne1 ->
+                                              compSubstView (TorXakis.ValExpr.ValExpr.view ve2) >>= 
                                               unsafeEqual ne1)
-    compSubstView (Vite c tb fb)            = compSubstView (view tb) >>= (\ntb ->
-                                              compSubstView (view fb) >>= (\nfb ->
-                                              compSubstView (view c) >>= (\nc ->
+    compSubstView (Vite c tb fb)            = compSubstView (TorXakis.ValExpr.ValExpr.view tb) >>= (\ntb ->
+                                              compSubstView (TorXakis.ValExpr.ValExpr.view fb) >>= (\nfb ->
+                                              compSubstView (TorXakis.ValExpr.ValExpr.view c) >>= (\nc ->
                                               unsafeITE nc ntb nfb)))
-    compSubstView (Vfunc fs vs)             = case partitionEithers (map (compSubstView . view) vs) of
-                                                    ([] , nvs) -> unsafeFunc ctx fs nvs
-                                                    (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'func' failed\n" ++ show es))
-    compSubstView (Vpredef fs vs)           = case partitionEithers (map (compSubstView . view) vs) of
-                                                    ([] , nvs) -> unsafePredefNonSolvable ctx fs nvs
-                                                    (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'predef' failed\n" ++ show es))
-    compSubstView (Vnot v)                  = compSubstView (view v) >>= unsafeNot
-    compSubstView (Vand s)                  = case partitionEithers (map (compSubstView . view) (Set.toList s)) of
-                                                    ([] , ns) -> unsafeAnd (Set.fromList ns)
-                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'and' failed\n" ++ show es))
-    compSubstView (Vdivide t n)             = compSubstView (view t) >>= (\nt ->
-                                              compSubstView (view n) >>=
+    compSubstView (Vfunc fs vs)             = case partitionEithers (map (compSubstView . TorXakis.ValExpr.ValExpr.view) vs) of
+                                                    ([], nvs) -> unsafeFunc ctx fs nvs
+                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'func' failed\n" ++ show es))
+    compSubstView (Vpredef fs vs)           = case partitionEithers (map (compSubstView . TorXakis.ValExpr.ValExpr.view) vs) of
+                                                    ([], nvs) -> unsafePredefNonSolvable ctx fs nvs
+                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'predef' failed\n" ++ show es))
+    compSubstView (Vnot v)                  = compSubstView (TorXakis.ValExpr.ValExpr.view v) >>= unsafeNot
+    compSubstView (Vand s)                  = case partitionEithers (map (compSubstView . TorXakis.ValExpr.ValExpr.view) (Set.toList s)) of
+                                                    ([], ns) -> unsafeAnd (Set.fromList ns)
+                                                    (es, _)  -> Left $ MinError (T.pack ("Subst compSubst 'and' failed\n" ++ show es))
+    compSubstView (Vdivide t n)             = compSubstView (TorXakis.ValExpr.ValExpr.view t) >>= (\nt ->
+                                              compSubstView (TorXakis.ValExpr.ValExpr.view n) >>=
                                               unsafeDivide nt)
-    compSubstView (Vmodulo t n)             = compSubstView (view t) >>= (\nt ->
-                                              compSubstView (view n) >>=
+    compSubstView (Vmodulo t n)             = compSubstView (TorXakis.ValExpr.ValExpr.view t) >>= (\nt ->
+                                              compSubstView (TorXakis.ValExpr.ValExpr.view n) >>=
                                               unsafeModulo nt)
-    compSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> compSubstView (view x) >>= (\nx -> Right (nx,i)))
+    compSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> compSubstView (TorXakis.ValExpr.ValExpr.view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                     ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
                                                     (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'sum' failed\n" ++ show es))
-    compSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> compSubstView (view x) >>= (\nx -> Right (nx,i)))
+    compSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> compSubstView (TorXakis.ValExpr.ValExpr.view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                     ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
                                                     (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'product' failed\n" ++ show es))
-    compSubstView (Vgez v)                  = compSubstView (view v) >>= unsafeGEZ
-    compSubstView (Vlength s)               = compSubstView (view s) >>= unsafeLength
-    compSubstView (Vat s i)                 = compSubstView (view s) >>= (\ns ->
-                                              compSubstView (view i) >>= 
+    compSubstView (Vgez v)                  = compSubstView (TorXakis.ValExpr.ValExpr.view v) >>= unsafeGEZ
+    compSubstView (Vlength s)               = compSubstView (TorXakis.ValExpr.ValExpr.view s) >>= unsafeLength
+    compSubstView (Vat s i)                 = compSubstView (TorXakis.ValExpr.ValExpr.view s) >>= (\ns ->
+                                              compSubstView (TorXakis.ValExpr.ValExpr.view i) >>= 
                                               unsafeAt ns)
-    compSubstView (Vconcat s)               = case partitionEithers (map (compSubstView . view) s) of
-                                                    ([] , ns) -> unsafeConcat ns
-                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'concat' failed\n" ++ show es))
-    compSubstView (Vstrinre s r)            = compSubstView (view s) >>= (\ns ->
-                                              compSubstView (view r) >>= 
+    compSubstView (Vconcat s)               = case partitionEithers (map (compSubstView . TorXakis.ValExpr.ValExpr.view) s) of
+                                                    ([], ns) -> unsafeConcat ns
+                                                    (es, _)  -> Left $ MinError (T.pack ("Subst compSubst 'concat' failed\n" ++ show es))
+    compSubstView (Vstrinre s r)            = compSubstView (TorXakis.ValExpr.ValExpr.view s) >>= (\ns ->
+                                              compSubstView (TorXakis.ValExpr.ValExpr.view r) >>= 
                                               unsafeStrInRe ns)
-    compSubstView (Vcstr a c l)             = case partitionEithers (map (compSubstView . view) l) of
-                                                    ([] , nl) -> unsafeCstr a c nl
-                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'cstr' failed\n" ++ show es))
-    compSubstView (Viscstr a c v)           = compSubstView (view v) >>= unsafeIsCstr a c
-    compSubstView (Vaccess a c s p v)       = compSubstView (view v) >>= unsafeAccess a c s p
+    compSubstView (Vcstr a c l)             = case partitionEithers (map (compSubstView . TorXakis.ValExpr.ValExpr.view) l) of
+                                                    ([], nl) -> unsafeCstr a c nl
+                                                    (es, _)  -> Left $ MinError (T.pack ("Subst compSubst 'cstr' failed\n" ++ show es))
+    compSubstView (Viscstr a c v)           = compSubstView (TorXakis.ValExpr.ValExpr.view v) >>= unsafeIsCstr a c
+    compSubstView (Vaccess a c s p v)       = compSubstView (TorXakis.ValExpr.ValExpr.view v) >>= unsafeAccess a c s p
+
+------------------------------------------------------------------------------------------------------------------
+-- Context
+------------------------------------------------------------------------------------------------------------------
+
+-- | A ValExprContext instance contains all definitions to work with value expressions and references thereof
+class (SortContext (a v), VarDef v) => ValExprContext a v where
+    -- | Accessor for Function Definitions
+    funcDefs :: a v -> HashMap.Map FuncSignature (FuncDef v)
+
+    -- | Add function definitions to value expression context.
+    --   A value expression context is returned when the following constraints are satisfied:
+    --
+    --   * The signatures of the function definitions are unique.
+    --
+    --   * The variables used are known
+    --
+    --   * All references (both Sort and FunctionDefinition) are known
+    --
+    --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
+    addFuncDefs :: a v -> [FuncDef v] -> Either MinError (a v)
+
+
+-- | A minimal instance of 'ValExprContext'.
+data MinimalValExprContext v = MinimalValExprContext { sortContext :: MinimalSortContext
+                                                         -- function definitions
+                                                     , _funcDefs :: HashMap.Map FuncSignature (FuncDef v)
+                                                     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance SortContext (MinimalValExprContext MinimalVarDef) where
+    empty = MinimalValExprContext (TorXakis.Sort.empty::MinimalSortContext) HashMap.empty
+    adtDefs ctx    = adtDefs (sortContext ctx)
+    addAdtDefs ctx as = case addAdtDefs (sortContext ctx) as of
+                          Left e     -> Left e
+                          Right sctx -> Right $ ctx {sortContext = sctx} 
+
+instance ValExprContext MinimalValExprContext MinimalVarDef where
+    funcDefs = _funcDefs
+    addFuncDefs ctx fds
+        | not $ null nuFuncDefs              = Left $ MinError (T.pack ("Non unique function signatures: " ++ show nuFuncDefs))
+        | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of function signatures with undefined sorts: " ++ show undefinedSorts))
+        | not $ null undefinedVariables      = Left $ MinError (T.pack ("List of function signatures with undefined variables in their bodies: " ++ show undefinedVariables))
+        | not $ null undefinedFuncSignatures = Left $ MinError (T.pack ("List of function signatures with undefined function signatures in their bodies: " ++ show undefinedFuncSignatures))
+        | otherwise                          = Right $ newCtx ctx (toMapByFuncSignature fds)
+      where
+        nuFuncDefs :: [FuncDef MinimalVarDef]
+        nuFuncDefs = repeatedByFuncSignatureIncremental (HashMap.elems (funcDefs ctx)) fds
+
+        undefinedSorts :: [(FuncSignature, Set.Set Sort)]
+        undefinedSorts = mapMaybe undefinedSort fds
+
+        undefinedSort :: HasFuncSignature a => a -> Maybe (FuncSignature, Set.Set Sort)
+        undefinedSort fd = let fs@(FuncSignature _ as rs) = getFuncSignature fd in
+                            case filter (not . elemSort ctx) (rs:as) of
+                                [] -> Nothing
+                                xs -> Just (fs, Set.fromList xs)
+
+        undefinedVariables :: [(FuncSignature, Set.Set MinimalVarDef)]
+        undefinedVariables = mapMaybe undefinedVariable fds
+
+        undefinedVariable :: FuncDef MinimalVarDef -> Maybe (FuncSignature, Set.Set MinimalVarDef)
+        undefinedVariable fd = let vw            = TorXakis.FuncDef.view fd
+                                   definedVars   = Set.fromList (paramDefs vw)
+                                   usedVars      = freeVars (body vw)
+                                   undefinedVars = Set.difference usedVars definedVars
+                                in
+                                    if Set.null undefinedVars
+                                        then Nothing
+                                        else Just (getFuncSignature fd, undefinedVars)
+
+        undefinedFuncSignatures :: [(FuncSignature, Set.Set FuncSignature)]
+        undefinedFuncSignatures = mapMaybe undefinedFuncSignature fds
+
+        undefinedFuncSignature :: FuncDef MinimalVarDef -> Maybe (FuncSignature, Set.Set FuncSignature)
+        undefinedFuncSignature fd = let definedFuncSignatures = HashMap.union (toMapByFuncSignature fds) (_funcDefs ctx) in
+                                        case findUndefinedFuncSignature definedFuncSignatures (body (TorXakis.FuncDef.view fd)) of
+                                            [] -> Nothing
+                                            xs -> Just (getFuncSignature fd, Set.fromList xs)
+
+        newCtx :: MinimalValExprContext MinimalVarDef -> HashMap.Map FuncSignature (FuncDef MinimalVarDef) -> MinimalValExprContext MinimalVarDef
+        newCtx ctx' mfs = let updateCtx = ctx'{ _funcDefs = HashMap.union (funcDefs ctx') mfs }
+                              (lm, rm)  = HashMap.mapEither (newFuncDef updateCtx . TorXakis.FuncDef.view) mfs in
+                                if HashMap.null lm 
+                                    then let (lc, rc) = HashMap.partition isConstBody rm in
+                                            if HashMap.null lc 
+                                                then ctx'{ _funcDefs = HashMap.union (funcDefs ctx') rc }
+                                                else newCtx (ctx'{ _funcDefs = HashMap.union (funcDefs ctx') lc }) rc
+                                    else error ("All check passed, yet errors occurred\n" ++ show (HashMap.elems lm))
+
+        newFuncDef :: MinimalValExprContext MinimalVarDef -> FuncDefView MinimalVarDef -> Either MinError (FuncDef MinimalVarDef)
+        newFuncDef updateCtx (FuncDefView nm ps bd) = compSubst updateCtx (HashMap.fromList (zip ps (map (ValExpr . Vvar) ps))) bd >>= mkFuncDef nm ps
+        
+        isConstBody :: FuncDef v -> Bool
+        isConstBody fd = case TorXakis.ValExpr.ValExpr.view (body (TorXakis.FuncDef.view fd)) of
+                                Vconst {} -> True
+                                _         -> False
+
+-- | Find Undefined Function Signatures in given Value Expression (given the defined Function Signatures)
+findUndefinedFuncSignature :: HashMap.Map FuncSignature (FuncDef v) -> ValExpr v -> [FuncSignature]
+findUndefinedFuncSignature definedFuncSignatures = findUndefinedFuncSignature'
+    where
+        findUndefinedFuncSignature' :: ValExpr v -> [FuncSignature]
+        findUndefinedFuncSignature' = findUndefinedFuncSignatureView . TorXakis.ValExpr.ValExpr.view
+        
+        findUndefinedFuncSignatureView :: ValExprView v -> [FuncSignature]
+        findUndefinedFuncSignatureView Vconst{}                            = []
+        findUndefinedFuncSignatureView Vvar{}                              = []
+        findUndefinedFuncSignatureView (Vequal v1 v2)                      = findUndefinedFuncSignature' v1 ++ findUndefinedFuncSignature' v2
+        findUndefinedFuncSignatureView (Vite c t f)                        = findUndefinedFuncSignature' c ++ findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' f
+        findUndefinedFuncSignatureView (Vfunc f as)                        = (if HashMap.member f definedFuncSignatures
+                                                                                    then []
+                                                                                    else [f]
+                                                                              )
+                                                                              ++ concatMap findUndefinedFuncSignature' as
+        findUndefinedFuncSignatureView (Vpredef _ as)                      = concatMap findUndefinedFuncSignature' as
+        findUndefinedFuncSignatureView (Vnot v)                            = findUndefinedFuncSignature' v
+        findUndefinedFuncSignatureView (Vand vs)                           = concatMap findUndefinedFuncSignature' (Set.toList vs)
+        findUndefinedFuncSignatureView (Vdivide t n)                       = findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' n
+        findUndefinedFuncSignatureView (Vmodulo t n)                       = findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' n
+        findUndefinedFuncSignatureView (Vsum mp)                           = concatMap findUndefinedFuncSignature' (Map.keys mp)
+        findUndefinedFuncSignatureView (Vproduct mp)                       = concatMap findUndefinedFuncSignature' (Map.keys mp)
+        findUndefinedFuncSignatureView (Vgez v)                            = findUndefinedFuncSignature' v
+        findUndefinedFuncSignatureView (Vlength v)                         = findUndefinedFuncSignature' v
+        findUndefinedFuncSignatureView (Vat s p)                           = findUndefinedFuncSignature' s ++ findUndefinedFuncSignature' p
+        findUndefinedFuncSignatureView (Vconcat vs)                        = concatMap findUndefinedFuncSignature' vs
+        findUndefinedFuncSignatureView (Vstrinre s r)                      = findUndefinedFuncSignature' s ++ findUndefinedFuncSignature' r
+        findUndefinedFuncSignatureView (Vcstr _ _ as)                      = concatMap findUndefinedFuncSignature' as
+        findUndefinedFuncSignatureView (Viscstr _ _ v)                     = findUndefinedFuncSignature' v
+        findUndefinedFuncSignatureView (Vaccess _ _ _ _ v)                 = findUndefinedFuncSignature' v

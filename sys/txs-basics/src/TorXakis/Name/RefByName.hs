@@ -29,7 +29,7 @@ module TorXakis.Name.RefByName
 
 import           Control.DeepSeq      (NFData)
 import           Data.Data            (Data)
-import           Data.Hashable        (Hashable(hash, hashWithSalt))
+import           Data.Hashable        (Hashable(hashWithSalt))
 import           Data.HashMap         (Map, fromList)
 
 import           TorXakis.Name.Name   (Name, HasName, getName)
@@ -41,7 +41,7 @@ newtype RefByName t = RefByName { -- | This reference keeps a 'Name' that repres
     deriving (Eq, Ord, Show, Read, NFData, Data)
 
 instance Hashable (RefByName t) where
-    hashWithSalt s = (*s) . hash . toName
+    hashWithSalt s = hashWithSalt s . toName
 
 -- | Return 'Data.HashMap.Map' where the 'Name' of the element is taken as key
 --   and the element itself is taken as value.

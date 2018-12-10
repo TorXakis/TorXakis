@@ -40,7 +40,7 @@ where
 
 import           Control.DeepSeq    (NFData)
 import           Data.Data          (Data)
-import           Data.Hashable      (Hashable(hash, hashWithSalt))
+import           Data.Hashable      (Hashable(hashWithSalt))
 import           Data.List.Unique   (repeated)
 import           Data.Monoid        ((<>))
 import           Data.Text          (Text)
@@ -57,7 +57,7 @@ newtype Name = Name
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Hashable Name where
-    hashWithSalt s = (*s) . hash . toText
+    hashWithSalt s = hashWithSalt s . toText
 
 -- | Enables 'Name's of entities to be accessed in a common way.
 class HasName a where

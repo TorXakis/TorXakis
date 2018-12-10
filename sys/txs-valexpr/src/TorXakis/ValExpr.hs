@@ -22,13 +22,11 @@ module TorXakis.ValExpr
 , view
   -- * Evaluate
 , eval
-, module TorXakis.ValExpr.ValExprConstructor
+, module TorXakis.ValExpr.ValExprBasis
 , module TorXakis.ValExpr.ValExprExtension
-, module TorXakis.ValExpr.ValExprContext
 )
 where
 
 import TorXakis.ValExpr.ValExpr
-import TorXakis.ValExpr.ValExprContext
-import TorXakis.ValExpr.ValExprConstructor
+import TorXakis.ValExpr.ValExprBasis
 import TorXakis.ValExpr.ValExprExtension

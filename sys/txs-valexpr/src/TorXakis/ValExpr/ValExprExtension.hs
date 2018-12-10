@@ -52,8 +52,7 @@ import qualified Data.Text       as T
 import           TorXakis.Error
 import           TorXakis.Sort
 import           TorXakis.ValExpr.ValExpr
-import           TorXakis.ValExpr.ValExprConstructor
-import           TorXakis.ValExpr.ValExprContext
+import           TorXakis.ValExpr.ValExprBasis
 
 -- | Apply operator Or (\\/) on the provided list of value expressions.
 mkOr :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)

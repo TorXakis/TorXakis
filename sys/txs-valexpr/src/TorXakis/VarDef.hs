@@ -26,13 +26,14 @@ where
 
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
+import           Data.Hashable       (Hashable(hashWithSalt))
 import           GHC.Generics        (Generic)
 
 import TorXakis.Name
 import TorXakis.Sort
 
 -- | Class for a variable definition.
-class (Ord v, Show v, HasName v, HasSort v) => VarDef v
+class (Ord v, Show v, HasName v, HasSort v, Hashable v) => VarDef v
 
 -- | Minimal implementation of Variable Definition.
 data MinimalVarDef = MinimalVarDef { -- | name
@@ -41,6 +42,10 @@ data MinimalVarDef = MinimalVarDef { -- | name
                                    , varSort :: Sort
                                    }
                                    deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance Hashable MinimalVarDef where
+    hashWithSalt s (MinimalVarDef n srt) = s `hashWithSalt` n
+                                             `hashWithSalt` srt
 
 instance HasName MinimalVarDef where
     getName = varName
