@@ -17,7 +17,7 @@ export STACK_YAML="stack_linux.yaml"
 stack build
 
 # Version of TorXakis that is being packaged.
-TXS_VERSION=0.6.0
+TXS_VERSION=0.7.0
 
 TXS_TMP=/tmp/torxakis/
 
@@ -26,7 +26,7 @@ mkdir -p ${TXS_TMP}/usr/bin
 
 echo "Temporary directory is: ${TXS_TMP}"
 
-TXS_BIN=`stack path --local-install-root --silent`/bin
+TXS_BIN=`stack path --local-install-root --silent --stack-yaml stack_linux.yaml`/bin
 
 echo "TorXakis binary directory is: ${TXS_BIN}"
 
