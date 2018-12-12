@@ -28,6 +28,7 @@ library:
   - txs-basics
   - txs-sort
   - txs-valexpr
+  - txs-value
   - Unique
 
 extra-source-files:

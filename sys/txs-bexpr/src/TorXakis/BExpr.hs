@@ -17,17 +17,20 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 module TorXakis.BExpr
 ( -- * Behaviour Expression type and view
-  BExprView
+  BExpression
 , BExpressionView (..)
 , BExpr
+, BExprView
 , view
   -- Action Offer
 , ActOffer(..)
   -- Channel Offer
 , ChanOffer(..)
+, module TorXakis.BExpr.BExprConstructor
 , module TorXakis.BExpr.BExprContext
 )
 where
 
 import TorXakis.BExpr.BExpr
+import TorXakis.BExpr.BExprConstructor
 import TorXakis.BExpr.BExprContext

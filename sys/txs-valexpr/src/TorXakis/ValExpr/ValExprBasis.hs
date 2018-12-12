@@ -101,50 +101,50 @@ import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.Sort
-import           TorXakis.Value
 import           TorXakis.ValExpr.RegexXSD2Posix
 import           TorXakis.ValExpr.ValExpr
+import           TorXakis.Value
 import           TorXakis.VarDef
 
 ------------------------------------------------------------------------------------------------------------------
 -- Constructors
 ------------------------------------------------------------------------------------------------------------------
 
-trueValExpr :: ValExpr v
-trueValExpr = ValExpr $ Vconst (Cbool True)
+trueValExpr :: ValExpression v
+trueValExpr = ValExpression $ Vconst (Cbool True)
 
-falseValExpr :: ValExpr v
-falseValExpr = ValExpr $ Vconst (Cbool False)
+falseValExpr :: ValExpression v
+falseValExpr = ValExpression $ Vconst (Cbool False)
 
-stringEmptyValExpr :: ValExpr v
-stringEmptyValExpr = ValExpr $ Vconst (Cstring (T.pack ""))
+stringEmptyValExpr :: ValExpression v
+stringEmptyValExpr = ValExpression $ Vconst (Cstring (T.pack ""))
 
-zeroValExpr :: ValExpr v
-zeroValExpr = ValExpr $ Vconst (Cint 0)
+zeroValExpr :: ValExpression v
+zeroValExpr = ValExpression $ Vconst (Cint 0)
 
 -- | Create a constant value as a value expression.
-mkConst :: ValExprContext c v => c v -> Value -> Either MinError (ValExpr v)
+mkConst :: ValExprContext c v => c v -> Value -> Either MinError (ValExpression v)
 mkConst ctx v = if elemSort ctx (getSort v)
                     then unsafeConst v
                     else Left $  MinError (T.pack ("Sort " ++ show (getSort v) ++ " not defined in context"))
 
-unsafeConst :: Value -> Either MinError (ValExpr v)
-unsafeConst = Right . ValExpr . Vconst
+unsafeConst :: Value -> Either MinError (ValExpression v)
+unsafeConst = Right . ValExpression . Vconst
 
 -- | Create a variable as a value expression.
-mkVar :: c v -> v -> Either MinError (ValExpr v)
+mkVar :: c v -> v -> Either MinError (ValExpression v)
 mkVar _ = unsafeVar
 
-unsafeVar :: v -> Either MinError (ValExpr v)
-unsafeVar = Right . ValExpr . Vvar
+unsafeVar :: v -> Either MinError (ValExpression v)
+unsafeVar = Right . ValExpression . Vvar
 
 -- | Apply operator Equal on the provided value expressions.
-mkEqual :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkEqual :: ValExprContext c v => c v -> ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 mkEqual _   ve1 ve2 | getSort ve1 /= getSort ve2 = Left $ MinError (T.pack ("Sort of value expressions in equal differ " ++ show (getSort ve1) ++ " versus " ++ show (getSort ve2)))
 mkEqual ctx ve1 ve2 | elemSort ctx (getSort ve1) = unsafeEqual ve1 ve2
 mkEqual _   ve1 _                                = Left $  MinError (T.pack ("Sort " ++ show (getSort ve1) ++ " not defined in context"))
 
-unsafeEqual :: Ord v => ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+unsafeEqual :: Ord v => ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 -- Simplification: a == a <==> True
 unsafeEqual ve1 ve2 | ve1 == ve2                    = Right trueValExpr
 -- Simplification: Different Values <==> False : use Same Values are already detected in previous step
@@ -162,28 +162,28 @@ unsafeEqual (TorXakis.ValExpr.ValExpr.view -> Vnot n) e | e == n             = R
 unsafeEqual (TorXakis.ValExpr.ValExpr.view -> Vnot n1) (TorXakis.ValExpr.ValExpr.view -> Vnot n2)     = unsafeEqual n1 n2
 -- Same representation: Not a == b <==> a == Not b (twice)
 unsafeEqual x@(TorXakis.ValExpr.ValExpr.view -> Vnot n) e = if n <= e
-                                                            then Right $ ValExpr (Vequal x e)
+                                                            then Right $ ValExpression (Vequal x e)
                                                             else case unsafeNot e of
                                                                     Left m  -> error ("Unexpected error in Equal: " ++ show m)
-                                                                    Right m -> Right $ ValExpr (Vequal m n)
+                                                                    Right m -> Right $ ValExpression (Vequal m n)
 unsafeEqual e x@(TorXakis.ValExpr.ValExpr.view -> Vnot n) = if n <= e
-                                                            then Right $ ValExpr (Vequal x e)
+                                                            then Right $ ValExpression (Vequal x e)
                                                             else case unsafeNot e of
                                                                     Left m  -> error ("Unexpected error in Equal: " ++ show m)
-                                                                    Right m -> Right $ ValExpr (Vequal m n)
+                                                                    Right m -> Right $ ValExpression (Vequal m n)
 -- Same representation: a == b <==> b == a
 unsafeEqual ve1 ve2                                 = if ve1 <= ve2
-                                                            then Right $ ValExpr (Vequal ve1 ve2)
-                                                            else Right $ ValExpr (Vequal ve2 ve1)
+                                                            then Right $ ValExpression (Vequal ve1 ve2)
+                                                            else Right $ ValExpression (Vequal ve2 ve1)
 
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
-mkITE :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkITE :: ValExprContext c v => c v -> ValExpression v -> ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 mkITE _   b _  _  | getSort b  /= SortBool    = Left $ MinError (T.pack ("Condition of ITE is not of expected sort Bool but " ++ show (getSort b)))
 mkITE _   _ tb fb | getSort tb /= getSort fb  = Left $ MinError (T.pack ("Sorts of branches differ " ++ show (getSort tb) ++ " versus " ++ show (getSort fb)))
 mkITE ctx b tb fb | elemSort ctx (getSort tb) = unsafeITE b tb fb
 mkITE _   _ tb _                              = Left $  MinError (T.pack ("Sort " ++ show (getSort tb) ++ " not defined in context"))
 
-unsafeITE :: Eq v => ValExpr v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+unsafeITE :: Eq v => ValExpression v -> ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 -- Simplification: if True then a else b <==> a
 unsafeITE b tb _ | b == trueValExpr         = Right tb
 -- Simplification: if False then a else b <==> b
@@ -193,15 +193,15 @@ unsafeITE b _ fb | b == falseValExpr        = Right fb
 -- Simplification: if c then a else a <==> a
 unsafeITE _ tb fb | tb == fb                  = Right tb
 -- Simplification: if (not c) then tb else fb <==> if c then fb else tb
-unsafeITE (TorXakis.ValExpr.ValExpr.view -> Vnot n) tb fb              = Right $ ValExpr (Vite n fb tb)
+unsafeITE (TorXakis.ValExpr.ValExpr.view -> Vnot n) tb fb              = Right $ ValExpression (Vite n fb tb)
 -- Simplification: if c then True else False <==> c
 unsafeITE b tb fb | tb == trueValExpr && fb == falseValExpr = Right b
 -- Simplification: if c then False else True <==> not c
 unsafeITE b tb fb | tb == falseValExpr && fb == trueValExpr = unsafeNot b
-unsafeITE cs tb fb                            = Right $ ValExpr (Vite cs tb fb)
+unsafeITE cs tb fb                            = Right $ ValExpression (Vite cs tb fb)
 
 -- | Create a function call.
-mkFunc :: ValExprContext c v => c v -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+mkFunc :: ValExprContext c v => c v -> FuncSignature -> [ValExpression v] -> Either MinError (ValExpression v)
 mkFunc ctx fs vs 
     | expected == actual = unsafeFunc ctx fs vs
     | otherwise          = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
@@ -209,11 +209,11 @@ mkFunc ctx fs vs
             expected = args fs
             actual = map getSort vs
 
-unsafeFunc :: (ValExprContext c v, VarDef w) => c v -> FuncSignature -> [ValExpr w] -> Either MinError (ValExpr w)
+unsafeFunc :: (ValExprContext c v, VarDef w) => c v -> FuncSignature -> [ValExpression w] -> Either MinError (ValExpression w)
 unsafeFunc ctx fs vs = case HashMap.lookup fs (funcDefs ctx) of
                             Nothing -> -- Allow creating a function call to a function that is being defined (e.g. a recursive function).
                                        -- When a new function is added to the context, all function calls will be checked to refer to existing functions.
-                                       Right $ ValExpr (Vfunc fs vs)
+                                       Right $ ValExpression (Vfunc fs vs)
                             Just fd -> let vw = TorXakis.FuncDef.view fd in
                                          case body vw of
                                             (TorXakis.ValExpr.ValExpr.view -> Vconst x)  -> unsafeConst x
@@ -221,11 +221,11 @@ unsafeFunc ctx fs vs = case HashMap.lookup fs (funcDefs ctx) of
                                                                         Just _  -> compSubst ctx 
                                                                                              (HashMap.fromList (zip (paramDefs vw) vs))
                                                                                              (body vw)
-                                                                        Nothing -> Right $ ValExpr (Vfunc fs vs)
+                                                                        Nothing -> Right $ ValExpression (Vfunc fs vs)
 
 -- | Make a call to some predefined functions
 -- Only allowed in CNECTDEF
-mkPredefNonSolvable :: ValExprContext c v => c v -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+mkPredefNonSolvable :: ValExprContext c v => c v -> FuncSignature -> [ValExpression v] -> Either MinError (ValExpression v)
 mkPredefNonSolvable ctx fs vs
     | not isPredefNonSolvableFunction  = Left $ MinError (T.pack ("Signature is not of a predefined function: " ++ show fs))
     | expected == actual    = unsafePredefNonSolvable ctx fs vs
@@ -245,12 +245,12 @@ mkPredefNonSolvable ctx fs vs
                     ("dropWhileNot", SortString, [SortString, SortString]) -> True
                     _                                                      -> False
     
-unsafePredefNonSolvable :: SortContext c => c -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+unsafePredefNonSolvable :: SortContext c => c -> FuncSignature -> [ValExpression v] -> Either MinError (ValExpression v)
 unsafePredefNonSolvable ctx fs vs = case toMaybeValues vs of
                                         Just values -> evalPredefNonSolvable ctx fs values
-                                        Nothing     -> Right $ ValExpr (Vpredef fs vs)
+                                        Nothing     -> Right $ ValExpression (Vpredef fs vs)
 
-evalPredefNonSolvable :: SortContext c => c -> FuncSignature -> [Value] -> Either MinError (ValExpr v)
+evalPredefNonSolvable :: SortContext c => c -> FuncSignature -> [Value] -> Either MinError (ValExpression v)
 evalPredefNonSolvable ctx fs vs =
     case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, vs) of
             ("toString",     SortString, [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
@@ -270,11 +270,11 @@ evalPredefNonSolvable ctx fs vs =
         notElemT c = not . elemT c
 
 -- | Apply operator Not on the provided value expression.
-mkNot :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
+mkNot :: ValExprContext c v => c v -> ValExpression v -> Either MinError (ValExpression v)
 mkNot _ n | getSort n == SortBool = unsafeNot n
 mkNot _ n                         = Left $ MinError (T.pack ("Argument of Not is not of expected sort Bool but " ++ show (getSort n)))
 
-unsafeNot :: Eq v => ValExpr v -> Either MinError (ValExpr v)
+unsafeNot :: Eq v => ValExpression v -> Either MinError (ValExpression v)
 -- Simplification: not True <==> False
 unsafeNot b | b == trueValExpr                              = Right falseValExpr
 -- Simplification: not False <==> True
@@ -283,33 +283,33 @@ unsafeNot b | b == falseValExpr                             = Right trueValExpr
 unsafeNot (TorXakis.ValExpr.ValExpr.view -> Vnot ve)        = Right ve
 -- Simplification: not (if cs then tb else fb) <==> if cs then not (tb) else not (fb)
 unsafeNot (TorXakis.ValExpr.ValExpr.view -> Vite cs tb fb)  = case (unsafeNot tb, unsafeNot fb) of
-                                                                (Right nt, Right nf) -> Right $ ValExpr (Vite cs nt nf)
+                                                                (Right nt, Right nf) -> Right $ ValExpression (Vite cs nt nf)
                                                                 _                    -> error "Unexpected error in NOT with ITE"
-unsafeNot ve                                                = Right $ ValExpr (Vnot ve)
+unsafeNot ve                                                = Right $ ValExpression (Vnot ve)
 
 -- | Apply operator And on the provided list of value expressions.
 -- TODO: generalize to Traversable instead of list?
-mkAnd :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
+mkAnd :: ValExprContext c v => c v -> [ValExpression v] -> Either MinError (ValExpression v)
 mkAnd _ s | all (\e -> SortBool == getSort e) s = unsafeAnd (Set.fromList s)
 mkAnd _ _                                       = Left $ MinError (T.pack "Not all value expressions in set are of expected sort Bool")
 
-unsafeAnd :: Ord v => Set.Set (ValExpr v) -> Either MinError (ValExpr v)
+unsafeAnd :: Ord v => Set.Set (ValExpression v) -> Either MinError (ValExpression v)
 unsafeAnd = unsafeAnd' . flattenAnd
     where
-        flattenAnd :: Ord v => Set.Set (ValExpr v) -> Set.Set (ValExpr v)
-        flattenAnd = Set.unions . map fromValExpr . Set.toList
+        flattenAnd :: Ord v => Set.Set (ValExpression v) -> Set.Set (ValExpression v)
+        flattenAnd = Set.unions . map fromValExpression . Set.toList
         
-        fromValExpr :: ValExpr v -> Set.Set (ValExpr v)
-        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vand a) = a
-        fromValExpr x                                         = Set.singleton x
+        fromValExpression :: ValExpression v -> Set.Set (ValExpression v)
+        fromValExpression (TorXakis.ValExpr.ValExpr.view -> Vand a) = a
+        fromValExpression x                                         = Set.singleton x
 
 -- And doesn't contain elements of type Vand.
-unsafeAnd' :: forall v . Ord v => Set.Set (ValExpr v) -> Either MinError (ValExpr v)
+unsafeAnd' :: forall v . Ord v => Set.Set (ValExpression v) -> Either MinError (ValExpression v)
 unsafeAnd' s =
     -- Canonical form (merge conditional IFs)
     -- IF a THEN b ELSE False FI /\ IF c THEN d ELSE False FI <==> IF a /\ c THEN b /\ d ELSE False FI
         mergeConditionals s >>= (\can ->
-        let s' :: Set.Set (ValExpr v)
+        let s' :: Set.Set (ValExpression v)
             s' = Set.delete trueValExpr can in
                 if Set.member falseValExpr s'
                     then Right falseValExpr
@@ -320,10 +320,10 @@ unsafeAnd' s =
                                    let nots = filterNot (Set.toList s') in
                                         if any (contains s') nots
                                             then Right falseValExpr
-                                            else Right $ ValExpr (Vand s')
+                                            else Right $ ValExpression (Vand s')
         )
     where
-        mergeConditionals :: Set.Set (ValExpr v) -> Either MinError (Set.Set (ValExpr v))
+        mergeConditionals :: Set.Set (ValExpression v) -> Either MinError (Set.Set (ValExpression v))
         mergeConditionals s' = Set.foldr mergeConditional (Right (Set.empty, Set.empty, Set.empty)) s' >>= 
                                 (\(s'', cs, ds) -> case Set.toList cs of
                                                     (_:_:_) -> -- at least two items to merge
@@ -335,62 +335,62 @@ unsafeAnd' s =
                                                                 Right s'
                                 )
 
-        mergeConditional :: ValExpr v 
-                         -> Either MinError (Set.Set (ValExpr v), Set.Set (ValExpr v), Set.Set (ValExpr v))
-                         -> Either MinError (Set.Set (ValExpr v), Set.Set (ValExpr v), Set.Set (ValExpr v))
+        mergeConditional :: ValExpression v 
+                         -> Either MinError (Set.Set (ValExpression v), Set.Set (ValExpression v), Set.Set (ValExpression v))
+                         -> Either MinError (Set.Set (ValExpression v), Set.Set (ValExpression v), Set.Set (ValExpression v))
         mergeConditional _                                               (Left e)                                  = Left e
         mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | tb == falseValExpr = unsafeNot c >>= (\nc -> Right (s', Set.insert nc cs, Set.insert fb ds))
         mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | fb == falseValExpr = Right (s', Set.insert c cs, Set.insert tb ds)
         mergeConditional x                                               (Right (s', cs, ds))                      = Right (Set.insert x s', cs, ds)
 
-        filterNot :: [ValExpr v] -> [ValExpr v]
+        filterNot :: [ValExpression v] -> [ValExpression v]
         filterNot [] = []
         filterNot (x:xs) = case TorXakis.ValExpr.ValExpr.view x of
                             Vnot n -> n : filterNot xs
                             _      ->     filterNot xs
 
-        contains :: Set.Set (ValExpr v) -> ValExpr v -> Bool
+        contains :: Set.Set (ValExpression v) -> ValExpression v -> Bool
         contains set (TorXakis.ValExpr.ValExpr.view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                                         = Set.member a set
 
 -- | Apply unary operator Minus on the provided value expression.
-mkUnaryMinus :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
+mkUnaryMinus :: ValExprContext c v => c v -> ValExpression v -> Either MinError (ValExpression v)
 mkUnaryMinus _ v | getSort v == SortInt = unsafeUnaryMinus v
 mkUnaryMinus _ v                        = Left $ MinError (T.pack ("Unary Minus argument not of expected Sort Int but " ++ show (getSort v)))
 
-unsafeUnaryMinus :: Ord v => ValExpr v -> Either MinError (ValExpr v)
+unsafeUnaryMinus :: Ord v => ValExpression v -> Either MinError (ValExpression v)
 unsafeUnaryMinus (TorXakis.ValExpr.ValExpr.view -> Vsum m) = unsafeSumFromMap (Map.map (* (-1)) m)
 unsafeUnaryMinus x                                         = unsafeSumFromMap (Map.singleton x (-1))
 
 -- | Apply operator Divide on the provided value expressions.
-mkDivide :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkDivide :: ValExprContext c v => c v -> ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 mkDivide _ d _ | getSort d /= SortInt = Left $ MinError (T.pack ("Dividend not of expected Sort Int but " ++ show (getSort d)))
 mkDivide _ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Divisor not of expected Sort Int but " ++ show (getSort d)))
 mkDivide _ t n                        = unsafeDivide t n
 
-unsafeDivide :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+unsafeDivide :: ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 unsafeDivide _                                                   (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Divide")
 unsafeDivide (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n))          = unsafeConst (Cint (t `div` n) )
-unsafeDivide vet                                                 ven                                                         = Right $ ValExpr (Vdivide vet ven)
+unsafeDivide vet                                                 ven                                                         = Right $ ValExpression (Vdivide vet ven)
 
 -- | Apply operator Modulo on the provided value expressions.
-mkModulo :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkModulo :: ValExprContext c v => c v -> ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 mkModulo _ d _ | getSort d /= SortInt = Left $ MinError (T.pack ("Dividend not of expected Sort Int but " ++ show (getSort d)))
 mkModulo _ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Divisor not of expected Sort Int but " ++ show (getSort d)))
 mkModulo _ t n                        = unsafeModulo t n
 
-unsafeModulo :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+unsafeModulo :: ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 unsafeModulo _                                                   (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Modulo")
 unsafeModulo (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n))          = unsafeConst (Cint (t `mod` n) )
-unsafeModulo vet                                                 ven                                                         = Right $ ValExpr (Vmodulo vet ven)
+unsafeModulo vet                                                 ven                                                         = Right $ ValExpression (Vmodulo vet ven)
 
 -- is key a constant?
-isKeyConst :: ValExpr v -> Integer -> Bool
+isKeyConst :: ValExpression v -> Integer -> Bool
 isKeyConst (TorXakis.ValExpr.ValExpr.view -> Vconst{}) _ = True
 isKeyConst _                                           _ = False
 
 -- | Apply operator sum on the provided list of value expressions.
-mkSum :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
+mkSum :: ValExprContext c v => c v -> [ValExpression v] -> Either MinError (ValExpression v)
 mkSum _ l | all (\e -> SortInt == getSort e) l = unsafeSum l
 mkSum _ _                                      = Left $ MinError (T.pack "Not all value expressions in list are of expected sort Int")
 -- Note: inverse of addition (subtraction) is communicative -> occurrence can also be negativeonly
@@ -401,21 +401,21 @@ mkSum _ _                                      = Left $ MinError (T.pack "Not al
 --    special case if the sum is zero, no value is inserted since v == v+0
 -- 3. When map is empty return 0
 --    When map contains a single element exactly once, return that element
-unsafeSum :: Ord v => [ValExpr v] -> Either MinError (ValExpr v)
+unsafeSum :: Ord v => [ValExpression v] -> Either MinError (ValExpression v)
 unsafeSum = unsafeSumFromMap . flattenSum
     where
-        flattenSum :: Ord v => [ValExpr v] -> Map.Map (ValExpr v) Integer
+        flattenSum :: Ord v => [ValExpression v] -> Map.Map (ValExpression v) Integer
         flattenSum = Map.filter (0 ==) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
         
-        fromValExpr :: ValExpr v -> Map.Map (ValExpr v) Integer
+        fromValExpr :: ValExpression v -> Map.Map (ValExpression v) Integer
         fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m) = m
         fromValExpr x                                         = Map.singleton x 1
 
 -- unsafeSumFromMap doesn't contain elements of type Vsum.
-unsafeSumFromMap :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
+unsafeSumFromMap :: forall v . Ord v => Map.Map (ValExpression v) Integer -> Either MinError (ValExpression v)
 unsafeSumFromMap m = 
     let (vals, nonvals) = Map.partitionWithKey isKeyConst m
-        retVal :: Map.Map (ValExpr v) Integer
+        retVal :: Map.Map (ValExpression v) Integer
         retVal = case sum (map toValue (Map.toList vals)) of
                     0   -> nonvals
                     val -> case unsafeConst (Cint val) of
@@ -425,14 +425,14 @@ unsafeSumFromMap m =
         case Map.toList retVal of
             []          -> Right zeroValExpr     -- sum of nothing equal to zero
             [(term, 1)] -> Right term
-            _           -> Right (ValExpr (Vsum m))
+            _           -> Right $ ValExpression (Vsum m)
     where
-        toValue :: (ValExpr v, Integer) -> Integer
+        toValue :: (ValExpression v, Integer) -> Integer
         toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o) = i * o
         toValue (_                                               , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeSum"
 
 -- | Apply operator product on the provided list of value expressions.
-mkProduct :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
+mkProduct :: ValExprContext c v => c v -> [ValExpression v] -> Either MinError (ValExpression v)
 mkProduct _ l | all (\e -> SortInt == getSort e) l = unsafeProduct l
 mkProduct _ _                                      = Left $ MinError (T.pack "Not all value expressions in list are of expected sort Int")
 -- Note: inverse of product (division) is not communicative -> occurrence can only be positive
@@ -443,18 +443,18 @@ mkProduct _ _                                      = Left $ MinError (T.pack "No
 --    special case if the product is zero, value is zero
 -- 3. When non values are empty return value
 --    When non-values are not empty, return sum which multiplies value with non-values
-unsafeProduct :: Ord v => [ValExpr v] -> Either MinError (ValExpr v)
+unsafeProduct :: Ord v => [ValExpression v] -> Either MinError (ValExpression v)
 unsafeProduct = unsafeProductFromMap  . flattenProduct
     where
-        flattenProduct :: Ord v => [ValExpr v] -> Map.Map (ValExpr v) Integer
+        flattenProduct :: Ord v => [ValExpression v] -> Map.Map (ValExpression v) Integer
         flattenProduct = Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted)
         
-        fromValExpr :: ValExpr v -> Map.Map (ValExpr v) Integer
+        fromValExpr :: ValExpression v -> Map.Map (ValExpression v) Integer
         fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vproduct m) = m
         fromValExpr x                                             = Map.singleton x 1
 
 -- Flatten Product doesn't contain elements of type Vproduct.
-unsafeProductFromMap  :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
+unsafeProductFromMap  :: forall v . Ord v => Map.Map (ValExpression v) Integer -> Either MinError (ValExpression v)
 -- Simplification: 0 * x = 0
 unsafeProductFromMap  m | Map.member zeroValExpr m = Right zeroValExpr
 unsafeProductFromMap  m =
@@ -464,40 +464,40 @@ unsafeProductFromMap  m =
         case Map.toList nonvals of
             []         -> unsafeConst (Cint value)
             [(term,1)] -> unsafeSumFromMap $ Map.singleton term value
-            _          -> unsafeSumFromMap $ Map.singleton (ValExpr (Vproduct nonvals)) value
+            _          -> unsafeSumFromMap $ Map.singleton (ValExpression (Vproduct nonvals)) value
     where
-        toValue :: (ValExpr v, Integer) -> Integer
+        toValue :: (ValExpression v, Integer) -> Integer
         toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o) = i ^ o
         toValue (_                                               , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
 
 -- | Apply operator GEZ (Greater Equal Zero) on the provided value expression.
-mkGEZ :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
+mkGEZ :: ValExprContext c v => c v -> ValExpression v -> Either MinError (ValExpression v)
 mkGEZ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Argument of GEZ not of expected Sort Int but " ++ show (getSort d)))
 mkGEZ _ d                        = unsafeGEZ d
 
-unsafeGEZ :: ValExpr v -> Either MinError (ValExpr v)
+unsafeGEZ :: ValExpression v -> Either MinError (ValExpression v)
 -- Simplification: Integer Value to Boolean
 unsafeGEZ (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint v)) = unsafeConst (Cbool (0 <= v))
 -- Simplification: length of string is always Greater or equal to zero
 unsafeGEZ (TorXakis.ValExpr.ValExpr.view -> Vlength {})      = Right trueValExpr
-unsafeGEZ ve                                                 = Right $ ValExpr (Vgez ve)
+unsafeGEZ ve                                                 = Right $ ValExpression (Vgez ve)
 
 -- | Apply operator Length on the provided value expression.
-mkLength :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
+mkLength :: ValExprContext c v => c v -> ValExpression v -> Either MinError (ValExpression v)
 mkLength _ s | getSort s /= SortString = Left $ MinError (T.pack ("Argument of Length not of expected Sort String but " ++ show (getSort s)))
 mkLength _ s                           = unsafeLength s
 
-unsafeLength :: ValExpr v -> Either MinError (ValExpr v)
+unsafeLength :: ValExpression v -> Either MinError (ValExpression v)
 unsafeLength (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) = unsafeConst (Cint (Prelude.toInteger (T.length s)))
-unsafeLength v                                                     = Right $ ValExpr (Vlength v)
+unsafeLength v                                                     = Right $ ValExpression (Vlength v)
 
 -- | Apply operator At on the provided value expressions.
-mkAt :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkAt :: ValExprContext c v => c v -> ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 mkAt _ s i | getSort s /= SortString = Left $ MinError (T.pack ("First argument of At not of expected Sort String but " ++ show (getSort s)))
            | getSort i /= SortInt    = Left $ MinError (T.pack ("Second argument of At not of expected Sort Int but " ++ show (getSort i)))
            | otherwise               = unsafeAt s i
 
-unsafeAt :: (Eq v) => ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+unsafeAt :: (Eq v) => ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 unsafeAt _                                                     (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) | i < 0                                 = Right stringEmptyValExpr
 unsafeAt (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) | i >= Prelude.toInteger (T.length s)   = Right stringEmptyValExpr
 unsafeAt (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i))                                         = unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
@@ -508,19 +508,19 @@ unsafeAt (TorXakis.ValExpr.ValExpr.view -> Vconcat ((TorXakis.ValExpr.ValExpr.vi
             else unsafeConcat xs >>= (\nc -> 
                     unsafeConst (Cint (i - lengthS)) >>=
                         unsafeAt nc)
-unsafeAt ves vei = Right $ ValExpr (Vat ves vei)
+unsafeAt ves vei = Right $ ValExpression (Vat ves vei)
 
 -- | Apply operator Concat on the provided sequence of value expressions.
-mkConcat :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
+mkConcat :: ValExprContext c v => c v -> [ValExpression v] -> Either MinError (ValExpression v)
 mkConcat _ l | all (\e -> SortString == getSort e) l = unsafeConcat l
 mkConcat _ _                                         = Left $ MinError (T.pack "Not all value expressions in list are of expected sort String")
 
-unsafeConcat :: (Eq v) => [ValExpr v] -> Either MinError (ValExpr v)
+unsafeConcat :: (Eq v) => [ValExpression v] -> Either MinError (ValExpression v)
 unsafeConcat l =
     case (mergeVals . flatten . filter (stringEmptyValExpr /= ) ) l of
         []  -> Right stringEmptyValExpr
         [e] -> Right e
-        cs  -> Right $ ValExpr (Vconcat cs)
+        cs  -> Right $ ValExpression (Vconcat cs)
   where
     -- implementation details:
     -- Properties incorporated
@@ -528,7 +528,7 @@ unsafeConcat l =
     --    "a" ++ "b" == "ab"    - concat consecutive string values
     --   remove all nested Concats, since (a ++ b) ++ (c ++ d) == (a ++ b ++ c ++ d)
 
-    mergeVals :: [ValExpr v] -> [ValExpr v]
+    mergeVals :: [ValExpression v] -> [ValExpression v]
     mergeVals []            = []
     mergeVals [x]           = [x]
     mergeVals ( (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s1)) 
@@ -538,23 +538,23 @@ unsafeConcat l =
                                     Left e  -> error ("Unexpected error in mergeVals of Concat" ++ show e)
     mergeVals (x1:x2:xs)    = x1 : mergeVals (x2:xs)
 
-    flatten :: [ValExpr v] -> [ValExpr v]
+    flatten :: [ValExpression v] -> [ValExpression v]
     flatten = concatMap fromValExpr
 
-    fromValExpr :: ValExpr v -> [ValExpr v]
+    fromValExpr :: ValExpression v -> [ValExpression v]
     fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vconcat cs) = cs
     fromValExpr x                                             = [x]
 
 -- | Apply String In Regular Expression operator on the provided value expressions.
-mkStrInRe :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkStrInRe :: ValExprContext c v => c v -> ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 mkStrInRe _ s _ | getSort s /= SortString = Left $ MinError (T.pack ("First argument of At not of expected Sort String but " ++ show (getSort s)))
 mkStrInRe _ _ r | getSort r /= SortRegex  = Left $ MinError (T.pack ("Second argument of At not of expected Sort Regex but " ++ show (getSort r)))
 mkStrInRe _ s r                           = unsafeStrInRe s r
 
-unsafeStrInRe :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+unsafeStrInRe :: ValExpression v -> ValExpression v -> Either MinError (ValExpression v)
 unsafeStrInRe (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) 
               (TorXakis.ValExpr.ValExpr.view -> Vconst (Cregex r))  = unsafeConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
-unsafeStrInRe s r                                                   = Right $ ValExpr (Vstrinre s r)
+unsafeStrInRe s r                                                   = Right $ ValExpression (Vstrinre s r)
 
 -- get ConstructorDef when possible
 getCstr :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> Either MinError (ADTDef, ConstructorDef)
@@ -565,42 +565,42 @@ getCstr ctx aName cName = case HashMap.lookup aName (adtDefs ctx) of
                                                 Just cDef -> Right (aDef, cDef)
 
 -- | When all value expressions are constant values, return Just them otherwise return Nothing.
-toMaybeValues :: [ValExpr v] -> Maybe [Value]
+toMaybeValues :: [ValExpression v] -> Maybe [Value]
 toMaybeValues = foldl toMaybeValue (Just [])
     where
-        toMaybeValue :: Maybe [Value] -> ValExpr v -> Maybe [Value]
+        toMaybeValue :: Maybe [Value] -> ValExpression v -> Maybe [Value]
         toMaybeValue Nothing   _                                           = Nothing
         toMaybeValue (Just vs) (TorXakis.ValExpr.ValExpr.view -> Vconst v) = Just (v:vs)
         toMaybeValue _         _                                           = Nothing
 
 -- | Apply ADT Constructor of the given ADT Name and Constructor Name on the provided arguments (the list of value expressions).
-mkCstr :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
+mkCstr :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression v] -> Either MinError (ValExpression v)
 mkCstr ctx aName cName as = getCstr ctx aName cName >>= const (unsafeCstr aName cName as)
                                 
-unsafeCstr :: RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
+unsafeCstr :: RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression v] -> Either MinError (ValExpression v)
 unsafeCstr aName cName as = case toMaybeValues as of
                                 Just vs -> unsafeConst (Ccstr aName cName vs)
-                                Nothing -> Right $ ValExpr (Vcstr aName cName as)
+                                Nothing -> Right $ ValExpression (Vcstr aName cName as)
 
 -- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
-mkIsCstr :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
+mkIsCstr :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpression v -> Either MinError (ValExpression v)
 mkIsCstr ctx aName cName v = getCstr ctx aName cName >>= structuralIsCstr aName cName v
 
 -- One time only check - will never change (since structural)
 -- After type checking holds:
 -- IsX(t::T) with T having only one constructor (X) <==> true
-structuralIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> (ADTDef, ConstructorDef) -> Either MinError (ValExpr v)
+structuralIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpression v -> (ADTDef, ConstructorDef) -> Either MinError (ValExpression v)
 structuralIsCstr aName cName v (aDef,_) = case HashMap.toList ( (constructors . viewADTDef) aDef) of
                                                     [_] -> Right trueValExpr
                                                     _   -> unsafeIsCstr aName cName v
 
-unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
+unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpression v -> Either MinError (ValExpression v)
 unsafeIsCstr aName cName (TorXakis.ValExpr.ValExpr.view -> Vcstr a c _)          = unsafeConst (Cbool (aName == a && cName == c))
 unsafeIsCstr aName cName (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr a c _)) = unsafeConst (Cbool (aName == a && cName == c))
-unsafeIsCstr aName cName v                                                       = Right $ ValExpr (Viscstr aName cName v)
+unsafeIsCstr aName cName v                                                       = Right $ ValExpression (Viscstr aName cName v)
 
 -- | Access field made by ADT Constructor of the given ADT Name and Constructor Name on the provided argument.
-mkAccess :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpr v -> Either MinError (ValExpr v)
+mkAccess :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpression v -> Either MinError (ValExpression v)
 mkAccess ctx aName cName fName v = getCstr ctx aName cName >>= getFieldInfo . snd >>= (\(s,p) -> unsafeAccess aName cName s p v)
     where
         getFieldInfo :: ConstructorDef -> Either MinError (Sort, Int)
@@ -614,7 +614,7 @@ mkAccess ctx aName cName fName v = getCstr ctx aName cName >>= getFieldInfo . sn
                                             then Just (f,p)
                                             else lookupField xs
 
-unsafeAccess :: RefByName ADTDef -> RefByName ConstructorDef -> Sort -> Int -> ValExpr v -> Either MinError (ValExpr v)
+unsafeAccess :: RefByName ADTDef -> RefByName ConstructorDef -> Sort -> Int -> ValExpression v -> Either MinError (ValExpression v)
 -- Note: different sort is impossible so aName for both the same
 unsafeAccess _ cName _ pos (TorXakis.ValExpr.ValExpr.view -> Vcstr _ c fs) = 
     if cName == c
@@ -626,7 +626,7 @@ unsafeAccess _ cName _ pos (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr _ c f
         then unsafeConst $ fs !! pos
         else Left $ MinError (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on value from constructor " ++ show c
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
-unsafeAccess aName cName srt pos v = Right $ ValExpr (Vaccess aName cName srt pos v)
+unsafeAccess aName cName srt pos v = Right $ ValExpression (Vaccess aName cName srt pos v)
 
 ------------------------------------------------------------------------------------------------------------------
 -- Substitution
@@ -639,15 +639,15 @@ mismatchesSort = filter (\(a,b) -> getSort a /= getSort b) . HashMap.toList
 -- | Partial Substitution: Substitute some variables by value expressions in a value expression.
 -- The Either is needed since substitution can cause an invalid ValExpr. 
 -- For example, substitution of a variable by zero can cause a division by zero error
-partSubst :: forall c v . ValExprContext c v => c v -> HashMap.Map v (ValExpr v) -> ValExpr v -> Either MinError (ValExpr v)
+partSubst :: forall c v . ValExprContext c v => c v -> HashMap.Map v (ValExpression v) -> ValExpression v -> Either MinError (ValExpression v)
 partSubst ctx mp ve | HashMap.null mp          = Right ve
                     | not (null mismatches)    = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
                     | otherwise                = partSubstView (TorXakis.ValExpr.ValExpr.view ve)
   where
-    mismatches :: [ (v, ValExpr v) ]
+    mismatches :: [ (v, ValExpression v) ]
     mismatches = mismatchesSort mp
     
-    partSubstView :: ValExprView v -> Either MinError (ValExpr v)
+    partSubstView :: ValExpressionView v -> Either MinError (ValExpression v)
     partSubstView (Vconst c)                = unsafeConst c
     partSubstView (Vvar v)                  = case HashMap.lookup v mp of
                                                     Nothing -> unsafeVar v
@@ -703,14 +703,14 @@ partSubst ctx mp ve | HashMap.null mp          = Right ve
 
 -- | Complete Substitution: Substitute all variables by value expressions in a value expression.
 -- Since all variables are changed, one can change the kind of variables.
-compSubst :: forall c v w . (ValExprContext c v, VarDef w) => c v -> HashMap.Map v (ValExpr w) -> ValExpr v -> Either MinError (ValExpr w)
+compSubst :: forall c v w . (ValExprContext c v, VarDef w) => c v -> HashMap.Map v (ValExpression w) -> ValExpression v -> Either MinError (ValExpression w)
 compSubst ctx mp ve | not (null mismatches)    = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
                     | otherwise                = compSubstView (TorXakis.ValExpr.ValExpr.view ve)
   where
-    mismatches :: [ (v, ValExpr w) ]
+    mismatches :: [ (v, ValExpression w) ]
     mismatches = mismatchesSort mp
 
-    compSubstView :: ValExprView v -> Either MinError (ValExpr w)
+    compSubstView :: ValExpressionView v -> Either MinError (ValExpression w)
     compSubstView (Vconst c)                = unsafeConst c
     compSubstView (Vvar v)                  = case HashMap.lookup v mp of
                                                     Nothing -> Left $ MinError (T.pack ("Subst compSubst: incomplete. Missing " ++ show v))
@@ -852,7 +852,7 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
                                     else error ("All check passed, yet errors occurred\n" ++ show (HashMap.elems lm))
 
         newFuncDef :: MinimalValExprContext MinimalVarDef -> FuncDefView MinimalVarDef -> Either MinError (FuncDef MinimalVarDef)
-        newFuncDef updateCtx (FuncDefView nm ps bd) = compSubst updateCtx (HashMap.fromList (zip ps (map (ValExpr . Vvar) ps))) bd >>= mkFuncDef nm ps
+        newFuncDef updateCtx (FuncDefView nm ps bd) = compSubst updateCtx (HashMap.fromList (zip ps (map (ValExpression . Vvar) ps))) bd >>= mkFuncDef nm ps
         
         isConstBody :: FuncDef v -> Bool
         isConstBody fd = case TorXakis.ValExpr.ValExpr.view (body (TorXakis.FuncDef.view fd)) of
@@ -860,13 +860,13 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
                                 _         -> False
 
 -- | Find Undefined Function Signatures in given Value Expression (given the defined Function Signatures)
-findUndefinedFuncSignature :: HashMap.Map FuncSignature (FuncDef v) -> ValExpr v -> [FuncSignature]
+findUndefinedFuncSignature :: HashMap.Map FuncSignature (FuncDef v) -> ValExpression v -> [FuncSignature]
 findUndefinedFuncSignature definedFuncSignatures = findUndefinedFuncSignature'
     where
-        findUndefinedFuncSignature' :: ValExpr v -> [FuncSignature]
+        findUndefinedFuncSignature' :: ValExpression v -> [FuncSignature]
         findUndefinedFuncSignature' = findUndefinedFuncSignatureView . TorXakis.ValExpr.ValExpr.view
         
-        findUndefinedFuncSignatureView :: ValExprView v -> [FuncSignature]
+        findUndefinedFuncSignatureView :: ValExpressionView v -> [FuncSignature]
         findUndefinedFuncSignatureView Vconst{}                            = []
         findUndefinedFuncSignatureView Vvar{}                              = []
         findUndefinedFuncSignatureView (Vequal v1 v2)                      = findUndefinedFuncSignature' v1 ++ findUndefinedFuncSignature' v2

@@ -130,13 +130,13 @@ instance BExprContext MinimalBExprContext MinimalVarDef where
                                         xs -> Just (getProcSignature pd, Set.fromList xs)
 
 -- | Find Undefined Process Signatures in given Behaviour Expression (given the defined Process Signatures)
-findUndefinedProcSignature :: HashMap.Map ProcSignature ProcDef -> BExpr -> [ProcSignature]
+findUndefinedProcSignature :: HashMap.Map ProcSignature ProcDef -> BExpression v -> [ProcSignature]
 findUndefinedProcSignature definedProcSignatures = findUndefinedProcSignature'
     where
-        findUndefinedProcSignature' :: BExpr -> [ProcSignature]
+        findUndefinedProcSignature' :: BExpression v -> [ProcSignature]
         findUndefinedProcSignature' = findUndefinedProcSignatureView . TorXakis.BExpr.BExpr.view
         
-        findUndefinedProcSignatureView :: BExprView -> [ProcSignature]
+        findUndefinedProcSignatureView :: BExpressionView v -> [ProcSignature]
         findUndefinedProcSignatureView (ActionPref _ b) = findUndefinedProcSignature' b
         findUndefinedProcSignatureView (Guard _ b)      = findUndefinedProcSignature' b
         findUndefinedProcSignatureView (Choice s)       = concatMap findUndefinedProcSignature' (Set.toList s)

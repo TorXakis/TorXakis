@@ -22,12 +22,11 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.BExpr.BExpr
-(
-  -- * Behaviour Expression type and view
-  BExprView
+( -- * Behaviour Expression type and view
+  BExpression (..)
 , BExpressionView (..)
 , BExpr
-, BExpression (..)
+, BExprView
   -- Action Offer
 , ActOffer(..)
   -- Channel Offer
@@ -52,21 +51,21 @@ import           TorXakis.VarDef
 
 -- | BExpressionView: the public view of Behaviour Expression `BExpression`
 data BExpressionView v = ActionPref  ActOffer (BExpression v)
-                       | Guard       (ValExpr v) (BExpression v)
+                       | Guard       (ValExpression v) (BExpression v)
                        | Choice      (Set.Set (BExpression v))
                        | Parallel    (Set.Set ChanDef) [BExpression v] -- actually (MultiSet.MultiSet BExpr) but that has lousy performance (due to sorting which needs more evaluation?)
                        | Enable      (BExpression v) [ChanOffer] (BExpression v)
                        | Disable     (BExpression v) (BExpression v)
                        | Interrupt   (BExpression v) (BExpression v)
-                       | ProcInst    ProcSignature [ChanDef] [ValExpr v]
+                       | ProcInst    ProcSignature [ChanDef] [ValExpression v]
                        | Hide        (Set.Set ChanDef) (BExpression v)
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- | BExpression: behaviour expression
 --
--- 1. User can't directly construct BExpr (such that invariants will always hold)
+-- 1. User can't directly construct BExpression (such that invariants will always hold)
 --
--- 2. User can still pattern match on BExpr using 'BExprView'
+-- 2. User can still pattern match on BExpression using 'BExpressionView'
 --
 -- 3. Overhead at run-time is zero. See https://wiki.haskell.org/Performance/Data_types#Newtypes
 newtype BExpression v = BExpression {
@@ -86,13 +85,13 @@ type BExprView = BExpressionView MinimalVarDef
 data ActOffer = ActOffer
   { offers     :: Map.Map ChanDef [ChanOffer]
   , hiddenvars :: Set.Set MinimalVarDef
-  , constraint :: ValExpr MinimalVarDef
+  , constraint :: ValExpr
   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Channel Offer
 -- Offer of a single value
 data  ChanOffer     = Quest  MinimalVarDef
-                    | Exclam (ValExpr MinimalVarDef)
+                    | Exclam ValExpr
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 instance HasSort ChanOffer where

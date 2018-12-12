@@ -37,7 +37,9 @@ import           GHC.Generics         (Generic)
 import           TorXakis.Error
 import           TorXakis.Sort
 
--- | Kind of Exit of Process
+-- | Kind of Exit of Process.
+-- In the PhD thesis (On the Design of Extended LOTOS: A Specification Language for Open Distributed Systems) of Ed Brinksma 
+-- this type is called the /functionality/ of a behaviour expression (see e.g. page 35).
 data  ExitKind      =  NoExit
                      | Exit [Sort]      -- TODO: see issue https://github.com/TorXakis/TorXakis/issues/475
                      | Hit

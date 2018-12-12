@@ -17,7 +17,9 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 module TorXakis.ValExpr
 ( -- * Value Expression
-  ValExprView (..)
+  ValExpressionView (..)
+, ValExpression
+, ValExprView
 , ValExpr
 , view
   -- * Evaluate
