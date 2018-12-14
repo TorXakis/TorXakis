@@ -24,6 +24,7 @@ module TorXakis.BExpr
 , view
   -- Action Offer
 , ActOffer(..)
+, containsEXIT
   -- Channel Offer
 , ChanOffer(..)
 , module TorXakis.BExpr.BExprConstructor

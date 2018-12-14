@@ -26,21 +26,12 @@ module TorXakis.BExpr.BExprConstructor
 , mkActionPref
 , mkGuard
 , mkChoice
--- , parallel
--- , enable
--- , disable
--- , interrupt
--- , procInst
--- , hide
--- , valueEnv
--- , stAut
-  -- * Standard channel identifiers
--- , chanIdExit
--- , chanIdIstep
--- , chanIdQstep
--- , chanIdHit
--- , chanIdMiss
--- , containsEXIT
+, mkParallel
+, mkEnable
+, mkDisable
+, mkInterrupt
+, mkProcInst
+, mkHide
 )
 where
 
@@ -50,8 +41,10 @@ import qualified Data.Text       as T
 
 import           TorXakis.BExpr.BExpr
 import           TorXakis.BExpr.BExprContext
---import           TorXakis.BExpr.ExitKind
+import           TorXakis.BExpr.ExitKind
+import           TorXakis.ChanDef
 import           TorXakis.Error
+import           TorXakis.ProcSignature
 import           TorXakis.Sort
 import           TorXakis.ValExpr
 import           TorXakis.Value
@@ -109,6 +102,7 @@ unsafeGuard _   v b                                                            =
 mkChoice :: Ord v => a v -> Set.Set (BExpression v) -> Either MinError (BExpression v)
 mkChoice = unsafeChoice
 
+-- TODO: should flatten happen only once?
 unsafeChoice :: forall a v . Ord v => a v -> Set.Set (BExpression v) -> Either MinError (BExpression v)
 unsafeChoice _ s = let fs = flattenChoice s in
                         Right $ case Set.toList fs of
@@ -123,77 +117,80 @@ unsafeChoice _ s = let fs = flattenChoice s in
         --    hence p ## p <==> p
         -- 3. since stop == Choice Set.empty, we automatically have p ## stop <==> p
         flattenChoice :: Set.Set (BExpression v) -> Set.Set (BExpression v)
-        flattenChoice = Set.unions . map fromBExpr . Set.toList
+        flattenChoice = Set.unions . map fromBExpression . Set.toList
 
-        fromBExpr :: BExpression v -> Set.Set (BExpression v)
-        fromBExpr (TorXakis.BExpr.BExpr.view -> Choice s') = s'
-        fromBExpr x                                        = Set.singleton x
+        fromBExpression :: BExpression v -> Set.Set (BExpression v)
+        fromBExpression (TorXakis.BExpr.BExpr.view -> Choice s') = s'
+        fromBExpression x                                        = Set.singleton x
 
-{-
+
 -- | Create a parallel behaviour expression.
 -- The behaviour expressions must synchronize on the given set of channels (and EXIT).
-parallel :: Set.Set ChanId -> [BExpr] -> BExpr
-parallel cs bs = let fbs = flattenParallel bs
-                    in BExpr (Parallel cs fbs)
+mkParallel :: a v -> Set.Set ChanDef -> [BExpression v] -> Either MinError (BExpression v)
+mkParallel = unsafeParallel
+
+-- TODO: should flatten happen only once?
+unsafeParallel :: a v -> Set.Set ChanDef -> [BExpression v] -> Either MinError (BExpression v)
+unsafeParallel _ cs bs = let fbs = flattenParallel bs
+                            in Right $ BExpression (Parallel cs fbs)
     where
         -- nesting of parallels over the same channel sets are flatten
         --     (p |[ G ]| q) |[ G ]| r <==> p |[ G ]| q |[ G ]| r
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
-        flattenParallel :: [BExpr] -> [BExpr]
-        flattenParallel = concatMap fromBExpr
+        flattenParallel :: [BExpression v] -> [BExpression v]
+        flattenParallel = concatMap fromBExpression
 
-        fromBExpr :: BExpr -> [BExpr]
-        fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | cs == pcs  = pbs
-        fromBExpr bexpr                                  = [bexpr]
+        fromBExpression :: BExpression v -> [BExpression v]
+        fromBExpression (TorXakis.BExpr.BExpr.view -> Parallel pcs pbs) | cs == pcs  = pbs
+        fromBExpression bexpr                                               = [bexpr]
 
 -- | Create an enable behaviour expression.
-enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr
+-- TODO: List of ChanOffer can only contain `Quest` -- or are we going to change ChanOffer?
+-- TODO: are we going to require that initial process has functionality exit
+--       see https://github.com/TorXakis/TorXakis/issues/589#issuecomment-446984880
+mkEnable :: a v -> BExpression v -> [ChanOffer] -> BExpression v -> Either MinError (BExpression v)
+mkEnable ctx b1 cs b2 | exitSorts (getExitKind b1) /= map getSort cs = Left $ MinError (T.pack "Mismatch in sorts between ExitKind of initial process and ChanOffers")
+                      | otherwise                                    = unsafeEnable ctx b1 cs b2
+
+unsafeEnable :: a v -> BExpression v -> [ChanOffer] -> BExpression v -> Either MinError (BExpression v)
 -- stop >>> p <==> stop
-enable b _ _    | isStop b = stop
-enable b1 cs b2 = BExpr (Enable b1 cs b2)
+unsafeEnable _ b _ _    | isStop b = Right mkStop
+unsafeEnable _ b1 cs b2            = Right $ BExpression (Enable b1 cs b2)
+
 
 -- | Create a disable behaviour expression.
-disable :: BExpr -> BExpr -> BExpr
+mkDisable :: a v -> BExpression v -> BExpression v -> Either MinError (BExpression v)
+mkDisable = unsafeDisable
+
+unsafeDisable :: a v -> BExpression v -> BExpression v -> Either MinError (BExpression v)
 -- stop [>> p <==> p
-disable b1 b2 | isStop b1 = b2
+unsafeDisable _ b1 b2 | isStop b1 = Right b2
 -- p [>> stop <==> p
-disable b1 b2 | isStop b2 = b1
-disable b1 b2 = BExpr (Disable b1 b2)
+unsafeDisable _ b1 b2 | isStop b2 = Right b1
+unsafeDisable _ b1 b2             = Right $ BExpression (Disable b1 b2)
+
 
 -- | Create an interrupt behaviour expression.
-interrupt :: BExpr -> BExpr -> BExpr
+-- TODO: check functionality / EXitKind of b1 / b2
+mkInterrupt :: a v -> BExpression v -> BExpression v -> Either MinError (BExpression v)
+mkInterrupt = unsafeInterrupt
+
+unsafeInterrupt :: a v -> BExpression v -> BExpression v -> Either MinError (BExpression v)
 --  p [>< stop <==> p
-interrupt b1 b2 | isStop b2 = b1
-interrupt b1 b2 = BExpr (Interrupt b1 b2)
+unsafeInterrupt _ b1 b2 | isStop b2 = Right b1
+unsafeInterrupt _ b1 b2             = Right $ BExpression (Interrupt b1 b2)
 
 -- | Create a process instantiation behaviour expression.
-procInst :: ProcId -> [ChanId] -> [VExpr] -> BExpr
-procInst p cs vs = BExpr (ProcInst p cs vs)
+mkProcInst :: a v -> ProcSignature -> [ChanDef] -> [ValExpression v] -> Either MinError (BExpression v)
+mkProcInst = unsafeProcInst
+
+unsafeProcInst :: a v -> ProcSignature -> [ChanDef] -> [ValExpression v] -> Either MinError (BExpression v)
+unsafeProcInst _ p cs vs = Right $ BExpression (ProcInst p cs vs)
 
 -- | Create a hide behaviour expression.
 --   The given set of channels is hidden for its environment.
-hide :: Set.Set ChanId -> BExpr -> BExpr
-hide cs b = BExpr (Hide cs b)
+mkHide :: a v -> Set.Set ChanDef -> BExpression v -> Either MinError (BExpression v)
+mkHide = unsafeHide
 
--- * Standard channel identifiers
-chanIdExit :: ChanId
-chanIdExit  = ChanId "EXIT"  901 []
-chanIdIstep :: ChanId
-chanIdIstep = ChanId "ISTEP" 902 []
-chanIdQstep :: ChanId
-chanIdQstep = ChanId "QSTEP" 903 []
-chanIdHit :: ChanId
-chanIdHit   = ChanId "HIT"   904 []
-chanIdMiss :: ChanId
-chanIdMiss  = ChanId "MISS"  905 []
-
-containsEXIT :: Set.Set Offer -> Bool
-containsEXIT os = chanIdExit `Set.member` Set.map chanid os
-
--- * Functions on behavior expressions.
-
--- | Equality modulo unique id's. Compare two behavior expressions for equality
--- ignoring the differences in identifiers.
-(~~) :: BExpr -> BExpr -> Bool
-be0 ~~ be1 = reset be0 == reset be1
--}
+unsafeHide :: a v -> Set.Set ChanDef -> BExpression v -> Either MinError (BExpression v)
+unsafeHide _ cs b = Right $ BExpression (Hide cs b)

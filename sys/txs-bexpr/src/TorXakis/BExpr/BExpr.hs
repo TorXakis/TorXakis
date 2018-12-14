@@ -29,6 +29,7 @@ module TorXakis.BExpr.BExpr
 , BExprView
   -- Action Offer
 , ActOffer(..)
+, containsEXIT
   -- Channel Offer
 , ChanOffer(..)
 )
@@ -88,6 +89,10 @@ data ActOffer = ActOffer
   , constraint :: ValExpr
   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+-- | Contains EXIT is equal to the presence of EXIT in the ActOffer.
+containsEXIT :: ActOffer -> Bool
+containsEXIT ao = chanExit `Map.member` offers ao
+
 -- | Channel Offer
 -- Offer of a single value
 data  ChanOffer     = Quest  MinimalVarDef
@@ -140,4 +145,4 @@ instance VarDef v => FreeVars BExpression v where
     freeVars = freeVars . TorXakis.BExpr.BExpr.view
 
 instance VarDef v => FreeVars BExpressionView v where
-    freeVars = undefined
+    freeVars = undefined -- TODO implement

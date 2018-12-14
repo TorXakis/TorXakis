@@ -15,8 +15,8 @@ See LICENSE at root directory of this repository.
 --
 -- Variable Definition
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveGeneric  #-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 module TorXakis.ChanDef
 ( ChanDef (..)
@@ -65,6 +65,7 @@ chanExit  = ChanDef exitName  (ChanSort [])     -- EXIT channel can also have ot
                         Right v -> v
                         Left e  -> error ("EXIT should be legal name, yet " ++ show e)
 -- | Predefined ISTEP channel
+-- TODO: ISTEP is an empty set (of multi actions); ISTEP is NOT a channel!
 chanIstep :: ChanDef
 chanIstep = ChanDef istepName (ChanSort [])
     where istepName = case mkName (T.pack "ISTEP") of
