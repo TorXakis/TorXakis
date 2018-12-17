@@ -211,7 +211,7 @@ mismatchesSort = filter (\(a,b) -> getSort a /= getSort b) . HashMap.toList
 -- The Either is needed since substitution can cause an invalid ValExpr. 
 -- For example, substitution of a variable by zero can cause a division by zero error
 partSubst :: forall c v . BExprContext c v => c v -> HashMap.Map v (ValExpression v) -> BExpression v -> Either MinError (BExpression v)
-partSubst ctx mp ve | null mismatches   = partSubstView mp (TorXakis.BExpr.BExpr.view ve)
+partSubst ctx mp be | null mismatches   = partSubstView mp (TorXakis.BExpr.BExpr.view be)
                     | otherwise         = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
                     
   where
@@ -222,8 +222,8 @@ partSubst ctx mp ve | null mismatches   = partSubstView mp (TorXakis.BExpr.BExpr
     deleteVars = foldl (flip HashMap.delete)
 
     partSubstView :: HashMap.Map v (ValExpression v) -> BExpressionView v -> Either MinError (BExpression v)
-    partSubstView mp' ve' | HashMap.null mp'   = Right (BExpression ve')
-    partSubstView mp' ve'                      = partSubstView' mp' ve'
+    partSubstView mp' be' | HashMap.null mp'   = Right (BExpression be')
+    partSubstView mp' be'                      = partSubstView' mp' be'
 
     partSubstView' :: HashMap.Map v (ValExpression v) -> BExpressionView v -> Either MinError (BExpression v)
     partSubstView' mp' (ActionPref a b)     = let varDefs = declareVars a in
