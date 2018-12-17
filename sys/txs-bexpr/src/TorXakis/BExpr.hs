@@ -25,8 +25,10 @@ module TorXakis.BExpr
   -- Action Offer
 , ActOffer(..)
 , containsEXIT
+, declareVars
   -- Channel Offer
 , ChanOffer(..)
+, declareVar
 , module TorXakis.BExpr.BExprConstructor
 , module TorXakis.BExpr.BExprContext
 )

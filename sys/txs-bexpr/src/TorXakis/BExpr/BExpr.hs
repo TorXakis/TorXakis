@@ -156,4 +156,15 @@ instance VarDef v => FreeVars BExpression v where
     freeVars = freeVars . TorXakis.BExpr.BExpr.view
 
 instance VarDef v => FreeVars BExpressionView v where
-    freeVars = undefined -- TODO implement
+    freeVars (ActionPref a b)   = Set.unions [freeVars a, Set.difference (freeVars b) (Set.fromList (declareVars a))]
+    freeVars (Guard v b)        = Set.unions [freeVars v, freeVars b]
+    freeVars (Choice s)         = Set.unions $ map freeVars (Set.toList s)
+    freeVars (Parallel _ bs)    = Set.unions $ map freeVars bs
+    freeVars (Enable b1 vs b2)  = Set.unions [freeVars b1, Set.difference (freeVars b2) (Set.fromList vs)]
+    freeVars (Disable b1 b2)    = Set.unions $ map freeVars [b1, b2]
+    freeVars (Interrupt b1 b2)  = Set.unions $ map freeVars [b1, b2]
+    freeVars (ProcInst _ _ vs)  = Set.unions $ map freeVars vs
+    freeVars (Hide _ b)         = freeVars b
+
+instance VarDef v => FreeVars ActOffer v where
+    freeVars = undefined
