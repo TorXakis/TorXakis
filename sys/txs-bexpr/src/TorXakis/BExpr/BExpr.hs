@@ -51,11 +51,11 @@ import           TorXakis.ValExpr
 import           TorXakis.VarDef
 
 -- | BExpressionView: the public view of Behaviour Expression `BExpression`
-data BExpressionView v = ActionPref  ActOffer (BExpression v)
+data BExpressionView v = ActionPref  (ActOffer v) (BExpression v)
                        | Guard       (ValExpression v) (BExpression v)
                        | Choice      (Set.Set (BExpression v))
                        | Parallel    (Set.Set ChanDef) [BExpression v] -- actually (MultiSet.MultiSet BExpr) but that has lousy performance (due to sorting which needs more evaluation?)
-                       | Enable      (BExpression v) [ChanOffer] (BExpression v)
+                       | Enable      (BExpression v) [MinimalVarDef] (BExpression v)
                        | Disable     (BExpression v) (BExpression v)
                        | Interrupt   (BExpression v) (BExpression v)
                        | ProcInst    ProcSignature [ChanDef] [ValExpression v]
@@ -83,14 +83,13 @@ type BExprView = BExpressionView MinimalVarDef
 
 -- | ActOffer
 -- Offer on multiple channels with constraints
-data ActOffer = ActOffer
-  { offers     :: Map.Map ChanDef [ChanOffer]
-  , hiddenvars :: Set.Set MinimalVarDef
-  , constraint :: ValExpr
-  } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+data ActOffer v = ActOffer  { offers     :: Map.Map ChanDef [ChanOffer]
+                            , hiddenvars :: Set.Set v
+                            , constraint :: ValExpr
+                            } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Contains EXIT is equal to the presence of EXIT in the ActOffer.
-containsEXIT :: ActOffer -> Bool
+containsEXIT :: ActOffer v -> Bool
 containsEXIT ao = chanExit `Map.member` offers ao
 
 -- | Channel Offer
@@ -112,7 +111,7 @@ toExitKind (cd, _)  | cd == chanHit      = Hit
 toExitKind (cd, _)  | cd == chanMiss     = Hit
 toExitKind _                             = NoExit
 
-instance HasExitKind ActOffer where
+instance HasExitKind (ActOffer v) where
     getExitKind a = case foldM (<<+>>) NoExit (map toExitKind (Map.toList (offers a))) of
                         Right v -> v
                         Left e  -> error ("Smart constructor created invalid ActOffer " ++ show e)
@@ -122,7 +121,7 @@ instance HasExitKind (BExpression v) where
     getExitKind = getExitKind . TorXakis.BExpr.BExpr.view
 
 instance HasExitKind (BExpressionView v) where
-    getExitKind (ActionPref  a b)   = case getExitKind a <<+>> getExitKind b of
+    getExitKind (ActionPref a b)    = case getExitKind a <<+>> getExitKind b of
                                             Right v -> v
                                             Left e  -> error ("Smart constructor created invalid ActionPref " ++ show e)
     getExitKind (Guard _ b)         = getExitKind b

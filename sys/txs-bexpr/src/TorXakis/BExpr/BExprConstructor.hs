@@ -65,10 +65,10 @@ isStop _                                                    = False
 -- TODO: how to handle EXIT >-> p <==> EXIT >-> STOP
 --       should we give an error when containsEXIT (offers a) && not isStop(b)
 --       or should we just rewrite the expression (currently give problems with LPE)
-mkActionPref :: a v -> ActOffer -> BExpression v -> Either MinError (BExpression v)
+mkActionPref :: a v -> ActOffer v -> BExpression v -> Either MinError (BExpression v)
 mkActionPref = unsafeActionPref
 
-unsafeActionPref :: a v -> ActOffer -> BExpression v -> Either MinError (BExpression v)
+unsafeActionPref :: a v -> ActOffer v -> BExpression v -> Either MinError (BExpression v)
 unsafeActionPref _ a b = case TorXakis.ValExpr.view (constraint a) of
                             -- A?x [[ False ]] >-> p <==> stop
                             Vconst (Cbool False)    -> Right mkStop
@@ -145,14 +145,14 @@ unsafeParallel _ cs bs = let fbs = flattenParallel bs
         fromBExpression bexpr                                               = [bexpr]
 
 -- | Create an enable behaviour expression.
--- TODO: List of ChanOffer can only contain `Quest` -- or are we going to change ChanOffer?
--- TODO: are we going to require that initial process has functionality exit
---       see https://github.com/TorXakis/TorXakis/issues/589#issuecomment-446984880
-mkEnable :: a v -> BExpression v -> [ChanOffer] -> BExpression v -> Either MinError (BExpression v)
-mkEnable ctx b1 cs b2 | exitSorts (getExitKind b1) /= map getSort cs = Left $ MinError (T.pack "Mismatch in sorts between ExitKind of initial process and ChanOffers")
-                      | otherwise                                    = unsafeEnable ctx b1 cs b2
+mkEnable :: a v -> BExpression v -> [MinimalVarDef] -> BExpression v -> Either MinError (BExpression v)
+mkEnable ctx b1 cs b2 = case getExitKind b1 of
+                            Exit xs -> if xs /= map getSort cs 
+                                        then Left $ MinError (T.pack "Mismatch in sorts between ExitKind of initial process and ChanOffers")
+                                        else unsafeEnable ctx b1 cs b2
+                            _       -> Left $ MinError (T.pack "ExitKind of initial process must be EXIT")
 
-unsafeEnable :: a v -> BExpression v -> [ChanOffer] -> BExpression v -> Either MinError (BExpression v)
+unsafeEnable :: a v -> BExpression v -> [MinimalVarDef] -> BExpression v -> Either MinError (BExpression v)
 -- stop >>> p <==> stop
 unsafeEnable _ b _ _    | isStop b = Right mkStop
 unsafeEnable _ b1 cs b2            = Right $ BExpression (Enable b1 cs b2)
