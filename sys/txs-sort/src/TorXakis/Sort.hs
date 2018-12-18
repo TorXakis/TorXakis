@@ -18,10 +18,8 @@ See LICENSE at root directory of this repository.
 module TorXakis.Sort
 ( module TorXakis.SortADT
 , module TorXakis.SortContext
-, module TorXakis.PrettyPrint.TorXakis
 )
 where
 
 import TorXakis.SortADT
 import TorXakis.SortContext
-import TorXakis.PrettyPrint.TorXakis

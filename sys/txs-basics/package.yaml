@@ -21,6 +21,7 @@ library:
   exposed-modules:
   - TorXakis.Error
   - TorXakis.Name
+  - TorXakis.PrettyPrint.TorXakis
   dependencies:
   - deepseq
   - hashable

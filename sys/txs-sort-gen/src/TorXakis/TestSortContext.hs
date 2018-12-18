@@ -34,7 +34,9 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Name
+import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort
+
 
 
 
