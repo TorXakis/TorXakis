@@ -15,16 +15,20 @@ See LICENSE at root directory of this repository.
 --
 -- PrettyPrinter for TorXakis output
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.PrettyPrint.TorXakis
 ( -- * Pretty Print Options
   Options (..)
   -- * Pretty Print class for TorXakis
 , PrettyPrint (..)
-  -- Pretty Print Output for TorXakis
+  -- * Pretty Print Output for TorXakis
 , TxsString (..)
+  -- * Helper Functions
+, indent
+, separator
 )
 where
 import           Control.DeepSeq     (NFData)
@@ -42,9 +46,18 @@ data Options = Options { -- | May a definition cover multiple lines?
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
 -- | Enables pretty printing in a common way.
-class PrettyPrint a where
-    prettyPrint :: Options -> a -> TxsString
+class PrettyPrint c a where
+    prettyPrint :: Options -> c -> a -> TxsString
 
 -- | The data type that represents the output for pretty printing in TorXakis format.
 newtype TxsString = TxsString { toText :: T.Text }
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
+
+-- | indentation
+indent :: T.Text -> T.Text -> T.Text
+indent i t = T.intercalate (T.append (T.singleton '\n') i) (T.lines t)
+
+-- | separator based on option
+separator :: Options -> T.Text
+separator Options{multiline = m} = if m then T.singleton '\n'
+                                        else T.singleton ' '

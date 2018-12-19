@@ -165,7 +165,4 @@ instance SortContext MinimalSortContext where
 
 -- | Generic Pretty Printer for all instance of 'SortContext'.
 prettyPrintSortContext :: SortContext a => Options -> a -> TxsString
-prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o) (Map.elems (adtDefs sc))))
-
-instance PrettyPrint MinimalSortContext where
-    prettyPrint = prettyPrintSortContext
+prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o sc) (Map.elems (adtDefs sc))))

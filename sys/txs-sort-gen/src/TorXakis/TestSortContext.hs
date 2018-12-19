@@ -34,10 +34,7 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort
-
-
 
 
 -- | A TestSortContext instance contains all definitions to work with sort and reference thereof for test purposes
@@ -165,6 +162,3 @@ instance SortContext MinimalTestSortContext where
 instance TestSortContext MinimalTestSortContext where
     mapSortSize = _mapSortSize
     mapAdtMapConstructorSize = _mapAdtMapConstructorSize
-
-instance PrettyPrint MinimalTestSortContext where
-    prettyPrint = prettyPrintSortContext
