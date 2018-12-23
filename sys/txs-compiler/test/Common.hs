@@ -20,8 +20,8 @@ module Common (txsFilesIn, checkParallel, onAllFilesIn) where
 
 import           Data.Foldable        (traverse_)
 import           System.FilePath.Find (extension, find, (==?))
-import           Test.Hspec (runIO, Spec, parallel)
-import           Test.Hspec.Core (SpecWith, SpecM)
+import           Test.Hspec (runIO, parallel)
+import           Test.Hspec.Core.Spec (SpecWith, SpecM)
 
 txsFilesIn :: FilePath -> SpecM a [FilePath]
 txsFilesIn fp =runIO $
