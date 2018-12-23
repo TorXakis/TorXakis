@@ -127,7 +127,7 @@ stack test --stack-yaml stack_linux.yaml --file-watch txs-compiler  --ta "-m wro
 ```
 
 Note that currently only the package `txs-compiler` supports this flag. If you
-find yourself needing this flag for other packages feel free to submit and
+find yourself needing this flag for other packages feel free to submit an
 issue or pull request.
 
 ### Testing
