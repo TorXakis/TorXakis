@@ -61,10 +61,10 @@ valExpP =  buildExpressionParser table termP
 -- | Terms of the TorXakis value expressions.
 termP :: TxsParser ExpDecl
 termP = txsSymbol "(" *> ( valExpP <* txsSymbol ")")
-    <|> try (mkRegexConstExp  <$> mkLoc <*> txsRegexP)
-    <|> try letExpP
-    <|> try txsITEP
-    <|> try txsFapplP
+    <|> mkRegexConstExp  <$> mkLoc <*> txsRegexP
+    <|> letExpP
+    <|> txsITEP
+    <|> txsFapplP
     <|> mkBoolConstExp   <$> mkLoc <*> try txsBoolP
     <|> mkIntConstExp    <$> mkLoc <*> txsIntP
     <|> mkStringConstExp <$> mkLoc <*> txsStringP
@@ -73,7 +73,7 @@ termP = txsSymbol "(" *> ( valExpP <* txsSymbol ")")
 letExpP :: TxsParser ExpDecl
 letExpP = do
     l <- mkLoc
-    txsSymbol "LET"
+    try (txsSymbol "LET")
     vss <- letSeqVarDeclsP
     subEx <- inP valExpP
     return $ mkLetExpDecl vss subEx l
@@ -103,7 +103,7 @@ txsBoolP =  (txsSymbol "True" >> return True)
 
 txsRegexP :: TxsParser Text
 txsRegexP = do
-    txsSymbol "REGEX"
+    try (txsSymbol "REGEX")
     txsLexeme $ txsSymbol "('"
     res <- T.pack <$> many (satisfy regexChar)
     txsLexeme $ txsSymbol "')"
@@ -114,7 +114,7 @@ txsRegexP = do
 txsITEP :: TxsParser ExpDecl
 txsITEP = do
     l <- mkLoc
-    txsSymbol "IF"
+    try (txsSymbol "IF")
     ex0 <- valExpP
     txsSymbol "THEN"
     ex1 <- valExpP
@@ -158,5 +158,3 @@ txsFapplP = do
     exs <- valExpP `sepBy` txsSymbol ","
     txsSymbol ")"
     return $ mkFappl le lr fN exs
-
-

@@ -61,10 +61,53 @@ txsLangDef = LanguageDef
     , identLetter     = alphaNum <|> oneOf "_'"
     , opStart         = opLetter txsLangDef
     , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
-    , reservedNames   = ["TYPEDEF", "ENDDEF", "FUNCDEF", "CONSTDEF"]
+    , reservedNames   = txsReservedNames
     , reservedOpNames = []
     , caseSensitive   = True
     }
+
+txsReservedNames :: [String]
+txsReservedNames
+  = [ "TYPEDEF"
+    , "FUNCDEF"
+    , "PROCDEF"
+    , "ENDDEF"
+    , "CHANDEF"
+    , "MODELDEF"
+    , "MAPPERDEF"
+    , "CNECTDEF"
+    , "CHAN"
+    , "ENCODE"
+    , "DECODE"
+    , "IN"
+    , "OUT"
+    , "HOST"
+    , "PORT"
+    , "CLIENTSOCK"
+    , "SERVERSOCK"
+    , "BEHAVIOUR"
+    , "IF"
+    , "THEN"
+    , "ELSE"
+    , "FI"
+    , "LET"
+    , "PURPDEF"
+    , "HIT"
+    , "MISS"
+    , "GOAL"
+    , "HIDE"
+    , "NI"
+    , "SYNC"
+    , "EXIT"
+    , "ACCEPT"
+    , "STAUTDEF"
+    , "VAR"
+    , "STATE"
+    , "INIT"
+    , "TRANS"
+    , "ISTEP"
+    , "QSTEP"
+    , "CONSTDEF" ]
 
 txsTokenP :: GenTokenParser ParserInput St Identity
 txsTokenP = makeTokenParser txsLangDef
