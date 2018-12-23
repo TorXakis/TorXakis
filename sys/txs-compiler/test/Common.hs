@@ -1,4 +1,20 @@
--- | Common functionality for the parser and compiler tests
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Common
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Common functionality for the parser and compiler tests.
+--------------------------------------------------------------------------------
 
 module Common (txsFilesIn, checkParallel, onAllFilesIn) where
 
