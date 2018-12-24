@@ -25,33 +25,26 @@ import           Control.Lens            ((^?))
 import           Data.Either             (isRight)
 import           Data.Foldable           (traverse_)
 import           System.FilePath         ((</>))
-import           System.FilePath.Find    (extension, find, (==?))
 import           Test.Hspec              (Spec, describe, expectationFailure,
-                                          it, parallel, runIO, shouldBe,
+                                          it, parallel, shouldBe,
                                           shouldSatisfy)
 import           Text.RawString.QQ       (r)
 
+import           Common                  (onAllFilesIn)
 import           TorXakis.Compiler       (compileFile, compileString)
 import           TorXakis.Compiler.Error
 
 spec :: Spec
 spec = do
-    describe "Compiles the orthogonal examples" $ do
-        fs <- runIO $ find (return True) (extension ==? ".txs")
-              ("test" </> "data" </> "success")
-        parallel $ traverse_ checkSuccess fs
-    describe "Compiles the examples in the 'examps' folder" $ do
-        fs <- runIO $ find (return True) (extension ==? ".txs")
-              ("test" </> "data" </> "examps")
-        parallel $ traverse_ checkSuccess fs
-    describe "Compiles large models" $ do
-        fs <- runIO $ find (return True) (extension ==? ".txs")
-                           ("test" </> "data" </> "large")
-        parallel $ traverse_ checkSuccess fs
-    describe "Compiles large models" $ do
-        fs <- runIO $ find (return True) (extension ==? ".txs")
-                           ("test" </> "data" </> "large")
-        parallel $ traverse_ checkSuccess fs
+    describe "Compiles the files single concepts examples" $
+      checkSuccess `onAllFilesIn` ("test" </> "data" </> "success")
+
+    describe "Compiles the examples in the 'examps' folder" $
+      checkSuccess `onAllFilesIn` ("test" </> "data" </> "examps")
+
+    describe "Compiles large models" $
+      checkSuccess `onAllFilesIn` ("test" </> "data" </> "large")
+
     -- Failure test cases
     describe "Reports the expected errors " $
         parallel $ traverse_ checkFailure failureTestCases
