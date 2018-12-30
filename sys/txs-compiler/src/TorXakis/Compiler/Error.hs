@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 --------------------------------------------------------------------------------
 -- |
 -- Module      :  TorXakis.Compiler.Error
@@ -34,6 +35,7 @@ module TorXakis.Compiler.Error
 where
 
 import           Control.Lens.TH (makeLenses)
+import           Data.Data       (Data)
 import           Data.Text       (Text)
 
 -- | Entity to which the error is related.
@@ -50,7 +52,7 @@ data Entity
     -- by the caller of such a generic function (see for instance
     -- @getUniqueElement@).
     | Entity
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data)
 
 -- | Type of errors that can occur when compiling a 'TorXakis' model file.
 data ErrorType
@@ -71,7 +73,7 @@ data ErrorType
     | NoDefinition -- ^ No definition found for function or process.
     | InvalidExpression
     | CompilerPanic -- ^ An error in the compiler has happened.
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data)
 
 -- | Location of an error.
 data ErrorLoc
@@ -85,7 +87,7 @@ data ErrorLoc
         { errorLine   :: Int
         , errorColumn :: Int
         }
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data)
 
 -- | Entities that have an error location.
 class HasErrorLoc l where
@@ -101,6 +103,6 @@ data Error
     }
     -- | Multiple errors.
     | Errors [Error]
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data)
 
 makeLenses ''Error
