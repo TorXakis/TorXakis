@@ -77,139 +77,108 @@ failureTestCases = [ duplicatedFuncParam1
                    , duplicatedProc1
                    , duplicatedProc2
                    , duplicatedVarInActPrefix1
+                   , duplicatedVarInLet1
                    ]
-
-type TestName = String
-type CodeSnippet = String
-
-duplicatedFuncParam1 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedFuncParam1 =
-    ( "Function with two `x` parameters. Variant 1."
-     , [r|
+  where
+    duplicatedFuncParam1 =
+        ( "Function with two `x` parameters. Variant 1."
+         , [r|
 FUNCDEF myFunc(x, x :: Int) :: Int ::= x ENDDEF
-        |]
-     , [MultipleDefinitions Variable]
-     )
-
-duplicatedFuncParam2 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedFuncParam2 =
-    ( "Function with two `x` parameters. Variant 2."
-     , [r|
+            |]
+         , [MultipleDefinitions Variable]
+         )
+    duplicatedFuncParam2 =
+        ( "Function with two `x` parameters. Variant 2."
+         , [r|
 FUNCDEF myFunc(x :: Int ; x :: Int) :: Int ::= x ENDDEF
-        |]
-     , [MultipleDefinitions Variable]
-     )
-
-duplicatedProcParam1 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedProcParam1 =
-    ( "ProcDef with two `x` parameters. Variant 1."
-     , [r|
+            |]
+         , [MultipleDefinitions Variable]
+         )
+    duplicatedProcParam1 =
+        ( "ProcDef with two `x` parameters. Variant 1."
+         , [r|
 PROCDEF myProc[H:: Int](x, x :: Int) ::= STOP ENDDEF
-        |]
-     , [MultipleDefinitions Variable]
-     )
-
-duplicatedProcParam2 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedProcParam2 =
-    ( "ProcDef with two `x` parameters. Variant 2."
-     , [r|
+            |]
+         , [MultipleDefinitions Variable]
+         )
+    duplicatedProcParam2 =
+        ( "ProcDef with two `x` parameters. Variant 2."
+         , [r|
 PROCDEF myProc[H:: Int](x :: Int; x :: Int) ::= STOP ENDDEF
-        |]
-     , [MultipleDefinitions Variable]
-     )
-
-duplicatedProcChan1 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedProcChan1 =
-    ( "ProcDef with two `H` channel parameters. Variant 1."
-     , [r|
+            |]
+         , [MultipleDefinitions Variable]
+         )
+    duplicatedProcChan1 =
+        ( "ProcDef with two `H` channel parameters. Variant 1."
+         , [r|
 PROCDEF myProc[H, H:: Int]() ::= STOP ENDDEF
-        |]
-     , [MultipleDefinitions Channel]
-     )
-
-duplicatedProcChan2 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedProcChan2 =
-    ( "ProcDef with two `H` channel parameters. Variant 2."
-     , [r|
+            |]
+         , [MultipleDefinitions Channel]
+         )
+    duplicatedProcChan2 =
+        ( "ProcDef with two `H` channel parameters. Variant 2."
+         , [r|
 PROCDEF myProc[H :: Int; J :: Bool; H:: Int]() ::= STOP ENDDEF
-        |]
-     , [MultipleDefinitions Channel]
-     )
-
-duplicatedChan1 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedChan1 =
-    ( "ChannelDef with two `In` channels. Variant 1."
-     , [r|
+            |]
+         , [MultipleDefinitions Channel]
+         )
+    duplicatedChan1 =
+        ( "ChannelDef with two `In` channels. Variant 1."
+         , [r|
 CHANDEF myChans ::= In, In :: Int ENDDEF
-        |]
-     , [MultipleDefinitions Channel]
-     )
-
-duplicatedChan2 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedChan2 =
-    ( "ChannelDef with two `In` channels. Variant 2."
-     , [r|
+            |]
+         , [MultipleDefinitions Channel]
+         )
+    duplicatedChan2 =
+        ( "ChannelDef with two `In` channels. Variant 2."
+         , [r|
 CHANDEF myChans ::= In :: Int; In :: Int ENDDEF
-        |]
-     , [MultipleDefinitions Channel]
-     )
-
-duplicatedChan3 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedChan3 =
-    ( "Two ChannelDefs that both define an `In` channel. Variant 3."
-     , [r|
+            |]
+         , [MultipleDefinitions Channel]
+         )
+    duplicatedChan3 =
+        ( "Two ChannelDefs that both define an `In` channel. Variant 3."
+         , [r|
 CHANDEF myChans   ::= In :: Int ENDDEF
 CHANDEF yourChans ::= In :: Int ENDDEF
-        |]
-     , [MultipleDefinitions Channel]
-     )
-
-duplicatedFunc1 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedFunc1 =
-    ( "Function with same signature twice. Variant 1."
-     , [r|
+            |]
+         , [MultipleDefinitions Channel]
+         )
+    duplicatedFunc1 =
+        ( "Function with same signature twice. Variant 1."
+         , [r|
 FUNCDEF myFunc(x :: Int) :: Int ::= x ENDDEF
 FUNCDEF myFunc(y :: Int) :: Int ::= y ENDDEF
-        |]
-     , [MultipleDefinitions Function]
-     )
-
-duplicatedFunc2 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedFunc2 =
-    ( "Function with same signature twice. Variant 2."
-     , [r|
+            |]
+         , [MultipleDefinitions Function]
+         )
+    duplicatedFunc2 =
+        ( "Function with same signature twice. Variant 2."
+         , [r|
 FUNCDEF myFunc(x :: Int; y :: Int) :: Int ::= x ENDDEF
 FUNCDEF myFunc(a,b :: Int) :: Int ::= a ENDDEF
-        |]
-     , [MultipleDefinitions Function]
-     )
-
-duplicatedProc1 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedProc1 =
-    ( "Process with same signature twice. Variant 1."
-     , [r|
+            |]
+         , [MultipleDefinitions Function]
+         )
+    duplicatedProc1 =
+        ( "Process with same signature twice. Variant 1."
+         , [r|
 PROCDEF myProc[G]()::= STOP ENDDEF
 PROCDEF myProc[H]()::= STOP ENDDEF
-        |]
-     , [MultipleDefinitions Process]
-     )
-
-
-duplicatedProc2 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedProc2 =
-    ( "Process with same signature twice. Variant 2."
-     , [r|
+            |]
+         , [MultipleDefinitions Process]
+         )
+    duplicatedProc2 =
+        ( "Process with same signature twice. Variant 2."
+         , [r|
 PROCDEF myProc[G, H :: Int       ]()::= STOP ENDDEF
 PROCDEF myProc[A :: Int; B :: Int]()::= STOP ENDDEF
-        |]
-     , [MultipleDefinitions Process]
-     )
-
-
-duplicatedVarInActPrefix1 :: (TestName, CodeSnippet, [ErrorType])
-duplicatedVarInActPrefix1 =
-    ( "Introducing duplicated variables in action prefix."
-     , [r|
+            |]
+         , [MultipleDefinitions Process]
+         )
+    duplicatedVarInActPrefix1 =
+        ( "Introducing duplicated variables in action prefix."
+         , [r|
 CHANDEF  MyChans
  ::=
     A,B :: Int
@@ -225,8 +194,20 @@ MODELDEF M
     BEHAVIOUR
        { A ? x | B ? x } [[ x == 43 ]]  >->  B ! x  >->  STOP
 ENDDEF
-        |]
-     --  We expect two errors to be reported, one per-each location in which
-     --  @x@ appears in the action offer.
-     , [MultipleDefinitions Variable, MultipleDefinitions Variable]
-     )
+            |]
+         --  We expect two errors to be reported, one per-each location in which
+         --  @x@ appears in the action offer.
+         , [MultipleDefinitions Variable, MultipleDefinitions Variable]
+         )
+    duplicatedVarInLet1 =
+        ( "Introducing duplicated variables in let binding."
+         , [r|
+FUNCDEF let() :: Int ::=
+    LET x :: Int = 10, x :: Int = 2 IN x NI
+ENDDEF
+           |]
+        , [MultipleDefinitions Variable, MultipleDefinitions Variable]
+        )
+
+type TestName = String
+type CodeSnippet = String

@@ -99,11 +99,11 @@ instance HasVarReferences ProcDecl where
         pNtoD <- mkVdMap (procDeclParams pd)
         mapRefToDecls (pNtoD <.+> mm) (procDeclBody pd)
 
--- | Make a map from variable names to variable the location in which a
--- variable with that name is declared.
+-- | Make a map from variable names to the location in which a variable with
+-- that name is declared.
 --
 -- If a variable name in the given list is duplicated, then an error is
--- returned.
+-- returned per-each occurrence of the duplicated variable name.
 mkVdMap :: (IsVariable v, HasLoc v VarDeclE)
         => [v] -> CompilerM (Map Text (Loc VarDeclE))
 mkVdMap vs = do
