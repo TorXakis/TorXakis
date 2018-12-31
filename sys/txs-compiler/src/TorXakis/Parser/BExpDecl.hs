@@ -28,7 +28,7 @@ where
 
 import qualified Data.Text                   as T
 import           Text.Parsec                 (many, notFollowedBy, optionMaybe,
-                                              optional, sepBy, sepBy1, try,
+                                              sepBy, sepBy1, try, between,
                                               (<?>), (<|>))
 import           Text.Parsec.Expr            (Assoc (AssocLeft),
                                               Operator (Infix),
@@ -120,10 +120,10 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
 
 -- | Parser for offers.
 offersP :: TxsParser [OfferDecl]
-offersP = optional (txsSymbol "{")
-           *> actOrOffer `sepBy1` pipe
-           <* optional (txsSymbol "}")
+offersP =  between (txsSymbol "{") (txsSymbol "}") actOrOffers
+       <|> actOrOffers
     where
+      actOrOffers = actOrOffer `sepBy1` pipe
       actOrOffer = predefAct <|> offerP
       pipe = try $ do
         txsSymbol "|"
