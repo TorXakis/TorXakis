@@ -28,7 +28,7 @@ where
 
 import qualified Data.Text                   as T
 import           Text.Parsec                 (many, notFollowedBy, optionMaybe,
-                                              optional, sepBy, sepBy1, try,
+                                              sepBy, sepBy1, try, between,
                                               (<?>), (<|>))
 import           Text.Parsec.Expr            (Assoc (AssocLeft),
                                               Operator (Infix),
@@ -120,24 +120,35 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
 
 -- | Parser for offers.
 offersP :: TxsParser [OfferDecl]
-offersP =  predefOffer "ISTEP"
-       <|> predefOffer "QSTEP"
-       <|> predefOffer "HIT"
-       <|> predefOffer "MISS"
-       <|> offersP'
+offersP =  between (txsSymbol "{") (txsSymbol "}") actOrOffers
+       <|> actOrOffers
+    where
+      actOrOffers = actOrOffer `sepBy1` pipe
+      actOrOffer = predefAct <|> offerP
+      pipe = try $ do
+        txsSymbol "|"
+        notFollowedBy ( txsSymbol "|" <|> txsSymbol "[" )
+
+-- | Predefined action parser.
+predefAct
+    :: TxsParser OfferDecl
+predefAct =  predefOffer "ISTEP"
+         <|> predefOffer "QSTEP"
+         <|> predefOffer "HIT"
+         <|> predefOffer "MISS"
     where predefOffer str = try $ do
-              l <- mkLoc
-              txsSymbol str
-              return [OfferDecl (mkChanRef (T.pack str) l) []]
-          offersP' = optional (txsSymbol "{")
-                   *> offerP `sepBy1` pipe
-                   <* optional (txsSymbol "}")
-          pipe = try $ do
-              txsSymbol "|"
-              notFollowedBy ( txsSymbol "|" <|> txsSymbol "[" )
+            l <- mkLoc
+            txsSymbol str
+            return $ OfferDecl (mkChanRef (T.pack str) l) []
 
-
--- | Parser for offers.
+-- | Parser for offers on channels, of the form:
+--
+-- > ch ? v0 ? ... ? vn
+--
+-- or
+--
+-- > ch ! exp0 ! ... ! expn
+--
 offerP :: TxsParser OfferDecl
 offerP = do
     l     <- mkLoc

@@ -37,7 +37,7 @@ import           TorXakis.Compiler.Error
 
 spec :: Spec
 spec = do
-    describe "Compiles the files single concepts examples" $
+    describe "Compiles the single-concept examples" $
       checkSuccess `onAllFilesIn` ("test" </> "data" </> "success")
 
     describe "Compiles the examples in the 'examps' folder" $
