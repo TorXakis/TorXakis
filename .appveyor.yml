@@ -43,7 +43,7 @@ install:
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\z3")) {
         # install z3
-        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.8.4/z3-4.8.4.d6df51951f4c-x64-win.zip -Verbose
+        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/v4.8.5-nightly/z3-4.8.5.b63a0e31d3e2-x64-win.zip -Verbose
         mkdir $CACHE_DIR\z3
         7z x $("-o${CACHE_DIR}\z3\") z3.zip
         move ${CACHE_DIR}\z3\z3-*\* ${CACHE_DIR}\z3

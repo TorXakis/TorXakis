@@ -111,8 +111,8 @@ ioeTestRegex = [
         ("Regex opt",                       testRegex "0?"),
         ("Regex plus",                      testRegex "a+"),
         ("Regex star",                      testRegex "b*"),
-        --("Regex {n,m}",                     testRegex "c{3,5}"),
-        --("Regex {n,}",                      testRegex "d{3,}"),
+        ("Regex {n,m}",                     testRegex "c{3,5}"),
+        ("Regex {n,}",                      testRegex "d{3,}"),
         ("Regex {n}",                       testRegex "r{3}"),
         ("Regex range",                     testRegex "[q-y]"),
         ("Regex 2 choices",                 testRegex "a|b"),
@@ -123,7 +123,7 @@ ioeTestRegex = [
         ("Regex escape range",              testRegex "\\|{2,4}"),
         ("Regex concat operator",           testRegex "ab+c*d?"),
         ("Regex mixed small",               testRegex "(ab+)|(p)"),
-        ("Regex mixed large",               testRegex "(ab+c*d?)|(ef{2}g{3,6}h{3,})|(p)") -- bug reported https://ghc.haskell.org/trac/ghc/ticket/12974
+        ("Regex mixed large",               testRegex "(ab+c*d?)|(ef{2}g{3,6}h{3,})|(p)")
     ]
 
 -----------------------------------------------------
