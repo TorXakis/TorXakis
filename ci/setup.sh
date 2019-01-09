@@ -34,11 +34,11 @@ else
     touch $CACHE_DIR/bin/cvc4-1.6
 fi
 
-if [ -d $CACHE_DIR/z3 ] && [ -e $CACHE_DIR/z3/z3-4.8.4 ]
+if [ -d $CACHE_DIR/z3 ] && [ -e $CACHE_DIR/z3/z3-4.8.5-nightly ]
 then
-    echo "$CACHE_DIR/z3 build 4.8.4 found in cache."
+    echo "$CACHE_DIR/z3 build z3-4.8.5-nightly found in cache."
 else
-    echo "z3 not found in cache or different version than 4.8.4"
+    echo "z3 not found in cache or different version than z3-4.8.5-nightly"
     rm $CACHE_DIR/z3 -rf
     curl -L https://github.com/TorXakis/Dependencies/releases/download/v4.8.5-nightly/z3-4.8.5.b63a0e31d3e2-x64-ubuntu-14.04.zip -o z3.zip
     unzip z3.zip
@@ -46,6 +46,6 @@ else
     echo $Z3NAME
     mv $Z3NAME $CACHE_DIR/z3
     chmod +x $CACHE_DIR/z3/bin/z3
-    touch $CACHE_DIR/z3/z3-4.8.4
+    touch $CACHE_DIR/z3/z3-4.8.5-nightly
 fi
 echo "Set up done"
