@@ -123,8 +123,8 @@ instance HasName ConstructorDef where
 -- | Smart constructor for ConstructorDef
 mkConstructorDef :: Name -> [FieldDef] -> Either MinError ConstructorDef
 mkConstructorDef n fs
-    | not $ null nuFieldNames = Left $ MinError (T.pack ("Non unique field names: " ++ show nuFieldNames))
-    | otherwise               = Right $ ConstructorDef $ ConstructorDefView n fs
+    | null nuFieldNames     = Right $ ConstructorDef $ ConstructorDefView n fs
+    | otherwise             = Left $ MinError (T.pack ("Non unique field names: " ++ show nuFieldNames))
     where
         nuFieldNames :: [FieldDef]
         nuFieldNames = repeatedByName fs

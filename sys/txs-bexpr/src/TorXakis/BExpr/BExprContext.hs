@@ -137,14 +137,14 @@ findUndefinedProcSignature definedProcSignatures = findUndefinedProcSignature'
         findUndefinedProcSignature' = findUndefinedProcSignatureView . TorXakis.BExpr.BExpr.view
         
         findUndefinedProcSignatureView :: BExpressionView v -> [ProcSignature]
-        findUndefinedProcSignatureView (ActionPref _ b) = findUndefinedProcSignature' b
-        findUndefinedProcSignatureView (Guard _ b)      = findUndefinedProcSignature' b
-        findUndefinedProcSignatureView (Choice s)       = concatMap findUndefinedProcSignature' (Set.toList s)
-        findUndefinedProcSignatureView (Parallel _ l)   = concatMap findUndefinedProcSignature' l
-        findUndefinedProcSignatureView (Enable a _ b)   = findUndefinedProcSignature' a ++ findUndefinedProcSignature' b
-        findUndefinedProcSignatureView (Disable a b)    = findUndefinedProcSignature' a ++ findUndefinedProcSignature' b
-        findUndefinedProcSignatureView (Interrupt a b)  = findUndefinedProcSignature' a ++ findUndefinedProcSignature' b
-        findUndefinedProcSignatureView (ProcInst p _ _) = if HashMap.member p definedProcSignatures
-                                                            then []
-                                                            else [p]
-        findUndefinedProcSignatureView (Hide _ b)      = findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (ActionPref _ _ b) = findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (Choice s)         = concatMap findUndefinedProcSignature' (Set.toList s)
+        findUndefinedProcSignatureView (Guard _ b)        = findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (Parallel _ l)     = concatMap findUndefinedProcSignature' l
+        findUndefinedProcSignatureView (Enable a _ b)     = findUndefinedProcSignature' a ++ findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (Disable a b)      = findUndefinedProcSignature' a ++ findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (Interrupt a b)    = findUndefinedProcSignature' a ++ findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (ProcInst p _ _)   = if HashMap.member p definedProcSignatures
+                                                              then []
+                                                              else [p]
+        findUndefinedProcSignatureView (Hide _ b)         = findUndefinedProcSignature' b

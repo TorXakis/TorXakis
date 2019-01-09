@@ -22,7 +22,6 @@ module TorXakis.ChanDef
 ( ChanDef (..)
 , ChanSort (..)
 , chanExit
-, chanIstep
 , chanQstep
 , chanHit
 , chanMiss
@@ -46,7 +45,7 @@ instance Hashable ChanSort where
     hashWithSalt s (ChanSort xs)    = s `hashWithSalt` xs
 
 -- | Data structure of Channel Definition.
--- TODO: should we have separated constructors for the predefined channels (EXIT, ISTEP, QSTEP, HIT, MISS)?
+-- TODO: should we have separated constructors for the predefined channels (EXIT, QSTEP, HIT, MISS)?
 data ChanDef = ChanDef { -- | Name
                          chanName :: Name
                          -- | ChanSort
@@ -57,32 +56,28 @@ data ChanDef = ChanDef { -- | Name
 instance HasName ChanDef where
     getName = chanName
 
--- TODO: should we have separated constructors for the predefined channels (EXIT, ISTEP, QSTEP, HIT, MISS)?
+-- TODO: should we have separated constructors for the predefined channels (EXIT, QSTEP, HIT, MISS)?
 -- | Predefined EXIT channel
 chanExit  :: ChanDef
 chanExit  = ChanDef exitName  (ChanSort [])     -- EXIT channel can also have other kinds of chanSort
     where exitName = case mkName (T.pack "EXIT") of
                         Right v -> v
                         Left e  -> error ("EXIT should be legal name, yet " ++ show e)
--- | Predefined ISTEP channel
--- TODO: ISTEP is an empty set (of multi actions); ISTEP is NOT a channel!
-chanIstep :: ChanDef
-chanIstep = ChanDef istepName (ChanSort [])
-    where istepName = case mkName (T.pack "ISTEP") of
-                        Right v -> v
-                        Left e  -> error ("ISTEP should be legal name, yet " ++ show e)
+
 -- | Predefined QSTEP channel
 chanQstep :: ChanDef
 chanQstep = ChanDef qstepName (ChanSort [])
     where qstepName = case mkName (T.pack "QSTEP") of
                         Right v -> v
                         Left e  -> error ("QSTEP should be legal name, yet " ++ show e)
+
 -- | Predefined HIT channel
 chanHit   :: ChanDef
 chanHit   = ChanDef hitName   (ChanSort [])
     where hitName = case mkName (T.pack "HIT") of
                         Right v -> v
                         Left e  -> error ("HIT should be legal name, yet " ++ show e)
+
 -- | Predefined MISS channel
 chanMiss  :: ChanDef
 chanMiss  = ChanDef missName  (ChanSort [])

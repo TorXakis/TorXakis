@@ -39,6 +39,7 @@ where
 import           Data.Either     (partitionEithers)
 import           Data.Hashable
 import qualified Data.HashMap    as HashMap
+import qualified Data.Map        as Map
 import qualified Data.Set        as Set
 import qualified Data.Text       as T
 
@@ -47,6 +48,7 @@ import           TorXakis.BExpr.BExprContext
 import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
 import           TorXakis.Error
+import           TorXakis.Name
 import           TorXakis.ProcSignature
 import           TorXakis.Sort
 import           TorXakis.ValExpr
@@ -68,14 +70,18 @@ isStop _                                                    = False
 -- TODO: how to handle EXIT >-> p <==> EXIT >-> STOP
 --       should we give an error when containsEXIT (offers a) && not isStop(b)
 --       or should we just rewrite the expression (currently give problems with LPE)
-mkActionPref :: a v -> ActOffer v -> BExpression v -> Either MinError (BExpression v)
-mkActionPref = unsafeActionPref
+mkActionPref :: forall a v . VarDef v => a v -> [v] -> ActOffer v -> BExpression v -> Either MinError (BExpression v)
+mkActionPref ctx vs a b | null nonUniqueNames = unsafeActionPref ctx (Set.fromList vs) a b
+                        | otherwise           = Left $ MinError (T.pack ("Non unique names : " ++ show nonUniqueNames))
+    where
+        nonUniqueNames :: [v]
+        nonUniqueNames = repeatedByName vs
 
-unsafeActionPref :: a v -> ActOffer v -> BExpression v -> Either MinError (BExpression v)
-unsafeActionPref _ a b = case TorXakis.ValExpr.view (constraint a) of
-                            -- A?x [[ False ]] >-> p <==> stop
-                            Vconst (Cbool False)    -> Right mkStop
-                            _                       -> Right $ BExpression (ActionPref a b)
+unsafeActionPref :: a v -> Set.Set v -> ActOffer v -> BExpression v -> Either MinError (BExpression v)
+unsafeActionPref _ s a b = case TorXakis.ValExpr.view (constraint a) of
+                             -- A?x [[ False ]] >-> p <==> stop
+                             Vconst (Cbool False)    -> Right mkStop
+                             _                       -> Right $ BExpression (ActionPref s a b)
 
 -- | Create a guard behaviour expression.
 mkGuard :: BExprContext a v => a v -> ValExpression v -> BExpression v -> Either MinError (BExpression v)
@@ -91,9 +97,9 @@ unsafeGuard _   (TorXakis.ValExpr.view -> Vconst (Cbool True))  b              =
 unsafeGuard _   _ b                                                 | isStop b = Right mkStop
 -- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ IF c1 THEN c2 ELSE False FI ]] >-> p
 -- Note: smart constructor ITE handles special case: [[ c1 ]] =>> A?x [[ True ]] >-> p <==> A?x [[ c1 ]] >-> p
-unsafeGuard ctx v (TorXakis.BExpr.BExpr.view -> ActionPref (ActOffer o h c) b) = mkConst ctx (Cbool False) >>= 
-                                                                                 mkITE ctx v c >>= 
-                                                                                 (\ite -> unsafeActionPref ctx (ActOffer o h ite) b)
+unsafeGuard ctx v (TorXakis.BExpr.BExpr.view -> ActionPref vs (ActOffer o c) b) = mkConst ctx (Cbool False) >>= 
+                                                                                  mkITE ctx v c >>= 
+                                                                                  (\ite -> unsafeActionPref ctx vs (ActOffer o ite) b)
 --  [[ c ]] =>> (p1 ## p2) <==> ( ([[ c ]] =>> p1) ## ([[ c ]] =>> p2) )
 unsafeGuard ctx v (TorXakis.BExpr.BExpr.view -> Choice s)                      = case partitionEithers (map (unsafeGuard ctx v) (Set.toList s)) of
                                                                                     ([], l) -> unsafeChoice ctx (Set.fromList l)
@@ -148,12 +154,16 @@ unsafeParallel _ cs bs = let fbs = flattenParallel bs
         fromBExpression bexpr                                               = [bexpr]
 
 -- | Create an enable behaviour expression.
-mkEnable :: VarDef v => a v -> BExpression v -> [v] -> BExpression v -> Either MinError (BExpression v)
-mkEnable ctx b1 cs b2 = case getExitKind b1 of
-                            Exit xs -> if xs /= map getSort cs 
-                                        then Left $ MinError (T.pack "Mismatch in sorts between ExitKind of initial process and ChanOffers")
-                                        else unsafeEnable ctx b1 cs b2
-                            _       -> Left $ MinError (T.pack "ExitKind of initial process must be EXIT")
+mkEnable :: forall a v . VarDef v => a v -> BExpression v -> [v] -> BExpression v -> Either MinError (BExpression v)
+mkEnable ctx b1 cs b2 | null nonUniqueNames = case getExitKind b1 of
+                                                Exit xs -> if xs == map getSort cs 
+                                                            then unsafeEnable ctx b1 cs b2
+                                                            else Left $ MinError (T.pack "Mismatch in sorts between ExitKind of initial process and ChanOffers")
+                                                _       -> Left $ MinError (T.pack "ExitKind of initial process must be EXIT")
+                      | otherwise           = Left $ MinError (T.pack ("Non unique names : " ++ show nonUniqueNames))
+    where
+        nonUniqueNames :: [v]
+        nonUniqueNames = repeatedByName cs
 
 unsafeEnable :: a v -> BExpression v -> [v] -> BExpression v -> Either MinError (BExpression v)
 -- stop >>> p <==> stop
@@ -213,7 +223,6 @@ mismatchesSort = filter (\(a,b) -> getSort a /= getSort b) . HashMap.toList
 partSubst :: forall c v . BExprContext c v => c v -> HashMap.Map v (ValExpression v) -> BExpression v -> Either MinError (BExpression v)
 partSubst ctx mp be | null mismatches   = partSubstView mp (TorXakis.BExpr.BExpr.view be)
                     | otherwise         = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
-                    
   where
     mismatches :: [ (v, ValExpression v) ]
     mismatches = mismatchesSort mp
@@ -226,10 +235,11 @@ partSubst ctx mp be | null mismatches   = partSubstView mp (TorXakis.BExpr.BExpr
     partSubstView mp' be'                      = partSubstView' mp' be'
 
     partSubstView' :: HashMap.Map v (ValExpression v) -> BExpressionView v -> Either MinError (BExpression v)
-    partSubstView' mp' (ActionPref a b)     = let varDefs = declareVars a in
-                                                subst ctx mp' a >>= (\na ->
-                                                partSubstView (deleteVars mp' varDefs) (TorXakis.BExpr.BExpr.view b) >>=
-                                                unsafeActionPref ctx na)
+    partSubstView' mp' (ActionPref vs a b)  = let newMp :: HashMap.Map v (ValExpression v)
+                                                  newMp = deleteVars mp' (Set.toList vs) in
+                                                subst ctx newMp a >>= (\na ->
+                                                partSubstView newMp (TorXakis.BExpr.BExpr.view b) >>=
+                                                unsafeActionPref ctx vs na)
     partSubstView' mp' (Guard c b)          = TorXakis.ValExpr.partSubst ctx mp' c >>= (\nc ->
                                               partSubstView' mp' (TorXakis.BExpr.BExpr.view b) >>=
                                               unsafeGuard ctx nc)
@@ -254,6 +264,16 @@ partSubst ctx mp be | null mismatches   = partSubstView mp (TorXakis.BExpr.BExpr
     partSubstView' mp' (Hide cs b)          = partSubstView' mp' (TorXakis.BExpr.BExpr.view b) >>=
                                               unsafeHide ctx cs
 
-subst :: -- forall c v . BExprContext c v => 
-         c v -> HashMap.Map v (ValExpression v) -> ActOffer v -> Either MinError (ActOffer v)
-subst = undefined
+subst :: forall c v . BExprContext c v => c v -> HashMap.Map v (ValExpression v) -> ActOffer v -> Either MinError (ActOffer v)
+subst ctx mp (ActOffer m c) = case TorXakis.ValExpr.partSubst ctx mp c of
+                                Left e -> Left $ MinError (T.pack ("Subst 'ActOffer' failed on constraint\n" ++ show e))
+                                Right c' -> let l :: [Either MinError (ChanDef,[ValExpression v])]
+                                                l = map (\(a,b) -> case partitionEithers (map (TorXakis.ValExpr.partSubst ctx mp) b) of
+                                                                        ([], b') -> Right (a,b')
+                                                                        (es, _)  -> Left $ MinError (T.pack ("Channel = " ++ show a ++ "\n" ++ show es)) 
+                                                        )
+                                                        (Map.toList m)
+                                              in
+                                                case partitionEithers l of
+                                                    ([], n) -> Right $ ActOffer (Map.fromList n) c'
+                                                    (es, _) -> Left $ MinError (T.pack ("Subst 'ActOffer' failed on Offers\n" ++ show es))

@@ -59,8 +59,8 @@ newtype FuncDef v = FuncDef { -- | view on FuncDef
 
 -- constructor for FuncDef
 mkFuncDef :: forall v . VarDef v => Name -> [v] -> ValExpression v -> Either MinError (FuncDef v)
-mkFuncDef n ps b | not $ null nonUniqueNames       = Left $ MinError (T.pack ("Non unique names : " ++ show nonUniqueNames))
-                 | otherwise                       = Right $ FuncDef (FuncDefView n ps b)
+mkFuncDef n ps b | null nonUniqueNames      = Right $ FuncDef (FuncDefView n ps b)
+                 | otherwise                = Left $ MinError (T.pack ("Non unique names : " ++ show nonUniqueNames))
     where
         nonUniqueNames :: [v]
         nonUniqueNames = repeatedByName ps
