@@ -224,7 +224,7 @@ infixOperator o ctx oName vs =
         let offset = if multiline o then T.replicate (T.length oName + 1) (T.singleton ' ')
                                     else T.empty
           in
-            TxsString (T.concat [ offset 
+            TxsString (T.concat [ offset
                                 , T.pack "( "
                                 , T.intercalate (T.concat [ separator o
                                                           , offset
