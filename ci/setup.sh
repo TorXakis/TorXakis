@@ -22,7 +22,7 @@ else
     curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C $CACHE_DIR/bin '*/stack'
 fi
 
-if [ -f $CACHE_DIR/bin/cvc4 ] && [ -e $CACHE_DIR/bin/cvc4-1.6a ]
+if [ -f $CACHE_DIR/bin/cvc4 ] && [ -e $CACHE_DIR/bin/cvc4-1.6 ]
 then
     echo "$CACHE_DIR/bin/cvc4 found in cache."
 else
@@ -34,18 +34,18 @@ else
     touch $CACHE_DIR/bin/cvc4-1.6
 fi
 
-if [ -d $CACHE_DIR/z3 ] && [ -e $CACHE_DIR/z3/z3-4.7.1 ]
+if [ -d $CACHE_DIR/z3 ] && [ -e $CACHE_DIR/z3/z3-4.8.5-nightly ]
 then
-    echo "$CACHE_DIR/z3 build 4.7.1 found in cache."
+    echo "$CACHE_DIR/z3 build z3-4.8.5-nightly found in cache."
 else
-    echo "z3 not found in cache or different version than 4.7.1"
+    echo "z3 not found in cache or different version than z3-4.8.5-nightly"
     rm $CACHE_DIR/z3 -rf
-    curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-ubuntu-14.04.zip -o z3.zip
+    curl -L https://github.com/TorXakis/Dependencies/releases/download/v4.8.5-nightly/z3-4.8.5.b63a0e31d3e2-x64-ubuntu-14.04.zip -o z3.zip
     unzip z3.zip
     Z3NAME=$(ls -d z3-*/)
     echo $Z3NAME
     mv $Z3NAME $CACHE_DIR/z3
     chmod +x $CACHE_DIR/z3/bin/z3
-    touch $CACHE_DIR/z3/z3-4.7.1
+    touch $CACHE_DIR/z3/z3-4.8.5-nightly
 fi
 echo "Set up done"
