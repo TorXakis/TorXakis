@@ -822,8 +822,9 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
 
         -- make sure RHS is a ProcInst, otherwise create new ProcDef and ProcInst
         (procInstR, procDefs4) = case bexprR of 
-                                        (TxsDefs.view -> ProcInst _procIdInstR _chansInst _paramsInst) -> 
+                                        (TxsDefs.view -> ProcInst procIdInstR chansInst paramsInst) -> 
                                                 -- if already ProcInst: return unchanged
+                                                -- TODO: properly initialise funcDefs param of subst
                                                 (bexprR, procDefs''')
                                         _ ->    -- else create create new ProcDef of bexprR
                                                 let paramsAccept = extractVarIdsChanOffers acceptChanOffers
@@ -842,8 +843,8 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                                                 (procInstR', procDefsNew)
 
         -- replace EXITs in LHS with ProcInst of RHS
-        steps_replaced = map (replaceExits procInstR) stepsL 
-        steps_replaced' = map (updateProcInst procIdRes procIdLHS_lpe paramsDef) steps_replaced                                                        
+        steps_replaced = map (replaceExits procInstR) stepsL
+        steps_replaced' = map (updateProcInst procIdRes procIdLHS_lpe paramsDef) steps_replaced
 
         -- create new ProcDef for result
         paramsDefRes = paramsDef ++ paramsDefL_lpe
@@ -875,16 +876,16 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                     [o] ->  -- found one EXIT: replace, but keep rest
                             let exitParams = extractVarIdsOffer o [] in 
                             actionPref 
-                                actOffer'{    offers = Set.fromList offersRest
-                                            , hiddenvars = Set.fromList exitParams} 
+                                actOffer'{ offers = Set.fromList offersRest
+                                         , hiddenvars = Set.fromList exitParams} 
                                 (procInst procId chanIds (params ++ map cstrVar exitParams))
                     _   ->  -- found multiple EXITs: not supported
                             error "Found multiple EXIT in single action offer. Not supported."
             where   
                 isExit :: Offer -> Bool
                 isExit o = case o of 
-                            Offer { chanid = chid} | chid == chanIdExit -> True
-                            _                                           -> False
+                            Offer { chanid = chid } | chid == chanIdExit -> True
+                            _                                            -> False
         replaceExits _ _ = error "replaceExits: unknown input"  
     
         -- update procInsts of LHS steps to signature of new overall ProcDef 
@@ -898,7 +899,6 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                                             procInst'' = procInst procIdNew chansInst' paramsInst'' in
                                     actionPref actOffer procInst''
                             else    bexpr'
-                                                
         updateProcInst _ _ _ _ = error "updateProcInst: unknown input"  
 
 preGNFEnable _ _ _ = error "preGNFEnable: was called with something other than a ProcInst"
