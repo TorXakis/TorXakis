@@ -201,7 +201,8 @@ interrupt b1 b2 = BExpr (Interrupt b1 b2)
 
 -- | Create a process instantiation behaviour expression.
 procInst :: ProcId -> [ChanId] -> [VExpr] -> BExpr
-procInst p cs vs = BExpr (ProcInst p cs vs)
+procInst (ProcId _ _ _ ts _) _ vs | length ts /= length vs = error ("Illegal ProcInst: length ts = " ++ show (length ts) ++ "\nwhile length vs = " ++ show (length vs))
+procInst p cs vs                                           = BExpr (ProcInst p cs vs)
 
 -- | Create a hide behaviour expression.
 --   The given set of channels is hidden for its environment.
