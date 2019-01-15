@@ -822,7 +822,7 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
 
         -- make sure RHS is a ProcInst, otherwise create new ProcDef and ProcInst
         (procInstR, procDefs4) = case bexprR of 
-                                        (TxsDefs.view -> ProcInst procIdInstR chansInst paramsInst) -> 
+                                        (TxsDefs.view -> ProcInst _procIdInstR _chansInst _paramsInst) -> 
                                                 -- if already ProcInst: return unchanged
                                                 -- TODO: properly initialise funcDefs param of subst
                                                 (bexprR, procDefs''')
