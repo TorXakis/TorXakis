@@ -1077,7 +1077,6 @@ lpeInterrupt (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                             else    -- just replace the ProcInst with the new version 
                                     -- A >->  P$interrupt[](<params of P$interrupt>, <paramsLHS>, <paramsRHS_def>)
                                     actionPref actOffer' (procInst procIdNew chansOrig (map cstrVar paramsDef ++ paramsInstLHS ++ map cstrVar paramsDefRHS) ) 
-                        
         stepsUpdateLHS _ _ _ _ _ bexpr = bexpr
 
 
