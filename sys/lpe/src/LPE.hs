@@ -44,7 +44,6 @@ import TranslatedProcDefs
 
 import TxsDefs
 import Constant
-import StdTDefs (stdSortTable)
 
 import ChanId
 import ProcId
@@ -75,10 +74,6 @@ type ProcToParams = Map.Map Proc [VarId]
 
 type ChanMapping = Map.Map ChanId ChanId
 type ParamMapping = Map.Map VarId VExpr
-
-intSort :: SortId
-intSort = fromMaybe (error "LPE module: could not find standard IntSort") (Map.lookup (T.pack "Int") stdSortTable)
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- Helpers :
@@ -818,10 +813,9 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
 
         -- make sure RHS is a ProcInst, otherwise create new ProcDef and ProcInst
         (procInstR, procDefs4) = case bexprR of 
-                                        (TxsDefs.view -> ProcInst procIdInstR chansInstR paramsInstR) -> 
-                                                -- if already ProcInst: return with paramsInstR updated (they might contain the accepted variables)
-                                                -- TODO: properly initialise funcDefs param of subst
-                                                (procInst procIdInstR chansInstR paramsInstR, procDefs''')
+                                        (TxsDefs.view -> ProcInst{}) -> 
+                                                -- if already ProcInst: return as is (arguments will be updated later)
+                                                (bexprR, procDefs''')
                                         _ ->    -- else create create new ProcDef of bexprR
                                                 let paramsAccept = extractVarIdsChanOffers acceptChanOffers
                                                     procDefR = ProcDef chansDef (paramsDef ++ paramsAccept) bexprR
@@ -880,6 +874,7 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                                 then actionPref 
                                         actOffer'{ offers = Set.fromList offersRest
                                                  , hiddenvars = Set.fromList exitParams}
+                                                 -- constraint does not contain paramsAccept
                                          -- TODO: properly initialise funcDefs param of subst
                                         (procInst procId chanIds (Subst.subst (Map.fromList (zip paramsAccept (map cstrVar exitParams))) (Map.fromList []) params))
                                 else error ("Different length of exitParams = " ++ show exitParams ++ "\n and paramsAccept = " ++ show paramsAccept)
@@ -948,7 +943,7 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
 
     disableUnid <- EnvB.newUnid
     
-    let varIdDisable = VarId name' disableUnid intSort
+    let varIdDisable = VarId name' disableUnid sortIdInt
         stepsLHS' = map (updateProcInst 0 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed
                         . addDisableConstraint varIdDisable) 
                         (extractSteps bexprLHS_lpe_subst)
@@ -1205,7 +1200,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) tr
       -- create program counter mapping
       pcUnid <- EnvB.newUnid
       let pcName = "pc$" ++ T.unpack (ProcId.name procIdInst)
-      let varIdPC =  VarId (T.pack pcName) pcUnid intSort
+      let varIdPC =  VarId (T.pack pcName) pcUnid sortIdInt
       let pcMapping = Map.fromList $ zip calledProcs [0..]
 
       (steps, params, procToParams) <- translateProcs calledProcs varIdPC pcMapping procDefsGnf

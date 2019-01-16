@@ -16,6 +16,7 @@ import           Data.Maybe
 import qualified Data.Text         as T
 import qualified Data.Set as Set
 
+import SortId
 import VarId
 import Constant
 import ValExpr
@@ -87,8 +88,8 @@ lpeParTestWrapper procInst'' translatedProcDefs procDefs' =
 --             )
 --       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 --
---       varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
---       varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+--       varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+--       varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
 --       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
 --       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 --
@@ -162,8 +163,8 @@ testSingleAction1 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -218,8 +219,8 @@ testSingleAction2 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -270,8 +271,8 @@ testSingleAction3 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -330,8 +331,8 @@ testSingleAction4 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -391,8 +392,8 @@ testSingleActionDifferentVars = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -465,8 +466,8 @@ testSingleActionDifferentVars = TestCase $
 --             )
 --       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 --
---       varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
---       varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+--       varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+--       varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
 --       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
 --       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 --
@@ -547,8 +548,8 @@ testSingleActionDifferentActions1 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -624,8 +625,8 @@ testSingleActionDifferentActions2 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -670,8 +671,8 @@ testSingleActionDifferentActions3 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -716,8 +717,8 @@ testSingleActionDifferentActions4 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       -- vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       -- vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -777,8 +778,8 @@ testSingleActionDifferentActions4 = TestCase $
 --             )
 --       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 --
---       varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
---       varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+--       varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+--       varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
 --       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
 --       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 --
@@ -869,8 +870,8 @@ testMultiActions1 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -931,8 +932,8 @@ testMultiActions2 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -986,8 +987,8 @@ testMultiActions3 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -1029,8 +1030,8 @@ testMultiActions4 = TestCase $
             )
       procDefs' = Map.fromList  [ (procIdP, procDefP) ]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       -- vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       -- vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -1071,8 +1072,8 @@ testMultiActions5 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -1135,8 +1136,8 @@ testMultiActions6 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       --vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       --vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -1168,8 +1169,8 @@ testMultiActions7 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       --vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       --vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -1203,8 +1204,8 @@ testMultiActions8 = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -1303,11 +1304,11 @@ testParams = TestCase $
                                 , (procIdQ, procDefQ)
                                 , (procIdR, procDefR)]
 
-      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1s = VarId (T.pack "op1$Q$A$s") 35 intSort
-      varIdOp1x = VarId (T.pack "op1$Q$A$x") 33 intSort
-      varIdOp2pcR = VarId (T.pack "op2$pc$R") 0 intSort
-      varIdOp2s = VarId (T.pack "op2$R$A$s") 35 intSort
+      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+      varIdOp1s = VarId (T.pack "op1$Q$A$s") 35 sortIdInt
+      varIdOp1x = VarId (T.pack "op1$Q$A$x") 33 sortIdInt
+      varIdOp2pcR = VarId (T.pack "op2$pc$R") 0 sortIdInt
+      varIdOp2s = VarId (T.pack "op2$R$A$s") 35 sortIdInt
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1s = cstrVar varIdOp1s
@@ -1433,10 +1434,10 @@ testMultiSeqGEN = TestCase $
 
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
-      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 intSort
-      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 intSort
+      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 sortIdInt
+      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 sortIdInt
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -1642,10 +1643,10 @@ testMultiSeq1 = TestCase $
 
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
-      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
-      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
+      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 sortIdInt
+      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 sortIdInt
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -1849,10 +1850,10 @@ testMultiSeq2 = TestCase $
 
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
-      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
-      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
+      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 sortIdInt
+      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 sortIdInt
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -2057,10 +2058,10 @@ testMultiSeq3 = TestCase $
 
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
-      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
-      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
+      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 sortIdInt
+      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 sortIdInt
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -2260,10 +2261,10 @@ testMultiSeq4 = TestCase $
 
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
-      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
-      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
+      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 sortIdInt
+      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 sortIdInt
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -2443,7 +2444,7 @@ testThreeOperands1 = TestCase $
    where
       procInst'' = procInst procIdP [chanIdA0] []
       procIdP = procIdGen "P" [chanIdA0] []
-      procIdQ = procIdGen "Q" [chanIdA0] [VarId (T.pack "s") 0 intSort]
+      procIdQ = procIdGen "Q" [chanIdA0] [VarId (T.pack "s") 0 sortIdInt]
       procDefP = ProcDef [chanIdA0] [] (
             parallel Set.empty [
                 procInst procIdQ [chanIdA0] [int1],
@@ -2451,17 +2452,17 @@ testThreeOperands1 = TestCase $
                 procInst procIdQ [chanIdA0] [int1]
               ]
             )
-      procDefQ = ProcDef [chanIdA0] [VarId (T.pack "s") 0 intSort] (
+      procDefQ = ProcDef [chanIdA0] [VarId (T.pack "s") 0 sortIdInt] (
             actionPref actOfferA stop)
       procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
 
-      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QAs = VarId (T.pack "op1$Q$A$s") 0 intSort
-      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QAs = VarId (T.pack "op2$Q$A$s") 0 intSort
-      varIdOp3pcQ = VarId (T.pack "op3$pc$Q") 0 intSort
-      varIdOp3QAs = VarId (T.pack "op3$Q$A$s") 0 intSort
+      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+      varIdOp1QAs = VarId (T.pack "op1$Q$A$s") 0 sortIdInt
+      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+      varIdOp2QAs = VarId (T.pack "op2$Q$A$s") 0 sortIdInt
+      varIdOp3pcQ = VarId (T.pack "op3$pc$Q") 0 sortIdInt
+      varIdOp3QAs = VarId (T.pack "op3$Q$A$s") 0 sortIdInt
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QAs = cstrVar varIdOp1QAs
       vexprOp2pcQ = cstrVar varIdOp2pcQ
@@ -2526,7 +2527,7 @@ testThreeOperands2 = TestCase $
    where
      procInst'' = procInst procIdP [chanIdA0] []
      procIdP = procIdGen "P" [chanIdA0] []
-     procIdQ = procIdGen "Q" [chanIdA0] [VarId (T.pack "s") 0 intSort]
+     procIdQ = procIdGen "Q" [chanIdA0] [VarId (T.pack "s") 0 sortIdInt]
      procDefP = ProcDef [chanIdA0] [] (
            parallel (Set.singleton chanIdA0) [
                procInst procIdQ [chanIdA0] [int1],
@@ -2534,17 +2535,17 @@ testThreeOperands2 = TestCase $
                procInst procIdQ [chanIdA0] [int1]
              ]
            )
-     procDefQ = ProcDef [chanIdA0] [VarId (T.pack "s") 0 intSort] (
+     procDefQ = ProcDef [chanIdA0] [VarId (T.pack "s") 0 sortIdInt] (
            actionPref actOfferA stop)
      procDefs' = Map.fromList  [  (procIdP, procDefP)
                                , (procIdQ, procDefQ)]
 
-     varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-     varIdOp1QAs = VarId (T.pack "op1$Q$A$s") 0 intSort
-     varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-     varIdOp2QAs = VarId (T.pack "op2$Q$A$s") 0 intSort
-     varIdOp3pcQ = VarId (T.pack "op3$pc$Q") 0 intSort
-     varIdOp3QAs = VarId (T.pack "op3$Q$A$s") 0 intSort
+     varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+     varIdOp1QAs = VarId (T.pack "op1$Q$A$s") 0 sortIdInt
+     varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+     varIdOp2QAs = VarId (T.pack "op2$Q$A$s") 0 sortIdInt
+     varIdOp3pcQ = VarId (T.pack "op3$pc$Q") 0 sortIdInt
+     varIdOp3QAs = VarId (T.pack "op3$Q$A$s") 0 sortIdInt
      vexprOp1pcQ = cstrVar varIdOp1pcQ
      --vexprOp1QAs = cstrVar varIdOp1QAs
      vexprOp2pcQ = cstrVar varIdOp2pcQ
@@ -2630,9 +2631,9 @@ testThreeOperandsDiffChannelsGEN = TestCase $
                              , (procIdQ, procDefQ)
                              , (procIdR, procDefR)]
 
-   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 intSort
+   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 sortIdInt
    vexprOp1pcQ = cstrVar varIdOp1pcQ
    vexprOp2pcQ = cstrVar varIdOp2pcQ
    vexprOp3pcR = cstrVar varIdOp3pcR
@@ -2777,7 +2778,7 @@ testThreeOperandsDiffChannels1 = TestCase $
  assertBool "test three operands - different channels"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
  where
    procInst'' = procInst procIdP [chanIdA0, chanIdB0] []
-   procIdP = procIdGen "P" [chanIdA0] []
+   procIdP = procIdGen "P" [chanIdA0, chanIdB0] []
    procIdQ = procIdGen "Q" [chanIdA0] []
    procIdR = procIdGen "R" [chanIdB0] []
 
@@ -2797,9 +2798,9 @@ testThreeOperandsDiffChannels1 = TestCase $
                              , (procIdQ, procDefQ)
                              , (procIdR, procDefR)]
 
-   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 intSort
+   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 sortIdInt
    vexprOp1pcQ = cstrVar varIdOp1pcQ
    vexprOp2pcQ = cstrVar varIdOp2pcQ
    vexprOp3pcR = cstrVar varIdOp3pcR
@@ -2936,7 +2937,7 @@ testThreeOperandsDiffChannels2 = TestCase $
  assertBool "test three operands - different channels"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
  where
    procInst'' = procInst procIdP [chanIdA0, chanIdB0] []
-   procIdP = procIdGen "P" [chanIdA0] []
+   procIdP = procIdGen "P" [chanIdA0, chanIdB0] []
    procIdQ = procIdGen "Q" [chanIdA0] []
    procIdR = procIdGen "R" [chanIdB0] []
 
@@ -2956,9 +2957,9 @@ testThreeOperandsDiffChannels2 = TestCase $
                              , (procIdQ, procDefQ)
                              , (procIdR, procDefR)]
 
-   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 intSort
+   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 sortIdInt
    vexprOp1pcQ = cstrVar varIdOp1pcQ
    vexprOp2pcQ = cstrVar varIdOp2pcQ
    vexprOp3pcR = cstrVar varIdOp3pcR
@@ -3002,7 +3003,7 @@ testThreeOperandsDiffChannels3 = TestCase $
  assertBool "test three operands - different channels" $ eqProcDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
  where
    procInst'' = procInst procIdP [chanIdA0, chanIdB0] []
-   procIdP = procIdGen "P" [chanIdA0] []
+   procIdP = procIdGen "P" [chanIdA0, chanIdB0] []
    procIdQ = procIdGen "Q" [chanIdA0] []
    procIdR = procIdGen "R" [chanIdB0] []
 
@@ -3022,9 +3023,9 @@ testThreeOperandsDiffChannels3 = TestCase $
                              , (procIdQ, procDefQ)
                              , (procIdR, procDefR)]
 
-   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 intSort
+   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 sortIdInt
    vexprOp1pcQ = cstrVar varIdOp1pcQ
    vexprOp2pcQ = cstrVar varIdOp2pcQ
    vexprOp3pcR = cstrVar varIdOp3pcR
@@ -3073,7 +3074,7 @@ testThreeOperandsDiffChannels4 = TestCase $
  assertBool "test three operands - different channels" $ eqProcDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
  where
    procInst'' = procInst procIdP [chanIdA0, chanIdB0] []
-   procIdP = procIdGen "P" [chanIdA0] []
+   procIdP = procIdGen "P" [chanIdA0, chanIdB0] []
    procIdQ = procIdGen "Q" [chanIdA0] []
    procIdR = procIdGen "R" [chanIdB0] []
 
@@ -3093,9 +3094,9 @@ testThreeOperandsDiffChannels4 = TestCase $
                              , (procIdQ, procDefQ)
                              , (procIdR, procDefR)]
 
-   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 intSort
+   varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+   varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
+   varIdOp3pcR = VarId (T.pack "op3$pc$R") 0 sortIdInt
    --vexprOp1pcQ = cstrVar varIdOp1pcQ
    --vexprOp2pcQ = cstrVar varIdOp2pcQ
    --vexprOp3pcR = cstrVar varIdOp3pcR
@@ -3139,8 +3140,8 @@ testChannelInst = TestCase $
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
-      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 sortIdInt
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 sortIdInt
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
@@ -3210,8 +3211,8 @@ testChannelInst2 = TestCase $
       procDefs' = Map.fromList  [  (procIdP, procDefP)
                                ,  (procIdQ, procDefQ)]
 
-      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
+      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp2pcQ = cstrVar varIdOp2pcQ
 
@@ -3296,8 +3297,8 @@ testChannelInst3 = TestCase $
       procDefs' = Map.fromList  [  (procIdP, procDefP)
                                ,  (procIdQ, procDefQ)]
 
-      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
+      varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 sortIdInt
+      varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 sortIdInt
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp2pcQ = cstrVar varIdOp2pcQ
 

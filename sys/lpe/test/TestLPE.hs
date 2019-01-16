@@ -20,7 +20,7 @@ import qualified Data.Text         as T
 import VarId
 import Constant
 import ValExpr
-
+import SortId
 import LPEfunc
 
 import TestDefinitions
@@ -447,8 +447,8 @@ testProcDefIdentity = TestCase $
       procDefQ = ProcDef [chanIdA] [varIdX] (actionPref actOfferAExclamX stop)
 
       procIdPlpe = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdPcP, varIdQAx, varIdQBX]
-      varIdQAx = VarId (T.pack "Q$A$x") 333 intSort
-      varIdQBX = VarId (T.pack "Q$B$x") 334 intSort
+      varIdQAx = VarId (T.pack "Q$A$x") 333 sortIdInt
+      varIdQBX = VarId (T.pack "Q$B$x") 334 sortIdInt
       vexprQAx = cstrVar varIdQAx
       vexprQBx = cstrVar varIdQBX
 
@@ -534,8 +534,8 @@ testParamsUnique = TestCase $
       procDefR = ProcDef [chanIdA] [varIdX] (actionPref actOfferAExclamX stop)
 
       procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP, varIdQAx, varIdRAx]
-      varIdQAx = VarId (T.pack "Q$A$x") 433 intSort
-      varIdRAx = VarId (T.pack "R$A$x") 434 intSort
+      varIdQAx = VarId (T.pack "Q$A$x") 433 sortIdInt
+      varIdRAx = VarId (T.pack "R$A$x") 434 sortIdInt
       vexprQAx = cstrVar varIdQAx
       vexprRAx = cstrVar varIdRAx
 
@@ -673,9 +673,9 @@ testMultiAction = TestCase $
                                                 ))
 
       procIdPlpe = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdPcP, varIdPABs, varIdPgnf1ABs, varIdPgnf1ABx]
-      varIdPABs = VarId (T.pack "P$A$B$s") 633 intSort
-      varIdPgnf1ABs = VarId (T.pack "P$gnf1$A$B$P$gnf1$s") 634 intSort
-      varIdPgnf1ABx = VarId (T.pack "P$gnf1$A$B$P$gnf1$x") 635 intSort
+      varIdPABs = VarId (T.pack "P$A$B$s") 633 sortIdInt
+      varIdPgnf1ABs = VarId (T.pack "P$gnf1$A$B$P$gnf1$s") 634 sortIdInt
+      varIdPgnf1ABx = VarId (T.pack "P$gnf1$A$B$P$gnf1$x") 635 sortIdInt
 
       vexprPABs = cstrVar varIdPABs
       vexprPgnf1ABs = cstrVar varIdPgnf1ABs
@@ -800,14 +800,14 @@ testLPEPar = TestCase $
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
       -- pc$P, P$pre1$A$op1$pc$P$pre1$op1, P$pre1$A$op1$P$pre1$x, P$pre1$A$op2$pc$P$pre1$op2, P$pre1$A$op2$P$pre1$x) :=
-      varIdpcP = VarId (T.pack "pc$P") 700 intSort
-      varIdOp1pc = VarId (T.pack "P$pre1$A$op1$pc$P$pre1$op1") 701 intSort
+      varIdpcP = VarId (T.pack "pc$P") 700 sortIdInt
+      varIdOp1pc = VarId (T.pack "P$pre1$A$op1$pc$P$pre1$op1") 701 sortIdInt
 
-      varIdOp1x = VarId (T.pack "P$pre1$A$op1$P$pre1$op1$A$x") 733 intSort
+      varIdOp1x = VarId (T.pack "P$pre1$A$op1$P$pre1$op1$A$x") 733 sortIdInt
 
 
-      varIdOp2pc = VarId (T.pack "P$pre1$A$op2$pc$P$pre1$op2") 800 intSort
-      varIdOp2x = VarId (T.pack "P$pre1$A$op2$P$pre1$op2$A$x") 833 intSort
+      varIdOp2pc = VarId (T.pack "P$pre1$A$op2$pc$P$pre1$op2") 800 sortIdInt
+      varIdOp2x = VarId (T.pack "P$pre1$A$op2$P$pre1$op2$A$x") 833 sortIdInt
 
       vexprpcP = cstrVar varIdpcP
       vexprOp1pc = cstrVar varIdOp1pc
@@ -865,7 +865,7 @@ testLPEPar = TestCase $
 
 -- chanIdA3 = ChanId    { ChanId.name = T.pack "A"
 --                     , ChanId.unid = 2
---                     , ChanId.chansorts = [intSort, intSort, intSort]
+--                     , ChanId.chansorts = [sortIdInt, sortIdInt, sortIdInt]
 --                     }
 
 -- -- action: A?x?y?z
@@ -883,7 +883,7 @@ testLPEPar = TestCase $
 -- testMultiChanOffer = TestCase $
 --       assertBool "multi chan offer" (eqProcDef (Just (procInst, procDefP)) (lpeTransformFunc procInst'' procDefs))
 --       where
---       varIdS = VarId (T.pack "s") 866 intSort
+--       varIdS = VarId (T.pack "s") 866 sortIdInt
 --       vexprS = cstrVar varIdS
 --       procInst'' = procInst procIdP [chanIdA3, chanIdB] [int1]
 --       procIdP = procIdGen "P" [chanIdA3, chanIdB] [varIdS]
@@ -907,9 +907,9 @@ testLPEPar = TestCase $
 
 
 --       -- procIdPlpe = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdPcP, varIdPABs, varIdPgnf1ABs, varIdPgnf1ABx]
---       -- varIdPABs = VarId (T.pack "P$A$B$s") 933 intSort
---       -- varIdPgnf1ABs = VarId (T.pack "P$gnf1$A$B$s") 934 intSort
---       -- varIdPgnf1ABx = VarId (T.pack "P$gnf1$A$B$x") 935 intSort
+--       -- varIdPABs = VarId (T.pack "P$A$B$s") 933 sortIdInt
+--       -- varIdPgnf1ABs = VarId (T.pack "P$gnf1$A$B$s") 934 sortIdInt
+--       -- varIdPgnf1ABx = VarId (T.pack "P$gnf1$A$B$x") 935 sortIdInt
 
 --       -- vexprPABs = cstrVar varIdPABs
 --       -- vexprPgnf1ABs = cstrVar varIdPgnf1ABs
@@ -966,7 +966,7 @@ testLPEHide1 = TestCase $
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
       varIdPcPpre1 :: VarId
-      varIdPcPpre1 = VarId (T.pack "P$pre1$A$pc$P$pre1") 1000 intSort
+      varIdPcPpre1 = VarId (T.pack "P$pre1$A$pc$P$pre1") 1000 sortIdInt
       vexprPcPpre1 :: VExpr
       vexprPcPpre1 = cstrVar varIdPcPpre1
 
@@ -1067,11 +1067,11 @@ testLPEHide2 = TestCase $
                                 ,  (procIdQ, procDefQ)]
 
 
-      varIdPcPpre1 = VarId (T.pack "P$pre1$A$pc$P$pre1") 1100 intSort
+      varIdPcPpre1 = VarId (T.pack "P$pre1$A$pc$P$pre1") 1100 sortIdInt
       vexprPcPpre1 = cstrVar varIdPcPpre1
-      varIdPpre1QAx = VarId (T.pack "P$pre1$A$Q$A$x") 1200 intSort
+      varIdPpre1QAx = VarId (T.pack "P$pre1$A$Q$A$x") 1200 sortIdInt
       -- vexprPpre1QAx = cstrVar varIdPpre1QAx
-      varIdA1' = VarId (T.pack "A$1_5") 1234 intSort
+      varIdA1' = VarId (T.pack "A$1_5") 1234 sortIdInt
       vexprA1' = cstrVar varIdA1'
 
       procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP, varIdPcPpre1, varIdPpre1QAx]
@@ -1280,7 +1280,7 @@ testEnable2 = TestCase $
                               , constraint = cstrConst (Cbool True)
                   }
 
-      varIdid = VarId (T.pack "id") 1333 intSort
+      varIdid = VarId (T.pack "id") 1333 sortIdInt
       vexprid = cstrVar varIdid
       -- action: A!id
       actOfferAid :: ActOffer
@@ -1293,10 +1293,10 @@ testEnable2 = TestCase $
       }
     
 
-      varIdExit1 = VarId (T.pack "EXIT$1") 122 intSort
+      varIdExit1 = VarId (T.pack "EXIT$1") 122 sortIdInt
       vexprExit1 = cstrVar varIdExit1
 
-      varIdPenableId = VarId (T.pack "P$pre1$rhs$A$id") 123 intSort
+      varIdPenableId = VarId (T.pack "P$pre1$rhs$A$id") 123 sortIdInt
       vexprPenableId = cstrVar varIdPenableId
 
       procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit1 stop)
@@ -1365,7 +1365,7 @@ testLPEGuardStop = TestCase $
                                                       stop)
             procDefs' = Map.fromList  [  (procIdP, procDefP)]
       
-            varIdpcP = VarId (T.pack "pc$P") 2000 intSort
+            varIdpcP = VarId (T.pack "pc$P") 2000 sortIdInt
             procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
             procInstP' = procInst procIdP' [chanIdA] [int0]
             
@@ -1397,7 +1397,7 @@ testLPEGuardActionPref = TestCase $
                                                       (actionPref actOfferAx stop))
             procDefs' = Map.fromList  [  (procIdP, procDefP)]
       
-            varIdpcP = VarId (T.pack "pc$P") 2100 intSort
+            varIdpcP = VarId (T.pack "pc$P") 2100 sortIdInt
             procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
             procInstP' = procInst procIdP' [chanIdA] [int0]
             
@@ -1438,7 +1438,7 @@ testLPEGuardChoice = TestCase $
                                                             ]))
             procDefs' = Map.fromList  [  (procIdP, procDefP)]
       
-            varIdpcP = VarId (T.pack "pc$P") 2200 intSort
+            varIdpcP = VarId (T.pack "pc$P") 2200 sortIdInt
             procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
             procInstP' = procInst procIdP' [chanIdA] [int0]
             
@@ -1489,7 +1489,7 @@ testLPEGuardProcInst = TestCase $
             procDefs' = Map.fromList  [  (procIdP, procDefP)
                                        , (procIdQ, procDefQ)]
       
-            varIdpcP = VarId (T.pack "pc$P") 2300 intSort
+            varIdpcP = VarId (T.pack "pc$P") 2300 sortIdInt
             procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
             procInstP' = procInst procIdP' [chanIdA] [int0]
             
@@ -1534,11 +1534,11 @@ testLPEGuardPar = TestCase $
             procDefs' = Map.fromList  [  (procIdP, procDefP)]
       
 
-            varIdOp1pcPop1 = VarId (T.pack "P$pre1$A$op1$pc$P$pre1$op1") 2400 intSort
-            varIdOp2pcPop2 = VarId (T.pack "P$pre1$A$op2$pc$P$pre1$op2") 2500 intSort
+            varIdOp1pcPop1 = VarId (T.pack "P$pre1$A$op1$pc$P$pre1$op1") 2400 sortIdInt
+            varIdOp2pcPop2 = VarId (T.pack "P$pre1$A$op2$pc$P$pre1$op2") 2500 sortIdInt
             vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
             vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
-            varIdpcP = VarId (T.pack "pc$P") 2600 intSort
+            varIdpcP = VarId (T.pack "pc$P") 2600 sortIdInt
             procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP, varIdOp1pcPop1, varIdOp2pcPop2]
             procInstP' = procInst procIdP' [chanIdA] [int0, anyInt, anyInt]
             
@@ -1583,7 +1583,7 @@ testLPEGuardHide = TestCase $
             procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
             varIdPcPpre1 :: VarId
-            varIdPcPpre1 = VarId (T.pack "P$pre1$A$pc$P$pre1") 2700 intSort
+            varIdPcPpre1 = VarId (T.pack "P$pre1$A$pc$P$pre1") 2700 sortIdInt
             vexprPcPpre1 :: VExpr
             vexprPcPpre1 = cstrVar varIdPcPpre1
 
@@ -1684,11 +1684,11 @@ testLPEDisable1 = TestCase $
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
       varIdPdisable' :: VarId
-      varIdPdisable' = VarId (T.pack "P$pre1$A$P$pre1$disable$lhs") 2833 intSort
+      varIdPdisable' = VarId (T.pack "P$pre1$A$P$pre1$disable$lhs") 2833 sortIdInt
       varIdPpcLHS' :: VarId
-      varIdPpcLHS' = VarId (T.pack "P$pre1$A$P$pre1$lhs$pc$P$pre1$lhs") 2834 intSort
+      varIdPpcLHS' = VarId (T.pack "P$pre1$A$P$pre1$lhs$pc$P$pre1$lhs") 2834 sortIdInt
       varIdPpcRHS' :: VarId
-      varIdPpcRHS' = VarId (T.pack "P$pre1$A$P$pre1$rhs$pc$P$pre1$rhs") 2835 intSort
+      varIdPpcRHS' = VarId (T.pack "P$pre1$A$P$pre1$rhs$pc$P$pre1$rhs") 2835 sortIdInt
       
       vexprPdisable' :: VExpr
       vexprPdisable' = cstrVar varIdPdisable'
@@ -1773,11 +1773,11 @@ testLPEDisableRec = TestCase $
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
       varIdPdisable' :: VarId
-      varIdPdisable' = VarId (T.pack "P$pre1$A$B$P$pre1$disable$lhs") 3033 intSort
+      varIdPdisable' = VarId (T.pack "P$pre1$A$B$P$pre1$disable$lhs") 3033 sortIdInt
       varIdPpcLHS' :: VarId
-      varIdPpcLHS' = VarId (T.pack "P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs") 3034 intSort
+      varIdPpcLHS' = VarId (T.pack "P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs") 3034 sortIdInt
       varIdPpcRHS' :: VarId
-      varIdPpcRHS' = VarId (T.pack "P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs") 3035 intSort
+      varIdPpcRHS' = VarId (T.pack "P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs") 3035 sortIdInt
       
       vexprPdisable' :: VExpr
       vexprPdisable' = cstrVar varIdPdisable'
