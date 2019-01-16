@@ -40,7 +40,7 @@ then
 else
     echo "z3 not found in cache or different version than z3-4.8.5-nightly"
     rm $CACHE_DIR/z3 -rf
-    curl -L https://github.com/TorXakis/Dependencies/releases/download/v4.8.5-nightly/z3-4.8.5.b63a0e31d3e2-x64-ubuntu-14.04.zip -o z3.zip
+    curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.8.5-nightly/z3-4.8.5.b63a0e31d3e2-x64-ubuntu-14.04.zip -o z3.zip
     unzip z3.zip
     Z3NAME=$(ls -d z3-*/)
     echo $Z3NAME
