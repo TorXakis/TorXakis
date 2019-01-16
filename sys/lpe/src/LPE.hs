@@ -44,7 +44,6 @@ import TranslatedProcDefs
 
 import TxsDefs
 import Constant
-import StdTDefs (stdSortTable)
 
 import ChanId
 import ProcId
@@ -75,10 +74,6 @@ type ProcToParams = Map.Map Proc [VarId]
 
 type ChanMapping = Map.Map ChanId ChanId
 type ParamMapping = Map.Map VarId VExpr
-
-intSort :: SortId
-intSort = fromMaybe (error "LPE module: could not find standard IntSort") (Map.lookup (T.pack "Int") stdSortTable)
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- Helpers :
@@ -807,10 +802,6 @@ createProcDef bexpr postfix procId procDefs' = do
 -- we assume that the top-level bexpr of the called ProcDef is Enable
 preGNFEnable :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
 preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translatedProcDefs procDefs' = do
-    let -- 
-        ProcDef chansDef paramsDef bexpr = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procIdInst procDefs')
-        Enable bexprL acceptChanOffers bexprR = TxsDefs.view bexpr
-        
     -- translate left bexpr of Enable to LPE first
     (procInstLHS, procDefs'') <- createProcDef bexprL "lhs" procIdInst procDefs'
     (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInst_lpe paramsInst_lpe, procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
@@ -822,8 +813,8 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
 
         -- make sure RHS is a ProcInst, otherwise create new ProcDef and ProcInst
         (procInstR, procDefs4) = case bexprR of 
-                                        (TxsDefs.view -> ProcInst _procIdInstR _chansInst _paramsInst) -> 
-                                                -- if already ProcInst: return unchanged
+                                        (TxsDefs.view -> ProcInst{}) -> 
+                                                -- if already ProcInst: return as is (arguments will be updated later)
                                                 (bexprR, procDefs''')
                                         _ ->    -- else create create new ProcDef of bexprR
                                                 let paramsAccept = extractVarIdsChanOffers acceptChanOffers
@@ -835,15 +826,15 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                                                                             -- concatenate the original params with the varIds passed via ACCEPT to extend their scope into the RHS of ENABLE
                                                                             ProcId.procvars = varsort <$> paramsDef ++ paramsAccept} 
                                                     -- create ProcInst, translate params to VExprs
-                                                    paramsDef' = map cstrVar paramsDef
+                                                    paramsDef' = map cstrVar (paramsDef ++ paramsAccept)
                                                     procInstR' = procInst procIdR chansDef paramsDef'
                                                     -- put created ProcDefs in the ProcDefs
                                                     procDefsNew = Map.insert procIdR procDefR procDefs''' in
                                                 (procInstR', procDefsNew)
 
         -- replace EXITs in LHS with ProcInst of RHS
-        steps_replaced = map (replaceExits procInstR) stepsL 
-        steps_replaced' = map (updateProcInst procIdRes procIdLHS_lpe paramsDef) steps_replaced                                                        
+        steps_replaced = map (replaceExits procInstR) stepsL
+        steps_replaced' = map (updateProcInst procIdRes procIdLHS_lpe paramsDef) steps_replaced
 
         -- create new ProcDef for result
         paramsDefRes = paramsDef ++ paramsDefL_lpe
@@ -863,7 +854,10 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
     --             "\n full: " ++ show resProcDef ++ 
     --             "\n all ProcDefs: " ++ pshow_procDefs procDefsRes) $ 
     return (procInstRes, procDefsRes')
-    where   
+    where
+        ProcDef chansDef paramsDef bexpr = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procIdInst procDefs')
+        Enable bexprL acceptChanOffers bexprR = TxsDefs.view bexpr
+    
         -- just for the steps with EXIT -> <>  replace with the ProcInst
         replaceExits :: BExpr -> BExpr -> BExpr 
         replaceExits (TxsDefs.view -> ProcInst procId chanIds params) bexpr'@(TxsDefs.view -> ActionPref actOffer'@ActOffer{offers = offers'} _bexpr) = --{ offers = Set.fromList [Offer { chanid = chanIdExit, chanoffers = []}]}
@@ -873,36 +867,41 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                     [] ->   -- no EXIT found: just return original BExpr
                             bexpr'
                     [o] ->  -- found one EXIT: replace, but keep rest
-                            let exitParams = extractVarIdsOffer o [] in 
-                            actionPref 
-                                actOffer'{    offers = Set.fromList offersRest
-                                            , hiddenvars = Set.fromList exitParams} 
-                                (procInst procId chanIds (params ++ map cstrVar exitParams))
+                            let exitParams   = extractVarIdsOffer o []
+                                paramsAccept = extractVarIdsChanOffers acceptChanOffers
+                              in
+                                if length exitParams == length paramsAccept
+                                then actionPref 
+                                        actOffer'{ offers = Set.fromList offersRest
+                                                 , hiddenvars = Set.fromList exitParams}
+                                                 -- constraint does not contain paramsAccept
+                                         -- TODO: properly initialise funcDefs param of subst
+                                        (procInst procId chanIds (Subst.subst (Map.fromList (zip paramsAccept (map cstrVar exitParams))) (Map.fromList []) params))
+                                else error ("Different length of exitParams = " ++ show exitParams ++ "\n and paramsAccept = " ++ show paramsAccept)
                     _   ->  -- found multiple EXITs: not supported
                             error "Found multiple EXIT in single action offer. Not supported."
             where   
                 isExit :: Offer -> Bool
                 isExit o = case o of 
-                            Offer { chanid = chid} | chid == chanIdExit -> True
-                            _                                           -> False
+                            Offer { chanid = chid } | chid == chanIdExit -> True
+                            _                                            -> False
         replaceExits _ _ = error "replaceExits: unknown input"  
     
         -- update procInsts of LHS steps to signature of new overall ProcDef 
         updateProcInst :: ProcId -> ProcId -> [VarId] -> BExpr -> BExpr
-        updateProcInst procIdNew procIdToReplace paramsDef bexpr'@(TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> ProcInst procIdInst' chansInst' paramsInst')) =
+        updateProcInst procIdNew procIdToReplace paramsDef' bexpr'@(TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> ProcInst procIdInst' chansInst' paramsInst')) =
             if ( (procIdInst', chansInst') `notElem` lLPE translatedProcDefs )
                && (procIdInst' == procIdToReplace)
                             then    -- we are NOT treating a recursive call to a ProcDef that's still in translation up the AST
                                     -- and we are treating a recursive call to the LHS (i.e. is locally recursive call)
-                                    let     paramsInst'' = map cstrVar paramsDef ++ paramsInst'
+                                    let     paramsInst'' = map cstrVar paramsDef' ++ paramsInst'
                                             procInst'' = procInst procIdNew chansInst' paramsInst'' in
                                     actionPref actOffer procInst''
                             else    bexpr'
-                                                
-        updateProcInst _ _ _ _ = error "updateProcInst: unknown input"  
+        updateProcInst _ _ _ _ = error "updateProcInst: unknown input"
 
 preGNFEnable _ _ _ = error "preGNFEnable: was called with something other than a ProcInst"
-    
+
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -944,7 +943,7 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
 
     disableUnid <- EnvB.newUnid
     
-    let varIdDisable = VarId name' disableUnid intSort
+    let varIdDisable = VarId name' disableUnid sortIdInt
         stepsLHS' = map (updateProcInst 0 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed
                         . addDisableConstraint varIdDisable) 
                         (extractSteps bexprLHS_lpe_subst)
@@ -1201,7 +1200,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) tr
       -- create program counter mapping
       pcUnid <- EnvB.newUnid
       let pcName = "pc$" ++ T.unpack (ProcId.name procIdInst)
-      let varIdPC =  VarId (T.pack pcName) pcUnid intSort
+      let varIdPC =  VarId (T.pack pcName) pcUnid sortIdInt
       let pcMapping = Map.fromList $ zip calledProcs [0..]
 
       (steps, params, procToParams) <- translateProcs calledProcs varIdPC pcMapping procDefsGnf

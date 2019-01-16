@@ -25,6 +25,7 @@ import Constant
 import ValExpr
 import TranslatedProcDefs
 import LPEfunc
+import SortId
 import TestDefinitions
 
 -- import Debug.Trace
@@ -296,7 +297,7 @@ testDisable4 = TestCase $
 
 
       varIdPlhsP1y :: VarId
-      varIdPlhsP1y = VarId (T.pack "P$lhs$P1$A$y") 33 intSort
+      varIdPlhsP1y = VarId (T.pack "P$lhs$P1$A$y") 33 sortIdInt
       vexprPlhsP1y :: VExpr
       vexprPlhsP1y = cstrVar varIdPlhsP1y
 --          
@@ -423,12 +424,12 @@ testDisable5 = TestCase $
 
 
       varIdPlhsX :: VarId
-      varIdPlhsX = VarId (T.pack "P$lhs$P$lhs$A$x") 33 intSort
+      varIdPlhsX = VarId (T.pack "P$lhs$P$lhs$A$x") 33 sortIdInt
       vexprPlhsX :: VExpr
       vexprPlhsX = cstrVar varIdPlhsX
 
       varIdPrhsX :: VarId
-      varIdPrhsX = VarId (T.pack "P$rhs$P$rhs$A$x") 33 intSort
+      varIdPrhsX = VarId (T.pack "P$rhs$P$rhs$A$x") 33 sortIdInt
       vexprPrhsX :: VExpr
       vexprPrhsX = cstrVar varIdPrhsX
 
