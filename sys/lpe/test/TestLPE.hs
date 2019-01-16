@@ -9,7 +9,7 @@ module TestLPE
 testLPEList
 )
 where
- 
+
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -1003,8 +1003,8 @@ testLPEHide1 = TestCase $
 
 -- check for correct var substitution 
 -- 
--- P[A]() := HIDE [A] IN A?x [x == 0]-> Q(x) NI 
--- Q[]() := STOP
+-- P[A]() := HIDE [A] IN A?x [x == 0]-> Q[A](x) NI 
+-- Q[A](x) := STOP
 -- with procInst = P[A]()
 -- LPE:
 --    first GNF 
@@ -1057,8 +1057,8 @@ testLPEHide2 = TestCase $
       res = lpeTransformFunc procInst'' procDefs'
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      procIdQ = procIdGen "Q" [chanIdA] []
-                                    -- HIDE [A] IN A?x [x == 0]-> Q(x) NI 
+      procIdQ = procIdGen "Q" [chanIdA] [varIdX]
+                                    -- HIDE [A] IN A?x [x == 0]-> Q[A](x) NI 
       procDefP = ProcDef [chanIdA] [] (hide (Set.singleton chanIdA) (actionPref 
                                                       actOfferAx {constraint = cstrEqual vexprX int0} 
                                                       (procInst procIdQ [chanIdA] [vexprX])))
