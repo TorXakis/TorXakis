@@ -116,9 +116,9 @@ valueFromText ctx s t =
                 Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
                                                    (Map.lookup a (adtDefs ctx))
                                 c = RefByName n'
-                            in case Map.lookup c ( (constructors . viewADTDef) adtDef ) of
+                            in case Map.lookup c (constructors adtDef) of
                                     Nothing   -> Left $ MinError (T.pack "Constructor " <> n <> T.pack " not defined for ADT " <> (TorXakis.Name.toText . toName) a)
-                                    Just cDef -> let fs = (fields . viewConstructorDef) cDef
+                                    Just cDef -> let fs = fields cDef
                                                      actual = length fs
                                                      expected = length ps
                                                   in if actual == expected

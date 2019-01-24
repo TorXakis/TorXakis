@@ -122,7 +122,7 @@ instance SortContext MinimalTestSortContext where
                         ra = RefByName (getName adef) in
                         if Map.member ra iMap 
                             then error ("Invariant violated: adding already contained ADTDef " ++ show adef)
-                            else Map.insert ra (Map.fromList (map (\(rc,c) -> (rc, getConstructorSize sMap c) ) ((Map.toList . constructors . viewADTDef) adef) ) ) iMap
+                            else Map.insert ra (Map.fromList (map (\(rc,c) -> (rc, getConstructorSize sMap c) ) ((Map.toList . constructors) adef) ) ) iMap
 
             addToMapSortSize :: Map.Map Sort Int -> [ADTDef] -> Map.Map Sort Int
             addToMapSortSize defined adefs =
@@ -145,14 +145,14 @@ instance SortContext MinimalTestSortContext where
                         cs -> Just $ 1 + minimum cs
                       where
                         knownConstructorSizes :: [Maybe Int]
-                        knownConstructorSizes = map (getKnownConstructorSize mp) ( (Map.elems . constructors . viewADTDef) adef)
+                        knownConstructorSizes = map (getKnownConstructorSize mp) ( (Map.elems . constructors) adef)
 
             getKnownConstructorSize :: Map.Map Sort Int -> ConstructorDef -> Maybe Int
             getKnownConstructorSize defined cdef =
                     foldl max 0 <$> sequence fieldSizes
                 where
                     fieldSizes :: [Maybe Int]
-                    fieldSizes = map ( (`Map.lookup` defined) . sort ) ( (fields . viewConstructorDef) cdef )
+                    fieldSizes = map ( (`Map.lookup` defined) . sort ) ( fields cdef )
 
             getConstructorSize :: Map.Map Sort Int -> ConstructorDef -> Int
             getConstructorSize defined cdef = fromMaybe (error ("Invariant violated: unable to calculate size of ConstructorDef " ++ show cdef) )

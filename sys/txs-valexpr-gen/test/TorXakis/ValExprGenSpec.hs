@@ -25,22 +25,22 @@ import           Test.Hspec.QuickCheck (modifyMaxSuccess, modifyMaxSize)
 import           Test.QuickCheck
 
 import           TorXakis.Sort
+import           TorXakis.TestSortContext
 import           TorXakis.TestValExprContext
 import           TorXakis.ValExpr
 import           TorXakis.ValExprGen
 import           TorXakis.Value
-import           TorXakis.VarDef
 
-propertyInContext  :: (MinimalTestValExprContext MinimalVarDef -> Gen Bool) -> Gen Bool
+propertyInContext  :: (MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) -> Gen Bool) -> Gen Bool
 propertyInContext prop = 
     -- TODO: add to context, to generate more value expressions of a given type
-    let ctx = empty :: MinimalTestValExprContext MinimalVarDef in
+    let ctx = empty :: MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) in
         prop ctx
 
 -- | min (min x) == x
-prop_MkUnaryMinus_id :: MinimalTestValExprContext MinimalVarDef -> Gen Bool
+prop_MkUnaryMinus_id :: MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) -> Gen Bool
 prop_MkUnaryMinus_id ctx = do
-        ve <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpr
+        ve <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         return $ case mkUnaryMinus ctx ve of
                         Left e    -> trace ("\nUnexpected error in generator 1 " ++ show e) False
                         Right mve -> case mkUnaryMinus ctx mve of
@@ -48,9 +48,9 @@ prop_MkUnaryMinus_id ctx = do
                                         Right mmve -> ve == mmve
 
 -- | a \/ not a <==> True
-prop_AOrNotA :: MinimalTestValExprContext MinimalVarDef -> Gen Bool
+prop_AOrNotA :: MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) -> Gen Bool
 prop_AOrNotA ctx = do
-        a <- arbitraryValExprOfSort ctx SortBool :: Gen ValExpr
+        a <- arbitraryValExprOfSort ctx SortBool :: Gen ValExpression
         return $ case mkNot ctx a of
                         Left e   -> trace ("\nUnexpected error with mkNot " ++ show e) False
                         Right na -> case mkOr ctx [a,na] of
@@ -60,9 +60,9 @@ prop_AOrNotA ctx = do
                                                         x                   -> trace ("\nWrong value = " ++ show x) False
 
 -- | not a => a <==> a
-prop_NotAImpliesAEqualsA :: MinimalTestValExprContext MinimalVarDef -> Gen Bool
+prop_NotAImpliesAEqualsA :: MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) -> Gen Bool
 prop_NotAImpliesAEqualsA ctx = do
-        a <- arbitraryValExprOfSort ctx SortBool :: Gen ValExpr
+        a <- arbitraryValExprOfSort ctx SortBool :: Gen ValExpression
         return $ case mkNot ctx a of
                         Left e   -> trace ("\nUnexpected error with mkNot " ++ show e) False
                         Right na -> case mkImplies ctx na a of
@@ -70,9 +70,9 @@ prop_NotAImpliesAEqualsA ctx = do
                                         Right v -> a == v
 
 -- | a => not a <==> not a
-prop_AImpliesNotAEqualsNotA :: MinimalTestValExprContext MinimalVarDef -> Gen Bool
+prop_AImpliesNotAEqualsNotA :: MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) -> Gen Bool
 prop_AImpliesNotAEqualsNotA ctx = do
-        a <- arbitraryValExprOfSort ctx SortBool :: Gen ValExpr
+        a <- arbitraryValExprOfSort ctx SortBool :: Gen ValExpression
         return $ case mkNot ctx a of
                         Left e   -> trace ("\nUnexpected error with mkNot " ++ show e) False
                         Right na -> case mkImplies ctx a na of
@@ -80,33 +80,33 @@ prop_AImpliesNotAEqualsNotA ctx = do
                                         Right v -> na == v
 
 -- | a >= b <==> b <= a
-prop_GELE :: MinimalTestValExprContext MinimalVarDef -> Gen Bool
+prop_GELE :: MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) -> Gen Bool
 prop_GELE ctx = do
-        a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpr
-        b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpr
+        a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
+        b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         return $ mkGE ctx a b == mkLE ctx b a
 
 -- | a > b <==> b < a
-prop_GTLT :: MinimalTestValExprContext MinimalVarDef -> Gen Bool
+prop_GTLT :: MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) -> Gen Bool
 prop_GTLT ctx = do
-        a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpr
-        b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpr
+        a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
+        b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         return $ mkGT ctx a b == mkLT ctx b a
 
 -- | a > b <==> not (a <= b)
-prop_GTNotLE :: MinimalTestValExprContext MinimalVarDef -> Gen Bool
+prop_GTNotLE :: MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) -> Gen Bool
 prop_GTNotLE ctx = do
-        a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpr
-        b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpr
+        a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
+        b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         return $ case mkLE ctx a b of
                     Left e   -> trace ("\nUnexpected error with mkLE " ++ show e) False
                     Right le -> mkGT ctx a b == mkNot ctx le
 
 -- | a < b <==> not (a >= b)
-prop_LTNotGE :: MinimalTestValExprContext MinimalVarDef -> Gen Bool
+prop_LTNotGE :: MinimalTestValExprContext (MinimalTestFuncContext MinimalTestSortContext) -> Gen Bool
 prop_LTNotGE ctx = do
-        a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpr
-        b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpr
+        a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
+        b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         return $ case mkGE ctx a b of
                     Left e   -> trace ("\nUnexpected error with mkGE " ++ show e) False
                     Right ge -> mkLT ctx a b == mkNot ctx ge

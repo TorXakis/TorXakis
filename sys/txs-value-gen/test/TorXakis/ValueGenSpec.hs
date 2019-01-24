@@ -45,7 +45,7 @@ prop_ConversionText_id ctx = all check <$> listOf1 (arbitraryValue ctx)
     where check :: Value -> Bool
           check v = 
                 let txt = valueToText ctx v
-                    actual = valueFromText ctx (getSort v) txt
+                    actual = valueFromText ctx (getSort ctx v) txt
                   in
                         case actual of
                             Left e   -> trace ("\nParse error " ++ show e ++ " on\n" ++ show txt) False
@@ -57,7 +57,7 @@ prop_ConversionXML_id ctx = all check <$> listOf1 (arbitraryValue ctx)
     where check :: Value -> Bool
           check v = 
                 let xml = valueToXML ctx v
-                    actual = valueFromXML ctx (getSort v) xml
+                    actual = valueFromXML ctx (getSort ctx v) xml
                   in
                         case actual of
                             Left e   -> trace ("\nParse error " ++ show e ++ " on\n" ++ show xml) False

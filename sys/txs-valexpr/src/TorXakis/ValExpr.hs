@@ -19,8 +19,6 @@ module TorXakis.ValExpr
 ( -- * Value Expression
   ValExpressionView (..)
 , ValExpression
-, ValExprView
-, ValExpr
 , view
   -- * Evaluate
 , eval

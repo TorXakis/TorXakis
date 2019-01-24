@@ -160,7 +160,7 @@ instance Ord v => Relabel (BExpressionView v) where
     relabel' m (Interrupt b1 b2)     = Interrupt (relabel' m b1) (relabel' m b2)
     relabel' m (ProcInst p cs vs)    = ProcInst p (map (relabel' m) cs) vs
                                        -- TODO: What to remove only keys or also values? 
-                                       --       What is Relabel (A->B and B-A) on HIDE [A] IN A>-> B NI anyway?
+                                       --       What is Relabel (A->B and B->A) on HIDE [A] IN A>-> B NI anyway?
     relabel' m (Hide cs b)           = case mkRelabelMap (Map.filterWithKey undefined (toMap m)) of
                                             Left e -> error ("Relabel: removing elements from a valid RelabelMap should result in a valid RelabelMap, hence unexpected error:\n" ++ show e)
                                             Right n -> Hide cs (relabel n b)

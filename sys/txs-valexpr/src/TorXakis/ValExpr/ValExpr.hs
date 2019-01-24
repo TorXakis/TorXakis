@@ -24,8 +24,6 @@ module TorXakis.ValExpr.ValExpr
 ( -- * Value Expression
   ValExpressionView (..)
 , ValExpression (..)
-, ValExprView
-, ValExpr
   -- * Evaluate
 , eval
 )
@@ -45,42 +43,43 @@ import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.Value
+import           TorXakis.VarContext
 import           TorXakis.VarDef
 
 -- | ValExpressionView: the public view of value expression 'ValExpression'
-data ValExpressionView v = Vconst    Value
-                         | Vvar      v                                                                        -- Sort is stored to prevent lookup in context
-                         -- generic
-                         | Vequal    (ValExpression v)
-                                     (ValExpression v)
-                         | Vite      (ValExpression v)
-                                     (ValExpression v)
-                                     (ValExpression v)
-                         | Vfunc     FuncSignature [ValExpression v]
-                         | Vpredef   FuncSignature [ValExpression v]
-                         -- Boolean
-                         | Vnot      (ValExpression v)
-                         | Vand      (Set.Set (ValExpression v))
-                         -- Int
-                         | Vdivide   (ValExpression v)
-                                     (ValExpression v)
-                         | Vmodulo   (ValExpression v)
-                                     (ValExpression v)
-                         | Vsum      (Map.Map (ValExpression v) Integer)
-                         | Vproduct  (Map.Map (ValExpression v) Integer)
-                         | Vgez      (ValExpression v)
-                         -- String
-                         | Vlength   (ValExpression v)
-                         | Vat       (ValExpression v)
-                                     (ValExpression v)
-                         | Vconcat   [ValExpression v]
-                         -- Regex
-                         | Vstrinre  (ValExpression v)
-                                     (ValExpression v)
-                         -- ADT
-                         | Vcstr     (RefByName ADTDef) (RefByName ConstructorDef) [ValExpression v]
-                         | Viscstr   (RefByName ADTDef) (RefByName ConstructorDef) (ValExpression v)
-                         | Vaccess   (RefByName ADTDef) (RefByName ConstructorDef) Sort Int (ValExpression v)       -- Sort is stored to prevent lookup in context
+data ValExpressionView = Vconst    Value
+                       | Vvar      (RefByName VarDef)
+                       -- generic
+                       | Vequal    ValExpression
+                                   ValExpression
+                       | Vite      ValExpression
+                                   ValExpression
+                                   ValExpression
+                       | Vfunc     FuncSignature [ValExpression]
+                       | Vpredef   FuncSignature [ValExpression]
+                       -- Boolean
+                       | Vnot      ValExpression
+                       | Vand      (Set.Set ValExpression)
+                       -- Int
+                       | Vdivide   ValExpression
+                                   ValExpression
+                       | Vmodulo   ValExpression
+                                   ValExpression
+                       | Vsum      (Map.Map ValExpression Integer)
+                       | Vproduct  (Map.Map ValExpression Integer)
+                       | Vgez      ValExpression
+                       -- String
+                       | Vlength   ValExpression
+                       | Vat       ValExpression
+                                   ValExpression
+                       | Vconcat   [ValExpression]
+                       -- Regex
+                       | Vstrinre  ValExpression
+                                   ValExpression
+                       -- ADT
+                       | Vcstr     (RefByName ADTDef) (RefByName ConstructorDef) [ValExpression]
+                       | Viscstr   (RefByName ADTDef) (RefByName ConstructorDef) ValExpression
+                       | Vaccess   (RefByName ADTDef) (RefByName ConstructorDef) Int ValExpression
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | ValExpression: value expression
@@ -90,84 +89,84 @@ data ValExpressionView v = Vconst    Value
 -- 2. User can still pattern match on ValExpression using 'ValExpressionView'
 --
 -- 3. Overhead at run-time is zero. See https://wiki.haskell.org/Performance/Data_types#Newtypes
-newtype ValExpression v = ValExpression { -- | View on value expression.
-                                          view :: ValExpressionView v
+newtype ValExpression = ValExpression { -- | View on value expression.
+                                          view :: ValExpressionView
                                         }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-  -- | type synonym ValExpr
-type ValExpr = ValExpression MinimalVarDef
-
--- | type synonym ValExprView
-type ValExprView = ValExpressionView MinimalVarDef
-
 -- | Evaluate the provided value expression.
 -- Either the Right Constant Value is returned or a (Left) error message.
-eval :: Show v => ValExpression v -> Either String Value
+eval :: ValExpression -> Either String Value
 eval = evalView . view
 
-evalView :: Show v => ValExpressionView v -> Either String Value
+evalView :: ValExpressionView -> Either String Value
 evalView (Vconst v) = Right v
 evalView x          = Left $ "Value Expression is not a constant value " ++ show x
 
 -- | SortOf instance
-instance VarDef v => HasSort (ValExpression v) where
-  getSort = getSort . view
+instance VarContext a => HasSort a ValExpression where
+  getSort c = getSort c . TorXakis.ValExpr.ValExpr.view
 
-instance VarDef v => HasSort (ValExpressionView v) where
-    getSort (Vconst val)                                   = getSort val
-    getSort (Vvar v)                                       = getSort v
-    getSort  Vequal { }                                    = SortBool
-    getSort (Vite _cond vexp1 _vexp2)                      = getSort vexp1
-    getSort  Vnot { }                                      = SortBool
-    getSort  Vand { }                                      = SortBool
-    getSort  Vdivide { }                                   = SortInt
-    getSort  Vmodulo { }                                   = SortInt
-    getSort  Vsum { }                                      = SortInt
-    getSort  Vproduct { }                                  = SortInt
-    getSort  Vgez { }                                      = SortBool
-    getSort  Vlength { }                                   = SortInt
-    getSort  Vat { }                                       = SortString
-    getSort  Vconcat { }                                   = SortString
-    getSort  Vstrinre { }                                  = SortBool
-    getSort (Vcstr a _c _vexps)                            = SortADT a
-    getSort  Viscstr { }                                   = SortBool
-    getSort (Vaccess _a _c s _p _vexps)                    = s
-    getSort (Vfunc fs _vexps)                              = returnSort fs
-    getSort (Vpredef fs _vexps)                            = returnSort fs
+instance VarContext a => HasSort a ValExpressionView where
+    getSort ctx (Vconst val)              = getSort ctx val
+    getSort ctx (Vvar r)                  = case HashMap.lookup r (varDefs ctx) of
+                                               Nothing -> error ("getSort: VarDef not found in context " ++ show r)
+                                               Just v  -> getSort ctx v
+    getSort _    Vequal { }               = SortBool
+    getSort ctx (Vite _cond vexp1 _vexp2) = getSort ctx vexp1
+    getSort _    Vnot { }                 = SortBool
+    getSort _    Vand { }                 = SortBool
+    getSort _    Vdivide { }              = SortInt
+    getSort _    Vmodulo { }              = SortInt
+    getSort _    Vsum { }                 = SortInt
+    getSort _    Vproduct { }             = SortInt
+    getSort _    Vgez { }                 = SortBool
+    getSort _    Vlength { }              = SortInt
+    getSort _    Vat { }                  = SortString
+    getSort _    Vconcat { }              = SortString
+    getSort _    Vstrinre { }             = SortBool
+    getSort _   (Vcstr a _c _vexps)       = SortADT a
+    getSort _    Viscstr { }              = SortBool
+    getSort ctx (Vaccess a c p _vexps)    = case HashMap.lookup a (adtDefs ctx) of
+                                               Nothing   -> error ("getSort: ADTDef not found in context " ++ show a)
+                                               Just aDef -> case HashMap.lookup c (constructors aDef) of
+                                                               Nothing   -> error ("getSort: Constructor not found in ADTDef " ++ show c)
+                                                               Just cDef -> getSort ctx ( fields cDef !! p )
+    getSort _   (Vfunc fs _vexps)         = returnSort fs
+    getSort _   (Vpredef fs _vexps)       = returnSort fs
 
-instance VarDef v => FreeVars ValExpression v where
+instance FreeVars ValExpression where
     freeVars = freeVars . view
 
-instance VarDef v => FreeVars ValExpressionView v where
-    freeVars  Vconst{}             = Set.empty
-    freeVars (Vvar v)              = Set.singleton v
-    freeVars (Vequal v1 v2)        = Set.unions $ map freeVars [v1, v2]
-    freeVars (Vite c t f)          = Set.unions $ map freeVars [c, t, f]
-    freeVars (Vfunc _ as)          = Set.unions $ map freeVars as
-    freeVars (Vpredef _ as)        = Set.unions $ map freeVars as
-    freeVars (Vnot v)              = freeVars v
-    freeVars (Vand s)              = Set.unions $ map freeVars (Set.toList s)
-    freeVars (Vdivide t n)         = Set.unions $ map freeVars [t, n]
-    freeVars (Vmodulo t n)         = Set.unions $ map freeVars [t, n]
-    freeVars (Vsum m)              = Set.unions $ map freeVars (Map.keys m)
-    freeVars (Vproduct m)          = Set.unions $ map freeVars (Map.keys m)
-    freeVars (Vgez v)              = freeVars v
-    freeVars (Vlength v)           = freeVars v
-    freeVars (Vat s p)             = Set.unions $ map freeVars [s, p]
-    freeVars (Vconcat vs)          = Set.unions $ map freeVars vs
-    freeVars (Vstrinre s r)        = Set.unions $ map freeVars [s, r]
-    freeVars (Vcstr _ _ vs)        = Set.unions $ map freeVars vs
-    freeVars (Viscstr _ _ v)       = freeVars v
-    freeVars (Vaccess _ _ _ _ v)   = freeVars v
+instance FreeVars ValExpressionView where
+    freeVars  Vconst{}         = Set.empty
+    freeVars (Vvar v)          = Set.singleton v
+    freeVars (Vequal v1 v2)    = Set.unions $ map freeVars [v1, v2]
+    freeVars (Vite c t f)      = Set.unions $ map freeVars [c, t, f]
+    freeVars (Vfunc _ as)      = Set.unions $ map freeVars as
+    freeVars (Vpredef _ as)    = Set.unions $ map freeVars as
+    freeVars (Vnot v)          = freeVars v
+    freeVars (Vand s)          = Set.unions $ map freeVars (Set.toList s)
+    freeVars (Vdivide t n)     = Set.unions $ map freeVars [t, n]
+    freeVars (Vmodulo t n)     = Set.unions $ map freeVars [t, n]
+    freeVars (Vsum m)          = Set.unions $ map freeVars (Map.keys m)
+    freeVars (Vproduct m)      = Set.unions $ map freeVars (Map.keys m)
+    freeVars (Vgez v)          = freeVars v
+    freeVars (Vlength v)       = freeVars v
+    freeVars (Vat s p)         = Set.unions $ map freeVars [s, p]
+    freeVars (Vconcat vs)      = Set.unions $ map freeVars vs
+    freeVars (Vstrinre s r)    = Set.unions $ map freeVars [s, r]
+    freeVars (Vcstr _ _ vs)    = Set.unions $ map freeVars vs
+    freeVars (Viscstr _ _ v)   = freeVars v
+    freeVars (Vaccess _ _ _ v) = freeVars v
 
 -- Pretty Print 
-instance (SortContext c, VarDef v) => PrettyPrint c (ValExpression v) where
+instance SortContext c => PrettyPrint c ValExpression where
   prettyPrint o c = prettyPrint o c . view
 
-instance (SortContext c, VarDef v) => PrettyPrint c (ValExpressionView v) where
+instance SortContext c => PrettyPrint c ValExpressionView where
   prettyPrint _ ctx (Vconst c)          = TxsString (valueToText ctx c)
-  prettyPrint _ _   (Vvar v)            = TxsString (TorXakis.Name.toText (getName v))
+  prettyPrint _ _   (Vvar v)            = TxsString (TorXakis.Name.toText (toName v))
   prettyPrint o ctx (Vequal a b)        = infixOperator o ctx (T.pack "==") [a,b]
   prettyPrint o ctx (Vite c tb fb)      = TxsString (T.concat [ T.pack "IF "
                                                               , indent (T.pack "   ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o ctx c))
@@ -195,15 +194,15 @@ instance (SortContext c, VarDef v) => PrettyPrint c (ValExpressionView v) where
   prettyPrint o ctx (Vstrinre s r)      = funcInst o ctx (T.pack "strinre") [s,r]
   prettyPrint o ctx (Vcstr _ c vs)      = funcInst o ctx (TorXakis.Name.toText (TorXakis.Name.toName c)) vs
   prettyPrint o ctx (Viscstr _ c v)     = funcInst o ctx (T.append (T.pack "is") (TorXakis.Name.toText (TorXakis.Name.toName c))) [v]
-  prettyPrint o ctx (Vaccess a c _ p v) = case HashMap.lookup a (adtDefs ctx) of
+  prettyPrint o ctx (Vaccess a c p v)   = case HashMap.lookup a (adtDefs ctx) of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
-                                            Just aDef   -> case HashMap.lookup c (constructors (viewADTDef aDef)) of
+                                            Just aDef   -> case HashMap.lookup c (constructors aDef) of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
-                                                                Just cDef   -> let field = fields (viewConstructorDef cDef) !! p in
+                                                                Just cDef   -> let field = fields cDef !! p in
                                                                                     funcInst o ctx (TorXakis.Name.toText (fieldName field)) [v]
 
 -- | Helper function since func and predef both are function Instantations in TorXakis
-funcInst :: (SortContext c, VarDef v) => Options -> c -> T.Text -> [ValExpression v] -> TxsString
+funcInst :: SortContext c => Options -> c -> T.Text -> [ValExpression] -> TxsString
 funcInst o ctx fName vs = TxsString (T.concat [ fName
                                               , T.pack " ( "
                                               , T.intercalate (if multiline o 
@@ -219,7 +218,7 @@ funcInst o ctx fName vs = TxsString (T.concat [ fName
                                               , T.pack ")"
                                               ])
 
-infixOperator :: (SortContext c, VarDef v) => Options -> c -> T.Text -> [ValExpression v] -> TxsString
+infixOperator :: SortContext c => Options -> c -> T.Text -> [ValExpression] -> TxsString
 infixOperator o ctx oName vs = 
         let offset = if multiline o then T.replicate (T.length oName + 1) (T.singleton ' ')
                                     else T.empty
@@ -239,7 +238,7 @@ infixOperator o ctx oName vs =
                                 , T.singleton ')'
                                 ])
 
-occuranceOperator :: (SortContext c, VarDef v) => Options -> c -> T.Text -> T.Text -> [(ValExpression v, Integer)] -> TxsString
+occuranceOperator :: SortContext c => Options -> c -> T.Text -> T.Text -> [(ValExpression, Integer)] -> TxsString
 occuranceOperator o ctx op1 op2 occuranceList =
         let offset1 = if multiline o then T.replicate (T.length op1 + 1) (T.singleton ' ')
                                      else T.empty
@@ -263,6 +262,6 @@ occuranceOperator o ctx op1 op2 occuranceList =
         offset2 :: T.Text
         offset2 = T.replicate (T.length op1 + 3) (T.singleton ' ')
         
-        tupleToText :: (VarDef v) => (ValExpression v, Integer) -> T.Text
+        tupleToText :: (ValExpression, Integer) -> T.Text
         tupleToText (v,  1) = TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o ctx v)
         tupleToText (v,  p) = indent offset2 (TorXakis.PrettyPrint.TorXakis.toText (infixOperator o ctx op2 [v, ValExpression (Vconst (Cint p))]))

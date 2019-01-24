@@ -75,9 +75,9 @@ instance (HasName a, HasName b) => HasName (Either a b) where
 --
 --   * The provided 'Data.Text.Text' value is non-empty
 --
---   * The start character adheres to [A-Z] | '_' | [a-z]
+--   * The start character adheres to [A-Z] | \'_\' | [a-z]
 --
---   * The remaining characters adhere to [A-Z] | '_' | [a-z] | '-' | '0-9'
+--   * The remaining characters adhere to [A-Z] | \'_\' | [a-z] | \'-\' | [0-9]
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 --

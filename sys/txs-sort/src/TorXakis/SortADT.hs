@@ -33,14 +33,14 @@ module TorXakis.SortADT
   -- ** Field Definition
 , FieldDef (..)
   -- ** Constructor Definition
-, ConstructorDefView(..)
 , ConstructorDef
-, viewConstructorDef
+, constructorName
+, fields
 , mkConstructorDef
   -- ** Abstract Data Type Definition
-, ADTDefView (..)
 , ADTDef
-, viewADTDef
+, adtName
+, constructors
 , mkADTDef
 )
 where
@@ -79,8 +79,8 @@ instance Hashable Sort where
     hashWithSalt s (SortADT r) = s `hashWithSalt` ( T.pack "A" <> (TorXakis.Name.toText . toName) r )
 
 -- | Enables 'Sort's of entities to be accessed in a common way.
-class HasSort a where
-    getSort :: a -> Sort
+class HasSort c a where
+    getSort :: c -> a -> Sort
 
 -- | Data structure for a field definition.
 data FieldDef = FieldDef
@@ -94,11 +94,11 @@ data FieldDef = FieldDef
 instance HasName FieldDef where
     getName = fieldName
 
-instance HasSort FieldDef where
-    getSort = sort
+instance HasSort a FieldDef where
+    getSort _ = sort
     
--- | The public view of 'ConstructorDef'.
-data ConstructorDefView = ConstructorDefView
+-- | Constructor Definition.
+data ConstructorDef = ConstructorDef
                         { -- | Name of the constructor
                           constructorName :: Name
                           -- | Field definitions of the constructor
@@ -108,29 +108,20 @@ data ConstructorDefView = ConstructorDefView
                         }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance HasName ConstructorDefView where
-    getName = constructorName
-
--- | ConstructorDefinition
-newtype ConstructorDef = ConstructorDef { -- | View on constructor definition.
-                                          viewConstructorDef :: ConstructorDefView
-                                        }
-  deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
-
 instance HasName ConstructorDef where
-    getName = getName . viewConstructorDef
+    getName = constructorName
 
 -- | Smart constructor for ConstructorDef
 mkConstructorDef :: Name -> [FieldDef] -> Either MinError ConstructorDef
 mkConstructorDef n fs
-    | null nuFieldNames     = Right $ ConstructorDef $ ConstructorDefView n fs
+    | null nuFieldNames     = Right $ ConstructorDef n fs
     | otherwise             = Left $ MinError (T.pack ("Non unique field names: " ++ show nuFieldNames))
     where
         nuFieldNames :: [FieldDef]
         nuFieldNames = repeatedByName fs
 
--- | The public view of 'ADTDef'
-data ADTDefView = ADTDefView
+-- | Data structure for Abstract Data Type (ADT) definition.
+data ADTDef = ADTDef
     { -- | Name of the ADT
       adtName      :: Name
       -- | Constructor definitions of the ADT
@@ -138,17 +129,8 @@ data ADTDefView = ADTDefView
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance HasName ADTDefView where
-    getName = adtName
-
--- | Data structure for Abstract Data Type (ADT) definition.
-newtype ADTDef = ADTDef { -- | View on 'ADTDEf'
-                          viewADTDef :: ADTDefView
-                        }
-  deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
-
 instance HasName ADTDef where
-    getName = getName . viewADTDef
+    getName = adtName
 
 -- | An ADTDef is returned when the following constraints are satisfied:
 --
@@ -164,13 +146,13 @@ mkADTDef _ [] = Left $ MinError (T.pack "Empty Constructor List")
 mkADTDef m cs
     | not $ null nuCstrDefs   = Left $ MinError (T.pack ("Non-unique constructor definitions" ++ show nuCstrDefs))
     | not $ null nuFieldNames = Left $ MinError (T.pack ("Non-unique field definitions" ++ show nuFieldNames))
-    | otherwise               = Right $ ADTDef $ ADTDefView m (toMapByName cs)
+    | otherwise               = Right $ ADTDef m (toMapByName cs)
     where
         nuCstrDefs :: [ConstructorDef]
         nuCstrDefs   = repeatedByName cs
         
         nuFieldNames :: [FieldDef]
-        nuFieldNames = repeatedByName (concatMap (fields . viewConstructorDef) cs)
+        nuFieldNames = repeatedByName (concatMap fields cs)
 
 -- Pretty Print 
 instance PrettyPrint a Sort where
@@ -187,7 +169,7 @@ instance PrettyPrint a FieldDef where
                                               , TorXakis.PrettyPrint.TorXakis.toText ( prettyPrint o c (sort fd) )
                                               ] )
 
-instance PrettyPrint a ConstructorDefView where
+instance PrettyPrint a ConstructorDef where
     prettyPrint o c cv = TxsString ( T.append (TorXakis.Name.toText (constructorName cv))
                                               (case (short o, fields cv) of
                                                   (True, [])   -> T.empty
@@ -226,10 +208,7 @@ instance PrettyPrint a ConstructorDefView where
               addSort :: Sort -> T.Text
               addSort s = T.append (T.pack " :: ") ( TorXakis.PrettyPrint.TorXakis.toText ( prettyPrint o c s ) )
 
-instance PrettyPrint a ConstructorDef where
-    prettyPrint o c = prettyPrint o c . viewConstructorDef
-
-instance PrettyPrint a ADTDefView where
+instance PrettyPrint a ADTDef where
     prettyPrint o c av = TxsString ( T.concat [ T.pack "TYPEDEF "
                                               , TorXakis.Name.toText (adtName av)
                                               , T.pack " ::="
@@ -243,6 +222,3 @@ instance PrettyPrint a ADTDefView where
                                              else T.singleton ' '
               offsetFirst   = if multiline o then T.pack "  "      -- same length as constructors separator ("| ") to get nice layout with multilines
                                              else T.empty
-
-instance PrettyPrint a ADTDef where
-    prettyPrint o c = prettyPrint o c . viewADTDef

@@ -15,63 +15,67 @@ See LICENSE at root directory of this repository.
 --
 -- Function Definition
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveDataTypeable  #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.FuncDef
-( FuncDefView(..)
-, FuncDef
-, view
+( FuncDef
+, funcName
+, paramDefs
+, body
 , mkFuncDef
 )
 where
 
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
+import qualified Data.Set            as Set
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
-import           TorXakis.FuncSignature
+import           TorXakis.FreeVars
+import           TorXakis.FuncSignature (FuncSignature(FuncSignature), HasFuncSignature(..))
 import           TorXakis.Name
-import           TorXakis.Sort
+import           TorXakis.Sort (getSort, elemSort, SortContext)
+import           TorXakis.VarContext
 import           TorXakis.VarDef
+import           TorXakis.VarsDecl
 import           TorXakis.ValExpr.ValExpr (ValExpression)
 
 -- | Data structure to store the information of a Function Definition:
 -- * A Name
 -- * A list of variables
 -- * A body (possibly using the variables)
-data FuncDefView v = FuncDefView { -- | The name of the function (of type 'TorXakis.Name')
-                                   funcName :: Name
-                                   -- | The function parameter definitions
-                                 , paramDefs :: [v]
-                                   -- | The body of the function
-                                 , body :: ValExpression v
-                                 }
+data FuncDef = FuncDef { -- | The name of the function (of type 'TorXakis.Name')
+                         funcName :: Name
+                         -- | The function parameter definitions
+                       , paramDefs :: VarsDecl
+                         -- | The body of the function
+                       , body :: ValExpression
+                       }
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
-newtype FuncDef v = FuncDef { -- | view on FuncDef
-                              view :: FuncDefView v
-                            }
-  deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
-
 -- constructor for FuncDef
-mkFuncDef :: forall v . VarDef v => Name -> [v] -> ValExpression v -> Either MinError (FuncDef v)
-mkFuncDef n ps b | null nonUniqueNames      = Right $ FuncDef (FuncDefView n ps b)
-                 | otherwise                = Left $ MinError (T.pack ("Non unique names : " ++ show nonUniqueNames))
+mkFuncDef :: SortContext a => a -> Name -> VarsDecl -> ValExpression -> Either MinError FuncDef
+mkFuncDef ctx n ps b | not (Set.null undefinedVars) = Left $ MinError (T.pack ("Undefined variables used in body " ++ show undefinedVars))
+                     | not (null undefinedSorts)    = Left $ MinError (T.pack ("Variables have undefined sorts " ++ show undefinedSorts))
+                     | otherwise                    = Right $ FuncDef n ps b
     where
-        nonUniqueNames :: [v]
-        nonUniqueNames = repeatedByName ps
+        undefinedVars :: Set.Set (RefByName VarDef)
+        undefinedVars = Set.difference (freeVars b) (Set.fromList (map (RefByName . name) (TorXakis.VarsDecl.toList ps)))
 
-instance VarDef v => HasFuncSignature (FuncDef v)
-    where
-        getFuncSignature = getFuncSignature . view
+        undefinedSorts :: [VarDef]
+        undefinedSorts = filter (not . elemSort ctx . sort) (toList ps)
 
-instance VarDef v => HasFuncSignature (FuncDefView v)
+instance SortContext a => HasFuncSignature a FuncDef
     where
-        getFuncSignature (FuncDefView fn pds bd) = FuncSignature fn (map getSort pds) (getSort bd)
+        getFuncSignature sctx (FuncDef fn pds bd) = case addVarDefs (fromSortContext sctx) (toList pds) of
+                                                        Left e     -> error ("getFuncSignature is unable to add vars to sort context" ++ show e)
+                                                        Right vctx -> FuncSignature fn (map (getSort sctx) (TorXakis.VarsDecl.toList pds)) (getSort vctx bd)
 
 -- ----------------------------------------------------------------------------------------- --
 --

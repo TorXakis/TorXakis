@@ -37,8 +37,8 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.Error      ( MinError(MinError) )
 import           TorXakis.Name       ( Name, getName, repeatedByNameIncremental, RefByName( toName ), toMapByName )
-import           TorXakis.SortADT    ( ADTDef, viewADTDef, constructors
-                                     , ConstructorDef, viewConstructorDef, fields
+import           TorXakis.SortADT    ( ADTDef, constructors
+                                     , ConstructorDef, fields
                                      , FieldDef(sort)
                                      , Sort(SortADT)
                                      )
@@ -99,16 +99,13 @@ violationsAddAdtDefs context as
         
         hasUnknownRefs :: ADTDef -> Maybe (ADTDef, [Sort])
         hasUnknownRefs adtdef = 
-            let xs = filter (not . isDefined) (concatMap ( map sort . getFields ) (getConstructors adtdef) ) in
+            let xs = filter (not . isDefined) (concatMap ( map sort . fields ) (getConstructors adtdef) ) in
                 if null xs 
                     then Nothing
                     else Just (adtdef,xs)
-        
-        getFields :: ConstructorDef -> [FieldDef]
-        getFields = fields . viewConstructorDef
-        
+
         getConstructors :: ADTDef -> [ConstructorDef]
-        getConstructors = Map.elems . constructors . viewADTDef
+        getConstructors = Map.elems . constructors
 
         isDefined :: Sort -> Bool
         isDefined (SortADT t) = toName t `elem` definedNames
@@ -146,7 +143,7 @@ violationsAddAdtDefs context as
             allFieldsConstructable :: [Name] -> ConstructorDef -> Bool
             allFieldsConstructable constructableSortNames cDef =
                 all ( isSortConstructable constructableSortNames . sort )
-                    $ getFields cDef
+                    $ fields cDef
 
             isSortConstructable :: [Name] -> Sort -> Bool
             isSortConstructable ns (SortADT t) = toName t `elem` ns

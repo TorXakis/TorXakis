@@ -15,20 +15,21 @@ See LICENSE at root directory of this repository.
 --
 -- Free Variables in Value Expression related functionality.
 -----------------------------------------------------------------------------
-{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.FreeVars
 ( FreeVars (..)
 )
 where
 import qualified Data.Set               as Set
 
-import           TorXakis.VarDef
+
+import TorXakis.Name
+import TorXakis.VarDef
 
 -- | Class for Free Variables
-class VarDef v => FreeVars a v where
+class FreeVars a where
     -- | Determine the free variables
-    freeVars :: a v -> Set.Set v
+    freeVars :: a -> Set.Set (RefByName VarDef)
     -- | Is expression closed?
     -- A closed expression has no free variables.
-    isClosed :: a v -> Bool
+    isClosed :: a -> Bool
     isClosed = Set.null . freeVars

@@ -15,9 +15,11 @@ See LICENSE at root directory of this repository.
 --
 -- Data structure for value definitions.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.Value.Value
 ( 
 -- * Data structure for value definitions
@@ -51,11 +53,11 @@ data Value = -- | Constructor of Boolean value.
            | Cany Sort -- TODO: replace by generic - Maybe
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
   
-instance HasSort Value where
-    getSort Cbool{}         = SortBool
-    getSort Cint{}          = SortInt
-    getSort Cchar{}         = SortChar
-    getSort Cstring{}       = SortString
-    getSort Cregex{}        = SortRegex
-    getSort (Ccstr a _ _)   = SortADT a
-    getSort (Cany s)        = s
+instance HasSort a Value where
+    getSort _ Cbool{}         = SortBool
+    getSort _ Cint{}          = SortInt
+    getSort _ Cchar{}         = SortChar
+    getSort _ Cstring{}       = SortString
+    getSort _ Cregex{}        = SortRegex
+    getSort _ (Ccstr a _ _)   = SortADT a       -- we decided not to check that sort is defined.
+    getSort _ (Cany s)        = s

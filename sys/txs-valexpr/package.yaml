@@ -15,11 +15,10 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.FreeVars
   - TorXakis.FuncDef
   - TorXakis.FuncSignature
   - TorXakis.ValExpr
-  - TorXakis.VarDef
+  - TorXakis.ValExprContext
   dependencies:
   - array
   - containers
@@ -32,6 +31,7 @@ library:
   - txs-lex-regex-xsd
   - txs-sort
   - txs-value
+  - txs-var
   - Unique
 
 extra-source-files:
