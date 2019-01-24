@@ -25,8 +25,6 @@ module TorXakis.BExpr.BExpr
 ( -- * Behaviour Expression type and view
   BExpression (..)
 , BExpressionView (..)
-, BExpr
-, BExprView
   -- Action Offer
 , ActOffer (..)
 , containsEXIT
@@ -44,22 +42,25 @@ import           GHC.Generics        (Generic)
 import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
 import           TorXakis.FreeVars
+import           TorXakis.Name
 import           TorXakis.ProcSignature
 import           TorXakis.Relabel
 import           TorXakis.Sort
 import           TorXakis.ValExpr
+import           TorXakis.VarContext
 import           TorXakis.VarDef
+import           TorXakis.VarsDecl
 
 -- | BExpressionView: the public view of Behaviour Expression `BExpression`
-data BExpressionView v = ActionPref  (Set.Set v) (ActOffer v) (BExpression v)
-                       | Guard       (ValExpression v) (BExpression v)
-                       | Choice      (Set.Set (BExpression v))
-                       | Parallel    (Set.Set ChanDef) [BExpression v] -- actually (MultiSet.MultiSet BExpr) but that has lousy performance (due to sorting which needs more evaluation?)
-                       | Enable      (BExpression v) [v] (BExpression v)
-                       | Disable     (BExpression v) (BExpression v)
-                       | Interrupt   (BExpression v) (BExpression v)
-                       | ProcInst    ProcSignature [ChanDef] [ValExpression v]
-                       | Hide        (Set.Set ChanDef) (BExpression v)
+data BExpressionView = ActionPref  VarsDecl ActOffer BExpression
+                     | Guard       ValExpression BExpression
+                     | Choice      (Set.Set BExpression)
+                     | Parallel    (Set.Set ChanDef) [BExpression] -- actually (MultiSet.MultiSet BExpr) but that has lousy performance (due to sorting which needs more evaluation?)
+                     | Enable      BExpression VarsDecl BExpression
+                     | Disable     BExpression BExpression
+                     | Interrupt   BExpression BExpression
+                     | ProcInst    ProcSignature [ChanDef] [ValExpression]
+                     | Hide        (Set.Set ChanDef) BExpression
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- | BExpression: behaviour expression
@@ -69,88 +70,82 @@ data BExpressionView v = ActionPref  (Set.Set v) (ActOffer v) (BExpression v)
 -- 2. User can still pattern match on BExpression using 'BExpressionView'
 --
 -- 3. Overhead at run-time is zero. See https://wiki.haskell.org/Performance/Data_types#Newtypes
-newtype BExpression v = BExpression {
+newtype BExpression = BExpression {
             -- | View on Behaviour Expression
-            view :: BExpressionView v
+            view :: BExpressionView
         }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
--- | type synonym BExpr
-type BExpr = BExpression MinimalVarDef
-
--- | type synonym BExprView
-type BExprView = BExpressionView MinimalVarDef
-
 -- | ActOffer
 -- Offer on multiple channels with constraints
-data ActOffer v = ActOffer { -- | Offers over channels
-                             offers     :: Map.Map ChanDef [ValExpression v]
-                             -- | constraint of ActOffer
-                           , constraint :: ValExpression v
-                           } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+data ActOffer = ActOffer { -- | Offers over channels
+                           offers     :: Map.Map ChanDef [ValExpression]
+                           -- | constraint of ActOffer
+                         , constraint :: ValExpression
+                         } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Contains EXIT is equal to the presence of EXIT in the ActOffer.
-containsEXIT :: ActOffer v -> Bool
+containsEXIT :: ActOffer -> Bool
 containsEXIT ao = chanExit `Map.member` offers ao
 
 -- | ExitKind related to ChanDef ValExpression tuple
-toExitKind :: VarDef v => (ChanDef , [ValExpression v]) -> ExitKind
-toExitKind (cd, cs) | cd == chanExit     = Exit (map getSort cs)
-toExitKind (cd, _)  | cd == chanQstep    = Hit
-toExitKind (cd, _)  | cd == chanHit      = Hit
-toExitKind (cd, _)  | cd == chanMiss     = Hit
-toExitKind _                             = NoExit
+toExitKind :: VarContext a => a -> (ChanDef , [ValExpression]) -> ExitKind
+toExitKind ctx (cd, cs) | cd == chanExit     = Exit (map (getSort ctx) cs)
+toExitKind _   (cd, _)  | cd == chanQstep    = Hit
+toExitKind _   (cd, _)  | cd == chanHit      = Hit
+toExitKind _   (cd, _)  | cd == chanMiss     = Hit
+toExitKind _   _                             = NoExit
 
-instance VarDef v => HasExitKind (ActOffer v) where
-    getExitKind a = case foldM (<<+>>) NoExit (map toExitKind (Map.toList (offers a))) of
-                        Right v -> v
-                        Left e  -> error ("Smart constructor created invalid ActOffer " ++ show e)
-
-
-instance VarDef v => HasExitKind (BExpression v) where
-    getExitKind = getExitKind . TorXakis.BExpr.BExpr.view
-
-instance VarDef v => HasExitKind (BExpressionView v) where
-    getExitKind (ActionPref _ a b)  = case getExitKind a <<+>> getExitKind b of
-                                            Right v -> v
-                                            Left e  -> error ("Smart constructor created invalid ActionPref " ++ show e)
-    getExitKind (Guard _ b)         = getExitKind b
-    getExitKind (Choice s)          = case foldM (<<+>>) NoExit (map getExitKind (Set.toList s)) of
-                                            Right v -> v
-                                            Left e  -> error ("Smart constructor created invalid Choice " ++ show e)
-    getExitKind (Parallel _ l)      = case foldM (<<->>) NoExit (map getExitKind l) of
-                                            Right v -> v
-                                            Left e  -> error ("Smart constructor created invalid Parallel " ++ show e)
-    getExitKind (Enable _ _ b)      = getExitKind b
-    getExitKind (Disable a b)       = case getExitKind a <<+>> getExitKind b of
-                                            Right v -> v
-                                            Left e  -> error ("Smart constructor created invalid Disable " ++ show e)
-    getExitKind (Interrupt a _)     = getExitKind a
-    getExitKind (ProcInst ps _ _)   = exitKind ps
-    getExitKind (Hide _ b)          = getExitKind b
+instance VarContext a => HasExitKind a ActOffer where
+    getExitKind ctx a = case foldM (<<+>>) NoExit (map (toExitKind ctx) (Map.toList (offers a))) of
+                             Right v -> v
+                             Left e  -> error ("Smart constructor created invalid ActOffer " ++ show e)
 
 
-instance VarDef v => FreeVars BExpression v where
+instance VarContext a => HasExitKind a BExpression where
+    getExitKind ctx = getExitKind ctx . TorXakis.BExpr.BExpr.view
+
+instance VarContext a => HasExitKind a BExpressionView where
+    getExitKind ctx (ActionPref _ a b)  = case getExitKind ctx a <<+>> getExitKind ctx b of
+                                               Right v -> v
+                                               Left e  -> error ("Smart constructor created invalid ActionPref " ++ show e)
+    getExitKind ctx (Guard _ b)         = getExitKind ctx b
+    getExitKind ctx (Choice s)          = case foldM (<<+>>) NoExit (map (getExitKind ctx) (Set.toList s)) of
+                                               Right v -> v
+                                               Left e  -> error ("Smart constructor created invalid Choice " ++ show e)
+    getExitKind ctx (Parallel _ l)      = case foldM (<<->>) NoExit (map (getExitKind ctx) l) of
+                                               Right v -> v
+                                               Left e  -> error ("Smart constructor created invalid Parallel " ++ show e)
+    getExitKind ctx (Enable _ _ b)      = getExitKind ctx b
+    getExitKind ctx (Disable a b)       = case getExitKind ctx a <<+>> getExitKind ctx b of
+                                               Right v -> v
+                                               Left e  -> error ("Smart constructor created invalid Disable " ++ show e)
+    getExitKind ctx (Interrupt a _)     = getExitKind ctx a
+    getExitKind _   (ProcInst ps _ _)   = exitKind ps
+    getExitKind ctx (Hide _ b)          = getExitKind ctx b
+
+
+instance FreeVars BExpression where
     freeVars = freeVars . TorXakis.BExpr.BExpr.view
 
-instance VarDef v => FreeVars BExpressionView v where
-    freeVars (ActionPref vs a b)    = Set.difference (Set.unions [freeVars a, freeVars b]) vs
+instance FreeVars BExpressionView where
+    freeVars (ActionPref vs a b)    = Set.difference (Set.unions [freeVars a, freeVars b]) (Set.fromList (map (RefByName . name) (toList vs)))
     freeVars (Guard v b)            = Set.unions [freeVars v, freeVars b]
     freeVars (Choice s)             = Set.unions $ map freeVars (Set.toList s)
     freeVars (Parallel _ bs)        = Set.unions $ map freeVars bs
-    freeVars (Enable b1 vs b2)      = Set.unions [freeVars b1, Set.difference (freeVars b2) (Set.fromList vs)]
+    freeVars (Enable b1 vs b2)      = Set.unions [freeVars b1, Set.difference (freeVars b2) (Set.fromList (map (RefByName . name) (toList vs)))]
     freeVars (Disable b1 b2)        = Set.unions $ map freeVars [b1, b2]
     freeVars (Interrupt b1 b2)      = Set.unions $ map freeVars [b1, b2]
     freeVars (ProcInst _ _ vs)      = Set.unions $ map freeVars vs
     freeVars (Hide _ b)             = freeVars b
 
-instance VarDef v => FreeVars ActOffer v where
+instance FreeVars ActOffer where
     freeVars (ActOffer m c) = Set.unions (freeVars c: map freeVars (concat (Map.elems m)))
 
-instance Ord v => Relabel (BExpression v) where
+instance Relabel BExpression where
     relabel' m b = BExpression $ relabel' m (TorXakis.BExpr.BExpr.view b)
 
-instance Ord v => Relabel (BExpressionView v) where
+instance Relabel BExpressionView where
     relabel' m (ActionPref vs a b)   = ActionPref vs (relabel' m a) (relabel' m b)
     relabel' m (Guard v b)           = Guard v (relabel' m b)
     relabel' m (Choice s)            = Choice (Set.map (relabel' m) s)
@@ -165,7 +160,7 @@ instance Ord v => Relabel (BExpressionView v) where
                                             Left e -> error ("Relabel: removing elements from a valid RelabelMap should result in a valid RelabelMap, hence unexpected error:\n" ++ show e)
                                             Right n -> Hide cs (relabel n b)
                                         
-instance Relabel (ActOffer v) where
+instance Relabel ActOffer where
     relabel' m (ActOffer offs cnrs) = let newOffs = Map.fromList (map (first (relabel' m)) (Map.toList offs)) in
                                                  ActOffer newOffs cnrs
 

@@ -15,14 +15,36 @@ See LICENSE at root directory of this repository.
 --
 -- Unsafe constructors for Value Expressions (except function instantiation)
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE ViewPatterns          #-}
 module TorXakis.ValExpr.Unsafe
+( unsafeConst
+, unsafeVar
+, unsafeEqual
+, unsafeITE
+, unsafePredefNonSolvable
+, unsafeNot
+, unsafeAnd
+, unsafeUnaryMinus
+, unsafeDivide
+, unsafeModulo
+, unsafeSum
+, unsafeSumFromMap
+, unsafeProduct
+, unsafeProductFromMap
+, unsafeGEZ
+, unsafeLength
+, unsafeAt
+, unsafeConcat
+, unsafeStrInRe
+, unsafeCstr
+, unsafeIsCstr
+, unsafeAccess
+, trueValExpr
+, toMaybeValues
+)
 where
 import qualified Data.Map        as Map
 import           Data.Maybe
@@ -108,27 +130,27 @@ unsafeITE cs tb fb                            = Right $ ValExpression (Vite cs t
 
 unsafePredefNonSolvable :: SortContext c => c -> FuncSignature -> [ValExpression] -> Either MinError ValExpression
 unsafePredefNonSolvable ctx fs vs = case toMaybeValues vs of
-                                        Just values -> evalPredefNonSolvable ctx fs values
+                                        Just values -> evalPredefNonSolvable values
                                         Nothing     -> Right $ ValExpression (Vpredef fs vs)
-
-evalPredefNonSolvable :: SortContext c => c -> FuncSignature -> [Value] -> Either MinError ValExpression
-evalPredefNonSolvable ctx fs vs =
-    case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, vs) of
-            ("toString",     SortString, [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
-            ("fromString",   s,          [Cstring t])              -> valueFromText ctx s t >>= unsafeConst
-            ("toXML",        SortString, [v])                      -> unsafeConst $ Cstring (valueToXML ctx v)
-            ("fromXML",      s,          [Cstring t])              -> valueFromXML ctx s t >>= unsafeConst
-            ("takeWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`elemT` v1) v2)
-            ("takeWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`notElemT` v1) v2)
-            ("dropWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`elemT` v1) v2)
-            ("dropWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`notElemT` v1) v2)
-            _                                                      -> error ("Unknown predefined function: " ++ show fs)
     where
-        elemT :: Char -> T.Text -> Bool
-        elemT c = isJust . T.find (== c)
+        evalPredefNonSolvable :: [Value] -> Either MinError ValExpression
+        evalPredefNonSolvable values =
+            case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, values) of
+                    ("toString",     SortString, [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
+                    ("fromString",   s,          [Cstring t])              -> valueFromText ctx s t >>= unsafeConst
+                    ("toXML",        SortString, [v])                      -> unsafeConst $ Cstring (valueToXML ctx v)
+                    ("fromXML",      s,          [Cstring t])              -> valueFromXML ctx s t >>= unsafeConst
+                    ("takeWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`elemT` v1) v2)
+                    ("takeWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`notElemT` v1) v2)
+                    ("dropWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`elemT` v1) v2)
+                    ("dropWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`notElemT` v1) v2)
+                    _                                                      -> error ("Unknown predefined function: " ++ show fs)
+            where
+                elemT :: Char -> T.Text -> Bool
+                elemT c = isJust . T.find (== c)
 
-        notElemT :: Char -> T.Text -> Bool
-        notElemT c = not . elemT c
+                notElemT :: Char -> T.Text -> Bool
+                notElemT c = not . elemT c
 
 unsafeNot :: ValExpression -> Either MinError ValExpression
 -- Simplification: not True <==> False
@@ -153,55 +175,55 @@ unsafeAnd = unsafeAnd' . flattenAnd
         fromValExpression (TorXakis.ValExpr.ValExpr.view -> Vand a) = a
         fromValExpression x                                         = Set.singleton x
 
--- And doesn't contain elements of type Vand.
-unsafeAnd' :: Set.Set ValExpression -> Either MinError ValExpression
-unsafeAnd' s =
-    -- Canonical form (merge conditional IFs)
-    -- IF a THEN b ELSE False FI /\ IF c THEN d ELSE False FI <==> IF a /\ c THEN b /\ d ELSE False FI
-        mergeConditionals s >>= (\can ->
-        let s' :: Set.Set ValExpression
-            s' = Set.delete trueValExpr can in
-                if Set.member falseValExpr s'
-                    then Right falseValExpr
-                    else case Set.toList s' of
-                            []  -> Right trueValExpr
-                            [h] -> Right h
-                            _   -> -- Simplification: not(x) and x <==> False
-                                   let nots = filterNot (Set.toList s') in
-                                        if any (contains s') nots
-                                            then Right falseValExpr
-                                            else Right $ ValExpression (Vand s')
-        )
-    where
-        mergeConditionals :: Set.Set ValExpression -> Either MinError (Set.Set ValExpression)
-        mergeConditionals s' = Set.foldr mergeConditional (Right (Set.empty, Set.empty, Set.empty)) s' >>= 
-                                (\(s'', cs, ds) -> case Set.toList cs of
-                                                    (_:_:_) -> -- at least two items to merge
-                                                                unsafeAnd cs >>=
-                                                                (\acs -> unsafeAnd ds >>=
-                                                                (\ads -> unsafeITE acs ads falseValExpr >>= 
-                                                                (\ite -> Right $ Set.insert ite s'')))
-                                                    _       -> -- nothing to merge
-                                                                Right s'
-                                )
+        -- And doesn't contain elements of type Vand.
+        unsafeAnd' :: Set.Set ValExpression -> Either MinError ValExpression
+        unsafeAnd' s =
+            -- Canonical form (merge conditional IFs)
+            -- IF a THEN b ELSE False FI /\ IF c THEN d ELSE False FI <==> IF a /\ c THEN b /\ d ELSE False FI
+                mergeConditionals s >>= (\can ->
+                let s' :: Set.Set ValExpression
+                    s' = Set.delete trueValExpr can in
+                        if Set.member falseValExpr s'
+                            then Right falseValExpr
+                            else case Set.toList s' of
+                                    []  -> Right trueValExpr
+                                    [h] -> Right h
+                                    _   -> -- Simplification: not(x) and x <==> False
+                                           let nots = filterNot (Set.toList s') in
+                                                if any (contains s') nots
+                                                    then Right falseValExpr
+                                                    else Right $ ValExpression (Vand s')
+                )
+            where
+                mergeConditionals :: Set.Set ValExpression -> Either MinError (Set.Set ValExpression)
+                mergeConditionals s' = Set.foldr mergeConditional (Right (Set.empty, Set.empty, Set.empty)) s' >>= 
+                                        (\(s'', cs, ds) -> case Set.toList cs of
+                                                            (_:_:_) -> -- at least two items to merge
+                                                                        unsafeAnd cs >>=
+                                                                        (\acs -> unsafeAnd ds >>=
+                                                                        (\ads -> unsafeITE acs ads falseValExpr >>= 
+                                                                        (\ite -> Right $ Set.insert ite s'')))
+                                                            _       -> -- nothing to merge
+                                                                        Right s'
+                                        )
 
-        mergeConditional :: ValExpression 
-                         -> Either MinError (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
-                         -> Either MinError (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
-        mergeConditional _                                               (Left e)                                  = Left e
-        mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | tb == falseValExpr = unsafeNot c >>= (\nc -> Right (s', Set.insert nc cs, Set.insert fb ds))
-        mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | fb == falseValExpr = Right (s', Set.insert c cs, Set.insert tb ds)
-        mergeConditional x                                               (Right (s', cs, ds))                      = Right (Set.insert x s', cs, ds)
+                mergeConditional :: ValExpression 
+                                 -> Either MinError (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
+                                 -> Either MinError (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
+                mergeConditional _                                               (Left e)                                  = Left e
+                mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | tb == falseValExpr = unsafeNot c >>= (\nc -> Right (s', Set.insert nc cs, Set.insert fb ds))
+                mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | fb == falseValExpr = Right (s', Set.insert c cs, Set.insert tb ds)
+                mergeConditional x                                               (Right (s', cs, ds))                      = Right (Set.insert x s', cs, ds)
 
-        filterNot :: [ValExpression] -> [ValExpression]
-        filterNot [] = []
-        filterNot (x:xs) = case TorXakis.ValExpr.ValExpr.view x of
-                            Vnot n -> n : filterNot xs
-                            _      ->     filterNot xs
+                filterNot :: [ValExpression] -> [ValExpression]
+                filterNot [] = []
+                filterNot (x:xs) = case TorXakis.ValExpr.ValExpr.view x of
+                                    Vnot n -> n : filterNot xs
+                                    _      ->     filterNot xs
 
-        contains :: Set.Set ValExpression -> ValExpression -> Bool
-        contains set (TorXakis.ValExpr.ValExpr.view -> Vand a) = all (`Set.member` set) (Set.toList a)
-        contains set a                                         = Set.member a set
+                contains :: Set.Set ValExpression -> ValExpression -> Bool
+                contains set (TorXakis.ValExpr.ValExpr.view -> Vand a) = all (`Set.member` set) (Set.toList a)
+                contains set a                                         = Set.member a set
 
 unsafeUnaryMinus :: ValExpression -> Either MinError ValExpression
 unsafeUnaryMinus (TorXakis.ValExpr.ValExpr.view -> Vsum m) = unsafeSumFromMap (Map.map (* (-1)) m)

@@ -13,8 +13,8 @@ dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
 - txs-sort
+- txs-sort-gen
 - txs-valexpr
-- txs-var
 
 library:
   source-dirs: src
@@ -26,8 +26,8 @@ library:
     - hashmap
     - text
     - txs-basics
-    - txs-sort-gen
     - txs-value-gen
+    - txs-var
 
 extra-source-files:
 - README.md
@@ -54,6 +54,5 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
-        - txs-sort-gen
         - txs-value
         - txs-valexpr-gen

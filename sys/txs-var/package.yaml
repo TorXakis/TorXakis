@@ -22,8 +22,6 @@ library:
   - TorXakis.VarDef
   - TorXakis.VarsDecl
   dependencies:
-  - array
-  - bytestring
   - containers
   - deepseq
   - hashable

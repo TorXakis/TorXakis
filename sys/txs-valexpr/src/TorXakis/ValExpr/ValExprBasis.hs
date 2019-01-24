@@ -15,13 +15,9 @@ See LICENSE at root directory of this repository.
 --
 -- Smart constructors, Substitutions, and Context for Value Expressions.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE ViewPatterns          #-}
 module TorXakis.ValExpr.ValExprBasis
 ( -- ** Constructors to create Value Expression
   -- *** Constant Value

@@ -41,18 +41,19 @@ import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
 import           TorXakis.Error         ( MinError(MinError) )
 import           TorXakis.FreeVars
-import           TorXakis.Sort          ( Sort, SortContext (..), elemSort )
-import           TorXakis.ValExpr
-import           TorXakis.VarDef        ( MinimalVarDef )
+import           TorXakis.Name
 import           TorXakis.ProcDef
 import           TorXakis.ProcSignature
-
-
+import           TorXakis.Sort          ( Sort, SortContext (..), elemSort )
+import           TorXakis.ValExprContext
+import           TorXakis.VarContext
+import           TorXakis.VarDef
+import           TorXakis.VarsDecl
 
 -- | A BExprContext instance contains all definitions to work with behavioural expressions and references thereof
-class ValExprContext a v => BExprContext a v where
+class ValExprContext a => BExprContext a where
     -- | Accessor for Process Definitions
-    procDefs :: a v -> HashMap.Map ProcSignature ProcDef
+    procDefs :: a -> HashMap.Map ProcSignature ProcDef
 
     -- | Add process definitions to behavioural expression context.
     --   A value expression context is returned when the following constraints are satisfied:
@@ -62,64 +63,73 @@ class ValExprContext a v => BExprContext a v where
     --   * All references (both Sort, FunctionDefinition, and ProcessDefinition) are known
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addProcDefs :: a v -> [ProcDef] -> Either MinError (a v)
+    addProcDefs :: a -> [ProcDef] -> Either MinError a
 
 
 -- | A minimal instance of 'BExprContext'.
-data MinimalBExprContext v = MinimalBExprContext { valExprContext :: MinimalValExprContext v
+data MinimalBExprContext a = MinimalBExprContext { valExprContext :: a
                                                          -- process definitions
                                                  , _procDefs :: HashMap.Map ProcSignature ProcDef
                                                  } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortContext (MinimalBExprContext MinimalVarDef) where
-    empty = MinimalBExprContext (empty :: MinimalValExprContext MinimalVarDef) HashMap.empty
+instance SortContext a => SortContext (MinimalBExprContext a) where
+    empty = MinimalBExprContext empty HashMap.empty
     adtDefs ctx    = adtDefs (valExprContext ctx)
     addAdtDefs ctx as = case addAdtDefs (valExprContext ctx) as of
                           Left e     -> Left e
-                          Right vctx -> Right $ ctx {valExprContext = vctx} 
+                          Right vctx -> Right $ ctx {valExprContext = vctx}
 
-instance ValExprContext MinimalBExprContext MinimalVarDef where
+instance FuncContext a => FuncContext (MinimalBExprContext a) where
     funcDefs ctx    = funcDefs (valExprContext ctx)
     addFuncDefs ctx fs = case addFuncDefs (valExprContext ctx) fs of
                           Left e     -> Left e
+                          Right vctx -> Right $ ctx {valExprContext = vctx}
+
+instance ValExprContext a => VarContext (MinimalBExprContext a) where
+    varDefs ctx       = varDefs (valExprContext ctx)
+    addVarDefs ctx fs = case addVarDefs (valExprContext ctx) fs of
+                          Left e     -> Left e
                           Right vctx -> Right $ ctx {valExprContext = vctx} 
 
-instance BExprContext MinimalBExprContext MinimalVarDef where
+instance ValExprContext a => ValExprContext (MinimalBExprContext a)
+
+instance ValExprContext a => BExprContext (MinimalBExprContext a) where
     procDefs = _procDefs
     addProcDefs ctx pds
         | not $ null nuProcDefs              = Left $ MinError (T.pack ("Non unique process definitions: " ++ show nuProcDefs))
         | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of process signatures with references to undefined sorts: " ++ show undefinedSorts))
-        | not $ null undefinedVariables      = Left $ MinError (T.pack ("List of process signatures with undefined variables in their bodies: " ++ show undefinedVariables))
         -- undefined function references already checked in constructors of BExprs
         | not $ null undefinedProcSignatures = Left $ MinError (T.pack ("List of process signatures with references to undefined process signatures: " ++ show undefinedProcSignatures))
+        | not $ null undefinedVariables      = Left $ MinError (T.pack ("List of process signatures with undefined variables in their bodies: " ++ show undefinedVariables))
         | otherwise                          = Right $ ctx { _procDefs = definedProcSignatures }
       where
         nuProcDefs :: [ProcDef]
-        nuProcDefs = repeatedByProcSignatureIncremental (HashMap.elems (procDefs ctx)) pds
+        nuProcDefs = repeatedByProcSignatureIncremental ctx (HashMap.elems (procDefs ctx)) pds
 
         undefinedSorts :: [(ProcSignature, Set.Set Sort)]
         undefinedSorts = mapMaybe undefinedSort pds
 
-        undefinedSort :: HasProcSignature a => a -> Maybe (ProcSignature, Set.Set Sort)
-        undefinedSort pd = let ps@(ProcSignature _ cs as e) = getProcSignature pd in
-                            case filter (not . elemSort ctx) (concat [concatMap toSorts cs, as, exitSorts e]) of
-                                [] -> Nothing
-                                xs -> Just (ps, Set.fromList xs)
+        undefinedSort :: ProcDef -> Maybe (ProcSignature, Set.Set Sort)
+        undefinedSort pd = let ps@(ProcSignature _ cs as e) = getProcSignature ctx pd in
+                                   case filter (not . elemSort ctx) (concat [concatMap toSorts cs, as, exitSorts e]) of
+                                       [] -> Nothing
+                                       xs -> Just (ps, Set.fromList xs)
 
-        undefinedVariables :: [(ProcSignature, Set.Set MinimalVarDef)]
+        undefinedVariables :: [(ProcSignature, Set.Set (RefByName VarDef))]
         undefinedVariables = mapMaybe undefinedVariable pds
 
-        undefinedVariable :: ProcDef -> Maybe (ProcSignature, Set.Set MinimalVarDef)
-        undefinedVariable pd = let definedVars   = Set.fromList (paramDefs pd)
+        undefinedVariable :: ProcDef -> Maybe (ProcSignature, Set.Set (RefByName VarDef))
+        undefinedVariable pd = let definedVars :: Set.Set (RefByName VarDef)
+                                   definedVars   = Set.fromList (map (RefByName . name) (toList (paramDefs pd)))
                                    usedVars      = freeVars (body pd)
                                    undefinedVars = Set.difference usedVars definedVars
                                 in
                                     if Set.null undefinedVars
                                         then Nothing
-                                        else Just (getProcSignature pd, undefinedVars)
+                                        else Just (getProcSignature ctx pd, undefinedVars)
 
         definedProcSignatures :: HashMap.Map ProcSignature ProcDef
-        definedProcSignatures = HashMap.union (toMapByProcSignature pds) (_procDefs ctx)
+        definedProcSignatures = HashMap.union (toMapByProcSignature ctx pds) (procDefs ctx)
 
         undefinedProcSignatures :: [(ProcSignature, Set.Set ProcSignature)]
         undefinedProcSignatures = mapMaybe undefinedProcSignature pds
@@ -127,16 +137,16 @@ instance BExprContext MinimalBExprContext MinimalVarDef where
         undefinedProcSignature :: ProcDef -> Maybe (ProcSignature, Set.Set ProcSignature)
         undefinedProcSignature pd = case findUndefinedProcSignature definedProcSignatures (body pd) of
                                         [] -> Nothing
-                                        xs -> Just (getProcSignature pd, Set.fromList xs)
+                                        xs -> Just (getProcSignature ctx pd, Set.fromList xs)
 
 -- | Find Undefined Process Signatures in given Behaviour Expression (given the defined Process Signatures)
-findUndefinedProcSignature :: HashMap.Map ProcSignature ProcDef -> BExpression v -> [ProcSignature]
+findUndefinedProcSignature :: HashMap.Map ProcSignature ProcDef -> BExpression -> [ProcSignature]
 findUndefinedProcSignature definedProcSignatures = findUndefinedProcSignature'
     where
-        findUndefinedProcSignature' :: BExpression v -> [ProcSignature]
+        findUndefinedProcSignature' :: BExpression -> [ProcSignature]
         findUndefinedProcSignature' = findUndefinedProcSignatureView . TorXakis.BExpr.BExpr.view
         
-        findUndefinedProcSignatureView :: BExpressionView v -> [ProcSignature]
+        findUndefinedProcSignatureView :: BExpressionView -> [ProcSignature]
         findUndefinedProcSignatureView (ActionPref _ _ b) = findUndefinedProcSignature' b
         findUndefinedProcSignatureView (Choice s)         = concatMap findUndefinedProcSignature' (Set.toList s)
         findUndefinedProcSignatureView (Guard _ b)        = findUndefinedProcSignature' b

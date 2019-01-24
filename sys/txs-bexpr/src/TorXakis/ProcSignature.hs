@@ -16,10 +16,11 @@ See LICENSE at root directory of this repository.
 --
 -- This module provides the data structure for a Signature of a Process.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.ProcSignature
 ( -- * Process Signature
   ProcSignature (..)
@@ -57,12 +58,12 @@ data ProcSignature = ProcSignature { -- | The 'Name' of the process.
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
 -- | Enables 'ProcSignature's of entities to be accessed in a common way.
-class HasProcSignature e where
+class HasProcSignature ctx e where
     -- | return the process signature of the given element
-    getProcSignature :: e -> ProcSignature
+    getProcSignature :: ctx -> e -> ProcSignature
 
-instance HasProcSignature ProcSignature where
-    getProcSignature = id
+instance HasProcSignature c ProcSignature where
+    getProcSignature _ = id
 
 instance Hashable ProcSignature where
     hashWithSalt s (ProcSignature n cs as r) = s `hashWithSalt`
@@ -73,15 +74,15 @@ instance Hashable ProcSignature where
 
 -- | Return 'Data.HashMap.Map' where the 'ProcSignature' of the element is taken as key
 --   and the element itself is taken as value.
-toMapByProcSignature :: HasProcSignature a => [a] -> Map ProcSignature a
-toMapByProcSignature = fromList . map (\e -> (getProcSignature e,e))
+toMapByProcSignature :: HasProcSignature c a => c -> [a] -> Map ProcSignature a
+toMapByProcSignature ctx = fromList . map (\e -> (getProcSignature ctx e,e))
 
 -- |  Return the elements with non-unique process signatures that the second list contains in the combination of the first and second list.
-repeatedByProcSignatureIncremental :: (HasProcSignature a, HasProcSignature b) => [a] -> [b] -> [b]
-repeatedByProcSignatureIncremental xs ys = filter ((`elem` nuProcSignatures) . getProcSignature) ys
-    where nuProcSignatures = repeated $ map getProcSignature xs ++ map getProcSignature ys
+repeatedByProcSignatureIncremental :: (HasProcSignature c a, HasProcSignature c b) => c -> [a] -> [b] -> [b]
+repeatedByProcSignatureIncremental ctx xs ys = filter ((`elem` nuProcSignatures) . getProcSignature ctx) ys
+    where nuProcSignatures = repeated $ map (getProcSignature ctx) xs ++ map (getProcSignature ctx) ys
 
 -- | Return the elements with non-unique process signatures: 
 -- the elements with a 'ProcSignature' that is present more than once in the list.
-repeatedByProcSignature :: (HasProcSignature a) => [a] -> [a]
-repeatedByProcSignature = repeatedByProcSignatureIncremental ([] :: [ProcSignature])
+repeatedByProcSignature :: (HasProcSignature c a) => c -> [a] -> [a]
+repeatedByProcSignature ctx = repeatedByProcSignatureIncremental ctx ([] :: [ProcSignature])

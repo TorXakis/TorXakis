@@ -21,7 +21,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE ViewPatterns          #-}
 module TorXakis.ValExprContext
 ( -- * Context
   -- ** Func Context

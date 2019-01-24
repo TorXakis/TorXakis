@@ -15,9 +15,11 @@ See LICENSE at root directory of this repository.
 --
 -- Process Definition
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.ProcDef
 ( ProcDef(..)
 )
@@ -33,7 +35,8 @@ import           TorXakis.ChanDef
 import           TorXakis.Name
 import           TorXakis.ProcSignature
 import           TorXakis.Sort
-import           TorXakis.VarDef
+import           TorXakis.VarContext
+import           TorXakis.VarsDecl
 
 -- | Data structure to store the information of a Process Definition:
 -- * A Name
@@ -45,16 +48,17 @@ data ProcDef = ProcDef { -- | The name of the process (of type 'TorXakis.Name')
                          -- | The process channel definitions
                        , channelDefs:: [ChanDef]
                          -- | The process parameter definitions
-                       , paramDefs:: [MinimalVarDef]
+                       , paramDefs:: VarsDecl
                          -- | The body of the process
-                       , body :: BExpr
+                       , body :: BExpression
                        }
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
-instance HasProcSignature ProcDef
+instance SortContext a => HasProcSignature a ProcDef
     where
-        getProcSignature (ProcDef fn cds pds bd) = ProcSignature fn (map chanSort cds) (map getSort pds) (getExitKind bd)
-
+        getProcSignature sctx (ProcDef fn cds pds bd) = case addVarDefs (fromSortContext sctx) (toList pds) of
+                                                             Left e     -> error ("getProcSignature is unable to add vars to sort context" ++ show e)
+                                                             Right vctx -> ProcSignature fn (map chanSort cds) (map (getSort sctx) (toList pds)) (getExitKind vctx bd)
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

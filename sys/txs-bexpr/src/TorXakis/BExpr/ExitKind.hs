@@ -16,9 +16,10 @@ See LICENSE at root directory of this repository.
 --
 -- This module provides the data structure for ExitKind.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.BExpr.ExitKind
 ( -- ** Exit Kind and functions
   ExitKind (..)
@@ -51,8 +52,8 @@ exitSorts (Exit xs) = xs
 exitSorts _         = []
 
 -- | The expression has exit kind associated to it.
-class HasExitKind e where
-    getExitKind :: e -> ExitKind
+class HasExitKind ctx e where
+    getExitKind :: ctx -> e -> ExitKind
 
 instance Hashable ExitKind where
     hashWithSalt s NoExit    = s `hashWithSalt` "NoExit"
