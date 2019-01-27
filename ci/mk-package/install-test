@@ -8,7 +8,11 @@
 # inside this we need to run this script:
 apt-get update
 cd root
-apt-get install ./torxakis_0.6.0_amd64.deb -y
+apt-get install ./torxakis_0.8.0_amd64.deb -y
+
+# Dump version of z3 and cvc4
+cvc4 --version
+z3 --version
 
 # Test with "Echo".
 cat test/examps/Echo/Echo_Simulator.txscmd | torxakis examps/Echo/Echo.txs &> /dev/null &

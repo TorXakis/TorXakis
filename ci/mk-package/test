@@ -4,8 +4,6 @@
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
 
-
-
 # Test that the the `TorXakis` `.deb` package can be installed and run in different ubuntu versions.
 
 versions=("16.04" "17.10" "18.04")
@@ -15,10 +13,7 @@ do
    echo
    echo "Testing with Ubuntu: $v"
    echo
-    
+
    # Test with the given ubuntu version
    docker run --rm -v  $(pwd):/root --entrypoint "/root/ci/mk-package/install-test" -it ubuntu:${v}
 done
-
-
-
