@@ -46,6 +46,9 @@ spec = do
     describe "Compiles large models" $
       checkSuccess `onAllFilesIn` ("test" </> "data" </> "large")
 
+    describe "Compiles the regression tests" $
+      checkSuccess `onAllFilesIn` ("test" </> "data" </> "regression")
+
     -- Failure test cases
     describe "Reports the expected errors " $
         parallel $ traverse_ checkFailure failureTestCases
