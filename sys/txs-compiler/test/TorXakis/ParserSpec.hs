@@ -34,7 +34,7 @@ import           TorXakis.Parser         (parseFile)
 
 spec :: Spec
 spec = do
-    describe "Parses the orthogonal examples" $
+    describe "Parses the single-concept examples" $
       testParser `onAllFilesIn` ("test" </> "data" </> "success")
 
     describe "Parses the examples in the 'examps' folder" $
@@ -42,6 +42,9 @@ spec = do
 
     describe "Parses large models" $
       testParser `onAllFilesIn` ("test" </> "data" </> "large")
+
+    describe "Parses the regression tests" $
+      testParser `onAllFilesIn` ("test" </> "data" </> "regression")
 
     describe "Gives the expected errors" $
       parallel $ traverse_ checkError errors

@@ -1,0 +1,29 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+STAUTDEF s [Input1, Input2 :: Int; Output :: Int] () ::=
+    STATE s1,s2,s3,s4,s5
+    VAR x,y :: Int
+    INIT s1
+
+    TRANS s1 -> Input1 ? x              { x := x } -> s2
+          s2 -> Input2 ? y [[ x <> y ]] { y := y } -> s3
+          s3 -> Output ! x + y | Input1 ?x | Input2 ?y [[ x == y]] { x := x; y := y } -> s4
+          s4 -> Output ! x + y -> s5
+
+          -- TODO: find why this will break TorXakis
+          -- s4 -> Output ! x + y [[ True ]] -> s5
+ENDDEF
+
+CHANDEF chans ::= Input1,Input2, Output :: Int ENDDEF
+
+MODELDEF M ::=
+    CHAN IN Input1, Input2
+    CHAN OUT Output
+    SYNC {Input1},{Input2},{Output},{Output | Input1 | Input2}
+    BEHAVIOUR
+        s[Input1, Input2, Output]()
+ENDDEF

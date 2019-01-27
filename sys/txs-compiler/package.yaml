@@ -79,4 +79,5 @@ extra-source-files:
 - test/data/success/*.txs
 - test/data/examps/*.txs
 - test/data/parser/success/*.txs
+- test/data/regression/*.txs
 - README.md
