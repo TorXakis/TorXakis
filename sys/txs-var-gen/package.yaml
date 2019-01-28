@@ -1,7 +1,7 @@
 # TorXakis - Model Based Testing
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
-name:                txs-valexpr-gen
+name:                txs-var-gen
 version:             0.1.0.0
 github:              "TorXakis/TorXakis"
 license:             BSD3
@@ -11,25 +11,24 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
 dependencies:
 - base >= 4.7 && < 5
+- hashmap
+- multimap
 - QuickCheck
+- text
 - txs-basics
+- txs-basics-gen
 - txs-sort
 - txs-sort-gen
-- txs-valexpr
-- txs-value
+- txs-var
 
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.TestValExprContext
+  - TorXakis.VarsDeclGen
   dependencies:
+    - containers
     - deepseq
-    - hashmap
-    - text
 
-    - txs-basics-gen
-    - txs-value-gen
-    - txs-var
 
 extra-source-files:
 - README.md
@@ -47,7 +46,7 @@ ghc-options:
 - -Wredundant-constraints
 
 tests:
-    txs-valexpr-gen-test:
+    txs-var-gen-test:
         main : Spec.hs
         source-dirs: test
         ghc-options:
@@ -56,6 +55,5 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
-        - text
-        - txs-var
-        - txs-valexpr-gen
+        - txs-basics
+        - txs-var-gen

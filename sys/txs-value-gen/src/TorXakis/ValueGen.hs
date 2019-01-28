@@ -31,6 +31,10 @@ import TorXakis.Value
 import TorXakis.TestSortContext
 import TorXakis.SortGenContext
 
+-- | TODO: decide on name (generator versus arbitrary instance)
+-- First Sort and then context or vice versa?
+
+
 -- | generate a char within the allowed range
 arbitraryChar :: Gen Char
 arbitraryChar = chr <$> choose (0, 255)

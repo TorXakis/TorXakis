@@ -19,6 +19,7 @@ module TorXakis.SortGenContext
 (-- * generators within context
   arbitrarySort
 , arbitraryADTDefs
+, arbitraryTestSortContext
 )
 where
 import qualified Data.HashMap        as Map
@@ -97,3 +98,11 @@ arbitraryADTDefs ctx =
                         Right aDef -> aDef : aDefs
           in
             toADTDefs uniqueNames (Map.keys (mapSortSize ctx))
+
+arbitraryTestSortContext :: Gen MinimalTestSortContext
+arbitraryTestSortContext =
+        let emp = empty :: MinimalTestSortContext in do
+            incr <- arbitraryADTDefs emp
+            case addAdtDefs emp incr of
+                Left e    -> error ("arbitraryTestSortContext: Invalid generator - " ++ show e)
+                Right ctx -> return ctx

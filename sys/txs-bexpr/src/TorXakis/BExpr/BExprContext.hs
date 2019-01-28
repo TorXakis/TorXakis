@@ -89,7 +89,7 @@ instance ValExprContext a => VarContext (MinimalBExprContext a) where
     varDefs ctx       = varDefs (valExprContext ctx)
     addVarDefs ctx fs = case addVarDefs (valExprContext ctx) fs of
                           Left e     -> Left e
-                          Right vctx -> Right $ ctx {valExprContext = vctx} 
+                          Right vctx -> Right $ ctx {valExprContext = vctx}
 
 instance ValExprContext a => ValExprContext (MinimalBExprContext a)
 

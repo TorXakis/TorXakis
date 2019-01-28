@@ -31,13 +31,9 @@ import           TorXakis.Value
 import           TorXakis.ValueGen
 
 propertyInContext  :: (MinimalTestSortContext -> Gen Bool) -> Gen Bool
-propertyInContext prop = 
-    let c0 = empty :: MinimalTestSortContext in do
-        incr1 <- arbitraryADTDefs c0
-        case addAdtDefs c0 incr1 of
-            Left e    -> error ("Invalid generator - " ++ show e)
-            Right ctx -> prop ctx
-
+propertyInContext prop = do
+    ctx <- arbitraryTestSortContext
+    prop ctx
 
 -- | ConversionText is Identity
 prop_ConversionText_id :: TestSortContext a => a -> Gen Bool

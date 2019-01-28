@@ -116,37 +116,40 @@ mkITE ctx _ tb _                                      = Left $  MinError (T.pack
 -- | Create a function call.
 mkFunc :: VarContext c => c -> FuncSignature -> [ValExpression] -> Either MinError ValExpression
 mkFunc ctx fs vs 
-    | expected /= actual            = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
-    | not (null undefinedSorts)     = Left $ MinError (T.pack ("Undefined sorts : " ++ show undefinedSorts ) )
-    | otherwise                     = Right $ ValExpression (Vfunc fs vs)
+    | expected /= actual                        = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
+    | not (null undefinedSorts)                 = Left $ MinError (T.pack ("Undefined sorts : " ++ show undefinedSorts ) )
+    | not (isPredefNonSolvableFunction ctx fs)  = Left $ MinError (T.pack ("Singnature of predefined function : " ++ show fs ) ) -- to avoid confusion and enable round tripping
+    | otherwise                                 = Right $ ValExpression (Vfunc fs vs)
         where
             expected = args fs
             actual = map (getSort ctx) vs
             undefinedSorts = filter (not . elemSort ctx)  expected
+
+isPredefNonSolvableFunction :: VarContext c => c -> FuncSignature -> Bool
+isPredefNonSolvableFunction ctx fs =
+    case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, args fs) of
+        ("toString",     SortString, [v])                      -> elemSort ctx v
+        ("fromString",   v,          [SortString])             -> elemSort ctx v
+        ("toXML",        SortString, [v])                      -> elemSort ctx v
+        ("fromXML",      v,          [SortString])             -> elemSort ctx v
+        ("takeWhile",    SortString, [SortString, SortString]) -> True
+        ("takeWhileNot", SortString, [SortString, SortString]) -> True
+        ("dropWhile",    SortString, [SortString, SortString]) -> True
+        ("dropWhileNot", SortString, [SortString, SortString]) -> True
+        _                                                      -> False
 
 
 -- | Make a call to some predefined functions
 -- Only allowed in CNECTDEF
 mkPredefNonSolvable :: VarContext c => c -> FuncSignature -> [ValExpression] -> Either MinError ValExpression
 mkPredefNonSolvable ctx fs vs
-    | not isPredefNonSolvableFunction  = Left $ MinError (T.pack ("Signature is not of a predefined function: " ++ show fs))
-    | expected /= actual               = unsafePredefNonSolvable ctx fs vs
-    | otherwise                        = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
+    | not (isPredefNonSolvableFunction ctx fs) = Left $ MinError (T.pack ("Signature is not of a predefined function: " ++ show fs))
+    | expected /= actual                       = unsafePredefNonSolvable ctx fs vs
+    | otherwise                                = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
         where
             expected = args fs
             actual = map (getSort ctx) vs
-            isPredefNonSolvableFunction =
-                case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, args fs) of
-                    ("toString",     SortString, [v])                      -> elemSort ctx v
-                    ("fromString",   v,          [SortString])             -> elemSort ctx v
-                    ("toXML",        SortString, [v])                      -> elemSort ctx v
-                    ("fromXML",      v,          [SortString])             -> elemSort ctx v
-                    ("takeWhile",    SortString, [SortString, SortString]) -> True
-                    ("takeWhileNot", SortString, [SortString, SortString]) -> True
-                    ("dropWhile",    SortString, [SortString, SortString]) -> True
-                    ("dropWhileNot", SortString, [SortString, SortString]) -> True
-                    _                                                      -> False
-    
+            
 -- | Apply operator Not on the provided value expression.
 mkNot :: VarContext c => c -> ValExpression -> Either MinError ValExpression
 mkNot ctx n | getSort ctx n == SortBool = unsafeNot n

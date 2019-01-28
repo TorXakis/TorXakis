@@ -120,10 +120,13 @@ instance SortContext a => FuncContext (MinimalFuncContext a) where
         undefinedSorts = mapMaybe undefinedSort fds
 
         undefinedSort :: FuncDef -> Maybe (FuncSignature, Set.Set Sort)
-        undefinedSort fd = let fs@(FuncSignature _ as rs) = getFuncSignature ctx fd in
-                            case filter (not . elemSort ctx) (rs:as) of
-                                [] -> Nothing
-                                xs -> Just (fs, Set.fromList xs)
+        undefinedSort fd = let fs = getFuncSignature ctx fd
+                               as = args fs
+                               rs = returnSort fs
+                             in
+                                case filter (not . elemSort ctx) (rs:as) of
+                                    [] -> Nothing
+                                    xs -> Just (fs, Set.fromList xs)
 
         undefinedVariables :: [(FuncSignature, Set.Set (RefByName VarDef))]
         undefinedVariables = mapMaybe undefinedVariable fds

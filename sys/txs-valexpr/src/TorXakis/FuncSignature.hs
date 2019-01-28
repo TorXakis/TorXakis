@@ -23,7 +23,8 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.FuncSignature
 ( -- * Function Signature
-  FuncSignature (..)
+  FuncSignature (funcName, args, returnSort)
+, mkFuncSignature
   -- * Has Function Signature class
 , HasFuncSignature (..)
   -- ** Conversion List to Map By Function Signature
@@ -38,8 +39,10 @@ import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hashWithSalt))
 import           Data.HashMap         (Map, fromList)
 import           Data.List.Unique     (repeated)
+import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 
+import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.Sort
 
@@ -52,6 +55,15 @@ data FuncSignature = FuncSignature { -- | The 'Name' of the function.
                                    , returnSort :: Sort
                                    }
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
+
+-- | Constructor of 'TorXakis.FuncSignature'
+mkFuncSignature :: SortContext a => a -> Name -> [Sort] -> Sort -> Either MinError FuncSignature
+mkFuncSignature ctx n as s | not $ null undefinedSorts = Left $ MinError (T.pack ("Argument have undefined sorts " ++ show undefinedSorts))
+                             | elemSort ctx s            = Right $ FuncSignature n as s
+                             | otherwise                 = Left $ MinError (T.pack ("Return sort has undefined sort " ++ show s))
+    where
+        undefinedSorts :: [Sort]
+        undefinedSorts = filter (not . elemSort ctx) as
 
 -- | Enables 'FuncSignature's of entities to be accessed in a common way.
 class HasFuncSignature c e where

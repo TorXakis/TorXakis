@@ -38,7 +38,7 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
 import           TorXakis.FreeVars
-import           TorXakis.FuncSignature (FuncSignature(FuncSignature), HasFuncSignature(..))
+import           TorXakis.FuncSignature (mkFuncSignature, HasFuncSignature(getFuncSignature))
 import           TorXakis.Name
 import           TorXakis.Sort (getSort, elemSort, SortContext)
 import           TorXakis.VarContext
@@ -75,7 +75,9 @@ instance SortContext a => HasFuncSignature a FuncDef
     where
         getFuncSignature sctx (FuncDef fn pds bd) = case addVarDefs (fromSortContext sctx) (toList pds) of
                                                         Left e     -> error ("getFuncSignature is unable to add vars to sort context" ++ show e)
-                                                        Right vctx -> FuncSignature fn (map (getSort sctx) (toList pds)) (getSort vctx bd)
+                                                        Right vctx -> case mkFuncSignature sctx fn (map (getSort sctx) (toList pds)) (getSort vctx bd) of
+                                                                            Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
+                                                                            Right x -> x
 
 -- ----------------------------------------------------------------------------------------- --
 --
