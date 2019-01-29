@@ -36,6 +36,7 @@ import qualified Data.Text           as T
 import           Test.QuickCheck
 
 import           TorXakis.Error
+import qualified TorXakis.GenCollection
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.SortGen
@@ -74,8 +75,6 @@ genValExprNot ctx = do
 -------------------------------------------------------------------------------
 -- Integer Generators
 -------------------------------------------------------------------------------
-
-
 nonZero :: TestValExprContext a => a -> Gen ValExpression
 nonZero ctx = do
     n <- arbitraryValExprOfSort ctx SortInt
@@ -89,7 +88,16 @@ genValExprModulo ctx = do
     teller <- resize (n-2) (arbitraryValExprOfSort ctx SortInt)
     noemer <- resize (n-2) (nonZero ctx)
     case mkModulo ctx teller noemer of
-         Left e  -> error ("genValExprNot constructor fails " ++ show e)
+         Left e  -> error ("genValExprModulo constructor fails " ++ show e)
+         Right x -> return x
+
+genValExprDivide :: TestValExprContext a => a -> Gen ValExpression
+genValExprDivide ctx = do
+    n <- getSize
+    teller <- resize (n-2) (arbitraryValExprOfSort ctx SortInt)
+    noemer <- resize (n-2) (nonZero ctx)
+    case mkDivide ctx teller noemer of
+         Left e  -> error ("genValExprDivide constructor fails " ++ show e)
          Right x -> return x
 -------------------------------------------------------------------------------------------------------------
 -- Test Func Context
@@ -106,7 +114,7 @@ class (TestSortContext a, VarContext a)
 
 data MinimalTestValExprContext = MinimalTestValExprContext 
                                     { testSortContext :: MinimalTestSortContext
-                                    , _genMap :: HashMap.Map Sort (HashMap.Map Int (MinimalTestValExprContext -> Gen ValExpression))
+                                    , _genMap :: TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
                                     -- to be added
                                     -- 0. predefined operators (modulo, and, not, sum , etc)
                                     -- 1. value generation for all defined sorts
@@ -120,21 +128,29 @@ data MinimalTestValExprContext = MinimalTestValExprContext
 
 instance SortContext MinimalTestValExprContext where
     empty = MinimalTestValExprContext empty
-                                      ( HashMap.fromList [ (SortBool, HashMap.fromList [ (0, genValExprValueOfSort SortBool)
-                                                                                       , (1, genValExprNot)
-                                                                                       ])
-                                                         , (SortInt, HashMap.fromList [ (0, genValExprValueOfSort SortInt)
-                                                                                      , (2, genValExprModulo)
-                                                                                      ])
-                                                         , (SortChar, HashMap.fromList [ (0, genValExprValueOfSort SortChar)
-                                                                                       ])
-                                                         , (SortString, HashMap.fromList [ (0, genValExprValueOfSort SortString)
-                                                                                         ])
-                                                         , (SortRegex, HashMap.fromList [ (0, genValExprValueOfSort SortRegex)
-                                                                                        ])
-                                                         ]
+                                      ( addSuccess SortBool   0 (genValExprValueOfSort SortBool)
+                                      $ addSuccess SortBool   1 genValExprNot
+                                      $ addSuccess SortInt    0 (genValExprValueOfSort SortInt)
+                                      $ addSuccess SortInt    2 genValExprModulo
+                                      $ addSuccess SortInt    2 genValExprDivide
+                                      $ addSuccess SortChar   0 (genValExprValueOfSort SortChar)
+                                      $ addSuccess SortString 0 (genValExprValueOfSort SortString)
+                                      $ addSuccess SortRegex  0 (genValExprValueOfSort SortRegex)
+                                        TorXakis.GenCollection.empty
                                       )
                                       HashMap.empty
+        where
+             addSuccess :: Sort 
+                        -> Int 
+                        -> (MinimalTestValExprContext -> Gen ValExpression) 
+                        -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
+                        -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
+             addSuccess s n g c = let ctx = MinimalTestValExprContext empty TorXakis.GenCollection.empty HashMap.empty
+                                    in 
+                                        case TorXakis.GenCollection.add ctx s n g c of
+                                            Left e -> error ("empty - successful add expected, yet " ++ show e)
+                                            Right c' -> c'
+
     adtDefs ctx    = adtDefs (testSortContext ctx)
     addAdtDefs ctx as = case addAdtDefs (testSortContext ctx) as of
                           Left e     -> Left e
@@ -142,22 +158,19 @@ instance SortContext MinimalTestValExprContext where
                                                     , testSortContext = vctx
                                                     }
         where
-            addValueGens :: HashMap.Map Sort (HashMap.Map Int (MinimalTestValExprContext -> Gen ValExpression))
+            addValueGens :: TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
                         -> [ADTDef]
-                        -> HashMap.Map Sort (HashMap.Map Int (MinimalTestValExprContext -> Gen ValExpression))
+                        -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
             addValueGens = foldl addValueGen
                 where
-                    addValueGen :: HashMap.Map Sort (HashMap.Map Int (MinimalTestValExprContext -> Gen ValExpression))
+                    addValueGen :: TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
                                 -> ADTDef
-                                -> HashMap.Map Sort (HashMap.Map Int (MinimalTestValExprContext -> Gen ValExpression))
+                                -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
                     addValueGen m a = let srt = SortADT (RefByName (adtName a))
-                                          hm :: HashMap.Map Int (MinimalTestValExprContext -> Gen ValExpression)
-                                          hm = HashMap.fromList [(0, genValExprValueOfSort srt)]
                                         in
-                                          case HashMap.lookup srt m of
-                                            Just _  -> error ("ADT " ++ show a ++ " added yet sort already present " ++ show srt)
-                                            Nothing -> HashMap.insert srt hm m
-
+                                          case TorXakis.GenCollection.add ctx srt 0 (genValExprValueOfSort srt) m of
+                                            Left e -> error ("addAdtDefs - successful add expected, yet " ++ show e)
+                                            Right c -> c
 
 instance TestSortContext MinimalTestValExprContext where
     mapSortSize ctx                 = mapSortSize (testSortContext ctx)
@@ -179,26 +192,25 @@ instance VarContext MinimalTestValExprContext where
         undefinedSorts = filter (not . elemSort ctx . TorXakis.VarDef.sort) vs
 
         addVarGen :: [VarDef]
-                  -> HashMap.Map Sort (HashMap.Map Int (MinimalTestValExprContext -> Gen ValExpression))
-                  -> HashMap.Map Sort (HashMap.Map Int (MinimalTestValExprContext -> Gen ValExpression))
+                  -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
+                  -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
         addVarGen []       m = m
         addVarGen xs@(x:_) m = let t = TorXakis.VarDef.sort x
                                    (ts,os) = List.partition (\v -> TorXakis.VarDef.sort v == t) xs
-                                   oldSortMap = HashMap.findWithDefault HashMap.empty t m -- TODO: when all sort have a value generator the default is NOT needed!
-                                   newMap :: HashMap.Map Sort (HashMap.Map Int (MinimalTestValExprContext -> Gen ValExpression))
-                                   newMap = HashMap.insert t (HashMap.insert 0 (genValExprVar (map (RefByName . name) ts)) oldSortMap) m -- TODO: overwrites all generators with zero zero... should be added!!!!
                                  in
-                                    addVarGen os newMap
+                                   case TorXakis.GenCollection.add ctx t 0 ( genValExprVar (map (RefByName . name) ts) ) m of
+                                            Left e -> error ("addVarDefs - successful add expected, yet " ++ show e)
+                                            Right c -> addVarGen os c
 
 instance TestValExprContext MinimalTestValExprContext where
     arbitraryValExprOfSort ctx s = do
         n <- getSize
-        case HashMap.lookup s (_genMap ctx) of
-            Nothing -> error "arbitraryValExprOfSort: Sort not in HashMap"
-            Just m  -> let gens = HashMap.elems (HashMap.filterWithKey (\k _ -> k <= n) m) in do
-                            generator <- elements gens
-                            value <- generator ctx
-                            return value
+        case TorXakis.GenCollection.get (_genMap ctx) s n of
+            [] -> error ("No Generators for " ++ show s ++ " at " ++ show n)
+            xs -> do
+                    generator <- elements xs
+                    value <- generator ctx
+                    return value
     
 {-    
     
@@ -245,7 +257,7 @@ instance TestSortContext a => TestSortContext (MinimalTestFuncContext a) where
 
 instance SortContext a => FuncContext (MinimalTestFuncContext a) where
     funcDefs = _funcDefs
-    addFuncDefs = undefined -- TODO: add look functionality for generation of ValExpr
+    addFuncDefs = undefined -- TODO: add look functionality for generation of ValExpression
 
 -- TODO what is needed additional in a Test generator to ensure termination while generating (recursive) functions?
 

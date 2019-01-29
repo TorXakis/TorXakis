@@ -40,18 +40,12 @@ distribute :: Int -- ^ number of identical objects (>= 0)
            -> Gen [Int]
 distribute _ 0 = return []
 distribute n m =
-    let stars = replicate n     star
-        bars  = replicate (m-1) bar
+    let stars = replicate n     True
+        bars  = replicate (m-1) False
      in do
         shuffled <- shuffle (stars ++ bars)
-        return $ barsum shuffled 0
-    where star :: Int
-          star = 1
-
-          bar :: Int
-          bar = 0
-
-          barsum :: [Int] -> Int -> [Int]
-          barsum [] x = [x]
-          barsum (y:ys) x | y == star = barsum ys (x+1)
-                          | otherwise = x : barsum ys 0   -- y == bar
+        return $ starSum shuffled 0
+    where starSum :: [Bool] -> Int -> [Int]
+          starSum []         x = [x]
+          starSum (True :ys) x = starSum ys (x+1)   -- Star
+          starSum (False:ys) x = x : starSum ys 0   -- Bar

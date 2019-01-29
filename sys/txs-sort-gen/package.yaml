@@ -20,12 +20,14 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
+  - TorXakis.GenCollection
   - TorXakis.SortGen
   - TorXakis.SortGenContext
   - TorXakis.TestSortContext
   dependencies:
     - containers
     - deepseq
+    - multimap
     - txs-basics-gen
 
 extra-source-files:
