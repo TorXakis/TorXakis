@@ -20,6 +20,7 @@ library:
   exposed-modules:
   - TorXakis.Cover
   - TorXakis.NameGen
+  - TorXakis.Distribute
   dependencies:
   - base >= 4.7 && < 5
   - deepseq

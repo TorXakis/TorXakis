@@ -81,6 +81,7 @@ unsafeVar = Right . ValExpression . Vvar
 
 unsafeEqual :: ValExpression -> ValExpression -> Either MinError ValExpression
 -- Simplification: a == a <==> True
+-- Note: also (1 % v) == (1 % v) resolves to True, and later substitution of v by 0 still yields True
 unsafeEqual ve1 ve2 | ve1 == ve2                    = Right trueValExpr
 -- Simplification: Different Values <==> False : use Same Values are already detected in previous step
 unsafeEqual (TorXakis.ValExpr.ValExpr.view -> Vconst {}) (TorXakis.ValExpr.ValExpr.view -> Vconst {}) = Right falseValExpr
