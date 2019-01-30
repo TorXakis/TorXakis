@@ -29,6 +29,8 @@ module TorXakis.Name.Name
 , toText
 -- ** Smart constructor for Name
 , mkName
+-- ** Is predefined name?
+, isPredefined
 -- * HasName class
 , HasName (..)
 -- ** Repeated Names functions
@@ -42,22 +44,22 @@ import           Control.DeepSeq    (NFData)
 import           Data.Data          (Data)
 import           Data.Hashable      (Hashable(hashWithSalt))
 import           Data.List.Unique   (repeated)
-import           Data.Monoid        ((<>))
-import           Data.Text          (Text)
-import qualified Data.Text          as T
+import           Data.Set           (Set, fromList, member)
+import           Data.Text          (Text, pack)
 import           GHC.Generics       (Generic)
 
 import           TorXakis.Error     (MinError(MinError))
+import qualified TorXakis.XMLName   as XMLName
 
 -- | Definition of the name of entities.
 newtype Name = Name
-    { -- | 'Data.Text.Text' representation of Name.
-      toText :: Text
+    { -- | 'TorXakis.XMLName' representation of Name.
+      toXMLName :: XMLName.XMLName
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Hashable Name where
-    hashWithSalt s = hashWithSalt s . toText
+    hashWithSalt s = hashWithSalt s . toXMLName
 
 -- | Enables 'Name's of entities to be accessed in a common way.
 class HasName a where
@@ -68,7 +70,24 @@ instance HasName Name where
 
 instance (HasName a, HasName b) => HasName (Either a b) where
     getName = either getName getName
-    
+
+-- | 'Data.Text.Text' representation of Name.
+toText :: Name -> Text
+toText = XMLName.toText . toXMLName
+
+-- | Is name a Predefined name?
+isPredefined :: Text -> Bool
+isPredefined = (`member` predefinedNames)
+    where
+        predefinedNames :: Set Text
+        predefinedNames = fromList (map pack
+                                        [ "Int", "Bool", "Char", "String", "Regex"  -- Sorts
+                                        , "TYPEDEF", "FUNCDEF", "PROCDEF", "CNECTDEF", "STAUTDEF", "ENDDEF"  -- Definitions
+                                        , "IF", "THEN", "ELSE", "FI"                -- ValExpr
+                                        , "ENCODE", "DECODE"                        -- CNECTDEF terms
+                                                                                    -- STAUTDEF terms
+                                        ]
+                                   )
 -- | Smart constructor for Name.
 --
 --   A Name is returned when the following constraints are satisfied:
@@ -79,26 +98,16 @@ instance (HasName a, HasName b) => HasName (Either a b) where
 --
 --   * The remaining characters adhere to [A-Z] | \'_\' | [a-z] | \'-\' | [0-9]
 --
+--   * The provided 'Data.Text.Text' value is not a predefined name.
+--
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 --
 --   These constraints are enforced to be able to use Names as fields in XML.
 --   See e.g. http://www.w3.org/TR/REC-xml/#NT-NameStartChar and http://www.w3.org/TR/REC-xml/#NT-NameChar
 mkName :: Text -> Either MinError Name
-mkName s = case T.unpack s of
-            []     -> Left $ MinError (T.pack "Illegal input: Empty String")
-            (x:xs) -> if isNameStartChar x && all isNameChar xs 
-                        then Right $ Name s
-                        else Left $ MinError (T.pack "String contains illegal characters: " <> s)
-    where
-        isNameStartChar :: Char -> Bool
-        isNameStartChar c =      ('A' <= c && c <= 'Z')
-                              || ('_' == c)
-                              || ('a' <= c && c <= 'z')
-        isNameChar :: Char -> Bool
-        isNameChar c =     isNameStartChar c 
-                        || ('-' == c)
-                        || ('0' <= c && c <= '9')
-                              
+mkName s | isPredefined s   = (Left . MinError . pack) ("Illegal input: Predefined Name " ++ show s)
+         | otherwise        = XMLName.mkXMLName s >>= Right . Name
+
 -- |  Return the elements with non-unique names that the second list contains in the combination of the first and second list.
 repeatedByNameIncremental :: (HasName a, HasName b) => [a] -> [b] -> [b]
 repeatedByNameIncremental xs ys = filter ((`elem` nuNames) . getName) ys

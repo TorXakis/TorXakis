@@ -1,7 +1,7 @@
 # TorXakis - Model Based Testing
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
-name:                txs-valexpr-gen
+name:                txs-chan
 version:             0.1.0.0
 github:              "TorXakis/TorXakis"
 license:             BSD3
@@ -11,23 +11,24 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
 dependencies:
 - base >= 4.7 && < 5
-- QuickCheck
-- txs-name
+- text
 - txs-sort
-- txs-valexpr
-- txs-value
 
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.TestValExprContext
+  - TorXakis.FreeChans
+  - TorXakis.ChanContext
+  - TorXakis.ChanDef
+  - TorXakis.ChansDecl
   dependencies:
-    - hashmap
-    - text
-    - txs-basics
-    - txs-sort-gen
-    - txs-value-gen
-    - txs-var
+  - containers
+  - deepseq
+  - hashable
+  - hashmap
+  - txs-basics
+  - txs-name
+
 
 extra-source-files:
 - README.md
@@ -37,23 +38,9 @@ ghc-options:
 - -Wall
 - -O
 - -Widentities
-- -Wincomplete-uni-patterns
 - -Wincomplete-record-updates
 - -Wmissing-home-modules
+- -Wredundant-constraints
+- -Wincomplete-uni-patterns
 - -Wmissing-local-signatures
 - -Wmonomorphism-restriction
-- -Wredundant-constraints
-
-tests:
-    txs-valexpr-gen-test:
-        main : Spec.hs
-        source-dirs: test
-        ghc-options:
-        - -threaded
-        - -rtsopts
-        - -with-rtsopts=-N
-        dependencies:
-        - hspec
-        - text
-        - txs-var
-        - txs-valexpr-gen

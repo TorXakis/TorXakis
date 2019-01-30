@@ -40,9 +40,9 @@ import           Data.HashMap         (Map, fromList)
 import           Data.List.Unique     (repeated)
 import           GHC.Generics         (Generic)
 
-import           TorXakis.BExpr.ExitKind
-import           TorXakis.ChanDef
+import           TorXakis.ChanDef (ChanSort)
 import           TorXakis.Name
+import           TorXakis.ProcExit
 import           TorXakis.Sort
 
 -- | A generalized, type-safe reference.
@@ -52,8 +52,8 @@ data ProcSignature = ProcSignature { -- | The 'Name' of the process.
                                    , channels :: [ChanSort]
                                      -- | The 'Sort's of the process' arguments.
                                    , args :: [Sort]
-                                     -- | The 'ExitKind' of the process.
-                                   , exitKind :: ExitKind
+                                     -- | The 'TorXakis.ProcExit' of the process.
+                                   , exit :: ProcExit
                                    }
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 

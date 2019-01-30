@@ -39,28 +39,25 @@ newtype NameGen = NameGen { -- | accessor to 'TorXakis.Name'
                             unNameGen :: Name}
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-{- debug instance
-instance Arbitrary NameGen
-    where
-        arbitrary = do
-            c <- elements "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            case mkName (T.pack [c]) of
-                Right n -> return (NameGen n)
-                Left e  -> error $ "Error in NameGen: unexpected error " ++ show e
--}
-
--- real instance
 nameStartChars :: String
 nameStartChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 
 nameChars :: String
 nameChars = nameStartChars ++ "-0123456789"
 
+genText :: Gen T.Text
+genText = do
+    c <- elements nameStartChars
+    s <- listOf (elements nameChars)
+    let text = T.pack (c:s) in
+        if isPredefined text
+        then genText
+        else return text
+
 instance Arbitrary NameGen
     where
         arbitrary = do
-            c <- elements nameStartChars
-            s <- listOf (elements nameChars)
-            case mkName (T.pack (c:s)) of
-                Right n -> return (NameGen n)
-                Left e  -> error $ "Error in NameGen: unexpected error " ++ show e
+            text <- genText
+            case mkName text of
+                    Right n -> return (NameGen n)
+                    Left e  -> error $ "Error in NameGen: unexpected error " ++ show e

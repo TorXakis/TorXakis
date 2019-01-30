@@ -39,10 +39,10 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import           GHC.Generics        (Generic)
 
-import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
 import           TorXakis.FreeVars
 import           TorXakis.Name
+import           TorXakis.ProcExit
 import           TorXakis.ProcSignature
 import           TorXakis.Relabel
 import           TorXakis.Sort
@@ -89,40 +89,40 @@ containsEXIT :: ActOffer -> Bool
 containsEXIT ao = chanExit `Map.member` offers ao
 
 -- | ExitKind related to ChanDef ValExpression tuple
-toExitKind :: VarContext a => a -> (ChanDef , [ValExpression]) -> ExitKind
-toExitKind ctx (cd, cs) | cd == chanExit     = Exit (map (getSort ctx) cs)
-toExitKind _   (cd, _)  | cd == chanQstep    = Hit
-toExitKind _   (cd, _)  | cd == chanHit      = Hit
-toExitKind _   (cd, _)  | cd == chanMiss     = Hit
-toExitKind _   _                             = NoExit
+toProcExit :: VarContext a => a -> (ChanDef , [ValExpression]) -> ProcExit
+toProcExit ctx (cd, cs) | cd == chanExit     = Exit (map (getSort ctx) cs)
+toProcExit _   (cd, _)  | cd == chanQstep    = Hit
+toProcExit _   (cd, _)  | cd == chanHit      = Hit
+toProcExit _   (cd, _)  | cd == chanMiss     = Hit
+toProcExit _   _                             = NoExit
 
-instance VarContext a => HasExitKind a ActOffer where
-    getExitKind ctx a = case foldM (<<+>>) NoExit (map (toExitKind ctx) (Map.toList (offers a))) of
+instance VarContext a => HasProcExit a ActOffer where
+    getProcExit ctx a = case foldM (<<+>>) NoExit (map (toProcExit ctx) (Map.toList (offers a))) of
                              Right v -> v
                              Left e  -> error ("Smart constructor created invalid ActOffer " ++ show e)
 
 
-instance VarContext a => HasExitKind a BExpression where
-    getExitKind ctx = getExitKind ctx . TorXakis.BExpr.BExpr.view
+instance VarContext a => HasProcExit a BExpression where
+    getProcExit ctx = getProcExit ctx . TorXakis.BExpr.BExpr.view
 
-instance VarContext a => HasExitKind a BExpressionView where
-    getExitKind ctx (ActionPref _ a b)  = case getExitKind ctx a <<+>> getExitKind ctx b of
+instance VarContext a => HasProcExit a BExpressionView where
+    getProcExit ctx (ActionPref _ a b)  = case getProcExit ctx a <<+>> getProcExit ctx b of
                                                Right v -> v
                                                Left e  -> error ("Smart constructor created invalid ActionPref " ++ show e)
-    getExitKind ctx (Guard _ b)         = getExitKind ctx b
-    getExitKind ctx (Choice s)          = case foldM (<<+>>) NoExit (map (getExitKind ctx) (Set.toList s)) of
+    getProcExit ctx (Guard _ b)         = getProcExit ctx b
+    getProcExit ctx (Choice s)          = case foldM (<<+>>) NoExit (map (getProcExit ctx) (Set.toList s)) of
                                                Right v -> v
                                                Left e  -> error ("Smart constructor created invalid Choice " ++ show e)
-    getExitKind ctx (Parallel _ l)      = case foldM (<<->>) NoExit (map (getExitKind ctx) l) of
+    getProcExit ctx (Parallel _ l)      = case foldM (<<->>) NoExit (map (getProcExit ctx) l) of
                                                Right v -> v
                                                Left e  -> error ("Smart constructor created invalid Parallel " ++ show e)
-    getExitKind ctx (Enable _ _ b)      = getExitKind ctx b
-    getExitKind ctx (Disable a b)       = case getExitKind ctx a <<+>> getExitKind ctx b of
+    getProcExit ctx (Enable _ _ b)      = getProcExit ctx b
+    getProcExit ctx (Disable a b)       = case getProcExit ctx a <<+>> getProcExit ctx b of
                                                Right v -> v
                                                Left e  -> error ("Smart constructor created invalid Disable " ++ show e)
-    getExitKind ctx (Interrupt a _)     = getExitKind ctx a
-    getExitKind _   (ProcInst ps _ _)   = exitKind ps
-    getExitKind ctx (Hide _ b)          = getExitKind ctx b
+    getProcExit ctx (Interrupt a _)     = getProcExit ctx a
+    getProcExit _   (ProcInst ps _ _)   = exit ps
+    getProcExit ctx (Hide _ b)          = getProcExit ctx b
 
 
 instance FreeVars BExpression where

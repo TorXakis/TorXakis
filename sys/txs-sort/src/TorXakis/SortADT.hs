@@ -146,7 +146,8 @@ mkADTDef _ [] = Left $ MinError (T.pack "Empty Constructor List")
 mkADTDef m cs
     | not $ null nuCstrDefs   = Left $ MinError (T.pack ("Non-unique constructor definitions" ++ show nuCstrDefs))
     | not $ null nuFieldNames = Left $ MinError (T.pack ("Non-unique field definitions" ++ show nuFieldNames))
-                                -- TODO: Name is not a predefined Sort (e.g. Int, Bool, and Regex)       to avoid confusion and enable round tripping
+                                -- TODO: Name is not a predefined Sort (e.g. Int, Bool, and Regex) or token (TYPEDEF, FUNCDEF, ENDDEF, ...)
+                                --       to avoid confusion and enable round tripping
     | otherwise               = Right $ ADTDef m (toMapByName cs)
     where
         nuCstrDefs :: [ConstructorDef]

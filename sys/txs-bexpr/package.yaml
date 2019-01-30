@@ -16,9 +16,7 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.BExpr
-  - TorXakis.ChanDef
   - TorXakis.ProcDef
-  - TorXakis.ProcSignature
   dependencies:
   - containers
   - deepseq
@@ -26,6 +24,9 @@ library:
   - hashmap
   - text
   - txs-basics
+  - txs-chan
+  - txs-name
+  - txs-procsignature
   - txs-sort
   - txs-valexpr
   - txs-value

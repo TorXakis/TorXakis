@@ -1,7 +1,7 @@
 # TorXakis - Model Based Testing
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
-name:                txs-valexpr-gen
+name:                txs-funcsignature-gen
 version:             0.1.0.0
 github:              "TorXakis/TorXakis"
 license:             BSD3
@@ -12,22 +12,15 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
-- txs-name
-- txs-sort
-- txs-valexpr
-- txs-value
+- txs-funcsignature
+- txs-sort-gen
 
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.TestValExprContext
+  - TorXakis.FuncSignatureGen
   dependencies:
-    - hashmap
-    - text
-    - txs-basics
-    - txs-sort-gen
-    - txs-value-gen
-    - txs-var
+    - txs-name-gen
 
 extra-source-files:
 - README.md
@@ -45,7 +38,7 @@ ghc-options:
 - -Wredundant-constraints
 
 tests:
-    txs-valexpr-gen-test:
+    txs-funcsignature-gen-test:
         main : Spec.hs
         source-dirs: test
         ghc-options:
@@ -54,6 +47,5 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
-        - text
-        - txs-var
-        - txs-valexpr-gen
+        - txs-sort
+        - txs-funcsignature-gen

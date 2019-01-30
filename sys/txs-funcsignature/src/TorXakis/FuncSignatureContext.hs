@@ -15,9 +15,6 @@ See LICENSE at root directory of this repository.
 --
 -- Context for FuncSignature.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -41,12 +38,12 @@ import           TorXakis.Sort (SortContext)
 -- | A FuncSignatureContext Context instance contains all definitions to work with 'TorXakis.FuncSignature'.
 class SortContext a => FuncSignatureContext a where
     -- | Accessor for defined variables
-    funcSignatures :: a -> Set.Set (FuncSignature)
+    funcSignatures :: a -> Set.Set FuncSignature
 
     -- | Add funcSignatures to funcSignature context.
     --   A funcSignature context is returned when the following constraints are satisfied:
     --
-    --   * The signatures of the all funcSignatures are distinct
+    --   * All funcSignatures are distinct
     --
     --   * All sorts are known
     --

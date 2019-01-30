@@ -13,7 +13,7 @@ dependencies:
 - base >= 4.7 && < 5
 - hashmap
 - text
-- txs-basics
+- txs-name
 
 library:
   source-dirs: src
@@ -22,6 +22,7 @@ library:
   dependencies:
   - deepseq
   - hashable
+  - txs-basics
 
 extra-source-files:
 - README.md

@@ -30,9 +30,9 @@ import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
 
 import           TorXakis.BExpr.BExpr
-import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
 import           TorXakis.Name
+import           TorXakis.ProcExit
 import           TorXakis.ProcSignature
 import           TorXakis.Sort
 import           TorXakis.VarContext
@@ -58,7 +58,7 @@ instance SortContext a => HasProcSignature a ProcDef
     where
         getProcSignature sctx (ProcDef fn cds pds bd) = case addVarDefs (fromSortContext sctx) (toList pds) of
                                                              Left e     -> error ("getProcSignature is unable to add vars to sort context" ++ show e)
-                                                             Right vctx -> ProcSignature fn (map chanSort cds) (map (getSort sctx) (toList pds)) (getExitKind vctx bd)
+                                                             Right vctx -> ProcSignature fn (map chanSort cds) (map (getSort sctx) (toList pds)) (getProcExit vctx bd)
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

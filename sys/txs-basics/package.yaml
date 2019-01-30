@@ -20,14 +20,9 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.Error
-  - TorXakis.Name
   - TorXakis.PrettyPrint.TorXakis
   dependencies:
   - deepseq
-  - hashable
-  - hashmap
-  - Unique
-
 
 ghc-options:
 - -Werror
@@ -51,6 +46,5 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
-        - regex-tdfa
         - QuickCheck
         - txs-basics

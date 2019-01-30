@@ -29,6 +29,7 @@ library:
   - hexpat
   - regex-tdfa
   - txs-basics
+  - txs-name
 
 
 extra-source-files:

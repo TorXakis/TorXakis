@@ -16,23 +16,22 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.FuncDef
-  - TorXakis.FuncSignature
   - TorXakis.ValExpr
   - TorXakis.ValExprContext
   dependencies:
   - array
   - containers
   - deepseq
-  - hashable
   - hashmap
   - regex-tdfa
   - text
   - txs-basics
+  - txs-funcsignature
   - txs-lex-regex-xsd
+  - txs-name
   - txs-sort
   - txs-value
   - txs-var
-  - Unique
 
 extra-source-files:
 - README.md

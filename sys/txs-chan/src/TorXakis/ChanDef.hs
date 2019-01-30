@@ -19,8 +19,10 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 module TorXakis.ChanDef
-( ChanDef (..)
-, ChanSort (..)
+( ChanSort
+, toSorts
+, mkChanSort
+, ChanDef (..)
 , chanExit
 , chanQstep
 , chanHit
@@ -34,12 +36,21 @@ import           Data.Hashable       (Hashable(hashWithSalt))
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
+import TorXakis.Error
 import TorXakis.Name
 import TorXakis.Sort
 
--- | Data structure for Channel Sort: a list of `Sort`s.
+-- | Data structure for Channel Sort: a list of 'TorXakis.Sort's.
 newtype ChanSort = ChanSort { toSorts :: [Sort] }
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+-- | Smart constructor for ChanSort
+mkChanSort :: SortContext a => a -> [Sort] -> Either MinError ChanSort
+mkChanSort ctx l | not $ null undefinedSorts = Left $ MinError (T.pack ("Channel has undefined sorts " ++ show undefinedSorts))
+                 | otherwise                 = Right $ ChanSort l
+    where
+        undefinedSorts :: [Sort]
+        undefinedSorts = filter (not . elemSort ctx) l
 
 instance Hashable ChanSort where
     hashWithSalt s (ChanSort xs)    = s `hashWithSalt` xs
@@ -57,9 +68,10 @@ instance HasName ChanDef where
     getName = chanName
 
 -- TODO: should we have separated constructors for the predefined channels (EXIT, QSTEP, HIT, MISS)?
+--       Additional advantage, we can decouple ChanSort from ChanDef!
 -- | Predefined EXIT channel
 chanExit  :: ChanDef
-chanExit  = ChanDef exitName  (ChanSort [])     -- EXIT channel can also have other kinds of chanSort
+chanExit  = ChanDef exitName (ChanSort [])    -- EXIT channel can also have other kinds of chanSort
     where exitName = case mkName (T.pack "EXIT") of
                         Right v -> v
                         Left e  -> error ("EXIT should be legal name, yet " ++ show e)

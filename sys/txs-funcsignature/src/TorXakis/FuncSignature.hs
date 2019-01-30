@@ -58,9 +58,9 @@ data FuncSignature = FuncSignature { -- | The 'Name' of the function.
 
 -- | Constructor of 'TorXakis.FuncSignature'
 mkFuncSignature :: SortContext a => a -> Name -> [Sort] -> Sort -> Either MinError FuncSignature
-mkFuncSignature ctx n as s | not $ null undefinedSorts = Left $ MinError (T.pack ("Argument have undefined sorts " ++ show undefinedSorts))
-                             | elemSort ctx s            = Right $ FuncSignature n as s
-                             | otherwise                 = Left $ MinError (T.pack ("Return sort has undefined sort " ++ show s))
+mkFuncSignature ctx n as s | not $ null undefinedSorts = Left $ MinError (T.pack ("Arguments have undefined sorts " ++ show undefinedSorts))
+                           | elemSort ctx s            = Right $ FuncSignature n as s
+                           | otherwise                 = Left $ MinError (T.pack ("Return sort has undefined sort " ++ show s))
     where
         undefinedSorts :: [Sort]
         undefinedSorts = filter (not . elemSort ctx) as

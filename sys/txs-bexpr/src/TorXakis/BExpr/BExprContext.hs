@@ -37,12 +37,12 @@ import qualified Data.Text              as T
 import           GHC.Generics           (Generic)
 
 import           TorXakis.BExpr.BExpr
-import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
 import           TorXakis.Error         ( MinError(MinError) )
 import           TorXakis.FreeVars
 import           TorXakis.Name
 import           TorXakis.ProcDef
+import           TorXakis.ProcExit
 import           TorXakis.ProcSignature
 import           TorXakis.Sort          ( Sort, SortContext (..), elemSort )
 import           TorXakis.ValExprContext

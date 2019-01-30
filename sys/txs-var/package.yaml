@@ -27,6 +27,7 @@ library:
   - hashable
   - hashmap
   - txs-basics
+  - txs-name
 
 
 extra-source-files:

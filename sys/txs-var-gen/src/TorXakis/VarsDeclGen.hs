@@ -15,9 +15,6 @@ See LICENSE at root directory of this repository.
 --
 -- This module provides a Generator for 'TorXakis.VarsDecl'.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
 module TorXakis.VarsDeclGen
 ( -- | generator for arbitrary 'TorXakis.VarsDecl'
   arbitraryVarsDecl
@@ -45,7 +42,7 @@ arbitraryVarsDecl ctx = do
     let names = Set.toList (Set.map unNameGen nameGens)
 
     sorts <- vectorOf (length names) (arbitrarySort ctx)
-    let cs = map (uncurry (mkVarDef ctx)) (zip names sorts)
+    let cs = zipWith (mkVarDef ctx) names sorts
     case partitionEithers cs of
         ([], vardefs) -> case mkVarsDecl ctx vardefs of
                             Right vd -> return vd

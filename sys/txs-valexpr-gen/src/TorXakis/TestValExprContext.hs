@@ -16,9 +16,6 @@ See LICENSE at root directory of this repository.
 -- Sort Context for Test: 
 -- Additional functionality to ensure termination for QuickCheck
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -82,20 +79,23 @@ nonZero ctx = do
         Vconst (Cint 0) -> nonZero ctx
         _               -> return n
 
-genValExprModulo :: TestValExprContext a => a -> Gen ValExpression
-genValExprModulo ctx = do
+division :: TestValExprContext a => a -> Gen (ValExpression, ValExpression)
+division ctx = do
     n <- getSize
     teller <- resize (n-2) (arbitraryValExprOfSort ctx SortInt)
     noemer <- resize (n-2) (nonZero ctx)
+    return (teller, noemer)
+
+genValExprModulo :: TestValExprContext a => a -> Gen ValExpression
+genValExprModulo ctx = do
+    (teller, noemer) <- division ctx
     case mkModulo ctx teller noemer of
          Left e  -> error ("genValExprModulo constructor fails " ++ show e)
          Right x -> return x
 
 genValExprDivide :: TestValExprContext a => a -> Gen ValExpression
 genValExprDivide ctx = do
-    n <- getSize
-    teller <- resize (n-2) (arbitraryValExprOfSort ctx SortInt)
-    noemer <- resize (n-2) (nonZero ctx)
+    (teller, noemer) <- division ctx
     case mkDivide ctx teller noemer of
          Left e  -> error ("genValExprDivide constructor fails " ++ show e)
          Right x -> return x
@@ -209,9 +209,9 @@ instance TestValExprContext MinimalTestValExprContext where
             [] -> error ("No Generators for " ++ show s ++ " at " ++ show n)
             xs -> do
                     generator <- elements xs
-                    value <- generator ctx
-                    return value
-    
+                    generator ctx
+
+
 {-    
     
     
