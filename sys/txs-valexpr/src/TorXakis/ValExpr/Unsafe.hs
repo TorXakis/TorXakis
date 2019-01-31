@@ -117,17 +117,17 @@ unsafeITE :: ValExpression -> ValExpression -> ValExpression -> Either MinError 
 unsafeITE b tb _ | b == trueValExpr         = Right tb
 -- Simplification: if False then a else b <==> b
 unsafeITE b _ fb | b == falseValExpr        = Right fb
+-- Simplification: if (not c) then tb else fb <==> if c then fb else tb
+unsafeITE (TorXakis.ValExpr.ValExpr.view -> Vnot n) tb fb              = Right $ ValExpression (Vite n fb tb)
 -- Simplification: if q then p else False fi <==> q /\ p : Note: p is boolean expression (otherwise different sorts in branches) 
 -- Not implemented to enable conditional evaluation
 -- Simplification: if c then a else a <==> a
 unsafeITE _ tb fb | tb == fb                  = Right tb
--- Simplification: if (not c) then tb else fb <==> if c then fb else tb
-unsafeITE (TorXakis.ValExpr.ValExpr.view -> Vnot n) tb fb              = Right $ ValExpression (Vite n fb tb)
 -- Simplification: if c then True else False <==> c
 unsafeITE b tb fb | tb == trueValExpr && fb == falseValExpr = Right b
 -- Simplification: if c then False else True <==> not c
 unsafeITE b tb fb | tb == falseValExpr && fb == trueValExpr = unsafeNot b
-unsafeITE cs tb fb                            = Right $ ValExpression (Vite cs tb fb)
+unsafeITE b tb fb                            = Right $ ValExpression (Vite b tb fb)
 
 unsafePredefNonSolvable :: SortContext c => c -> FuncSignature -> [ValExpression] -> Either MinError ValExpression
 unsafePredefNonSolvable ctx fs vs = case toMaybeValues vs of
