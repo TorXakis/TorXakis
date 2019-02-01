@@ -24,6 +24,7 @@ import           Test.Hspec
 import           Test.Hspec.QuickCheck (modifyMaxSuccess,modifyMaxSize)
 import           Test.QuickCheck
 
+import           TorXakis.Error
 import           TorXakis.Sort
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
@@ -33,13 +34,13 @@ prop_Increments :: Gen Bool
 prop_Increments = 
     let c0 = empty :: MinimalTestSortContext in do
         incr1 <- arbitraryADTDefs c0
-        case addAdtDefs c0 incr1 of
+        case addAdtDefs c0 incr1 :: Either MinError MinimalTestSortContext of
             Left e1  -> error ("Invalid generator 1 - " ++ show e1)
             Right c1 -> do
                             incr2 <- arbitraryADTDefs c1
-                            case addAdtDefs c1 incr2 of
+                            case addAdtDefs c1 incr2 :: Either MinError MinimalTestSortContext of
                                 Left e2  -> error ("Invalid generator 2 - " ++ show e2)
-                                Right c2 -> return $ case addAdtDefs c0 (incr2++incr1) of
+                                Right c2 -> return $ case addAdtDefs c0 (incr2++incr1) :: Either MinError MinimalTestSortContext of
                                                         Left e    -> trace ("error = " ++ show e) False
                                                         Right c12 -> c12 == c2 || trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) False
 

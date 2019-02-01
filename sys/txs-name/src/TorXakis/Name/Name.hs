@@ -81,11 +81,16 @@ isPredefined = (`member` predefinedNames)
     where
         predefinedNames :: Set Text
         predefinedNames = fromList (map pack
-                                        [ "Int", "Bool", "Char", "String", "Regex"  -- Sorts
-                                        , "TYPEDEF", "FUNCDEF", "PROCDEF", "CNECTDEF", "STAUTDEF", "ENDDEF"  -- Definitions
-                                        , "IF", "THEN", "ELSE", "FI"                -- ValExpr
-                                        , "ENCODE", "DECODE"                        -- CNECTDEF terms
-                                                                                    -- STAUTDEF terms
+                                        [ "Int", "Bool", "Char", "String", "Regex"           -- Sorts
+                                        , "TYPEDEF", "FUNCDEF", "PROCDEF", "MODELDEF", "CHANDEF"
+                                        , "PURPDEF", "CNECTDEF", "STAUTDEF", "ENDDEF"        -- Definitions
+                                        , "IF", "THEN", "ELSE", "FI"                         -- ValExpr
+                                        , "ISTEP", "EXIT"                                    -- PROCDEF terms
+                                        , "GOAL", "HIT", "MISS"                              -- GOALDEF terms
+                                        , "CHAN", "IN", "OUT", "BEHAVIOUR"                   -- MODELDEF terms
+                                        , "CLIENTSOCK", "SERVERSOCK", "ENCODE", "DECODE"
+                                        , "HOST", "PORT"                                     -- CNECTDEF terms
+                                        , "STATE", "VAR", "INIT", "TRANS"                    -- STAUTDEF terms
                                         ]
                                    )
 -- | Smart constructor for Name.

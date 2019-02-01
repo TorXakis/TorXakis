@@ -15,45 +15,58 @@ See LICENSE at root directory of this repository.
 --
 -- Context for Sort: all defined sorts and necessary other definitions
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.SortContext
-( -- * Sort Context
-  SortContext (..)
+( -- * Sort Context (part without error handling)
+  SortSplit (..)
+  -- * Sort Context (including error handling)
+, SortContext (..)
 , elemSort
-, violationsAddAdtDefs
 , prettyPrintSortContext
-, MinimalSortContext(MinimalSortContext)
+, violationsAddAdtDefs
 )
 where
-import           Control.DeepSeq     (NFData)
-import           Data.Data           (Data)
+import           Control.Monad.Reader
 import qualified Data.HashMap        as Map
 import qualified Data.List           as List
 import           Data.Maybe          (mapMaybe)
 import qualified Data.Text           as T
-import           GHC.Generics        (Generic)
 
-import           TorXakis.Error      ( MinError(MinError) )
-import           TorXakis.Name       ( Name, getName, repeatedByNameIncremental, RefByName( toName ), toMapByName )
+import           TorXakis.Error      ( Error, MinError(MinError) )
+import           TorXakis.Name       ( Name, getName, repeatedByNameIncremental, RefByName( toName ) )
+import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.SortADT    ( ADTDef, constructors
                                      , ConstructorDef, fields
                                      , FieldDef(sort)
                                      , Sort(SortADT)
                                      )
-import           TorXakis.PrettyPrint.TorXakis
 
--- | A SortContext instance contains all definitions to work with sorts and references thereof
-class SortContext a where
--- TODO: Kind of Error should be a parameter: allow for SortContext that yield more informative Errors than MinError
+-- See https://stackoverflow.com/questions/23983374/how-to-handle-functions-of-a-multi-parameter-typeclass-who-not-need-every-type
+-- why we splitted into two smaller type classes
 
+-- | The part of a Sort Context without error handling
+class SortSplit a where
     -- | An empty sort context (initial state)
     empty :: a
-
     -- | Accessor for ADTDefs
     adtDefs :: a -> Map.Map (RefByName ADTDef) ADTDef
 
+-- | Is the provided sort a element of the context?
+elemSort :: SortSplit a => Sort  -- ^ the sort
+                        -> Reader a Bool
+elemSort (SortADT a) = do
+    as <- reader adtDefs
+    return $ Map.member a as
+elemSort _           = return True
+
+-- | Generic Pretty Printer for all instance of 'SortContext'.
+prettyPrintSortContext :: SortSplit a => Options -> a -> TxsString
+prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o sc) (Map.elems (adtDefs sc))))
+
+-- | A Sort Context instance 
+-- contains all definitions to work with sorts and references thereof.
+-- The Sort Context includes error handling of a generic error.
+class (SortSplit a, Error e) => SortContext a e where
     -- | Add adt definitions to sort context.
     --   A sort context is returned when the following constraints are satisfied:
     --
@@ -64,14 +77,8 @@ class SortContext a where
     --   * All ADTs are constructable
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addAdtDefs :: a -> [ADTDef] -> Either MinError a
+    addAdtDefs :: a -> [ADTDef] -> Either e a
 
--- | Is the provided sort a element of the context?
-elemSort :: SortContext a => a     -- ^ the context
-                          -> Sort  -- ^ the sort
-                          -> Bool
-elemSort ctx (SortADT a) = Map.member a (adtDefs ctx)
-elemSort _   _           = True
 
 -- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
 --   The error reflects the violations of any of the following constraints:
@@ -81,7 +88,7 @@ elemSort _   _           = True
 --   * All references are known
 --
 --   * All ADTs are constructable
-violationsAddAdtDefs :: SortContext a => a -> [ADTDef] -> Maybe MinError
+violationsAddAdtDefs :: SortSplit a => a -> [ADTDef] -> Maybe MinError
 violationsAddAdtDefs context as
     | not $ null nonUniqueNames       = Just $ MinError (T.pack ("Non unique names : " ++ show nonUniqueNames))
     | not $ null unknownRefs          = Just $ MinError (T.pack ("Unknown references : " ++ show unknownRefs))
@@ -148,18 +155,3 @@ violationsAddAdtDefs context as
             isSortConstructable :: [Name] -> Sort -> Bool
             isSortConstructable ns (SortADT t) = toName t `elem` ns
             isSortConstructable _  _           = True
-
--- | A minimal instance of 'SortContext'.
-newtype MinimalSortContext = MinimalSortContext { _adtDefs :: Map.Map (RefByName ADTDef) ADTDef 
-                                                } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
-
-instance SortContext MinimalSortContext where
-    empty = MinimalSortContext Map.empty
-    adtDefs = _adtDefs
-    addAdtDefs ctx as = case violationsAddAdtDefs ctx as of
-                                Just e  -> Left e
-                                Nothing -> Right $ ctx { _adtDefs = Map.union (_adtDefs ctx) (toMapByName as) }
-
--- | Generic Pretty Printer for all instance of 'SortContext'.
-prettyPrintSortContext :: SortContext a => Options -> a -> TxsString
-prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o sc) (Map.elems (adtDefs sc))))

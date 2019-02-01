@@ -15,6 +15,8 @@ See LICENSE at root directory of this repository.
 --
 -- Test specifications for 'SortContext'.
 -----------------------------------------------------------------------------
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.SortContextSpec
 (spec
 )
@@ -23,6 +25,7 @@ import qualified Data.HashMap        as Map
 import qualified Data.Text           as T
 import           Test.Hspec
 
+import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.Sort
 
@@ -45,13 +48,12 @@ unsafeADTDef n cs = case mkADTDef n cs of
 prop_ADTDefs_nonConstructable :: Bool
 prop_ADTDefs_nonConstructable =
     let aName = unsafeName "adtName"
-        adtdef = unsafeADTDef aName 
-                              [ unsafeConstructorDef (unsafeName "cstrName")
-                                                     [ FieldDef (unsafeName "fieldName") (SortADT (RefByName aName)) ]
-                              ]
-        ctx = empty :: MinimalSortContext
+        cyclicAdtdef = unsafeADTDef aName 
+                                    [ unsafeConstructorDef (unsafeName "cstrName")
+                                                           [ FieldDef (unsafeName "fieldName") (SortADT (RefByName aName)) ]
+                                    ]
       in
-        case addAdtDefs ctx [adtdef] of
+        case addAdtDefs empty [cyclicAdtdef] :: Either MinError MinimalSortContext of
             Right _ -> False
             Left _  -> True
 
@@ -59,13 +61,12 @@ prop_ADTDefs_nonConstructable =
 prop_ADTDefs_unknownReference :: Bool
 prop_ADTDefs_unknownReference =
     let unknownName = unsafeName "unknown"
-        adtdef = unsafeADTDef (unsafeName "adtName") 
-                              [ unsafeConstructorDef (unsafeName "cstrName")
-                                                     [ FieldDef (unsafeName "fieldName") (SortADT (RefByName unknownName)) ]
-                              ]
-        ctx = empty :: MinimalSortContext
+        undefinedRefAdtdef = unsafeADTDef (unsafeName "adtName") 
+                                          [ unsafeConstructorDef (unsafeName "cstrName")
+                                                                 [ FieldDef (unsafeName "fieldName") (SortADT (RefByName unknownName)) ]
+                                          ]
       in
-        case addAdtDefs ctx [adtdef] of
+        case addAdtDefs empty [undefinedRefAdtdef] :: Either MinError MinimalSortContext of
             Right _ -> False
             Left _  -> True
 
@@ -74,9 +75,8 @@ prop_ADTDefs_unique :: Bool
 prop_ADTDefs_unique =
     let adtdef = unsafeADTDef (unsafeName "adtName") 
                               [ unsafeConstructorDef (unsafeName "cstrName") [] ]
-        ctx = empty :: MinimalSortContext
       in
-        case addAdtDefs ctx [adtdef, adtdef] of
+        case addAdtDefs empty [adtdef, adtdef] :: Either MinError MinimalSortContext of
             Right _ -> False
             Left _  -> True
 
@@ -97,32 +97,32 @@ prop_ADTDefs_Dependent =
                                                  , FieldDef bName (SortADT bRef)
                                                  , FieldDef cName (SortADT cRef)
                                                  ]
+        cstrName = unsafeName "cstr"
         aDef = unsafeADTDef aName
                             [ depConstructorDef
-                            , unsafeConstructorDef (unsafeName "cstr") []
+                            , unsafeConstructorDef cstrName []
                             ]
         bDef = unsafeADTDef bName
                             [ depConstructorDef
-                            , unsafeConstructorDef (unsafeName "cstr")
+                            , unsafeConstructorDef cstrName
                                                    [ FieldDef (unsafeName "diffA") (SortADT aRef) ]
                             ]
         cDef = unsafeADTDef cName
                             [ depConstructorDef
-                            , unsafeConstructorDef (unsafeName "cstr")
+                            , unsafeConstructorDef cstrName
                                                    [ FieldDef (unsafeName "diffA") (SortADT aRef)
                                                    , FieldDef (unsafeName "diffB") (SortADT bRef)
                                                    ]
                             ]
-        ctx = empty :: MinimalSortContext
       in
-        case addAdtDefs ctx [cDef, bDef, aDef] of
+        case addAdtDefs empty [aDef, bDef, cDef] :: Either MinError MinimalSortContext of
             Left  _      -> False
             Right newCtx -> adtDefs newCtx == Map.fromList [(aRef, aDef),(bRef, bDef),(cRef, cDef)]
 
 
 spec :: Spec
 spec =
-  describe "A context" $ do
+  describe "A sort context" $ do
     it "cannot be extended with non constructable ADTDefs" prop_ADTDefs_nonConstructable
     it "cannot be extended with ADTDefs with unknown references" prop_ADTDefs_unknownReference
     it "cannot be extended such that names are no longer unique" prop_ADTDefs_unique

@@ -27,7 +27,7 @@ module TorXakis.GenCollection
 , get
 )
 where
-
+import           Control.Monad.Reader
 import qualified Data.HashMap        as HashMap
 import           Data.Maybe
 import qualified Data.MultiMap       as MultiMap
@@ -35,7 +35,10 @@ import qualified Data.Text           as T
 import           Test.QuickCheck
 
 import           TorXakis.Error
-import           TorXakis.Sort (Sort, SortContext, elemSort)
+import           TorXakis.Sort (Sort
+                               , SortSplit
+                               , elemSort
+                               )
 
 -- | GenCollection - stores generators
 newtype GenCollection c a = GenCollection ( HashMap.Map Sort ( MultiMap.MultiMap Int (c -> Gen a) ) )
@@ -46,12 +49,15 @@ empty = GenCollection HashMap.empty
 
 -- | Add Generator to GenCollection
 -- TODO: do we need the check 
-add :: SortContext c => c -> Sort -> Int -> (c -> Gen a) -> GenCollection c a -> Either MinError (GenCollection c a)
-add ctx s n g (GenCollection c) | elemSort ctx s = let mm = HashMap.findWithDefault MultiMap.empty s c
-                                                       newMM = MultiMap.insert n g mm
-                                                     in
-                                                       Right $ GenCollection (HashMap.insert s newMM c)
-                                | otherwise      = Left $ MinError (T.pack ("Add: Sort " ++ show s ++ " not defined in context."))
+add :: SortSplit c => Sort -> Int -> (d -> Gen a) -> GenCollection d a -> Reader c (Either MinError (GenCollection d a))
+add s n g (GenCollection c) = do
+    b <- elemSort s
+    if b
+    then let mm = HashMap.findWithDefault MultiMap.empty s c
+             newMM = MultiMap.insert n g mm
+         in
+            return $ Right $ GenCollection (HashMap.insert s newMM c)
+    else return $ Left $ MinError (T.pack ("Add: Sort " ++ show s ++ " not defined in context."))
 
 -- | Get generators of given sort and size/complexity less than or equal to given value
 get :: GenCollection c a -> Sort -> Int -> [c -> Gen a]

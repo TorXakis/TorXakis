@@ -14,6 +14,7 @@ dependencies:
 - hashmap
 - QuickCheck
 - text
+- txs-basics
 - txs-name
 - txs-sort
 
@@ -28,7 +29,7 @@ library:
     - containers
     - deepseq
     - multimap
-    - txs-basics
+    - mtl
     - txs-name-gen
 
 extra-source-files:

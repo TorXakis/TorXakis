@@ -24,6 +24,7 @@ import qualified Data.HashMap        as Map
 import qualified Data.Text           as T
 import           Test.Hspec
 
+import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.TestSortContext
@@ -51,9 +52,8 @@ prop_ADTDefs_nonConstructable =
                               [ unsafeConstructorDef (unsafeName "cstrName")
                                                      [ FieldDef (unsafeName "fieldName") (SortADT (RefByName aName)) ]
                               ]
-        ctx = empty :: MinimalTestSortContext
       in
-        case addAdtDefs ctx [adtdef] of
+        case addAdtDefs empty [adtdef] :: Either MinError MinimalTestSortContext of
             Right _ -> False
             Left _  -> True
 
@@ -65,9 +65,8 @@ prop_ADTDefs_unknownReference =
                               [ unsafeConstructorDef (unsafeName "cstrName")
                                                      [ FieldDef (unsafeName "fieldName") (SortADT (RefByName unknownName)) ]
                               ]
-        ctx = empty :: MinimalTestSortContext
       in
-        case addAdtDefs ctx [adtdef] of
+        case addAdtDefs empty [adtdef] :: Either MinError MinimalTestSortContext of
             Right _ -> False
             Left _  -> True
 
@@ -76,9 +75,8 @@ prop_ADTDefs_unique :: Bool
 prop_ADTDefs_unique =
     let adtdef = unsafeADTDef (unsafeName "adtName") 
                               [ unsafeConstructorDef (unsafeName "cstrName") [] ]
-        ctx = empty :: MinimalTestSortContext
       in
-        case addAdtDefs ctx [adtdef, adtdef] of
+        case addAdtDefs empty [adtdef, adtdef] :: Either MinError MinimalTestSortContext of
             Right _ -> False
             Left _  -> True
 
@@ -123,15 +121,21 @@ prop_ADTDefs_Dependent =
                                                    , FieldDef (unsafeName "diffB") (SortADT bRef)
                                                    ]
                             ]
-        ctx = empty :: MinimalTestSortContext
+        complexityA :: Int
+        complexityA   = 1
+        complexityB   = 1 + complexityA
+        complexityC   = 1 + complexityA + complexityB
+        complexityDep = 1 + complexityA + complexityB + complexityC
       in
-        case addAdtDefs ctx [cDef, bDef, aDef] of
+        case addAdtDefs empty [cDef, bDef, aDef] :: Either MinError MinimalTestSortContext of
             Left  _      -> False
             Right newCtx ->     adtDefs newCtx == Map.fromList [(aRef, aDef),(bRef, bDef),(cRef, cDef)]
-                            &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT aRef, 1),(SortADT bRef, 2),(SortADT cRef, 3)] -- also primitive Sorts are contained
-                            &&  mapAdtMapConstructorSize newCtx == Map.fromList [ (aRef, Map.fromList [(depRef,3), (cstrRef,0)])
-                                                                                , (bRef, Map.fromList [(depRef,3), (cstrRef,1)])
-                                                                                , (cRef, Map.fromList [(depRef,3), (cstrRef,2)])
+                            &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT aRef, complexityA)
+                                                                               ,(SortADT bRef, complexityB)
+                                                                               ,(SortADT cRef, complexityC)] -- also primitive Sorts are contained
+                            &&  mapAdtMapConstructorSize newCtx == Map.fromList [ (aRef, Map.fromList [(depRef, complexityDep), (cstrRef, complexityA)])
+                                                                                , (bRef, Map.fromList [(depRef, complexityDep), (cstrRef, complexityB)])
+                                                                                , (cRef, Map.fromList [(depRef, complexityDep), (cstrRef, complexityC)])
                                                                                 ]
 
 -- | a sort context can be incrementally extended - which should be the same as creating it in one step.
@@ -164,17 +168,17 @@ prop_increment =
         incr1 = [aDef, bDef]
         incr2 = [cDef, dDef]
       in
-        case addAdtDefs c0 incr1 of
+        case addAdtDefs c0 incr1 :: Either MinError MinimalTestSortContext of
             Left e1  -> error ("Invalid incr1 - " ++ show e1)
-            Right c1 -> case addAdtDefs c1 incr2 of
+            Right c1 -> case addAdtDefs c1 incr2 :: Either MinError MinimalTestSortContext of
                                 Left e2  -> error ("Invalid incr2 - " ++ show e2)
-                                Right c2 -> case addAdtDefs c0 (incr2 ++ incr1) of
+                                Right c2 -> case addAdtDefs c0 (incr2 ++ incr1) :: Either MinError MinimalTestSortContext of
                                                 Left e    -> trace ("error = " ++ show e) False
                                                 Right c12 -> c12 == c2 || trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) False
 
 spec :: Spec
 spec =
-  describe "A test context" $ do
+  describe "A test sort context" $ do
     it "cannot be extended with non constructable ADTDefs" prop_ADTDefs_nonConstructable
     it "cannot be extended with ADTDefs with unknown references" prop_ADTDefs_unknownReference
     it "cannot be extended such that names are no longer unique" prop_ADTDefs_unique

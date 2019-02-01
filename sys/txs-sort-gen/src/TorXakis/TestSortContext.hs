@@ -16,9 +16,11 @@ See LICENSE at root directory of this repository.
 -- Sort Context for Test: 
 -- Additional functionality to ensure termination for QuickCheck
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.TestSortContext
 (-- * Test Sort Context
   TestSortContext (..)
@@ -38,7 +40,13 @@ import           TorXakis.Sort
 
 
 -- | A TestSortContext instance contains all definitions to work with sort and reference thereof for test purposes
-class SortContext a => TestSortContext a where
+class SortContext a MinError => TestSortContext a where
+    -- | get Sort to Size map
+    mapSortSize :: a -> Map.Map Sort Int
+
+    -- | get map ADTDef to (map ConstructorDef to size)
+    mapAdtMapConstructorSize :: a -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
+
     -- |  adt Size
     --   A size of complexity (indicated by an 'Int') is returned when the following constraint is satisfied:
     --
@@ -50,9 +58,6 @@ class SortContext a => TestSortContext a where
                         Just i  -> Right i
                         Nothing -> Left $ MinError (T.pack ("reference not contained in context " ++ show r))
 
-    -- | get Sort to Size map
-    mapSortSize :: a -> Map.Map Sort Int
-    
     -- |  constructor Size
     --   A size of complexity (indicated by an 'Int') is returned when the following constraints are satisfied:
     --
@@ -74,8 +79,6 @@ class SortContext a => TestSortContext a where
                                         Nothing -> Left $ MinError (T.pack ("ADT reference not contained in context " ++ show r))
                                         Just m -> Right m
 
-    -- | get map ADTDef to (map ConstructorDef to size)
-    mapAdtMapConstructorSize :: a -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
 
 -- | A minimal instance of 'TestSortContext'.
 data MinimalTestSortContext = MinimalTestSortContext 
@@ -84,19 +87,19 @@ data MinimalTestSortContext = MinimalTestSortContext
                                     , _mapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
                                     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortContext MinimalTestSortContext where
+instance SortSplit MinimalTestSortContext where
     empty = MinimalTestSortContext Map.empty primitiveSortSize Map.empty
       where
         primitiveSortSize :: Map.Map Sort Int
-        primitiveSortSize = Map.fromList [ (SortBool, 0)
-                                         , (SortInt,0)
-                                         , (SortChar, 0)
-                                         , (SortString, 0)
-                                         , (SortRegex, 0)
+        primitiveSortSize = Map.fromList [ (SortBool,   1)
+                                         , (SortInt,    1)
+                                         , (SortChar,   1)
+                                         , (SortString, 1)
+                                         , (SortRegex,  1)
                                          ]
-
     adtDefs = _adtDefs
 
+instance SortContext MinimalTestSortContext MinError where
     addAdtDefs context as = case violationsAddAdtDefs context as of
                                 Just e  -> Left e
                                 Nothing -> let newAdtDefs = Map.union (_adtDefs context) (toMapByName as)
@@ -142,14 +145,15 @@ instance SortContext MinimalTestSortContext where
                 getKnownAdtSize mp adef =
                     case catMaybes knownConstructorSizes of
                         [] -> Nothing
-                        cs -> Just $ 1 + minimum cs
+                        cs -> Just $ minimum cs             -- complexity sort is minimum of complexity of its constructors
                       where
                         knownConstructorSizes :: [Maybe Int]
                         knownConstructorSizes = map (getKnownConstructorSize mp) ( (Map.elems . constructors) adef)
 
             getKnownConstructorSize :: Map.Map Sort Int -> ConstructorDef -> Maybe Int
             getKnownConstructorSize defined cdef =
-                    foldl max 0 <$> sequence fieldSizes
+                    foldl (+) 1 <$> sequence fieldSizes         -- 1 + sum of complexity fields
+                                                                -- e.g. Nil() has size 1
                 where
                     fieldSizes :: [Maybe Int]
                     fieldSizes = map ( (`Map.lookup` defined) . sort ) ( fields cdef )
@@ -157,7 +161,6 @@ instance SortContext MinimalTestSortContext where
             getConstructorSize :: Map.Map Sort Int -> ConstructorDef -> Int
             getConstructorSize defined cdef = fromMaybe (error ("Invariant violated: unable to calculate size of ConstructorDef " ++ show cdef) )
                                                         (getKnownConstructorSize defined cdef)
-
 
 instance TestSortContext MinimalTestSortContext where
     mapSortSize = _mapSortSize
