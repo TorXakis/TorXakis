@@ -48,7 +48,7 @@ import           Data.Set           (Set, fromList, member)
 import           Data.Text          (Text, pack)
 import           GHC.Generics       (Generic)
 
-import           TorXakis.Error     (MinError(MinError))
+import           TorXakis.Error     (Error(Error))
 import qualified TorXakis.XMLName   as XMLName
 
 -- | Definition of the name of entities.
@@ -109,8 +109,8 @@ isPredefined = (`member` predefinedNames)
 --
 --   These constraints are enforced to be able to use Names as fields in XML.
 --   See e.g. http://www.w3.org/TR/REC-xml/#NT-NameStartChar and http://www.w3.org/TR/REC-xml/#NT-NameChar
-mkName :: Text -> Either MinError Name
-mkName s | isPredefined s   = (Left . MinError . pack) ("Illegal input: Predefined Name " ++ show s)
+mkName :: Text -> Either Error Name
+mkName s | isPredefined s   = Left $ Error ("Illegal input: Predefined Name " ++ show s)
          | otherwise        = XMLName.mkXMLName s >>= Right . Name
 
 -- |  Return the elements with non-unique names that the second list contains in the combination of the first and second list.

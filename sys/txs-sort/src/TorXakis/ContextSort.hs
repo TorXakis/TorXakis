@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.MinimalSortContext
+-- Module      :  TorXakis.ContextSort
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -13,15 +13,15 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Instance of Sort Context: MinimalSortContext
+-- Instance of Sort Context: ContextSort
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module TorXakis.MinimalSortContext
+module TorXakis.ContextSort
 ( -- * Sort Context
-  MinimalSortContext(MinimalSortContext)
+  ContextSort(ContextSort)
 )
 where
 import           Control.DeepSeq     (NFData)
@@ -29,22 +29,21 @@ import           Data.Data           (Data)
 import qualified Data.HashMap        as Map
 import           GHC.Generics        (Generic)
 
-import           TorXakis.Error      ( MinError )
 import           TorXakis.Name       ( RefByName
                                      , toMapByName
                                      )
 import           TorXakis.SortADT    ( ADTDef )
 import           TorXakis.SortContext
 
--- | A minimal instance of 'SortContext'.
-newtype MinimalSortContext = MinimalSortContext { _adtDefs :: Map.Map (RefByName ADTDef) ADTDef 
-                                                } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+-- | An instance of 'SortContext'.
+newtype ContextSort = ContextSort { _adtDefs :: Map.Map (RefByName ADTDef) ADTDef 
+                                  } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortSplit MinimalSortContext where
-    empty = MinimalSortContext Map.empty
+instance SortReadContext ContextSort where
     adtDefs = _adtDefs
 
-instance SortContext MinimalSortContext MinError where
+instance SortContext ContextSort where
+    empty = ContextSort Map.empty
     addAdtDefs ctx as = case violationsAddAdtDefs ctx as of
                                 Just e  -> Left e
                                 Nothing -> Right $ ctx { _adtDefs = Map.union (_adtDefs ctx) (toMapByName as) }

@@ -26,12 +26,12 @@ where
 import           Data.ByteString          (pack)
 import           Data.ByteString.Internal (c2w)
 import           Data.Char                (chr, ord)
-import           Data.Either     (partitionEithers)
-import qualified Data.HashMap    as Map
-import           Data.Maybe      (fromMaybe)
-import           Data.Monoid     ((<>))
-import           Data.Text       (Text)
-import qualified Data.Text       as T
+import           Data.Either              (partitionEithers)
+import qualified Data.HashMap             as Map
+import           Data.List
+import           Data.Maybe               (fromMaybe)
+import           Data.Text                (Text)
+import qualified Data.Text                as T
 import           Text.XML.Expat.Tree
 
 import           TorXakis.Error
@@ -113,13 +113,13 @@ stringFromList = T.concat . go
 
 -- | 'TorXakis.Value.Value' from XML conversion.
 -- Expected 'TorXakis.Sort' of 'TorXakis.Value.Value' must be provided.
-valueFromXML :: SortContext a => a -> Sort -> Text -> Either MinError Value
+valueFromXML :: SortContext a => a -> Sort -> Text -> Either Error Value
 valueFromXML ctx s t =
     case parse' defaultParseOptions{ overrideEncoding = Just ISO88591 } (pack $ map c2w (T.unpack t)) of
-        Left e     -> Left $ MinError (T.pack ("Parse error " ++ show e))
+        Left e     -> Left $ Error ("Parse error " ++ show e)
         Right tree -> fromXML s rootNodeName tree
     where
-        fromXML :: Sort -> Text -> Node Text Text -> Either MinError Value
+        fromXML :: Sort -> Text -> Node Text Text -> Either Error Value
         fromXML SortBool   n (Element nt [] list) | nt == n
                 = Right $ Cbool ("true" == stringFromList list)
         fromXML SortInt    n (Element nt [] list) | nt == n
@@ -128,25 +128,25 @@ valueFromXML ctx s t =
                 = let str = T.unpack (stringFromList list) in
                     case str of
                         [c] -> Right $ Cchar c
-                        _   -> Left $ MinError (T.pack ("Char should have length 1, yet is " ++ show str))
+                        _   -> Left $ Error (T.pack ("Char should have length 1, yet is " ++ show str))
         fromXML SortString n (Element nt [] list) | nt == n
                 = Right $ Cstring (stringFromList list)
         fromXML SortRegex  n (Element nt [] list) | nt == n
                 = Right $ Cregex (stringFromList list)
         fromXML (SortADT a) n (Element nt [] [Element cname [] list]) | nt == n
                 = case mkName cname of
-                    Left e   -> Left $ MinError (T.pack "Illegal name " <> n <> T.pack "\n" <> TorXakis.Error.toText e)
+                    Left e   -> Left $ Error ("Illegal name " ++ show n ++ "\n" ++ show e)
                     Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
                                                        (Map.lookup a (adtDefs ctx))
                                     c = RefByName n'
                                   in case Map.lookup c (constructors adtDef) of
-                                        Nothing   -> Left $ MinError (T.pack "Constructor " <> n <> T.pack " not defined for ADT " <> (TorXakis.Name.toText . toName) a)
+                                        Nothing   -> Left $ Error ("Constructor " ++ show n ++  " not defined for ADT " ++ show a)
                                         Just cDef -> let fs = fields cDef
                                                          actual = length fs
                                                          expected = length list
                                                       in if actual == expected
-                                                        then case partitionEithers (zipWith3 fromXML (map sort fs) (map (TorXakis.Name.toText . fieldName) fs) list) of
+                                                        then case partitionEithers (zipWith3 fromXML (map TorXakis.Sort.sort fs) (map (TorXakis.Name.toText . fieldName) fs) list) of
                                                                   ([], vs) -> Right $ Ccstr a c vs
-                                                                  (es, _)  -> Left $ MinError $ T.intercalate (T.pack "\n") (map TorXakis.Error.toText es)
-                                                        else Left $ MinError (T.pack ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual))
-        fromXML s' n l = Left $ MinError (T.pack ("Sort " ++ show s' ++ " of node " ++ show n ++ " mismatch with XML value " ++ show l))
+                                                                  (es, _)  -> Left $ Error $ intercalate "\n" (map show es)
+                                                        else Left $ Error ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual)
+        fromXML s' n l = Left $ Error ("Sort " ++ show s' ++ " of node " ++ show n ++ " mismatch with XML value " ++ show l)

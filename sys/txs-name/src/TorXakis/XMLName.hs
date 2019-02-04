@@ -35,12 +35,11 @@ where
 import           Control.DeepSeq    (NFData)
 import           Data.Data          (Data)
 import           Data.Hashable      (Hashable(hashWithSalt))
-import           Data.Monoid        ((<>))
 import           Data.Text          (Text)
 import qualified Data.Text          as T
 import           GHC.Generics       (Generic)
 
-import           TorXakis.Error     (MinError(MinError))
+import           TorXakis.Error     (Error(Error))
 
 -- | Definition of the XML name.
 newtype XMLName = XMLName
@@ -66,12 +65,12 @@ instance Hashable XMLName where
 --
 --   These constraints are enforced by XML.
 --   See e.g. http://www.w3.org/TR/REC-XML/#NT-NameStartChar and http://www.w3.org/TR/REC-XML/#NT-NameChar
-mkXMLName :: Text -> Either MinError XMLName
+mkXMLName :: Text -> Either Error XMLName
 mkXMLName s = case T.unpack s of
-            []     -> Left $ MinError (T.pack "Illegal input: Empty String")
+            []     -> Left $ Error "Illegal input: Empty String"
             (x:xs) -> if isNameStartChar x && all isNameChar xs 
                         then Right $ XMLName s
-                        else Left $ MinError (T.pack "String contains illegal characters: " <> s)
+                        else Left $ Error ("String contains illegal characters: " ++ show s)
     where
         isNameStartChar :: Char -> Bool
         isNameStartChar c =      ('A' <= c && c <= 'Z')

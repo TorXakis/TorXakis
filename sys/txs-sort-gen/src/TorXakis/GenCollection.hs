@@ -27,17 +27,14 @@ module TorXakis.GenCollection
 , get
 )
 where
-import           Control.Monad.Reader
 import qualified Data.HashMap        as HashMap
 import           Data.Maybe
 import qualified Data.MultiMap       as MultiMap
-import qualified Data.Text           as T
 import           Test.QuickCheck
 
 import           TorXakis.Error
-import           TorXakis.Sort (Sort
-                               , SortSplit
-                               , elemSort
+import           TorXakis.Sort ( Sort
+                               , SortReadContext ( elemSort )
                                )
 
 -- | GenCollection - stores generators
@@ -48,16 +45,12 @@ empty :: GenCollection c a
 empty = GenCollection HashMap.empty
 
 -- | Add Generator to GenCollection
--- TODO: do we need the check 
-add :: SortSplit c => Sort -> Int -> (d -> Gen a) -> GenCollection d a -> Reader c (Either MinError (GenCollection d a))
-add s n g (GenCollection c) = do
-    b <- elemSort s
-    if b
-    then let mm = HashMap.findWithDefault MultiMap.empty s c
-             newMM = MultiMap.insert n g mm
-         in
-            return $ Right $ GenCollection (HashMap.insert s newMM c)
-    else return $ Left $ MinError (T.pack ("Add: Sort " ++ show s ++ " not defined in context."))
+add :: SortReadContext c => c -> Sort -> Int -> (d -> Gen a) -> GenCollection d a -> Either Error (GenCollection d a)
+add ctx s n g (GenCollection c) | elemSort ctx s = let mm = HashMap.findWithDefault MultiMap.empty s c
+                                                       newMM = MultiMap.insert n g mm
+                                                     in
+                                                        Right $ GenCollection (HashMap.insert s newMM c)
+                                | otherwise      = Left $ Error ("Add: Sort " ++ show s ++ " not defined in context.")
 
 -- | Get generators of given sort and size/complexity less than or equal to given value
 get :: GenCollection c a -> Sort -> Int -> [c -> Gen a]

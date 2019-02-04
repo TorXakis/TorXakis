@@ -25,6 +25,7 @@ where
 import           Data.Char              (chr, ord)
 import           Data.Either            (partitionEithers)
 import qualified Data.HashMap           as Map
+import           Data.List
 import           Data.Maybe             (fromMaybe)
 import           Data.Monoid            ((<>))
 import           Data.Text              (Text)
@@ -97,14 +98,14 @@ valueToText _   (Cany _)       = error "ANY not supported"
 
 -- | 'TorXakis.Value.Value' from 'Data.Text.Text' conversion.
 -- Expected 'TorXakis.Sort' of 'TorXakis.Value.Value' must be provided.
-valueFromText :: SortContext a => a -> Sort -> Text -> Either MinError Value
+valueFromText :: SortContext a => a -> Sort -> Text -> Either Error Value
 valueFromText ctx s t = 
     let p :: ParseValue
         p = (valueParser . valueLexer . T.unpack) t
       in
         fromParseValue s p
     where
-        fromParseValue :: Sort -> ParseValue -> Either MinError Value
+        fromParseValue :: Sort -> ParseValue -> Either Error Value
         fromParseValue SortBool    (Pbool b)    = Right $ Cbool b
         fromParseValue SortInt     (Pint b)     = Right $ Cint b
         fromParseValue SortChar    (Pchar c)    = Right $ Cchar (decodeChar c)
@@ -112,18 +113,18 @@ valueFromText ctx s t =
         fromParseValue SortRegex   (Pregex r)   = Right $ Cregex (T.pack (decodeString r))
         fromParseValue (SortADT a) (Pcstr n ps) =
             case mkName n of
-                Left e   -> Left $ MinError (T.pack "Illegal name " <> n <> T.pack "\n" <> TorXakis.Error.toText e)
+                Left e   -> Left $ Error ("Illegal name " ++ show n ++ "\n" ++ show e)
                 Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
                                                    (Map.lookup a (adtDefs ctx))
                                 c = RefByName n'
                             in case Map.lookup c (constructors adtDef) of
-                                    Nothing   -> Left $ MinError (T.pack "Constructor " <> n <> T.pack " not defined for ADT " <> (TorXakis.Name.toText . toName) a)
+                                    Nothing   -> Left $ Error ("Constructor " ++ show n ++  " not defined for ADT " ++ show a)
                                     Just cDef -> let fs = fields cDef
                                                      actual = length fs
                                                      expected = length ps
                                                   in if actual == expected
-                                                        then case partitionEithers (zipWith fromParseValue (map sort fs) ps) of
+                                                        then case partitionEithers (zipWith fromParseValue (map TorXakis.Sort.sort fs) ps) of
                                                                   ([], vs) -> Right $ Ccstr a c vs
-                                                                  (es, _)  -> Left $ MinError $ T.intercalate (T.pack "\n") (map TorXakis.Error.toText es)
-                                                        else Left $ MinError (T.pack ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual))
-        fromParseValue s' p                     = Left $ MinError (T.pack ("Sort " ++ show s' ++ " mismatch with parsed value " ++ show p ++ "\nNote ANY is not supported"))
+                                                                  (es, _)  -> Left $ Error $ intercalate "\n" (map show es)
+                                                        else Left $ Error ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual)
+        fromParseValue s' p                     = Left $ Error ("Sort " ++ show s' ++ " mismatch with parsed value " ++ show p ++ "\nNote ANY is not supported")

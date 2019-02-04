@@ -24,14 +24,13 @@ See LICENSE at root directory of this repository.
 module TorXakis.TestSortContext
 (-- * Test Sort Context
   TestSortContext (..)
-, MinimalTestSortContext(..)
+, ContextTestSort(..)
 )
 where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import qualified Data.HashMap        as Map
 import           Data.Maybe          (catMaybes, fromMaybe)
-import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
@@ -40,7 +39,7 @@ import           TorXakis.Sort
 
 
 -- | A TestSortContext instance contains all definitions to work with sort and reference thereof for test purposes
-class SortContext a MinError => TestSortContext a where
+class SortContext a => TestSortContext a where
     -- | get Sort to Size map
     mapSortSize :: a -> Map.Map Sort Int
 
@@ -53,10 +52,10 @@ class SortContext a MinError => TestSortContext a where
     --   * The context contains the 'ADTDef' reference.
     --
     --   Otherwise an error is return. The error reflects the violations of the formentioned constraint.
-    adtSize :: a -> RefByName ADTDef -> Either MinError Int
+    adtSize :: a -> RefByName ADTDef -> Either Error Int
     adtSize ctx r = case Map.lookup (SortADT r) (mapSortSize ctx) of
                         Just i  -> Right i
-                        Nothing -> Left $ MinError (T.pack ("reference not contained in context " ++ show r))
+                        Nothing -> Left $ Error ("reference not contained in context " ++ show r)
 
     -- |  constructor Size
     --   A size of complexity (indicated by an 'Int') is returned when the following constraints are satisfied:
@@ -66,29 +65,32 @@ class SortContext a MinError => TestSortContext a where
     --   * The context contains the 'ConstructorDef' reference for the referred 'ADTDef'.
     --
     --   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
-    constructorSize :: a -> RefByName ADTDef -> RefByName ConstructorDef -> Either MinError Int
+    constructorSize :: a -> RefByName ADTDef -> RefByName ConstructorDef -> Either Error Int
     constructorSize ctx r c = case Map.lookup r (mapAdtMapConstructorSize ctx) of
-                                Nothing -> Left $ MinError (T.pack ("ADT reference not contained in context " ++ show r))
+                                Nothing -> Left $ Error ("ADT reference not contained in context " ++ show r)
                                 Just m -> case Map.lookup c m of
-                                            Nothing -> Left $ MinError (T.pack ("component reference " ++ show c ++ " not contained in ADT " ++ show r))
+                                            Nothing -> Left $ Error ("component reference " ++ show c ++ " not contained in ADT " ++ show r)
                                             Just i -> Right i
 
     -- | get ConstructorDef to Size map
-    mapConstructorDefSize :: a -> RefByName ADTDef -> Either MinError (Map.Map (RefByName ConstructorDef) Int)
+    mapConstructorDefSize :: a -> RefByName ADTDef -> Either Error (Map.Map (RefByName ConstructorDef) Int)
     mapConstructorDefSize ctx r = case Map.lookup r (mapAdtMapConstructorSize ctx) of
-                                        Nothing -> Left $ MinError (T.pack ("ADT reference not contained in context " ++ show r))
+                                        Nothing -> Left $ Error ("ADT reference not contained in context " ++ show r)
                                         Just m -> Right m
 
 
--- | A minimal instance of 'TestSortContext'.
-data MinimalTestSortContext = MinimalTestSortContext 
-                                    { _adtDefs :: Map.Map (RefByName ADTDef) ADTDef
-                                    , _mapSortSize :: Map.Map Sort Int
-                                    , _mapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
-                                    } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+-- | An instance of 'TestSortContext'.
+data ContextTestSort = ContextTestSort 
+                        { basis :: ContextSort
+                        , _mapSortSize :: Map.Map Sort Int
+                        , _mapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
+                        } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortSplit MinimalTestSortContext where
-    empty = MinimalTestSortContext Map.empty primitiveSortSize Map.empty
+instance SortReadContext ContextTestSort where
+    adtDefs = adtDefs . basis
+
+instance SortContext ContextTestSort where
+    empty = ContextTestSort empty primitiveSortSize Map.empty
       where
         primitiveSortSize :: Map.Map Sort Int
         primitiveSortSize = Map.fromList [ (SortBool,   1)
@@ -97,18 +99,15 @@ instance SortSplit MinimalTestSortContext where
                                          , (SortString, 1)
                                          , (SortRegex,  1)
                                          ]
-    adtDefs = _adtDefs
-
-instance SortContext MinimalTestSortContext MinError where
-    addAdtDefs context as = case violationsAddAdtDefs context as of
-                                Just e  -> Left e
-                                Nothing -> let newAdtDefs = Map.union (_adtDefs context) (toMapByName as)
+    addAdtDefs context as = addAdtDefs (basis context) as >>= (\newBasis ->
+                                             let
                                                newMapSortSize = addToMapSortSize (_mapSortSize context) as 
                                                newMapAdtMapConstructorSize = addToMapAdtMapConstructorSize (_mapAdtMapConstructorSize context) newMapSortSize as 
                                              in
-                                                Right $ MinimalTestSortContext  newAdtDefs
-                                                                                newMapSortSize
-                                                                                newMapAdtMapConstructorSize
+                                                Right $ ContextTestSort  newBasis
+                                                                         newMapSortSize
+                                                                         newMapAdtMapConstructorSize
+                                             )
       where
             addToMapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
                                           -> Map.Map Sort Int
@@ -162,6 +161,6 @@ instance SortContext MinimalTestSortContext MinError where
             getConstructorSize defined cdef = fromMaybe (error ("Invariant violated: unable to calculate size of ConstructorDef " ++ show cdef) )
                                                         (getKnownConstructorSize defined cdef)
 
-instance TestSortContext MinimalTestSortContext where
+instance TestSortContext ContextTestSort where
     mapSortSize = _mapSortSize
     mapAdtMapConstructorSize = _mapAdtMapConstructorSize
