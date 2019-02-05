@@ -25,7 +25,6 @@ import qualified Data.HashMap        as Map
 import qualified Data.Text           as T
 import           Test.Hspec
 
-import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.Sort
 
@@ -53,7 +52,7 @@ prop_ADTDefs_nonConstructable =
                                                            [ FieldDef (unsafeName "fieldName") (SortADT (RefByName aName)) ]
                                     ]
       in
-        case addAdtDefs empty [cyclicAdtdef] :: Either MinError MinimalSortContext of
+        case addAdtDefs (empty :: ContextSort) [cyclicAdtdef] of
             Right _ -> False
             Left _  -> True
 
@@ -66,7 +65,7 @@ prop_ADTDefs_unknownReference =
                                                                  [ FieldDef (unsafeName "fieldName") (SortADT (RefByName unknownName)) ]
                                           ]
       in
-        case addAdtDefs empty [undefinedRefAdtdef] :: Either MinError MinimalSortContext of
+        case addAdtDefs (empty :: ContextSort) [undefinedRefAdtdef] of
             Right _ -> False
             Left _  -> True
 
@@ -76,7 +75,7 @@ prop_ADTDefs_unique =
     let adtdef = unsafeADTDef (unsafeName "adtName") 
                               [ unsafeConstructorDef (unsafeName "cstrName") [] ]
       in
-        case addAdtDefs empty [adtdef, adtdef] :: Either MinError MinimalSortContext of
+        case addAdtDefs (empty :: ContextSort) [adtdef, adtdef] of
             Right _ -> False
             Left _  -> True
 
@@ -115,7 +114,7 @@ prop_ADTDefs_Dependent =
                                                    ]
                             ]
       in
-        case addAdtDefs empty [aDef, bDef, cDef] :: Either MinError MinimalSortContext of
+        case addAdtDefs (empty :: ContextSort) [aDef, bDef, cDef] of
             Left  _      -> False
             Right newCtx -> adtDefs newCtx == Map.fromList [(aRef, aDef),(bRef, bDef),(cRef, cDef)]
 

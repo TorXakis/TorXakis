@@ -30,13 +30,12 @@ where
 
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
-import qualified Data.Text           as T
 import           Data.Hashable       (Hashable(hashWithSalt))
 import           GHC.Generics        (Generic)
 
 import TorXakis.Error
 import TorXakis.Name
-import TorXakis.Sort (Sort, HasSort(getSort), SortContext, elemSort)
+import TorXakis.Sort (Sort, HasSort(getSort), SortReadContext(elemSort))
 
 -- | Data for a variable definition.
 -- TODO: should VarDef have additional type to separated different variables (e.g. user defined, channel variables, etc.)
@@ -47,9 +46,9 @@ data VarDef = VarDef {   -- | Name
                      }
          deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-mkVarDef :: SortContext a => a -> Name -> Sort -> Either MinError VarDef
+mkVarDef :: SortReadContext a => a -> Name -> Sort -> Either Error VarDef
 mkVarDef ctx n s | elemSort ctx s = Right $ VarDef n s
-                 | otherwise      = Left $ MinError (T.pack ("Sort not defined in context " ++ show s))
+                 | otherwise      = Left $ Error ("Sort not defined in context " ++ show s)
 
 instance Hashable VarDef where
     hashWithSalt s (VarDef nm srt) = s `hashWithSalt` nm

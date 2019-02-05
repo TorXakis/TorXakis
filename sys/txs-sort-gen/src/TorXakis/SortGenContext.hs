@@ -26,7 +26,6 @@ import qualified Data.HashMap        as Map
 import qualified Data.Set            as Set
 import           Test.QuickCheck
 
-import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.Sort
 
@@ -100,10 +99,10 @@ arbitraryADTDefs ctx =
           in
             toADTDefs uniqueNames (Map.keys (mapSortSize ctx))
 
-arbitraryTestSortContext :: Gen MinimalTestSortContext
+arbitraryTestSortContext :: Gen ContextTestSort
 arbitraryTestSortContext =
-        let emp = empty :: MinimalTestSortContext in do
+        let emp = empty :: ContextTestSort in do
             incr <- arbitraryADTDefs emp
-            case addAdtDefs emp incr :: Either MinError MinimalTestSortContext of
+            case addAdtDefs emp incr of
                 Left e    -> error ("arbitraryTestSortContext: Invalid generator - " ++ show e)
                 Right ctx -> return ctx

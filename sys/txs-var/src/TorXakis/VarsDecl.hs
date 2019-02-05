@@ -27,7 +27,6 @@ where
 
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
-import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import TorXakis.Error
@@ -42,9 +41,9 @@ newtype VarsDecl = VarsDecl { -- | toList
                         }
          deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-mkVarsDecl :: SortContext a => a -> [VarDef] -> Either MinError VarsDecl
-mkVarsDecl ctx l | not $ null nuVars            = Left $ MinError (T.pack ("Non unique names: " ++ show nuVars))
-                 | not $ null undefinedSorts    = Left $ MinError (T.pack ("List of variables with undefined sorts: " ++ show undefinedSorts))
+mkVarsDecl :: SortContext a => a -> [VarDef] -> Either Error VarsDecl
+mkVarsDecl ctx l | not $ null nuVars            = Left $ Error ("Non unique names: " ++ show nuVars)
+                 | not $ null undefinedSorts    = Left $ Error ("List of variables with undefined sorts: " ++ show undefinedSorts)
                  | otherwise                    = Right $ VarsDecl l
     where
         nuVars :: [VarDef]

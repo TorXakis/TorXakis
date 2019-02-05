@@ -39,7 +39,6 @@ import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hashWithSalt))
 import           Data.HashMap         (Map, fromList)
 import           Data.List.Unique     (repeated)
-import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
@@ -57,10 +56,10 @@ data FuncSignature = FuncSignature { -- | The 'Name' of the function.
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
 -- | Constructor of 'TorXakis.FuncSignature'
-mkFuncSignature :: SortContext a => a -> Name -> [Sort] -> Sort -> Either MinError FuncSignature
-mkFuncSignature ctx n as s | not $ null undefinedSorts = Left $ MinError (T.pack ("Arguments have undefined sorts " ++ show undefinedSorts))
+mkFuncSignature :: SortReadContext a => a -> Name -> [Sort] -> Sort -> Either Error FuncSignature
+mkFuncSignature ctx n as s | not $ null undefinedSorts = Left $ Error ("mkFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
                            | elemSort ctx s            = Right $ FuncSignature n as s
-                           | otherwise                 = Left $ MinError (T.pack ("Return sort has undefined sort " ++ show s))
+                           | otherwise                 = Left $ Error ("mkFuncSignature: Return sort has undefined sort " ++ show s)
     where
         undefinedSorts :: [Sort]
         undefinedSorts = filter (not . elemSort ctx) as

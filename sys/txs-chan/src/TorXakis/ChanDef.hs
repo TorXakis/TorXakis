@@ -45,8 +45,8 @@ newtype ChanSort = ChanSort { toSorts :: [Sort] }
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Smart constructor for ChanSort
-mkChanSort :: SortContext a => a -> [Sort] -> Either MinError ChanSort
-mkChanSort ctx l | not $ null undefinedSorts = Left $ MinError (T.pack ("Channel has undefined sorts " ++ show undefinedSorts))
+mkChanSort :: SortReadContext a => a -> [Sort] -> Either Error ChanSort
+mkChanSort ctx l | not $ null undefinedSorts = Left $ Error ("mkChanSort: Channel has undefined sorts " ++ show undefinedSorts)
                  | otherwise                 = Right $ ChanSort l
     where
         undefinedSorts :: [Sort]

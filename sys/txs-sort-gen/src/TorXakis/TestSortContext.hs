@@ -87,7 +87,11 @@ data ContextTestSort = ContextTestSort
                         } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortReadContext ContextTestSort where
-    adtDefs = adtDefs . basis
+    elemSort     = elemSort . basis
+
+    lookupADTDef = lookupADTDef . basis
+
+    elemsADTDef  = elemsADTDef . basis
 
 instance SortContext ContextTestSort where
     empty = ContextTestSort empty primitiveSortSize Map.empty

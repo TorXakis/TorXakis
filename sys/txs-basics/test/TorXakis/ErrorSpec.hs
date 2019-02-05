@@ -19,18 +19,16 @@ module TorXakis.ErrorSpec
 (spec
 )
 where
-import qualified Data.Text          as T
 import           Test.Hspec
 import           Test.QuickCheck
 
 import           TorXakis.Error
 
-prop_toText :: String -> Bool
-prop_toText s =
-    let txt = T.pack s in 
-      txt == toText (MinError txt)
+prop_show :: String -> Bool
+prop_show txt =
+      show txt == show (Error txt)
 
 spec :: Spec
 spec = 
-  describe "A Error"$
-    it "contains a text" $ property prop_toText
+  describe "A Error" $
+    it "can be shown" $ property prop_show
