@@ -22,10 +22,11 @@ module TorXakis.ValueGen
 where
 import           Data.Char          (chr)
 import qualified Data.HashMap       as Map
-import           Data.Maybe         (fromMaybe)
+import           Data.Maybe         (mapMaybe)
 import qualified Data.Text          as T
 import           Test.QuickCheck
 
+import TorXakis.Distribute
 import TorXakis.Sort
 import TorXakis.Value
 import TorXakis.TestSortContext
@@ -33,6 +34,8 @@ import TorXakis.SortGenContext
 
 -- | TODO: decide on name (generator versus arbitrary instance)
 -- First Sort and then context or vice versa?
+
+-- | TODO: make TestValueContext with generatorMap (make more identical to ValExpr)
 
 
 -- | generate a char within the allowed range
@@ -64,17 +67,27 @@ arbitraryValueOfSort _   SortRegex =
 arbitraryValueOfSort ctx (SortADT a) = 
     do
         n <- getSize
-        case mapConstructorDefSize ctx a of
-            Left e -> error ("ADTDef " ++ show a ++ " not in context " ++ show e)
-            Right mpSize -> let availableCstr = Map.keys (Map.filter (<n) mpSize)
+        case lookupADTDef ctx a of
+            Nothing      -> error ("ADTDef " ++ show a ++ " not in context ")
+            Just adtDef  -> let availableCstr = mapMaybe (\(r,d) -> case constructorSize ctx a r of
+                                                                        Left e -> error ("ADTDef and constructor in context, yet no size - " ++ show e)
+                                                                        Right v -> if v <= n
+                                                                                    then Just (v, r, d)
+                                                                                    else Nothing) 
+                                                          (Map.toList (constructors adtDef))
                               in case availableCstr of
                                     [] -> error ("Unexpected: No Constructor available for " ++ show a)
                                     _  -> do
-                                            selected <- elements availableCstr
-                                            let adtDef = fromMaybe (error ("ADTDef " ++ show a ++ " not in context")) 
-                                                                   (Map.lookup a (adtDefs ctx))
-                                                cstrDef = fromMaybe (error ("cstrDef " ++ show selected ++ " not in ADT " ++ show adtDef))
-                                                                    (Map.lookup selected (constructors adtDef))
+                                            (minSize, cstrRef, cstrDef) <- elements availableCstr
+                                            let cFields = fields cstrDef
                                               in do
-                                                fs <- mapM (resize (n-1) . arbitraryValueOfSort ctx . sort) (fields cstrDef)
-                                                return $ Ccstr a selected fs
+                                                additionalComplexity <- distribute (n-minSize) (length cFields)
+                                                let sFields = map (\f -> case sortSize ctx (sort f) of
+                                                                            Left e -> error ("Sort of Field not defined in context" ++ show e)
+                                                                            Right v -> v
+                                                                  ) 
+                                                                  cFields
+                                                    aFields = zipWith (+) sFields additionalComplexity
+                                                  in do
+                                                    fs <- mapM (\(c,f) -> resize c (arbitraryValueOfSort ctx (sort f))) $ zip aFields cFields
+                                                    return $ Ccstr a cstrRef fs

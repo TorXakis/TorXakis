@@ -90,7 +90,7 @@ import           TorXakis.VarDef
 
 -- | Create a constant value as a value expression.
 mkConst :: VarContext c => c -> Value -> Either MinError ValExpression
-mkConst ctx v = if elemSort ctx (getSort ctx v)
+mkConst ctx v = if memberSort ctx (getSort ctx v)
                     then unsafeConst v
                     else Left $  MinError (T.pack ("Sort " ++ show (getSort ctx v) ++ " not defined in context"))
 
@@ -103,14 +103,14 @@ mkVar ctx r = case HashMap.lookup r (varDefs ctx) of
 -- | Apply operator Equal on the provided value expressions.
 mkEqual :: VarContext c => c -> ValExpression -> ValExpression -> Either MinError ValExpression
 mkEqual ctx ve1 ve2 | getSort ctx ve1 /= getSort ctx ve2    = Left $ MinError (T.pack ("Sort of value expressions in equal differ " ++ show (getSort ctx ve1) ++ " versus " ++ show (getSort ctx ve2)))
-mkEqual ctx ve1 ve2 | elemSort ctx (getSort ctx ve1)        = unsafeEqual ve1 ve2
+mkEqual ctx ve1 ve2 | memberSort ctx (getSort ctx ve1)        = unsafeEqual ve1 ve2
 mkEqual ctx ve1 _                                           = Left $  MinError (T.pack ("Sort " ++ show (getSort ctx ve1) ++ " not defined in context"))
 
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
 mkITE :: VarContext c => c -> ValExpression -> ValExpression -> ValExpression -> Either MinError ValExpression
 mkITE ctx b _  _  | getSort ctx b  /= SortBool        = Left $ MinError (T.pack ("Condition of ITE is not of expected sort Bool but " ++ show (getSort ctx b)))
 mkITE ctx _ tb fb | getSort ctx tb /= getSort ctx fb  = Left $ MinError (T.pack ("Sorts of branches differ " ++ show (getSort ctx tb) ++ " versus " ++ show (getSort ctx fb)))
-mkITE ctx b tb fb | elemSort ctx (getSort ctx tb)     = unsafeITE b tb fb
+mkITE ctx b tb fb | memberSort ctx (getSort ctx tb)     = unsafeITE b tb fb
 mkITE ctx _ tb _                                      = Left $  MinError (T.pack ("Sort " ++ show (getSort ctx tb) ++ " not defined in context"))
 
 -- | Create a function call.
@@ -123,7 +123,7 @@ mkFunc ctx fs vs
         where
             expected = args fs
             actual = map (getSort ctx) vs
-            undefinedSorts = filter (not . elemSort ctx)  expected
+            undefinedSorts = filter (not . memberSort ctx)  expected
 
 isPredefNonSolvableFunction :: FuncSignature -> Bool
 isPredefNonSolvableFunction fs =

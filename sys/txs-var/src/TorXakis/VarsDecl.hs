@@ -31,7 +31,7 @@ import           GHC.Generics        (Generic)
 
 import TorXakis.Error
 import TorXakis.Name
-import TorXakis.Sort (SortContext, elemSort)
+import TorXakis.Sort (SortContext, memberSort)
 import TorXakis.VarDef
 
 -- | Data for a variables declarations.
@@ -50,4 +50,4 @@ mkVarsDecl ctx l | not $ null nuVars            = Left $ Error ("Non unique name
         nuVars = repeatedByName l
 
         undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . elemSort ctx . sort) l
+        undefinedSorts = filter (not . memberSort ctx . sort) l

@@ -9,12 +9,12 @@ author:              "Pierre van de Laar"
 maintainer:          "pierre.vandelaar@tno.nl"
 copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
+extra-source-files:
+- README.md
+
 dependencies:
 - base >= 4.7 && < 5
 - text
-
-extra-source-files:
-- README.md
 
 library:
   source-dirs: src
@@ -29,18 +29,6 @@ library:
   - txs-basics
   - Unique
 
-ghc-options:
-- -Werror
-- -Wall
-- -O
-- -Widentities
-- -Wincomplete-uni-patterns
-- -Wincomplete-record-updates
-- -Wmissing-home-modules
-- -Wmissing-local-signatures
-- -Wmonomorphism-restriction
-- -Wredundant-constraints
-
 tests:
     txs-name-test:
         main : Spec.hs
@@ -54,3 +42,15 @@ tests:
         - regex-tdfa
         - QuickCheck
         - txs-name
+
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -Widentities
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmissing-home-modules
+- -Wmissing-local-signatures
+- -Wmonomorphism-restriction
+- -Wredundant-constraints

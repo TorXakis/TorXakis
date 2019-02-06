@@ -75,7 +75,7 @@ instance Hashable Sort where
     hashWithSalt s SortChar    = s `hashWithSalt` T.pack "Char"
     hashWithSalt s SortString  = s `hashWithSalt` T.pack "String"
     hashWithSalt s SortRegex   = s `hashWithSalt` T.pack "Regex"
-    hashWithSalt s (SortADT r) = s `hashWithSalt` ((TorXakis.Name.toText . toName) r )  -- ADT name differs from predefined names
+    hashWithSalt s (SortADT r) = s `hashWithSalt` (TorXakis.Name.toText . toName) r  -- ADT name differs from predefined names
 
 -- | Enables 'Sort's of entities to be accessed in a common way.
 class HasSort c a where
@@ -120,6 +120,7 @@ mkConstructorDef n fs
         nuFieldNames = repeatedByName fs
 
 -- | Data structure for Abstract Data Type (ADT) definition.
+-- TODO: hide decision to use HashMap - provide elems, lookup and member functions for constructors
 data ADTDef = ADTDef
     { -- | Name of the ADT
       adtName      :: Name

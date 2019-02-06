@@ -20,7 +20,6 @@ module TorXakis.FuncSignatureGenSpec
 )
 where
 import           Test.Hspec
-import           Test.Hspec.QuickCheck (modifyMaxSuccess,modifyMaxSize)
 import           Test.QuickCheck
 
 import           TorXakis.FuncSignature
@@ -41,11 +40,9 @@ prop_DefinedSorts ctx = check <$> arbitraryFuncSignature ctx
           check f = let l :: [Sort]
                         l = returnSort f : args f
                       in
-                        all (elemSort ctx) l
+                        all (memberSort ctx) l
 
 spec :: Spec
 spec =
   describe "constraints" $
-    modifyMaxSuccess (const 100) $
-    modifyMaxSize (const 20) $
         it "defined sort" $ property (propertyInContext prop_DefinedSorts)

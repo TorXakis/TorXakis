@@ -34,7 +34,7 @@ import           Test.QuickCheck
 
 import           TorXakis.Error
 import           TorXakis.Sort ( Sort
-                               , SortReadContext ( elemSort )
+                               , SortReadContext ( memberSort )
                                )
 
 -- | GenCollection - stores generators
@@ -46,8 +46,8 @@ empty = GenCollection HashMap.empty
 
 -- | Add Generator to GenCollection
 add :: SortReadContext c => c -> Sort -> Int -> (d -> Gen a) -> GenCollection d a -> Either Error (GenCollection d a)
-add ctx s n g (GenCollection c) | elemSort ctx s = let mm = HashMap.findWithDefault MultiMap.empty s c
-                                                       newMM = MultiMap.insert n g mm
+add ctx s n g (GenCollection c) | memberSort ctx s = let mm = HashMap.findWithDefault MultiMap.empty s c
+                                                         newMM = MultiMap.insert n g mm
                                                      in
                                                         Right $ GenCollection (HashMap.insert s newMM c)
                                 | otherwise      = Left $ Error ("Add: Sort " ++ show s ++ " not defined in context.")

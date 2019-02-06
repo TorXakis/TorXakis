@@ -21,7 +21,6 @@ module TorXakis.SortContextSpec
 (spec
 )
 where
-import qualified Data.HashMap        as Map
 import qualified Data.Text           as T
 import           Test.Hspec
 
@@ -116,7 +115,7 @@ prop_ADTDefs_Dependent =
       in
         case addAdtDefs (empty :: ContextSort) [aDef, bDef, cDef] of
             Left  _      -> False
-            Right newCtx -> adtDefs newCtx == Map.fromList [(aRef, aDef),(bRef, bDef),(cRef, cDef)]
+            Right newCtx -> elemsADTDef newCtx == [aDef, bDef, cDef]
 
 
 spec :: Spec

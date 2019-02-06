@@ -32,7 +32,7 @@ import           GHC.Generics        (Generic)
 
 import TorXakis.Error
 import TorXakis.Name
-import TorXakis.Sort (SortContext, elemSort)
+import TorXakis.Sort (SortContext, memberSort)
 import TorXakis.ChanDef
 
 -- | Data for a channels declarations.
@@ -51,4 +51,4 @@ mkChansDecl ctx l | not $ null nuChans            = Left $ MinError (T.pack ("No
         nuChans = repeatedByName l
 
         undefinedSorts :: [ChanDef]
-        undefinedSorts = filter (not . (all (elemSort ctx) . toSorts . chanSort ) ) l
+        undefinedSorts = filter (not . (all (memberSort ctx) . toSorts . chanSort ) ) l

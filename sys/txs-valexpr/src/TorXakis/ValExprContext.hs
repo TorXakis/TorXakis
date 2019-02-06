@@ -58,7 +58,7 @@ import           TorXakis.FreeVars
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
 import           TorXakis.Name
-import           TorXakis.Sort (Sort, HasSort, getSort, elemSort, SortContext(..))
+import           TorXakis.Sort (Sort, HasSort, getSort, memberSort, SortContext(..))
 import           TorXakis.ValExpr.Unsafe
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.ValExpr.ValExprBasis
@@ -124,7 +124,7 @@ instance SortContext a => FuncContext (MinimalFuncContext a) where
                                as = args fs
                                rs = returnSort fs
                              in
-                                case filter (not . elemSort ctx) (rs:as) of
+                                case filter (not . memberSort ctx) (rs:as) of
                                     [] -> Nothing
                                     xs -> Just (fs, Set.fromList xs)
 
@@ -305,7 +305,7 @@ instance SortContext a => VarContext (MinimalValExprContext a) where
         nuVarDefs = repeatedByName vs
 
         undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . elemSort ctx . sort) vs
+        undefinedSorts = filter (not . memberSort ctx . sort) vs
 
 instance FuncContext a => ValExprContext (MinimalValExprContext a)
 ------------------------------------------------------------------------------------------------------------------

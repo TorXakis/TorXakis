@@ -189,7 +189,7 @@ instance VarContext MinimalTestValExprContext where
         nuVarDefs = repeatedByName vs
 
         undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . elemSort ctx . TorXakis.VarDef.sort) vs
+        undefinedSorts = filter (not . memberSort ctx . TorXakis.VarDef.sort) vs
 
         addVarGen :: [VarDef]
                   -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
@@ -304,7 +304,7 @@ instance SortContext a => VarContext (MinimalTestValExprContext a) where
         nuVarDefs = repeatedByName vs
 
         undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . elemSort ctx . sort) vs
+        undefinedSorts = filter (not . memberSort ctx . sort) vs
 
 
 instance TestFuncContext a => TestFuncContext (MinimalTestValExprContext a)

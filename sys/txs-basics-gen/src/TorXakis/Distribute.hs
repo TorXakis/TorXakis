@@ -39,6 +39,7 @@ distribute :: Int -- ^ number of identical objects (>= 0)
            -> Int -- ^ number of distinct bins (>= 0)
            -> Gen [Int]
 distribute _ 0 = return []
+distribute 0 m = return $ replicate m 0      -- Nothing to distribute           -- TODO: does this really spead up?
 distribute n m =
     let stars = replicate n     True
         bars  = replicate (m-1) False

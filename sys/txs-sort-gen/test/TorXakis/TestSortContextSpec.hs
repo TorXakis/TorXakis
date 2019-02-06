@@ -121,14 +121,14 @@ prop_ADTDefs_Dependent =
                                                    ]
                             ]
         complexityA :: Int
-        complexityA   = 1
+        complexityA   = 0
         complexityB   = 1 + complexityA
-        complexityC   = 1 + complexityA + complexityB
-        complexityDep = 1 + complexityA + complexityB + complexityC
+        complexityC   = 2 + complexityA + complexityB
+        complexityDep = 3 + complexityA + complexityB + complexityC
       in
         case addAdtDefs (empty::ContextTestSort) [cDef, bDef, aDef] of
             Left  _      -> False
-            Right newCtx ->     adtDefs newCtx == Map.fromList [(aRef, aDef),(bRef, bDef),(cRef, cDef)]
+            Right newCtx ->     elemsADTDef newCtx == [ aDef, bDef, cDef ]
                             &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT aRef, complexityA)
                                                                                ,(SortADT bRef, complexityB)
                                                                                ,(SortADT cRef, complexityC)] -- also primitive Sorts are contained

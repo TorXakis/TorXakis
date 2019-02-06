@@ -35,7 +35,7 @@ import           GHC.Generics        (Generic)
 
 import TorXakis.Error
 import TorXakis.Name
-import TorXakis.Sort (Sort, HasSort(getSort), SortReadContext(elemSort))
+import TorXakis.Sort (Sort, HasSort(getSort), SortReadContext(memberSort))
 
 -- | Data for a variable definition.
 -- TODO: should VarDef have additional type to separated different variables (e.g. user defined, channel variables, etc.)
@@ -47,7 +47,7 @@ data VarDef = VarDef {   -- | Name
          deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 mkVarDef :: SortReadContext a => a -> Name -> Sort -> Either Error VarDef
-mkVarDef ctx n s | elemSort ctx s = Right $ VarDef n s
+mkVarDef ctx n s | memberSort ctx s = Right $ VarDef n s
                  | otherwise      = Left $ Error ("Sort not defined in context " ++ show s)
 
 instance Hashable VarDef where

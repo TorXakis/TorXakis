@@ -38,7 +38,7 @@ import           GHC.Generics           (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.Sort (SortContext(..), elemSort)
+import           TorXakis.Sort (SortContext(..), memberSort)
 import           TorXakis.ChanDef
 
 ------------------------------------------------------------------------------------------------------------------
@@ -92,5 +92,5 @@ instance SortContext a => ChanContext (MinimalChanContext a) where
         nuChanDefs = repeatedByName cs
 
         undefinedSorts :: [ChanDef]
-        undefinedSorts = filter (not . (all (elemSort ctx) . toSorts . chanSort ) ) cs
+        undefinedSorts = filter (not . (all (memberSort ctx) . toSorts . chanSort ) ) cs
 

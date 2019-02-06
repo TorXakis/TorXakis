@@ -98,4 +98,4 @@ instance SortContext a => VarContext (ContextVar a) where
         nuVarDefs = repeatedByName vs
 
         undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . elemSort ctx . sort) vs
+        undefinedSorts = filter (not . memberSort ctx . sort) vs

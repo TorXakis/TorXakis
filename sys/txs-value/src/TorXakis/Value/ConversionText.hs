@@ -115,7 +115,7 @@ valueFromText ctx s t =
             case mkName n of
                 Left e   -> Left $ Error ("Illegal name " ++ show n ++ "\n" ++ show e)
                 Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
-                                                   (Map.lookup a (adtDefs ctx))
+                                                   (lookupADTDef ctx a)
                                 c = RefByName n'
                             in case Map.lookup c (constructors adtDef) of
                                     Nothing   -> Left $ Error ("Constructor " ++ show n ++  " not defined for ADT " ++ show a)

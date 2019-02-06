@@ -58,7 +58,7 @@ prop_DefinedSorts ctx = check <$> arbitraryVarsDecl ctx
                         ss :: [Sort]
                         ss = map (getSort ctx) l
                       in
-                        all (elemSort ctx) ss
+                        all (memberSort ctx) ss
 
 -- | toMultiMap clusters the elements
 prop_SameElements :: TestSortContext a => a -> Gen Bool
@@ -69,11 +69,8 @@ prop_SameElements ctx = check <$> arbitraryVarsDecl ctx
 spec :: Spec
 spec = do
   describe "constraints" $
-    modifyMaxSuccess (const 100) $
-    modifyMaxSize (const 20) $
       do
         it "unique names" $ property (propertyInContext prop_UniqueNames)
         it "defined sort" $ property (propertyInContext prop_DefinedSorts)
   describe "toMultiMap" $
-    modifyMaxSize (const 20) $
         it "same elements" $ property (propertyInContext prop_SameElements)

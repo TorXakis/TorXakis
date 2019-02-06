@@ -9,6 +9,9 @@ author:              "Pierre van de Laar"
 maintainer:          "pierre.vandelaar@tno.nl"
 copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
+extra-source-files:
+- README.md
+
 dependencies:
 - base >= 4.7 && < 5
 - multimap
@@ -25,21 +28,6 @@ library:
     - containers
     - txs-name-gen
 
-extra-source-files:
-- README.md
-
-ghc-options:
-- -Werror
-- -Wall
-- -O
-- -Widentities
-- -Wincomplete-uni-patterns
-- -Wincomplete-record-updates
-- -Wmissing-home-modules
-- -Wmissing-local-signatures
-- -Wmonomorphism-restriction
-- -Wredundant-constraints
-
 tests:
     txs-var-gen-test:
         main : Spec.hs
@@ -52,3 +40,15 @@ tests:
         - hspec
         - txs-name
         - txs-var-gen
+
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -Widentities
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmissing-home-modules
+- -Wmissing-local-signatures
+- -Wmonomorphism-restriction
+- -Wredundant-constraints

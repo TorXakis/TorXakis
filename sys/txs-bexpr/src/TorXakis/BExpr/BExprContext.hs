@@ -44,7 +44,7 @@ import           TorXakis.Name
 import           TorXakis.ProcDef
 import           TorXakis.ProcExit
 import           TorXakis.ProcSignature
-import           TorXakis.Sort          ( Sort, SortContext (..), elemSort )
+import           TorXakis.Sort          ( Sort, SortContext (..), memberSort )
 import           TorXakis.ValExprContext
 import           TorXakis.VarContext
 import           TorXakis.VarDef
@@ -111,7 +111,7 @@ instance ValExprContext a => BExprContext (MinimalBExprContext a) where
 
         undefinedSort :: ProcDef -> Maybe (ProcSignature, Set.Set Sort)
         undefinedSort pd = let ps@(ProcSignature _ cs as e) = getProcSignature ctx pd in
-                                   case filter (not . elemSort ctx) (concat [concatMap toSorts cs, as, exitSorts e]) of
+                                   case filter (not . memberSort ctx) (concat [concatMap toSorts cs, as, exitSorts e]) of
                                        [] -> Nothing
                                        xs -> Just (ps, Set.fromList xs)
 

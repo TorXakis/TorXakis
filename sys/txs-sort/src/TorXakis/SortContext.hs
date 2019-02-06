@@ -27,17 +27,28 @@ where
 import qualified Data.Text           as T
 
 import           TorXakis.Error                 (Error)
-import           TorXakis.Name                  (RefByName)
+import           TorXakis.Name                  (RefByName (RefByName), getName)
 import           TorXakis.PrettyPrint.TorXakis
-import           TorXakis.SortADT               (Sort, ADTDef)
+import           TorXakis.SortADT               (Sort(..), ADTDef)
 
 -- | Sort Read Context
 class SortReadContext a where
-    -- | Is the provided sort a element of the context?
-    elemSort :: a -> Sort -> Bool
+    -- | Is the provided sort a member of the context?
+    memberSort :: a -> Sort -> Bool
+    -- | All Sort elements in the context
+    elemsSort :: a -> [Sort]
+    elemsSort ctx =   SortBool
+                    : SortInt
+                    : SortChar
+                    : SortString
+                    : SortRegex
+                    : map (SortADT . RefByName . getName) (elemsADTDef ctx)
+
+    -- | Refers the provided ADTDef name to an ADTDef in the context?
+    memberADTDef :: a -> RefByName ADTDef -> Bool
     -- | lookup ADTDef
     lookupADTDef :: a -> RefByName ADTDef -> Maybe ADTDef
-    -- | list of ADTDefs
+    -- | All ADTDef elements in the context
     elemsADTDef :: a -> [ADTDef]
 
 -- | Generic Pretty Printer for all instance of 'TorXakis.SortReadContext'.

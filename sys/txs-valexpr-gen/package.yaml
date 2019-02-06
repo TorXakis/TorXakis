@@ -9,6 +9,9 @@ author:              "Pierre van de Laar"
 maintainer:          "pierre.vandelaar@tno.nl"
 copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
+extra-source-files:
+- README.md
+
 dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
@@ -29,21 +32,6 @@ library:
     - txs-value-gen
     - txs-var
 
-extra-source-files:
-- README.md
-
-ghc-options:
-- -Werror
-- -Wall
-- -O
-- -Widentities
-- -Wincomplete-uni-patterns
-- -Wincomplete-record-updates
-- -Wmissing-home-modules
-- -Wmissing-local-signatures
-- -Wmonomorphism-restriction
-- -Wredundant-constraints
-
 tests:
     txs-valexpr-gen-test:
         main : Spec.hs
@@ -57,3 +45,15 @@ tests:
         - text
         - txs-var
         - txs-valexpr-gen
+
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -Widentities
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmissing-home-modules
+- -Wmissing-local-signatures
+- -Wmonomorphism-restriction
+- -Wredundant-constraints

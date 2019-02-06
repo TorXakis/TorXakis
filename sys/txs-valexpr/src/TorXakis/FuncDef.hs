@@ -40,7 +40,7 @@ import           TorXakis.Error
 import           TorXakis.FreeVars
 import           TorXakis.FuncSignature (mkFuncSignature, HasFuncSignature(getFuncSignature))
 import           TorXakis.Name
-import           TorXakis.Sort (getSort, elemSort, SortContext)
+import           TorXakis.Sort (getSort, memberSort, SortContext)
 import           TorXakis.VarContext
 import           TorXakis.VarDef
 import           TorXakis.VarsDecl
@@ -69,7 +69,7 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars) = Left $ MinError (T.pack ("
         undefinedVars = Set.difference (freeVars b) (Set.fromList (map (RefByName . name) (toList ps)))
 
         undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . elemSort ctx . sort) (toList ps)
+        undefinedSorts = filter (not . memberSort ctx . sort) (toList ps)
 
 instance SortContext a => HasFuncSignature a FuncDef
     where

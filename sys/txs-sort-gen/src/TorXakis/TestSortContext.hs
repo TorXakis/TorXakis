@@ -40,54 +40,43 @@ import           TorXakis.Sort
 
 -- | A TestSortContext instance contains all definitions to work with sort and reference thereof for test purposes
 class SortContext a => TestSortContext a where
-    -- | get Sort to Size map
-    mapSortSize :: a -> Map.Map Sort Int
-
-    -- | get map ADTDef to (map ConstructorDef to size)
-    mapAdtMapConstructorSize :: a -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
-
+    -- | Sort Size
+    --   A size of complexity (indicated by an 'Int') is returned when the following constraint is satisfied:
+    --
+    --   * The context contains the 'TorXakis.Sort' reference.
+    --
+    --   Otherwise an error is return. The error reflects the violations of the formentioned constraint.
+    sortSize :: a -> Sort -> Either Error Int
+    
     -- |  adt Size
     --   A size of complexity (indicated by an 'Int') is returned when the following constraint is satisfied:
     --
-    --   * The context contains the 'ADTDef' reference.
+    --   * The context contains the 'TorXakis.ADTDef' reference.
     --
     --   Otherwise an error is return. The error reflects the violations of the formentioned constraint.
     adtSize :: a -> RefByName ADTDef -> Either Error Int
-    adtSize ctx r = case Map.lookup (SortADT r) (mapSortSize ctx) of
-                        Just i  -> Right i
-                        Nothing -> Left $ Error ("reference not contained in context " ++ show r)
 
     -- |  constructor Size
     --   A size of complexity (indicated by an 'Int') is returned when the following constraints are satisfied:
     --
-    --   * The context contains the 'ADTDef' reference.
+    --   * The context contains the 'TorXakis.ADTDef' reference.
     --
-    --   * The context contains the 'ConstructorDef' reference for the referred 'ADTDef'.
+    --   * The context contains the 'TorXakis.ConstructorDef' reference for the referred 'TorXakis.ADTDef'.
     --
     --   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
     constructorSize :: a -> RefByName ADTDef -> RefByName ConstructorDef -> Either Error Int
-    constructorSize ctx r c = case Map.lookup r (mapAdtMapConstructorSize ctx) of
-                                Nothing -> Left $ Error ("ADT reference not contained in context " ++ show r)
-                                Just m -> case Map.lookup c m of
-                                            Nothing -> Left $ Error ("component reference " ++ show c ++ " not contained in ADT " ++ show r)
-                                            Just i -> Right i
-
-    -- | get ConstructorDef to Size map
-    mapConstructorDefSize :: a -> RefByName ADTDef -> Either Error (Map.Map (RefByName ConstructorDef) Int)
-    mapConstructorDefSize ctx r = case Map.lookup r (mapAdtMapConstructorSize ctx) of
-                                        Nothing -> Left $ Error ("ADT reference not contained in context " ++ show r)
-                                        Just m -> Right m
-
 
 -- | An instance of 'TestSortContext'.
 data ContextTestSort = ContextTestSort 
                         { basis :: ContextSort
-                        , _mapSortSize :: Map.Map Sort Int
-                        , _mapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
+                        , mapSortSize :: Map.Map Sort Int
+                        , mapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
                         } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortReadContext ContextTestSort where
-    elemSort     = elemSort . basis
+    memberSort     = memberSort . basis
+
+    memberADTDef = memberADTDef . basis
 
     lookupADTDef = lookupADTDef . basis
 
@@ -97,16 +86,18 @@ instance SortContext ContextTestSort where
     empty = ContextTestSort empty primitiveSortSize Map.empty
       where
         primitiveSortSize :: Map.Map Sort Int
-        primitiveSortSize = Map.fromList [ (SortBool,   1)
-                                         , (SortInt,    1)
-                                         , (SortChar,   1)
-                                         , (SortString, 1)
-                                         , (SortRegex,  1)
-                                         ]
+        primitiveSortSize = Map.fromList $ zip [ SortBool
+                                               , SortInt
+                                               , SortChar
+                                               , SortString
+                                               , SortRegex
+                                               ]
+                                               (repeat 0)
+
     addAdtDefs context as = addAdtDefs (basis context) as >>= (\newBasis ->
                                              let
-                                               newMapSortSize = addToMapSortSize (_mapSortSize context) as 
-                                               newMapAdtMapConstructorSize = addToMapAdtMapConstructorSize (_mapAdtMapConstructorSize context) newMapSortSize as 
+                                               newMapSortSize = addToMapSortSize (mapSortSize context) as 
+                                               newMapAdtMapConstructorSize = addToMapAdtMapConstructorSize (mapAdtMapConstructorSize context) newMapSortSize as 
                                              in
                                                 Right $ ContextTestSort  newBasis
                                                                          newMapSortSize
@@ -155,16 +146,32 @@ instance SortContext ContextTestSort where
 
             getKnownConstructorSize :: Map.Map Sort Int -> ConstructorDef -> Maybe Int
             getKnownConstructorSize defined cdef =
-                    foldl (+) 1 <$> sequence fieldSizes         -- 1 + sum of complexity fields
-                                                                -- e.g. Nil() has size 1
+                    sum <$> sequence fieldSizes         -- sum of complexity fields
+                                                        -- e.g. Nil() has size 0
                 where
                     fieldSizes :: [Maybe Int]
-                    fieldSizes = map ( (`Map.lookup` defined) . sort ) ( fields cdef )
+                    fieldSizes = map (\s -> case Map.lookup (sort s) defined of
+                                                Just x -> Just $ x + 1              -- complexity of field = 1 + complexity of sort of field 
+                                                                                    -- complexity of sort starts at zero (due to QuickCheck), we want the more fields the more complexity
+                                                Nothing -> Nothing
+                                      )
+                                      (fields cdef)
 
             getConstructorSize :: Map.Map Sort Int -> ConstructorDef -> Int
             getConstructorSize defined cdef = fromMaybe (error ("Invariant violated: unable to calculate size of ConstructorDef " ++ show cdef) )
                                                         (getKnownConstructorSize defined cdef)
 
 instance TestSortContext ContextTestSort where
-    mapSortSize = _mapSortSize
-    mapAdtMapConstructorSize = _mapAdtMapConstructorSize
+    sortSize ctx s = case Map.lookup s (mapSortSize ctx) of
+                        Just i  -> Right i
+                        Nothing -> Left $ Error ("sort not contained in context " ++ show s)
+    
+    adtSize ctx r = case Map.lookup (SortADT r) (mapSortSize ctx) of
+                        Just i  -> Right i
+                        Nothing -> Left $ Error ("reference not contained in context " ++ show r)
+
+    constructorSize ctx r c = case Map.lookup r (mapAdtMapConstructorSize ctx) of
+                                Nothing -> Left $ Error ("ADT reference not contained in context " ++ show r)
+                                Just m -> case Map.lookup c m of
+                                            Nothing -> Left $ Error ("component reference " ++ show c ++ " not contained in ADT " ++ show r)
+                                            Just i -> Right i

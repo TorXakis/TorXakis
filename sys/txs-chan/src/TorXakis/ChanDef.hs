@@ -50,7 +50,7 @@ mkChanSort ctx l | not $ null undefinedSorts = Left $ Error ("mkChanSort: Channe
                  | otherwise                 = Right $ ChanSort l
     where
         undefinedSorts :: [Sort]
-        undefinedSorts = filter (not . elemSort ctx) l
+        undefinedSorts = filter (not . memberSort ctx) l
 
 instance Hashable ChanSort where
     hashWithSalt s (ChanSort xs)    = s `hashWithSalt` xs

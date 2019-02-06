@@ -9,11 +9,12 @@ author:              "Pierre van de Laar"
 maintainer:          "pierre.vandelaar@tno.nl"
 copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
+extra-source-files:
+- README.md
+
 dependencies:
 - base >= 4.7 && < 5
-- hashmap
 - text
-- txs-basics
 - txs-name
 
 library:
@@ -23,23 +24,8 @@ library:
   dependencies:
   - deepseq
   - hashable
-  - mtl
-
-
-extra-source-files:
-- README.md
-
-ghc-options:
-- -Werror
-- -Wall
-- -O
-- -Widentities
-- -Wincomplete-uni-patterns
-- -Wincomplete-record-updates
-- -Wmissing-home-modules
-- -Wmissing-local-signatures
-- -Wmonomorphism-restriction
-- -Wredundant-constraints
+  - hashmap
+  - txs-basics
 
 tests:
     txs-sort-test:
@@ -52,3 +38,15 @@ tests:
         dependencies:
         - hspec
         - txs-sort
+
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -Widentities
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmissing-home-modules
+- -Wmissing-local-signatures
+- -Wmonomorphism-restriction
+- -Wredundant-constraints

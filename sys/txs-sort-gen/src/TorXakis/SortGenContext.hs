@@ -22,7 +22,6 @@ module TorXakis.SortGenContext
 , arbitraryTestSortContext
 )
 where
-import qualified Data.HashMap        as Map
 import qualified Data.Set            as Set
 import           Test.QuickCheck
 
@@ -37,8 +36,14 @@ arbitrarySort :: TestSortContext a => a -> Gen Sort
 arbitrarySort ctx =
     do
         n <- getSize
-        let availableSort = Map.keys (Map.filter (<=n) (mapSortSize ctx)) in
-            elements availableSort
+        let availableSort = filter (\s -> case sortSize ctx s of
+                                            Left e  -> error ("Sort in context, yet no size " ++ show e)
+                                            Right v -> v <= n)
+                                   (elemsSort ctx)
+         in
+            case availableSort of
+                [] -> error ("No Sort in context with complexity at most " ++ show n)
+                _  -> elements availableSort
 
 arbitraryFields :: [Sort] -> [Name] -> Gen [FieldDef]
 arbitraryFields ss ns =
@@ -85,7 +90,7 @@ arbitraryADTDefs ctx =
             names = Set.map unNameGen nameGens
 
             uniqueNames :: [Name]
-            uniqueNames = Set.toList (Set.difference names (Set.fromList (map getName (Map.elems (adtDefs ctx)))))
+            uniqueNames = Set.toList (Set.difference names (Set.fromList (map getName (elemsADTDef ctx))))
 
             toADTDefs :: [Name] -> [Sort] -> Gen [ADTDef]
             toADTDefs [] _ = return []
@@ -97,8 +102,9 @@ arbitraryADTDefs ctx =
                         Left  _    -> error "error in generator: creating valid ADTDef"
                         Right aDef -> aDef : aDefs
           in
-            toADTDefs uniqueNames (Map.keys (mapSortSize ctx))
+            toADTDefs uniqueNames (elemsSort ctx)
 
+-- | generate an arbitrary Test Sort Context
 arbitraryTestSortContext :: Gen ContextTestSort
 arbitraryTestSortContext =
         let emp = empty :: ContextTestSort in do

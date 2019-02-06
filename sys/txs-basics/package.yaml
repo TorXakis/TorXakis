@@ -9,12 +9,11 @@ author:              "Pierre van de Laar"
 maintainer:          "pierre.vandelaar@tno.nl"
 copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
-dependencies:
-- base >= 4.7 && < 5
-- text
-
 extra-source-files:
 - README.md
+
+dependencies:
+- base >= 4.7 && < 5
 
 library:
   source-dirs: src
@@ -23,18 +22,7 @@ library:
   - TorXakis.PrettyPrint.TorXakis
   dependencies:
   - deepseq
-
-ghc-options:
-- -Werror
-- -Wall
-- -O
-- -Widentities
-- -Wincomplete-uni-patterns
-- -Wincomplete-record-updates
-- -Wmissing-home-modules
-- -Wmissing-local-signatures
-- -Wmonomorphism-restriction
-- -Wredundant-constraints
+  - text
 
 tests:
     txs-basics-test:
@@ -48,3 +36,15 @@ tests:
         - hspec
         - QuickCheck
         - txs-basics
+
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -Widentities
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmissing-home-modules
+- -Wmissing-local-signatures
+- -Wmonomorphism-restriction
+- -Wredundant-constraints

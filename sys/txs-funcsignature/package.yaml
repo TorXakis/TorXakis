@@ -9,9 +9,11 @@ author:              "Pierre van de Laar"
 maintainer:          "pierre.vandelaar@tno.nl"
 copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
+extra-source-files:
+- README.md
+
 dependencies:
 - base >= 4.7 && < 5
-- text
 - txs-sort
 
 library:
@@ -27,9 +29,6 @@ library:
   - txs-basics
   - txs-name
   - Unique
-
-extra-source-files:
-- README.md
 
 ghc-options:
 - -Werror

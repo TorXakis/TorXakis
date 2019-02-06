@@ -21,7 +21,6 @@ module TorXakis.ValueGenSpec
 where
 import           Debug.Trace
 import           Test.Hspec
-import           Test.Hspec.QuickCheck (modifyMaxSuccess, modifyMaxSize)
 import           Test.QuickCheck
 
 import           TorXakis.Sort
@@ -30,7 +29,7 @@ import           TorXakis.TestSortContext
 import           TorXakis.Value
 import           TorXakis.ValueGen
 
-propertyInContext  :: (MinimalTestSortContext -> Gen Bool) -> Gen Bool
+propertyInContext  :: (ContextTestSort -> Gen Bool) -> Gen Bool
 propertyInContext prop = do
     ctx <- arbitraryTestSortContext
     prop ctx
@@ -62,8 +61,6 @@ prop_ConversionXML_id ctx = all check <$> listOf1 (arbitraryValue ctx)
 spec :: Spec
 spec =
   describe "conversion" $
-    modifyMaxSuccess (const 100) $
-    modifyMaxSize (const 20) $ 
       do
         it "fromText . toText == id" $ property (propertyInContext prop_ConversionText_id)
         it "fromXML . toXML == id" $ property (propertyInContext prop_ConversionXML_id)

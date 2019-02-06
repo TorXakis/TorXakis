@@ -50,8 +50,10 @@ newtype ContextSort = ContextSort { adtDefs :: Map.Map (RefByName ADTDef) ADTDef
                                   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortReadContext ContextSort where
-    elemSort ctx (SortADT a) = Map.member a (adtDefs ctx)
-    elemSort _   _           = True
+    memberSort ctx (SortADT a) = Map.member a (adtDefs ctx)
+    memberSort _   _           = True
+
+    memberADTDef ctx adtRef = Map.member adtRef (adtDefs ctx)
 
     lookupADTDef ctx adtRef = Map.lookup adtRef (adtDefs ctx)
 

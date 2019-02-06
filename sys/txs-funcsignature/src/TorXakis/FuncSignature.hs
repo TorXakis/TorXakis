@@ -58,11 +58,11 @@ data FuncSignature = FuncSignature { -- | The 'Name' of the function.
 -- | Constructor of 'TorXakis.FuncSignature'
 mkFuncSignature :: SortReadContext a => a -> Name -> [Sort] -> Sort -> Either Error FuncSignature
 mkFuncSignature ctx n as s | not $ null undefinedSorts = Left $ Error ("mkFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
-                           | elemSort ctx s            = Right $ FuncSignature n as s
+                           | memberSort ctx s            = Right $ FuncSignature n as s
                            | otherwise                 = Left $ Error ("mkFuncSignature: Return sort has undefined sort " ++ show s)
     where
         undefinedSorts :: [Sort]
-        undefinedSorts = filter (not . elemSort ctx) as
+        undefinedSorts = filter (not . memberSort ctx) as
 
 -- | Enables 'FuncSignature's of entities to be accessed in a common way.
 class HasFuncSignature c e where
