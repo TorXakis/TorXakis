@@ -40,7 +40,9 @@ module TorXakis.SortADT
   -- ** Abstract Data Type Definition
 , ADTDef
 , adtName
-, constructors
+, memberConstructor
+, lookupConstructor
+, elemsConstructor
 , mkADTDef
 )
 where
@@ -48,7 +50,7 @@ where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           Data.Hashable       (Hashable(hashWithSalt))
-import qualified Data.HashMap        as Map
+import qualified Data.HashMap        as HashMap
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
@@ -125,7 +127,7 @@ data ADTDef = ADTDef
     { -- | Name of the ADT
       adtName      :: Name
       -- | Constructor definitions of the ADT
-    , constructors :: Map.Map (RefByName ConstructorDef) ConstructorDef
+    , constructors :: HashMap.Map (RefByName ConstructorDef) ConstructorDef
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
@@ -153,6 +155,18 @@ mkADTDef m cs
         
         nuFieldNames :: [FieldDef]
         nuFieldNames = repeatedByName (concatMap fields cs)
+
+-- | Refers the provided ConstructorDef name to a ConstrucotrDef in the given ADTDef?
+memberConstructor :: ADTDef -> RefByName ConstructorDef -> Bool
+memberConstructor a r = HashMap.member r (constructors a)
+
+-- | lookup ConstructorDef
+lookupConstructor :: ADTDef -> RefByName ConstructorDef -> Maybe ConstructorDef
+lookupConstructor a r = HashMap.lookup r (constructors a)
+
+-- | All ConstructorDefs of given ADTDef
+elemsConstructor :: ADTDef -> [ConstructorDef]
+elemsConstructor = HashMap.elems . constructors
 
 -- Pretty Print 
 instance PrettyPrint a Sort where
@@ -214,7 +228,7 @@ instance PrettyPrint a ADTDef where
                                               , T.pack " ::="
                                               , wsConstructor
                                               , offsetFirst
-                                              , T.intercalate (T.append wsConstructor (T.pack "| ")) (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o c) (Map.elems (constructors av)))
+                                              , T.intercalate (T.append wsConstructor (T.pack "| ")) (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o c) (elemsConstructor av))
                                               , separator o
                                               , T.pack "ENDDEF"
                                               ] )

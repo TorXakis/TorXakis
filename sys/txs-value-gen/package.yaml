@@ -23,6 +23,7 @@ library:
   dependencies:
     - hashmap
     - text
+    - txs-name
     - txs-basics-gen
 
 extra-source-files:

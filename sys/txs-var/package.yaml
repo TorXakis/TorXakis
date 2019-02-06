@@ -14,13 +14,13 @@ extra-source-files:
 
 dependencies:
 - base >= 4.7 && < 5
-- text
 - txs-sort
 
 library:
   source-dirs: src
   exposed-modules:
   - TorXakis.FreeVars
+  - TorXakis.ContextVar
   - TorXakis.VarContext
   - TorXakis.VarDef
   - TorXakis.VarsDecl

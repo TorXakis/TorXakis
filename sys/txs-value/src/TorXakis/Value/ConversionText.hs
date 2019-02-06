@@ -24,7 +24,6 @@ module TorXakis.Value.ConversionText
 where
 import           Data.Char              (chr, ord)
 import           Data.Either            (partitionEithers)
-import qualified Data.HashMap           as Map
 import           Data.List
 import           Data.Maybe             (fromMaybe)
 import           Data.Monoid            ((<>))
@@ -115,9 +114,9 @@ valueFromText ctx s t =
             case mkName n of
                 Left e   -> Left $ Error ("Illegal name " ++ show n ++ "\n" ++ show e)
                 Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
-                                                   (lookupADTDef ctx a)
+                                                   (lookupADT ctx a)
                                 c = RefByName n'
-                            in case Map.lookup c (constructors adtDef) of
+                            in case lookupConstructor adtDef c of
                                     Nothing   -> Left $ Error ("Constructor " ++ show n ++  " not defined for ADT " ++ show a)
                                     Just cDef -> let fs = fields cDef
                                                      actual = length fs

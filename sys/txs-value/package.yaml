@@ -28,7 +28,6 @@ library:
   - array
   - bytestring
   - deepseq
-  - hashmap
   - hexpat
   - regex-tdfa
   - txs-basics

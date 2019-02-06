@@ -129,11 +129,11 @@ instance FreeVars BExpression where
     freeVars = freeVars . TorXakis.BExpr.BExpr.view
 
 instance FreeVars BExpressionView where
-    freeVars (ActionPref vs a b)    = Set.difference (Set.unions [freeVars a, freeVars b]) (Set.fromList (map (RefByName . name) (toList vs)))
+    freeVars (ActionPref vs a b)    = Set.difference (Set.unions [freeVars a, freeVars b]) (Set.fromList (map toRefByName (toList vs)))
     freeVars (Guard v b)            = Set.unions [freeVars v, freeVars b]
     freeVars (Choice s)             = Set.unions $ map freeVars (Set.toList s)
     freeVars (Parallel _ bs)        = Set.unions $ map freeVars bs
-    freeVars (Enable b1 vs b2)      = Set.unions [freeVars b1, Set.difference (freeVars b2) (Set.fromList (map (RefByName . name) (toList vs)))]
+    freeVars (Enable b1 vs b2)      = Set.unions [freeVars b1, Set.difference (freeVars b2) (Set.fromList (map toRefByName (toList vs)))]
     freeVars (Disable b1 b2)        = Set.unions $ map freeVars [b1, b2]
     freeVars (Interrupt b1 b2)      = Set.unions $ map freeVars [b1, b2]
     freeVars (ProcInst _ _ vs)      = Set.unions $ map freeVars vs

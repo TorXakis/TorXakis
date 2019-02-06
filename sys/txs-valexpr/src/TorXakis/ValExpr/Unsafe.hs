@@ -73,13 +73,13 @@ stringEmptyValExpr = ValExpression $ Vconst (Cstring (T.pack ""))
 zeroValExpr :: ValExpression
 zeroValExpr = ValExpression $ Vconst (Cint 0)
 
-unsafeConst :: Value -> Either MinError ValExpression
+unsafeConst :: Value -> Either Error ValExpression
 unsafeConst = Right . ValExpression . Vconst
 
-unsafeVar :: RefByName VarDef -> Either MinError ValExpression
+unsafeVar :: RefByName VarDef -> Either Error ValExpression
 unsafeVar = Right . ValExpression . Vvar
 
-unsafeEqual :: ValExpression -> ValExpression -> Either MinError ValExpression
+unsafeEqual :: ValExpression -> ValExpression -> Either Error ValExpression
 -- Simplification: a == a <==> True
 -- Note: also (1 % v) == (1 % v) resolves to True, and later substitution of v by 0 still yields True
 unsafeEqual ve1 ve2 | ve1 == ve2                    = Right trueValExpr
@@ -112,7 +112,7 @@ unsafeEqual ve1 ve2                                 = if ve1 <= ve2
                                                             then Right $ ValExpression (Vequal ve1 ve2)
                                                             else Right $ ValExpression (Vequal ve2 ve1)
 
-unsafeITE :: ValExpression -> ValExpression -> ValExpression -> Either MinError ValExpression
+unsafeITE :: ValExpression -> ValExpression -> ValExpression -> Either Error ValExpression
 -- Simplification: if True then a else b <==> a
 unsafeITE b tb _ | b == trueValExpr         = Right tb
 -- Simplification: if False then a else b <==> b
@@ -129,12 +129,12 @@ unsafeITE b tb fb | tb == trueValExpr && fb == falseValExpr = Right b
 unsafeITE b tb fb | tb == falseValExpr && fb == trueValExpr = unsafeNot b
 unsafeITE b tb fb                            = Right $ ValExpression (Vite b tb fb)
 
-unsafePredefNonSolvable :: SortContext c => c -> FuncSignature -> [ValExpression] -> Either MinError ValExpression
+unsafePredefNonSolvable :: SortContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
 unsafePredefNonSolvable ctx fs vs = case toMaybeValues vs of
                                         Just values -> evalPredefNonSolvable values
                                         Nothing     -> Right $ ValExpression (Vpredef fs vs)
     where
-        evalPredefNonSolvable :: [Value] -> Either MinError ValExpression
+        evalPredefNonSolvable :: [Value] -> Either Error ValExpression
         evalPredefNonSolvable values =
             case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, values) of
                     ("toString",     SortString, [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
@@ -153,7 +153,7 @@ unsafePredefNonSolvable ctx fs vs = case toMaybeValues vs of
                 notElemT :: Char -> T.Text -> Bool
                 notElemT c = not . elemT c
 
-unsafeNot :: ValExpression -> Either MinError ValExpression
+unsafeNot :: ValExpression -> Either Error ValExpression
 -- Simplification: not True <==> False
 unsafeNot b | b == trueValExpr                              = Right falseValExpr
 -- Simplification: not False <==> True
@@ -166,7 +166,7 @@ unsafeNot (TorXakis.ValExpr.ValExpr.view -> Vite cs tb fb)  = case (unsafeNot tb
                                                                 _                    -> error "Unexpected error in NOT with ITE"
 unsafeNot ve                                                = Right $ ValExpression (Vnot ve)
 
-unsafeAnd :: Set.Set ValExpression -> Either MinError ValExpression
+unsafeAnd :: Set.Set ValExpression -> Either Error ValExpression
 unsafeAnd = unsafeAnd' . flattenAnd
     where
         flattenAnd :: Set.Set ValExpression -> Set.Set ValExpression
@@ -177,7 +177,7 @@ unsafeAnd = unsafeAnd' . flattenAnd
         fromValExpression x                                         = Set.singleton x
 
         -- And doesn't contain elements of type Vand.
-        unsafeAnd' :: Set.Set ValExpression -> Either MinError ValExpression
+        unsafeAnd' :: Set.Set ValExpression -> Either Error ValExpression
         unsafeAnd' s =
             -- Canonical form (merge conditional IFs)
             -- IF a THEN b ELSE False FI /\ IF c THEN d ELSE False FI <==> IF a /\ c THEN b /\ d ELSE False FI
@@ -196,7 +196,7 @@ unsafeAnd = unsafeAnd' . flattenAnd
                                                     else Right $ ValExpression (Vand s')
                 )
             where
-                mergeConditionals :: Set.Set ValExpression -> Either MinError (Set.Set ValExpression)
+                mergeConditionals :: Set.Set ValExpression -> Either Error (Set.Set ValExpression)
                 mergeConditionals s' = Set.foldr mergeConditional (Right (Set.empty, Set.empty, Set.empty)) s' >>= 
                                         (\(s'', cs, ds) -> case Set.toList cs of
                                                             (_:_:_) -> -- at least two items to merge
@@ -209,8 +209,8 @@ unsafeAnd = unsafeAnd' . flattenAnd
                                         )
 
                 mergeConditional :: ValExpression 
-                                 -> Either MinError (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
-                                 -> Either MinError (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
+                                 -> Either Error (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
+                                 -> Either Error (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
                 mergeConditional _                                               (Left e)                                  = Left e
                 mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | tb == falseValExpr = unsafeNot c >>= (\nc -> Right (s', Set.insert nc cs, Set.insert fb ds))
                 mergeConditional (TorXakis.ValExpr.ValExpr.view -> Vite c tb fb) (Right (s', cs, ds)) | fb == falseValExpr = Right (s', Set.insert c cs, Set.insert tb ds)
@@ -226,17 +226,17 @@ unsafeAnd = unsafeAnd' . flattenAnd
                 contains set (TorXakis.ValExpr.ValExpr.view -> Vand a) = all (`Set.member` set) (Set.toList a)
                 contains set a                                         = Set.member a set
 
-unsafeUnaryMinus :: ValExpression -> Either MinError ValExpression
+unsafeUnaryMinus :: ValExpression -> Either Error ValExpression
 unsafeUnaryMinus (TorXakis.ValExpr.ValExpr.view -> Vsum m) = unsafeSumFromMap (Map.map (* (-1)) m)
 unsafeUnaryMinus x                                         = unsafeSumFromMap (Map.singleton x (-1))
 
-unsafeDivide :: ValExpression -> ValExpression -> Either MinError ValExpression
-unsafeDivide _                                                   (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Divide")
+unsafeDivide :: ValExpression -> ValExpression -> Either Error ValExpression
+unsafeDivide _                                                   (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)) | n == 0 = Left $ Error (T.pack "Divisor equal to zero in Divide")
 unsafeDivide (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n))          = unsafeConst (Cint (t `div` n) )
 unsafeDivide vet                                                 ven                                                         = Right $ ValExpression (Vdivide vet ven)
 
-unsafeModulo :: ValExpression -> ValExpression -> Either MinError ValExpression
-unsafeModulo _                                                   (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Modulo")
+unsafeModulo :: ValExpression -> ValExpression -> Either Error ValExpression
+unsafeModulo _                                                   (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)) | n == 0 = Left $ Error (T.pack "Divisor equal to zero in Modulo")
 unsafeModulo (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n))          = unsafeConst (Cint (t `mod` n) )
 unsafeModulo vet                                                 ven                                                         = Right $ ValExpression (Vmodulo vet ven)
 
@@ -253,7 +253,7 @@ isKeyConst _                                           _ = False
 --    special case if the sum is zero, no value is inserted since v == v+0
 -- 3. When map is empty return 0
 --    When map contains a single element exactly once, return that element
-unsafeSum :: [ValExpression] -> Either MinError ValExpression
+unsafeSum :: [ValExpression] -> Either Error ValExpression
 unsafeSum = unsafeSumFromMap . flattenSum
     where
         flattenSum :: [ValExpression] -> Map.Map ValExpression Integer
@@ -264,7 +264,7 @@ unsafeSum = unsafeSumFromMap . flattenSum
         fromValExpr x                                         = Map.singleton x 1
 
 -- unsafeSumFromMap doesn't contain elements of type Vsum.
-unsafeSumFromMap :: Map.Map ValExpression Integer -> Either MinError ValExpression
+unsafeSumFromMap :: Map.Map ValExpression Integer -> Either Error ValExpression
 unsafeSumFromMap m = 
     let (vals, nonvals) = Map.partitionWithKey isKeyConst m
         retVal :: Map.Map ValExpression Integer
@@ -291,7 +291,7 @@ unsafeSumFromMap m =
 --    special case if the product is zero, value is zero
 -- 3. When non values are empty return value
 --    When non-values are not empty, return sum which multiplies value with non-values
-unsafeProduct :: [ValExpression] -> Either MinError ValExpression
+unsafeProduct :: [ValExpression] -> Either Error ValExpression
 unsafeProduct = unsafeProductFromMap  . flattenProduct
     where
         flattenProduct :: [ValExpression] -> Map.Map ValExpression Integer
@@ -302,7 +302,7 @@ unsafeProduct = unsafeProductFromMap  . flattenProduct
         fromValExpr x                                             = Map.singleton x 1
 
 -- Flatten Product doesn't contain elements of type Vproduct.
-unsafeProductFromMap  :: Map.Map ValExpression Integer -> Either MinError ValExpression
+unsafeProductFromMap  :: Map.Map ValExpression Integer -> Either Error ValExpression
 -- Simplification: 0 * x = 0
 unsafeProductFromMap  m | Map.member zeroValExpr m = Right zeroValExpr
 unsafeProductFromMap  m =
@@ -318,18 +318,18 @@ unsafeProductFromMap  m =
         toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o) = i ^ o
         toValue (_                                               , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
 
-unsafeGEZ :: ValExpression -> Either MinError ValExpression
+unsafeGEZ :: ValExpression -> Either Error ValExpression
 -- Simplification: Integer Value to Boolean
 unsafeGEZ (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint v)) = unsafeConst (Cbool (0 <= v))
 -- Simplification: length of string is always Greater or equal to zero
 unsafeGEZ (TorXakis.ValExpr.ValExpr.view -> Vlength {})      = Right trueValExpr
 unsafeGEZ ve                                                 = Right $ ValExpression (Vgez ve)
 
-unsafeLength :: ValExpression -> Either MinError ValExpression
+unsafeLength :: ValExpression -> Either Error ValExpression
 unsafeLength (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) = unsafeConst (Cint (Prelude.toInteger (T.length s)))
 unsafeLength v                                                     = Right $ ValExpression (Vlength v)
 
-unsafeAt :: ValExpression -> ValExpression -> Either MinError ValExpression
+unsafeAt :: ValExpression -> ValExpression -> Either Error ValExpression
 unsafeAt _                                                     (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) | i < 0                                 = Right stringEmptyValExpr
 unsafeAt (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) | i >= Prelude.toInteger (T.length s)   = Right stringEmptyValExpr
 unsafeAt (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i))                                         = unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
@@ -342,7 +342,7 @@ unsafeAt (TorXakis.ValExpr.ValExpr.view -> Vconcat ((TorXakis.ValExpr.ValExpr.vi
                         unsafeAt nc)
 unsafeAt ves vei = Right $ ValExpression (Vat ves vei)
 
-unsafeConcat :: [ValExpression] -> Either MinError ValExpression
+unsafeConcat :: [ValExpression] -> Either Error ValExpression
 unsafeConcat l =
     case (mergeVals . flatten . filter (stringEmptyValExpr /= ) ) l of
         []  -> Right stringEmptyValExpr
@@ -372,7 +372,7 @@ unsafeConcat l =
     fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vconcat cs) = cs
     fromValExpr x                                             = [x]
 
-unsafeStrInRe :: ValExpression -> ValExpression -> Either MinError ValExpression
+unsafeStrInRe :: ValExpression -> ValExpression -> Either Error ValExpression
 unsafeStrInRe (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) 
               (TorXakis.ValExpr.ValExpr.view -> Vconst (Cregex r))  = unsafeConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
 unsafeStrInRe s r                                                   = Right $ ValExpression (Vstrinre s r)
@@ -386,26 +386,26 @@ toMaybeValues = foldl toMaybeValue (Just [])
         toMaybeValue (Just vs) (TorXakis.ValExpr.ValExpr.view -> Vconst v) = Just (v:vs)
         toMaybeValue _         _                                           = Nothing
 
-unsafeCstr :: RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression] -> Either MinError ValExpression
+unsafeCstr :: RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression] -> Either Error ValExpression
 unsafeCstr aName cName as = case toMaybeValues as of
                                 Just vs -> unsafeConst (Ccstr aName cName vs)
                                 Nothing -> Right $ ValExpression (Vcstr aName cName as)
 
-unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> Either MinError ValExpression
+unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> Either Error ValExpression
 unsafeIsCstr aName cName (TorXakis.ValExpr.ValExpr.view -> Vcstr a c _)          = unsafeConst (Cbool (aName == a && cName == c))
 unsafeIsCstr aName cName (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr a c _)) = unsafeConst (Cbool (aName == a && cName == c))
 unsafeIsCstr aName cName v                                                       = Right $ ValExpression (Viscstr aName cName v)
 
-unsafeAccess :: RefByName ADTDef -> RefByName ConstructorDef -> Int -> ValExpression -> Either MinError ValExpression
+unsafeAccess :: RefByName ADTDef -> RefByName ConstructorDef -> Int -> ValExpression -> Either Error ValExpression
 -- Note: different sort is impossible so aName for both the same
 unsafeAccess _ cName pos (TorXakis.ValExpr.ValExpr.view -> Vcstr _ c fs) = 
     if cName == c
         then Right $ fs !! pos
-        else Left $ MinError (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on instance from constructor " ++ show c
+        else Left $ Error (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on instance from constructor " ++ show c
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
 unsafeAccess _ cName pos (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr _ c fs)) = 
     if cName == c
         then unsafeConst $ fs !! pos
-        else Left $ MinError (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on value from constructor " ++ show c
+        else Left $ Error (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on value from constructor " ++ show c
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
 unsafeAccess aName cName pos v = Right $ ValExpression (Vaccess aName cName pos v)

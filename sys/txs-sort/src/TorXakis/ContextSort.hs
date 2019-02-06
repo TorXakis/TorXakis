@@ -39,7 +39,8 @@ import           TorXakis.Name       ( Name
                                      , repeatedByNameIncremental
                                      )
 import           TorXakis.SortADT    ( Sort ( SortADT )
-                                     , ADTDef ( constructors )
+                                     , ADTDef
+                                     , elemsConstructor
                                      , ConstructorDef ( fields )
                                      , sort
                                      )
@@ -53,16 +54,16 @@ instance SortReadContext ContextSort where
     memberSort ctx (SortADT a) = Map.member a (adtDefs ctx)
     memberSort _   _           = True
 
-    memberADTDef ctx adtRef = Map.member adtRef (adtDefs ctx)
+    memberADT ctx adtRef = Map.member adtRef (adtDefs ctx)
 
-    lookupADTDef ctx adtRef = Map.lookup adtRef (adtDefs ctx)
+    lookupADT ctx adtRef = Map.lookup adtRef (adtDefs ctx)
 
-    elemsADTDef ctx         = Map.elems (adtDefs ctx)
+    elemsADT ctx         = Map.elems (adtDefs ctx)
 
 instance SortContext ContextSort where
     empty = ContextSort Map.empty
 
-    addAdtDefs ctx as = case violationsAddAdtDefs of
+    addADTs ctx as = case violationsAddAdtDefs of
                                 Just e  -> Left e
                                 Nothing -> Right $ ctx { adtDefs = Map.union (adtDefs ctx) (toMapByName as) }
         where
@@ -92,13 +93,10 @@ instance SortContext ContextSort where
                     
                     hasUnknownRefs :: ADTDef -> Maybe (ADTDef, [Sort])
                     hasUnknownRefs adtdef = 
-                        let xs = filter (not . isDefined) (concatMap ( map sort . fields ) (getConstructors adtdef) ) in
+                        let xs = filter (not . isDefined) (concatMap ( map sort . fields ) (elemsConstructor adtdef) ) in
                             if null xs 
                                 then Nothing
                                 else Just (adtdef,xs)
-
-                    getConstructors :: ADTDef -> [ConstructorDef]
-                    getConstructors = Map.elems . constructors
 
                     isDefined :: Sort -> Bool
                     isDefined (SortADT t) = toName t `elem` definedNames
@@ -127,7 +125,7 @@ instance SortContext ContextSort where
                                                 -> [ADTDef]
                         verifyConstructibleADTs constructableSortNames uADTDfs =
                             let (cs, ncs)  = List.partition
-                                            (any (allFieldsConstructable constructableSortNames) . getConstructors)
+                                            (any (allFieldsConstructable constructableSortNames) . elemsConstructor)
                                             uADTDfs
                             in if null cs
                             then uADTDfs

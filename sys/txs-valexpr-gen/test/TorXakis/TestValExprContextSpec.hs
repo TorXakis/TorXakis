@@ -42,7 +42,7 @@ propertyInContext prop =
             Left e   -> error ("can't make name "++ show e)
             Right ni -> case partitionEithers [ mkVarDef ctx ni SortInt
                                               ] of
-                             ([], vs) -> case addVarDefs ctx vs of
+                             ([], vs) -> case addVars ctx vs of
                                             Right nctx  -> prop nctx
                                             Left  e     -> error ("can't add vardefs "++ show e)
                              (es, _)  -> error ("can't make vardefs "++ show es)

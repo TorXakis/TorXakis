@@ -30,13 +30,12 @@ module TorXakis.ValExpr.ValExpr
 where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
-import qualified Data.HashMap        as HashMap
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
-
+import           TorXakis.Error
 import           TorXakis.FreeVars
 import           TorXakis.FuncSignature
 import           TorXakis.PrettyPrint.TorXakis
@@ -96,12 +95,12 @@ newtype ValExpression = ValExpression { -- | View on value expression.
 
 -- | Evaluate the provided value expression.
 -- Either the Right Constant Value is returned or a (Left) error message.
-eval :: ValExpression -> Either String Value
+eval :: ValExpression -> Either Error Value
 eval = evalView . view
 
-evalView :: ValExpressionView -> Either String Value
+evalView :: ValExpressionView -> Either Error Value
 evalView (Vconst v) = Right v
-evalView x          = Left $ "Value Expression is not a constant value " ++ show x
+evalView x          = Left $ Error ("Value Expression is not a constant value " ++ show x)
 
 -- | SortOf instance
 instance VarContext a => HasSort a ValExpression where
@@ -109,7 +108,7 @@ instance VarContext a => HasSort a ValExpression where
 
 instance VarContext a => HasSort a ValExpressionView where
     getSort ctx (Vconst val)              = getSort ctx val
-    getSort ctx (Vvar r)                  = case HashMap.lookup r (varDefs ctx) of
+    getSort ctx (Vvar r)                  = case lookupVar ctx r of
                                                Nothing -> error ("getSort: VarDef not found in context " ++ show r)
                                                Just v  -> getSort ctx v
     getSort _    Vequal { }               = SortBool
@@ -127,9 +126,9 @@ instance VarContext a => HasSort a ValExpressionView where
     getSort _    Vstrinre { }             = SortBool
     getSort _   (Vcstr a _c _vexps)       = SortADT a
     getSort _    Viscstr { }              = SortBool
-    getSort ctx (Vaccess a c p _vexps)    = case HashMap.lookup a (adtDefs ctx) of
+    getSort ctx (Vaccess a c p _vexps)    = case lookupADT ctx a of
                                                Nothing   -> error ("getSort: ADTDef not found in context " ++ show a)
-                                               Just aDef -> case HashMap.lookup c (constructors aDef) of
+                                               Just aDef -> case lookupConstructor aDef c of
                                                                Nothing   -> error ("getSort: Constructor not found in ADTDef " ++ show c)
                                                                Just cDef -> getSort ctx ( fields cDef !! p )
     getSort _   (Vfunc fs _vexps)         = returnSort fs
@@ -194,9 +193,9 @@ instance SortContext c => PrettyPrint c ValExpressionView where
   prettyPrint o ctx (Vstrinre s r)      = funcInst o ctx (T.pack "strinre") [s,r]
   prettyPrint o ctx (Vcstr _ c vs)      = funcInst o ctx (TorXakis.Name.toText (TorXakis.Name.toName c)) vs
   prettyPrint o ctx (Viscstr _ c v)     = funcInst o ctx (T.append (T.pack "is") (TorXakis.Name.toText (TorXakis.Name.toName c))) [v]
-  prettyPrint o ctx (Vaccess a c p v)   = case HashMap.lookup a (adtDefs ctx) of
+  prettyPrint o ctx (Vaccess a c p v)   = case lookupADT ctx a of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
-                                            Just aDef   -> case HashMap.lookup c (constructors aDef) of
+                                            Just aDef   -> case lookupConstructor aDef c of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
                                                                 Just cDef   -> let field = fields cDef !! p in
                                                                                     funcInst o ctx (TorXakis.Name.toText (fieldName field)) [v]

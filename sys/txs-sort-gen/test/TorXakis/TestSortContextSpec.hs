@@ -52,7 +52,7 @@ prop_ADTDefs_nonConstructable =
                                                      [ FieldDef (unsafeName "fieldName") (SortADT (RefByName aName)) ]
                               ]
       in
-        case addAdtDefs (empty::ContextTestSort) [adtdef] of
+        case addADTs (empty::ContextTestSort) [adtdef] of
             Right _ -> False
             Left _  -> True
 
@@ -65,7 +65,7 @@ prop_ADTDefs_unknownReference =
                                                      [ FieldDef (unsafeName "fieldName") (SortADT (RefByName unknownName)) ]
                               ]
       in
-        case addAdtDefs (empty::ContextTestSort) [adtdef] of
+        case addADTs (empty::ContextTestSort) [adtdef] of
             Right _ -> False
             Left _  -> True
 
@@ -75,7 +75,7 @@ prop_ADTDefs_unique =
     let adtdef = unsafeADTDef (unsafeName "adtName") 
                               [ unsafeConstructorDef (unsafeName "cstrName") [] ]
       in
-        case addAdtDefs (empty::ContextTestSort) [adtdef, adtdef] of
+        case addADTs (empty::ContextTestSort) [adtdef, adtdef] of
             Right _ -> False
             Left _  -> True
 
@@ -126,9 +126,9 @@ prop_ADTDefs_Dependent =
         complexityC   = 2 + complexityA + complexityB
         complexityDep = 3 + complexityA + complexityB + complexityC
       in
-        case addAdtDefs (empty::ContextTestSort) [cDef, bDef, aDef] of
+        case addADTs (empty::ContextTestSort) [cDef, bDef, aDef] of
             Left  _      -> False
-            Right newCtx ->     elemsADTDef newCtx == [ aDef, bDef, cDef ]
+            Right newCtx ->     elemsADT newCtx == [ aDef, bDef, cDef ]
                             &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT aRef, complexityA)
                                                                                ,(SortADT bRef, complexityB)
                                                                                ,(SortADT cRef, complexityC)] -- also primitive Sorts are contained
@@ -166,11 +166,11 @@ prop_increment =
         incr1 = [aDef, bDef]
         incr2 = [cDef, dDef]
       in
-        case addAdtDefs c0 incr1 of
+        case addADTs c0 incr1 of
             Left e1  -> error ("Invalid incr1 - " ++ show e1)
-            Right c1 -> case addAdtDefs c1 incr2 of
+            Right c1 -> case addADTs c1 incr2 of
                                 Left e2  -> error ("Invalid incr2 - " ++ show e2)
-                                Right c2 -> case addAdtDefs c0 (incr2 ++ incr1) of
+                                Right c2 -> case addADTs c0 (incr2 ++ incr1) of
                                                 Left e    -> trace ("error = " ++ show e) False
                                                 Right c12 -> c12 == c2 || trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) False
 

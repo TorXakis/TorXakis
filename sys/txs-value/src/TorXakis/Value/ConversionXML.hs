@@ -27,7 +27,6 @@ import           Data.ByteString          (pack)
 import           Data.ByteString.Internal (c2w)
 import           Data.Char                (chr, ord)
 import           Data.Either              (partitionEithers)
-import qualified Data.HashMap             as Map
 import           Data.List
 import           Data.Maybe               (fromMaybe)
 import           Data.Text                (Text)
@@ -89,9 +88,9 @@ valueToXML ctx = pairToXML rootNodeName
         pairToXML node (Cregex r)     = nodeTextToXML node (encodeString r)
         pairToXML node (Ccstr a c as) = 
             let adtDef = fromMaybe (error ("ADTDef " ++ show a ++ " not in context"))
-                                   (lookupADTDef ctx a)
+                                   (lookupADT ctx a)
                 cstrDef = fromMaybe (error ("cstrDef " ++ show c ++ " not in ADTDef " ++ show a))
-                                    (Map.lookup c (constructors adtDef))
+                                    (lookupConstructor adtDef c)
                 fieldTexts = map (TorXakis.Name.toText . fieldName) ( fields cstrDef )
                 cNode = (TorXakis.Name.toText . toName) c
                 txt = nodeTextToXML cNode (T.concat (zipWith pairToXML fieldTexts as))
@@ -137,9 +136,9 @@ valueFromXML ctx s t =
                 = case mkName cname of
                     Left e   -> Left $ Error ("Illegal name " ++ show n ++ "\n" ++ show e)
                     Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
-                                                       (lookupADTDef ctx a)
+                                                       (lookupADT ctx a)
                                     c = RefByName n'
-                                  in case Map.lookup c (constructors adtDef) of
+                                  in case lookupConstructor adtDef c of
                                         Nothing   -> Left $ Error ("Constructor " ++ show n ++  " not defined for ADT " ++ show a)
                                         Just cDef -> let fs = fields cDef
                                                          actual = length fs

@@ -22,7 +22,6 @@ where
 import           Data.List
 import qualified Data.MultiMap            as MultiMap
 import           Test.Hspec
-import           Test.Hspec.QuickCheck (modifyMaxSuccess,modifyMaxSize)
 import           Test.QuickCheck
 
 import           TorXakis.Name
@@ -33,7 +32,7 @@ import           TorXakis.VarDef
 import           TorXakis.VarsDecl
 import           TorXakis.VarsDeclGen
 
-propertyInContext  :: (MinimalTestSortContext -> Gen Bool) -> Gen Bool
+propertyInContext  :: (ContextTestSort -> Gen Bool) -> Gen Bool
 propertyInContext prop = do
     ctx <- arbitraryTestSortContext
     prop ctx
@@ -68,7 +67,7 @@ prop_SameElements ctx = check <$> arbitraryVarsDecl ctx
 
 spec :: Spec
 spec = do
-  describe "constraints" $
+  describe "A VarDecl has the following constraints:" $
       do
         it "unique names" $ property (propertyInContext prop_UniqueNames)
         it "defined sort" $ property (propertyInContext prop_DefinedSorts)

@@ -28,7 +28,7 @@ import           TorXakis.Sort
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
 
-propertyInContext  :: (MinimalTestSortContext -> Gen Bool) -> Gen Bool
+propertyInContext  :: (ContextTestSort -> Gen Bool) -> Gen Bool
 propertyInContext prop = do
     ctx <- arbitraryTestSortContext
     prop ctx

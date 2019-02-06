@@ -20,26 +20,33 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE ScopedTypeVariables   #-}
 module TorXakis.FuncSignatureContext
 ( -- * Context
-  -- ** Func Signature Context
-  FuncSignatureContext (..)
+  -- ** Func Signature Context class
+  FuncSignatureReadContext (..)
+  -- ** Func Signature Context class
+, FuncSignatureContext (..)
 )
 where
-import qualified Data.Set               as Set
-
 import           TorXakis.Error
 import           TorXakis.FuncSignature
-import           TorXakis.Sort (SortContext)
+import           TorXakis.Sort              (SortReadContext
+                                            ,SortContext
+                                            )
 
-
-------------------------------------------------------------------------------------------------------------------
--- Context
-------------------------------------------------------------------------------------------------------------------
+-- | A FuncSignatureReadContext instance contains all operators to inspect/read 'TorXakis.FuncSignature'.
+class SortReadContext a => FuncSignatureReadContext a where
+    -- | Is the provided FuncSignature a member of the context?
+    memberFunc :: a -> FuncSignature -> Bool
+    -- | All funcSignatures in the context.
+    -- 
+    -- Since all funcSignatures are distinct the following properties hold:
+    --
+    -- prop> List.nub (funcSignatures x) == funcSignatures x
+    -- 
+    -- prop> Set.toList (Set.fromList (funcSignatures x)) == funcSignatures x
+    funcSignatures :: a -> [FuncSignature]
 
 -- | A FuncSignatureContext Context instance contains all definitions to work with 'TorXakis.FuncSignature'.
-class SortContext a => FuncSignatureContext a where
-    -- | Accessor for defined variables
-    funcSignatures :: a -> Set.Set FuncSignature
-
+class (SortContext a, FuncSignatureReadContext a) => FuncSignatureContext a where
     -- | Add funcSignatures to funcSignature context.
     --   A funcSignature context is returned when the following constraints are satisfied:
     --
@@ -48,4 +55,4 @@ class SortContext a => FuncSignatureContext a where
     --   * All sorts are known
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addFuncSignatures :: a -> [FuncSignature] -> Either MinError a
+    addFuncSignatures :: a -> [FuncSignature] -> Either Error a

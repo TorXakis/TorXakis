@@ -51,7 +51,7 @@ prop_ADTDefs_nonConstructable =
                                                            [ FieldDef (unsafeName "fieldName") (SortADT (RefByName aName)) ]
                                     ]
       in
-        case addAdtDefs (empty :: ContextSort) [cyclicAdtdef] of
+        case addADTs (empty :: ContextSort) [cyclicAdtdef] of
             Right _ -> False
             Left _  -> True
 
@@ -64,7 +64,7 @@ prop_ADTDefs_unknownReference =
                                                                  [ FieldDef (unsafeName "fieldName") (SortADT (RefByName unknownName)) ]
                                           ]
       in
-        case addAdtDefs (empty :: ContextSort) [undefinedRefAdtdef] of
+        case addADTs (empty :: ContextSort) [undefinedRefAdtdef] of
             Right _ -> False
             Left _  -> True
 
@@ -74,7 +74,7 @@ prop_ADTDefs_unique =
     let adtdef = unsafeADTDef (unsafeName "adtName") 
                               [ unsafeConstructorDef (unsafeName "cstrName") [] ]
       in
-        case addAdtDefs (empty :: ContextSort) [adtdef, adtdef] of
+        case addADTs (empty :: ContextSort) [adtdef, adtdef] of
             Right _ -> False
             Left _  -> True
 
@@ -113,9 +113,9 @@ prop_ADTDefs_Dependent =
                                                    ]
                             ]
       in
-        case addAdtDefs (empty :: ContextSort) [aDef, bDef, cDef] of
+        case addADTs (empty :: ContextSort) [aDef, bDef, cDef] of
             Left  _      -> False
-            Right newCtx -> elemsADTDef newCtx == [aDef, bDef, cDef]
+            Right newCtx -> elemsADT newCtx == [aDef, bDef, cDef]
 
 
 spec :: Spec

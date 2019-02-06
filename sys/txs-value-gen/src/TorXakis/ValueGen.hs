@@ -21,12 +21,12 @@ module TorXakis.ValueGen
 )
 where
 import           Data.Char          (chr)
-import qualified Data.HashMap       as Map
 import           Data.Maybe         (mapMaybe)
 import qualified Data.Text          as T
 import           Test.QuickCheck
 
 import TorXakis.Distribute
+import TorXakis.Name
 import TorXakis.Sort
 import TorXakis.Value
 import TorXakis.TestSortContext
@@ -67,18 +67,18 @@ arbitraryValueOfSort _   SortRegex =
 arbitraryValueOfSort ctx (SortADT a) = 
     do
         n <- getSize
-        case lookupADTDef ctx a of
+        case lookupADT ctx a of
             Nothing      -> error ("ADTDef " ++ show a ++ " not in context ")
-            Just adtDef  -> let availableCstr = mapMaybe (\(r,d) -> case constructorSize ctx a r of
-                                                                        Left e -> error ("ADTDef and constructor in context, yet no size - " ++ show e)
-                                                                        Right v -> if v <= n
-                                                                                    then Just (v, r, d)
-                                                                                    else Nothing) 
-                                                          (Map.toList (constructors adtDef))
+            Just adtDef  -> let availableCstr = mapMaybe (\d -> case constructorSize ctx a (toRefByName d) of
+                                                                     Left e -> error ("ADTDef and constructor in context, yet no size - " ++ show e)
+                                                                     Right v -> if v <= n
+                                                                                 then Just (v, d)
+                                                                                 else Nothing)
+                                                         (elemsConstructor adtDef)
                               in case availableCstr of
                                     [] -> error ("Unexpected: No Constructor available for " ++ show a)
                                     _  -> do
-                                            (minSize, cstrRef, cstrDef) <- elements availableCstr
+                                            (minSize, cstrDef) <- elements availableCstr
                                             let cFields = fields cstrDef
                                               in do
                                                 additionalComplexity <- distribute (n-minSize) (length cFields)
@@ -90,4 +90,4 @@ arbitraryValueOfSort ctx (SortADT a) =
                                                     aFields = zipWith (+) sFields additionalComplexity
                                                   in do
                                                     fs <- mapM (\(c,f) -> resize c (arbitraryValueOfSort ctx (sort f))) $ zip aFields cFields
-                                                    return $ Ccstr a cstrRef fs
+                                                    return $ Ccstr a (toRefByName cstrDef) fs

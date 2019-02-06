@@ -75,7 +75,7 @@ data MinimalBExprContext a = MinimalBExprContext { valExprContext :: a
 instance SortContext a => SortContext (MinimalBExprContext a) where
     empty = MinimalBExprContext empty HashMap.empty
     adtDefs ctx    = adtDefs (valExprContext ctx)
-    addAdtDefs ctx as = case addAdtDefs (valExprContext ctx) as of
+    addADTs ctx as = case addADTs (valExprContext ctx) as of
                           Left e     -> Left e
                           Right vctx -> Right $ ctx {valExprContext = vctx}
 
@@ -87,7 +87,7 @@ instance FuncContext a => FuncContext (MinimalBExprContext a) where
 
 instance ValExprContext a => VarContext (MinimalBExprContext a) where
     varDefs ctx       = varDefs (valExprContext ctx)
-    addVarDefs ctx fs = case addVarDefs (valExprContext ctx) fs of
+    addVars ctx fs = case addVars (valExprContext ctx) fs of
                           Left e     -> Left e
                           Right vctx -> Right $ ctx {valExprContext = vctx}
 
@@ -120,7 +120,7 @@ instance ValExprContext a => BExprContext (MinimalBExprContext a) where
 
         undefinedVariable :: ProcDef -> Maybe (ProcSignature, Set.Set (RefByName VarDef))
         undefinedVariable pd = let definedVars :: Set.Set (RefByName VarDef)
-                                   definedVars   = Set.fromList (map (RefByName . name) (toList (paramDefs pd)))
+                                   definedVars   = Set.fromList (map toRefByName (toList (paramDefs pd)))
                                    usedVars      = freeVars (body pd)
                                    undefinedVars = Set.difference usedVars definedVars
                                 in

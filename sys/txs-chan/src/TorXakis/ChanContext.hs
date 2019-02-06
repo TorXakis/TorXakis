@@ -77,7 +77,7 @@ fromSortContext srt = MinimalChanContext srt HashMap.empty
 instance SortContext a => SortContext (MinimalChanContext a) where
     empty = MinimalChanContext TorXakis.Sort.empty HashMap.empty
     adtDefs ctx    = adtDefs (sortContext ctx)
-    addAdtDefs ctx as = case addAdtDefs (sortContext ctx) as of
+    addADTs ctx as = case addADTs (sortContext ctx) as of
                           Left e     -> Left e
                           Right sctx -> Right $ ctx {sortContext = sctx}
 

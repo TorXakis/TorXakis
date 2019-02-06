@@ -56,7 +56,7 @@ data ProcDef = ProcDef { -- | The name of the process (of type 'TorXakis.Name')
 
 instance SortContext a => HasProcSignature a ProcDef
     where
-        getProcSignature sctx (ProcDef fn cds pds bd) = case addVarDefs (fromSortContext sctx) (toList pds) of
+        getProcSignature sctx (ProcDef fn cds pds bd) = case addVars (fromSortContext sctx) (toList pds) of
                                                              Left e     -> error ("getProcSignature is unable to add vars to sort context" ++ show e)
                                                              Right vctx -> ProcSignature fn (map chanSort cds) (map (getSort sctx) (toList pds)) (getProcExit vctx bd)
 -- ----------------------------------------------------------------------------------------- --

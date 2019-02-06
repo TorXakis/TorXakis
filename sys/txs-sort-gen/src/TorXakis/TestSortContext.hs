@@ -74,13 +74,13 @@ data ContextTestSort = ContextTestSort
                         } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortReadContext ContextTestSort where
-    memberSort     = memberSort . basis
+    memberSort   = memberSort . basis
 
-    memberADTDef = memberADTDef . basis
+    memberADT = memberADT . basis
 
-    lookupADTDef = lookupADTDef . basis
+    lookupADT = lookupADT . basis
 
-    elemsADTDef  = elemsADTDef . basis
+    elemsADT  = elemsADT . basis
 
 instance SortContext ContextTestSort where
     empty = ContextTestSort empty primitiveSortSize Map.empty
@@ -94,7 +94,7 @@ instance SortContext ContextTestSort where
                                                ]
                                                (repeat 0)
 
-    addAdtDefs context as = addAdtDefs (basis context) as >>= (\newBasis ->
+    addADTs context as = addADTs (basis context) as >>= (\newBasis ->
                                              let
                                                newMapSortSize = addToMapSortSize (mapSortSize context) as 
                                                newMapAdtMapConstructorSize = addToMapAdtMapConstructorSize (mapAdtMapConstructorSize context) newMapSortSize as 
@@ -115,17 +115,16 @@ instance SortContext ContextTestSort where
                                     -> ADTDef 
                                     -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
                 addConstructorSizes iMap adef =
-                    let ra :: RefByName ADTDef
-                        ra = RefByName (getName adef) in
+                    let ra = toRefByName adef in
                         if Map.member ra iMap 
                             then error ("Invariant violated: adding already contained ADTDef " ++ show adef)
-                            else Map.insert ra (Map.fromList (map (\(rc,c) -> (rc, getConstructorSize sMap c) ) ((Map.toList . constructors) adef) ) ) iMap
+                            else Map.insert ra (Map.fromList (map (\c -> (toRefByName c, getConstructorSize sMap c) ) (elemsConstructor adef) ) ) iMap
 
             addToMapSortSize :: Map.Map Sort Int -> [ADTDef] -> Map.Map Sort Int
             addToMapSortSize defined adefs =
                 let newDefined = foldl addCurrent defined adefs
                     in if newDefined == defined 
-                        then if any (`Map.notMember` newDefined) (map (SortADT . RefByName . getName) adefs)
+                        then if any (`Map.notMember` newDefined) (map (SortADT . toRefByName) adefs)
                                 then error ("Invariant violated: non constructable ADTDefs in " ++ show adefs)
                                 else newDefined
                         else addToMapSortSize newDefined adefs
@@ -133,7 +132,7 @@ instance SortContext ContextTestSort where
                 addCurrent :: Map.Map Sort Int -> ADTDef -> Map.Map Sort Int
                 addCurrent mp aDef = case getKnownAdtSize mp aDef of
                                         Nothing -> mp
-                                        Just i  -> Map.insert (SortADT (RefByName (getName aDef))) i mp
+                                        Just i  -> Map.insert (SortADT (toRefByName aDef)) i mp
 
                 getKnownAdtSize :: Map.Map Sort Int -> ADTDef -> Maybe Int
                 getKnownAdtSize mp adef =
@@ -142,7 +141,7 @@ instance SortContext ContextTestSort where
                         cs -> Just $ minimum cs             -- complexity sort is minimum of complexity of its constructors
                       where
                         knownConstructorSizes :: [Maybe Int]
-                        knownConstructorSizes = map (getKnownConstructorSize mp) ( (Map.elems . constructors) adef)
+                        knownConstructorSizes = map (getKnownConstructorSize mp) (elemsConstructor adef)
 
             getKnownConstructorSize :: Map.Map Sort Int -> ConstructorDef -> Maybe Int
             getKnownConstructorSize defined cdef =

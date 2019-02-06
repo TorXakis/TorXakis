@@ -85,7 +85,7 @@ class SortContext a => FuncContext a where
     --   * All references (both Sort and FunctionDefinition) are known
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addFuncDefs :: a -> [FuncDef] -> Either MinError a
+    addFuncDefs :: a -> [FuncDef] -> Either Error a
 
 -- | A minimal instance of 'FuncContext'.
 data MinimalFuncContext a = MinimalFuncContext { sortContext :: a
@@ -100,17 +100,17 @@ fromSortContext srt = MinimalFuncContext srt HashMap.empty
 instance SortContext a => SortContext (MinimalFuncContext a) where
     empty = MinimalFuncContext TorXakis.Sort.empty HashMap.empty
     adtDefs ctx    = adtDefs (sortContext ctx)
-    addAdtDefs ctx as = case addAdtDefs (sortContext ctx) as of
+    addADTs ctx as = case addADTs (sortContext ctx) as of
                           Left e     -> Left e
                           Right sctx -> Right $ ctx {sortContext = sctx} 
 
 instance SortContext a => FuncContext (MinimalFuncContext a) where
     funcDefs = _funcDefs
     addFuncDefs ctx fds
-        | not $ null nuFuncDefs              = Left $ MinError (T.pack ("Non unique function signatures: " ++ show nuFuncDefs))
-        | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of function signatures with undefined sorts: " ++ show undefinedSorts))
-        | not $ null undefinedVariables      = Left $ MinError (T.pack ("List of function signatures with undefined variables in their bodies: " ++ show undefinedVariables))
-        | not $ null undefinedFuncSignatures = Left $ MinError (T.pack ("List of function signatures with undefined function signatures in their bodies: " ++ show undefinedFuncSignatures))
+        | not $ null nuFuncDefs              = Left $ Error (T.pack ("Non unique function signatures: " ++ show nuFuncDefs))
+        | not $ null undefinedSorts          = Left $ Error (T.pack ("List of function signatures with undefined sorts: " ++ show undefinedSorts))
+        | not $ null undefinedVariables      = Left $ Error (T.pack ("List of function signatures with undefined variables in their bodies: " ++ show undefinedVariables))
+        | not $ null undefinedFuncSignatures = Left $ Error (T.pack ("List of function signatures with undefined function signatures in their bodies: " ++ show undefinedFuncSignatures))
         | otherwise                          = Right $ newCtx ctx (toMapByFuncSignature ctx fds)
       where
         nuFuncDefs :: [FuncDef]
@@ -133,7 +133,7 @@ instance SortContext a => FuncContext (MinimalFuncContext a) where
 
         undefinedVariable :: FuncDef -> Maybe (FuncSignature, Set.Set (RefByName VarDef))
         undefinedVariable fd = let definedVars   :: Set.Set (RefByName VarDef)
-                                   definedVars   = Set.fromList (map (RefByName . name) (toList (paramDefs fd)))
+                                   definedVars   = Set.fromList (map toRefByName (toList (paramDefs fd)))
                                    usedVars      = freeVars (body fd)
                                    undefinedVars = Set.difference usedVars definedVars
                                 in
@@ -161,7 +161,7 @@ instance SortContext a => FuncContext (MinimalFuncContext a) where
                                                 else newCtx (ctx'{ _funcDefs = HashMap.union (funcDefs ctx') lc }) rc
                                     else error ("All check passed, yet errors occurred\n" ++ show (HashMap.elems lm))
 
-        newFuncDef :: MinimalFuncContext a -> FuncDef -> Either MinError FuncDef
+        newFuncDef :: MinimalFuncContext a -> FuncDef -> Either Error FuncDef
         newFuncDef updateCtx fd = let nm = TorXakis.FuncDef.funcName fd
                                       ps = paramDefs fd
                                       bd = body fd in
@@ -206,10 +206,10 @@ findUndefinedFuncSignature definedFuncSignatures = findUndefinedFuncSignature'
         findUndefinedFuncSignatureView (Vaccess _ _ _ v)                   = findUndefinedFuncSignature' v
 
 -- | Optimize value expression using func context
-optimize :: FuncContext a => a -> ValExpression -> Either MinError ValExpression
+optimize :: FuncContext a => a -> ValExpression -> Either Error ValExpression
 optimize ctx  = optimizeView . view
     where
-        optimizeView :: ValExpressionView -> Either MinError ValExpression
+        optimizeView :: ValExpressionView -> Either Error ValExpression
         optimizeView (Vconst c)                = unsafeConst c
         optimizeView (Vvar r)                  = unsafeVar r
         optimizeView (Vequal ve1 ve2)          = optimizeView (view ve1) >>= (\ne1 ->
@@ -221,14 +221,14 @@ optimize ctx  = optimizeView . view
                                                  unsafeITE nc ntb nfb)))
         optimizeView (Vfunc fs vs)             = case partitionEithers (map (optimizeView . view) vs) of
                                                     ([], nvs) -> unsafeFunc ctx fs nvs
-                                                    (es, _)   -> Left $ MinError (T.pack ("Optimize 'func' failed\n" ++ show es))
+                                                    (es, _)   -> Left $ Error (T.pack ("Optimize 'func' failed\n" ++ show es))
         optimizeView (Vpredef fs vs)           = case partitionEithers (map (optimizeView . view) vs) of
                                                     ([], nvs) -> unsafePredefNonSolvable ctx fs nvs
-                                                    (es, _)   -> Left $ MinError (T.pack ("Optimize 'predef' failed\n" ++ show es))
+                                                    (es, _)   -> Left $ Error (T.pack ("Optimize 'predef' failed\n" ++ show es))
         optimizeView (Vnot v)                  = optimizeView (view v) >>= unsafeNot
         optimizeView (Vand s)                  = case partitionEithers (map (optimizeView . view) (Set.toList s)) of
                                                     ([], ns) -> unsafeAnd (Set.fromList ns)
-                                                    (es, _)  -> Left $ MinError (T.pack ("Optimize 'and' failed\n" ++ show es))
+                                                    (es, _)  -> Left $ Error (T.pack ("Optimize 'and' failed\n" ++ show es))
         optimizeView (Vdivide t n)             = optimizeView (view t) >>= (\nt ->
                                                  optimizeView (view n) >>=
                                                  unsafeDivide nt)
@@ -238,11 +238,11 @@ optimize ctx  = optimizeView . view
         optimizeView (Vsum m)                  = case partitionEithers (map (\(x,i) -> optimizeView (view x) >>= (\nx -> Right (nx,i)))
                                                                             (Map.toList m)) of
                                                     ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
-                                                    (es, _) -> Left $ MinError (T.pack ("Optimize 'sum' failed\n" ++ show es))
+                                                    (es, _) -> Left $ Error (T.pack ("Optimize 'sum' failed\n" ++ show es))
         optimizeView (Vproduct m)              = case partitionEithers (map (\(x,i) -> optimizeView (view x) >>= (\nx -> Right (nx,i)))
                                                                             (Map.toList m)) of
                                                     ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
-                                                    (es, _) -> Left $ MinError (T.pack ("Optimize 'product' failed\n" ++ show es))
+                                                    (es, _) -> Left $ Error (T.pack ("Optimize 'product' failed\n" ++ show es))
         optimizeView (Vgez v)                  = optimizeView (view v) >>= unsafeGEZ
         optimizeView (Vlength s)               = optimizeView (view s) >>= unsafeLength
         optimizeView (Vat s i)                 = optimizeView (view s) >>= (\ns ->
@@ -250,13 +250,13 @@ optimize ctx  = optimizeView . view
                                                  unsafeAt ns)
         optimizeView (Vconcat s)               = case partitionEithers (map (optimizeView . view) s) of
                                                     ([], ns) -> unsafeConcat ns
-                                                    (es, _)  -> Left $ MinError (T.pack ("Optimize 'concat' failed\n" ++ show es))
+                                                    (es, _)  -> Left $ Error (T.pack ("Optimize 'concat' failed\n" ++ show es))
         optimizeView (Vstrinre s r)            = optimizeView (view s) >>= (\ns ->
                                                  optimizeView (view r) >>= 
                                                  unsafeStrInRe ns)
         optimizeView (Vcstr a c l)             = case partitionEithers (map (optimizeView . view) l) of
                                                     ([], nl) -> unsafeCstr a c nl
-                                                    (es, _)  -> Left $ MinError (T.pack ("Optimize 'cstr' failed\n" ++ show es))
+                                                    (es, _)  -> Left $ Error (T.pack ("Optimize 'cstr' failed\n" ++ show es))
         optimizeView (Viscstr a c v)           = optimizeView (view v) >>= unsafeIsCstr a c
         optimizeView (Vaccess a c p v)         = optimizeView (view v) >>= unsafeAccess a c p
 
@@ -284,7 +284,7 @@ fromVarContext vc = MinimalValExprContext (fromSortContext vc) (varDefs vc)
 instance SortContext a => SortContext (MinimalValExprContext a) where
     empty = MinimalValExprContext TorXakis.Sort.empty HashMap.empty
     adtDefs ctx         = adtDefs (funcContext ctx)
-    addAdtDefs ctx as   = case addAdtDefs (funcContext ctx) as of
+    addADTs ctx as   = case addADTs (funcContext ctx) as of
                             Left e     -> Left e
                             Right fctx -> Right $ ctx {funcContext = fctx}
 
@@ -296,9 +296,9 @@ instance FuncContext a => FuncContext (MinimalValExprContext a) where
 
 instance SortContext a => VarContext (MinimalValExprContext a) where
     varDefs = _varDefs
-    addVarDefs ctx vs
-        | not $ null nuVarDefs               = Left $ MinError (T.pack ("Non unique variable definitions: " ++ show nuVarDefs))
-        | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of variable definitions with undefined sorts: " ++ show undefinedSorts))
+    addVars ctx vs
+        | not $ null nuVarDefs               = Left $ Error (T.pack ("Non unique variable definitions: " ++ show nuVarDefs))
+        | not $ null undefinedSorts          = Left $ Error (T.pack ("List of variable definitions with undefined sorts: " ++ show undefinedSorts))
         | otherwise                          = Right $ ctx { _varDefs = HashMap.union (toMapByName vs) (varDefs ctx)}
       where
         nuVarDefs :: [VarDef]
@@ -324,15 +324,15 @@ mismatchesSort ctx = HashMap.filterWithKey mismatch
 -- | Partial Substitution: Substitute some variables by value expressions in a value expression.
 -- The Either is needed since substitution can cause an invalid ValExpr. 
 -- For example, substitution of a variable by zero can cause a division by zero error
-partSubst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either MinError ValExpression
+partSubst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 partSubst ctx mp ve | HashMap.null mp               = Right ve
-                    | not (HashMap.null mismatches) = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
+                    | not (HashMap.null mismatches) = Left $ Error (T.pack ("Sort mismatches in map : " ++ show mismatches))
                     | otherwise                     = partSubstView (view ve)
   where
     mismatches :: HashMap.Map (RefByName VarDef) ValExpression
     mismatches = mismatchesSort ctx mp
     
-    partSubstView :: ValExpressionView -> Either MinError ValExpression
+    partSubstView :: ValExpressionView -> Either Error ValExpression
     partSubstView (Vconst c)                = unsafeConst c
     partSubstView (Vvar r)                  = case HashMap.lookup r mp of
                                                     Nothing -> unsafeVar r
@@ -346,14 +346,14 @@ partSubst ctx mp ve | HashMap.null mp               = Right ve
                                               unsafeITE nc ntb nfb)))
     partSubstView (Vfunc fs vs)             = case partitionEithers (map (partSubstView . view) vs) of
                                                 ([], nvs) -> unsafeFunc ctx fs nvs
-                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'func' failed\n" ++ show es))
+                                                (es, _)   -> Left $ Error (T.pack ("Subst partSubst 'func' failed\n" ++ show es))
     partSubstView (Vpredef fs vs)           = case partitionEithers (map (partSubstView . view) vs) of
                                                 ([], nvs) -> unsafePredefNonSolvable ctx fs nvs
-                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'predef' failed\n" ++ show es))
+                                                (es, _)   -> Left $ Error (T.pack ("Subst partSubst 'predef' failed\n" ++ show es))
     partSubstView (Vnot v)                  = partSubstView (view v) >>= unsafeNot
     partSubstView (Vand s)                  = case partitionEithers (map (partSubstView . view) (Set.toList s)) of
                                                 ([], ns) -> unsafeAnd (Set.fromList ns)
-                                                (es, _)  -> Left $ MinError (T.pack ("Subst partSubst 'and' failed\n" ++ show es))
+                                                (es, _)  -> Left $ Error (T.pack ("Subst partSubst 'and' failed\n" ++ show es))
     partSubstView (Vdivide t n)             = partSubstView (view t) >>= (\nt ->
                                               partSubstView (view n) >>=
                                               unsafeDivide nt)
@@ -363,11 +363,11 @@ partSubst ctx mp ve | HashMap.null mp               = Right ve
     partSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> partSubstView (view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                 ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
-                                                (es, _) -> Left $ MinError (T.pack ("Subst partSubst 'sum' failed\n" ++ show es))
+                                                (es, _) -> Left $ Error (T.pack ("Subst partSubst 'sum' failed\n" ++ show es))
     partSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> partSubstView (view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                 ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
-                                                (es, _) -> Left $ MinError (T.pack ("Subst partSubst 'product' failed\n" ++ show es))
+                                                (es, _) -> Left $ Error (T.pack ("Subst partSubst 'product' failed\n" ++ show es))
     partSubstView (Vgez v)                  = partSubstView (view v) >>= unsafeGEZ
     partSubstView (Vlength s)               = partSubstView (view s) >>= unsafeLength
     partSubstView (Vat s i)                 = partSubstView (view s) >>= (\ns ->
@@ -375,30 +375,30 @@ partSubst ctx mp ve | HashMap.null mp               = Right ve
                                               unsafeAt ns)
     partSubstView (Vconcat s)               = case partitionEithers (map (partSubstView . view) s) of
                                                 ([], ns) -> unsafeConcat ns
-                                                (es, _)  -> Left $ MinError (T.pack ("Subst partSubst 'concat' failed\n" ++ show es))
+                                                (es, _)  -> Left $ Error (T.pack ("Subst partSubst 'concat' failed\n" ++ show es))
     partSubstView (Vstrinre s r)            = partSubstView (view s) >>= (\ns ->
                                               partSubstView (view r) >>= 
                                               unsafeStrInRe ns)
     partSubstView (Vcstr a c l)             = case partitionEithers (map (partSubstView . view) l) of
                                                 ([], nl) -> unsafeCstr a c nl
-                                                (es, _)  -> Left $ MinError (T.pack ("Subst partSubst 'cstr' failed\n" ++ show es))
+                                                (es, _)  -> Left $ Error (T.pack ("Subst partSubst 'cstr' failed\n" ++ show es))
     partSubstView (Viscstr a c v)           = partSubstView (view v) >>= unsafeIsCstr a c
     partSubstView (Vaccess a c p v)         = partSubstView (view v) >>= unsafeAccess a c p
 
 
 -- | Complete Substitution: Substitute all variables by value expressions in a value expression.
 -- Since all variables are changed, one can change the kind of variables.
-compSubst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either MinError ValExpression
-compSubst ctx mp ve | not (HashMap.null mismatches)    = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
+compSubst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+compSubst ctx mp ve | not (HashMap.null mismatches)    = Left $ Error (T.pack ("Sort mismatches in map : " ++ show mismatches))
                     | otherwise                        = compSubstView (view ve)
   where
     mismatches :: HashMap.Map (RefByName VarDef) ValExpression
     mismatches = mismatchesSort ctx mp
 
-    compSubstView :: ValExpressionView -> Either MinError ValExpression
+    compSubstView :: ValExpressionView -> Either Error ValExpression
     compSubstView (Vconst c)                = unsafeConst c
     compSubstView (Vvar v)                  = case HashMap.lookup v mp of
-                                                    Nothing -> Left $ MinError (T.pack ("Subst compSubst: incomplete. Missing " ++ show v))
+                                                    Nothing -> Left $ Error (T.pack ("Subst compSubst: incomplete. Missing " ++ show v))
                                                     Just w  -> Right w
     compSubstView (Vequal ve1 ve2)          = compSubstView (view ve1) >>= (\ne1 ->
                                               compSubstView (view ve2) >>= 
@@ -409,14 +409,14 @@ compSubst ctx mp ve | not (HashMap.null mismatches)    = Left $ MinError (T.pack
                                               unsafeITE nc ntb nfb)))
     compSubstView (Vfunc fs vs)             = case partitionEithers (map (compSubstView . view) vs) of
                                                     ([], nvs) -> unsafeFunc ctx fs nvs
-                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'func' failed\n" ++ show es))
+                                                    (es, _)   -> Left $ Error (T.pack ("Subst compSubst 'func' failed\n" ++ show es))
     compSubstView (Vpredef fs vs)           = case partitionEithers (map (compSubstView . view) vs) of
                                                     ([], nvs) -> unsafePredefNonSolvable ctx fs nvs
-                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'predef' failed\n" ++ show es))
+                                                    (es, _)   -> Left $ Error (T.pack ("Subst compSubst 'predef' failed\n" ++ show es))
     compSubstView (Vnot v)                  = compSubstView (view v) >>= unsafeNot
     compSubstView (Vand s)                  = case partitionEithers (map (compSubstView . view) (Set.toList s)) of
                                                     ([], ns) -> unsafeAnd (Set.fromList ns)
-                                                    (es, _)  -> Left $ MinError (T.pack ("Subst compSubst 'and' failed\n" ++ show es))
+                                                    (es, _)  -> Left $ Error (T.pack ("Subst compSubst 'and' failed\n" ++ show es))
     compSubstView (Vdivide t n)             = compSubstView (view t) >>= (\nt ->
                                               compSubstView (view n) >>=
                                               unsafeDivide nt)
@@ -426,11 +426,11 @@ compSubst ctx mp ve | not (HashMap.null mismatches)    = Left $ MinError (T.pack
     compSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> compSubstView (view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                     ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
-                                                    (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'sum' failed\n" ++ show es))
+                                                    (es, _) -> Left $ Error (T.pack ("Subst compSubst 'sum' failed\n" ++ show es))
     compSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> compSubstView (view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                     ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
-                                                    (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'product' failed\n" ++ show es))
+                                                    (es, _) -> Left $ Error (T.pack ("Subst compSubst 'product' failed\n" ++ show es))
     compSubstView (Vgez v)                  = compSubstView (view v) >>= unsafeGEZ
     compSubstView (Vlength s)               = compSubstView (view s) >>= unsafeLength
     compSubstView (Vat s i)                 = compSubstView (view s) >>= (\ns ->
@@ -438,23 +438,23 @@ compSubst ctx mp ve | not (HashMap.null mismatches)    = Left $ MinError (T.pack
                                               unsafeAt ns)
     compSubstView (Vconcat s)               = case partitionEithers (map (compSubstView . view) s) of
                                                     ([], ns) -> unsafeConcat ns
-                                                    (es, _)  -> Left $ MinError (T.pack ("Subst compSubst 'concat' failed\n" ++ show es))
+                                                    (es, _)  -> Left $ Error (T.pack ("Subst compSubst 'concat' failed\n" ++ show es))
     compSubstView (Vstrinre s r)            = compSubstView (view s) >>= (\ns ->
                                               compSubstView (view r) >>= 
                                               unsafeStrInRe ns)
     compSubstView (Vcstr a c l)             = case partitionEithers (map (compSubstView . view) l) of
                                                     ([], nl) -> unsafeCstr a c nl
-                                                    (es, _)  -> Left $ MinError (T.pack ("Subst compSubst 'cstr' failed\n" ++ show es))
+                                                    (es, _)  -> Left $ Error (T.pack ("Subst compSubst 'cstr' failed\n" ++ show es))
     compSubstView (Viscstr a c v)           = compSubstView (view v) >>= unsafeIsCstr a c
     compSubstView (Vaccess a c p v)         = compSubstView (view v) >>= unsafeAccess a c p
 
 -- | mkFuncOpt
 -- Construct optimized function
 -- This function should be prefered over mkFunc whenever a FuncContext is available
-mkFuncOpt :: ValExprContext c => c -> FuncSignature -> [ValExpression] -> Either MinError ValExpression
+mkFuncOpt :: ValExprContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
 mkFuncOpt ctx fs vs = mkFunc ctx fs vs >>= optimize ctx
 
-unsafeFunc :: forall c . FuncContext c => c -> FuncSignature -> [ValExpression] -> Either MinError ValExpression
+unsafeFunc :: forall c . FuncContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
 unsafeFunc ctx fs vs = case HashMap.lookup fs (funcDefs ctx) of
                             Nothing -> error ("unsafeFunc: function can't be found in context - " ++ show fs)
                             Just fd -> case view (body fd) of
@@ -464,9 +464,9 @@ unsafeFunc ctx fs vs = case HashMap.lookup fs (funcDefs ctx) of
                                                                             nctx :: MinimalValExprContext c
                                                                             nctx = fromFuncContext ctx
                                                                          in
-                                                                           case addVarDefs nctx vars of
+                                                                           case addVars nctx vars of
                                                                                Left e     -> error ("UnsafeFunc can add function parameters to funcContext: " ++ show e)
                                                                                Right vctx -> compSubst vctx 
-                                                                                                       (HashMap.fromList (zip (map (RefByName . name) vars) vs))
+                                                                                                       (HashMap.fromList (zip (map toRefByName vars) vs))
                                                                                                        (body fd)
                                                              Nothing -> Right $ ValExpression (Vfunc fs vs)

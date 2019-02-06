@@ -23,6 +23,8 @@ See LICENSE at root directory of this repository.
 module TorXakis.Name.RefByName
 ( -- * Reference By Name
   RefByName (..)
+  -- ** Conversion to Ref By Name
+, toRefByName
   -- ** Conversion List to Map By Name
 , toMapByName
 ) where
@@ -43,7 +45,11 @@ newtype RefByName t = RefByName { -- | This reference keeps a 'Name' that repres
 instance Hashable (RefByName t) where
     hashWithSalt s = hashWithSalt s . toName
 
+-- | Return 'TorXakis.RefByName' where the 'Name' is used to make the reference.
+toRefByName :: HasName a => a -> RefByName a
+toRefByName = RefByName . getName
+
 -- | Return 'Data.HashMap.Map' where the 'Name' of the element is taken as key
 --   and the element itself is taken as value.
 toMapByName :: HasName a => [a] -> Map (RefByName a) a
-toMapByName = fromList . map (\e -> (RefByName (getName e),e))
+toMapByName = fromList . map (\e -> (toRefByName e, e))

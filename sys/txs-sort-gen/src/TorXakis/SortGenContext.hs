@@ -90,7 +90,7 @@ arbitraryADTDefs ctx =
             names = Set.map unNameGen nameGens
 
             uniqueNames :: [Name]
-            uniqueNames = Set.toList (Set.difference names (Set.fromList (map getName (elemsADTDef ctx))))
+            uniqueNames = Set.toList (Set.difference names (Set.fromList (map getName (elemsADT ctx))))
 
             toADTDefs :: [Name] -> [Sort] -> Gen [ADTDef]
             toADTDefs [] _ = return []
@@ -109,6 +109,6 @@ arbitraryTestSortContext :: Gen ContextTestSort
 arbitraryTestSortContext =
         let emp = empty :: ContextTestSort in do
             incr <- arbitraryADTDefs emp
-            case addAdtDefs emp incr of
+            case addADTs emp incr of
                 Left e    -> error ("arbitraryTestSortContext: Invalid generator - " ++ show e)
                 Right ctx -> return ctx

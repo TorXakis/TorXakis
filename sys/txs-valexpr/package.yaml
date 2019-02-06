@@ -20,6 +20,7 @@ library:
   exposed-modules:
   - TorXakis.FuncDef
   - TorXakis.ValExpr
+  - TorXakis.ValExprConstructionContext
   - TorXakis.ValExprContext
   dependencies:
   - array

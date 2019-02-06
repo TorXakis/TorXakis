@@ -27,7 +27,7 @@ where
 import qualified Data.Text           as T
 
 import           TorXakis.Error                 (Error)
-import           TorXakis.Name                  (RefByName (RefByName), getName)
+import           TorXakis.Name                  (RefByName, toRefByName)
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.SortADT               (Sort(..), ADTDef)
 
@@ -42,18 +42,18 @@ class SortReadContext a where
                     : SortChar
                     : SortString
                     : SortRegex
-                    : map (SortADT . RefByName . getName) (elemsADTDef ctx)
+                    : map (SortADT . toRefByName) (elemsADT ctx)
 
     -- | Refers the provided ADTDef name to an ADTDef in the context?
-    memberADTDef :: a -> RefByName ADTDef -> Bool
+    memberADT :: a -> RefByName ADTDef -> Bool
     -- | lookup ADTDef
-    lookupADTDef :: a -> RefByName ADTDef -> Maybe ADTDef
+    lookupADT :: a -> RefByName ADTDef -> Maybe ADTDef
     -- | All ADTDef elements in the context
-    elemsADTDef :: a -> [ADTDef]
+    elemsADT :: a -> [ADTDef]
 
 -- | Generic Pretty Printer for all instance of 'TorXakis.SortReadContext'.
 prettyPrintSortContext :: SortReadContext a => Options -> a -> TxsString
-prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o sc) (elemsADTDef sc)))
+prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o sc) (elemsADT sc)))
 
 -- | A Sort Context instance 
 -- contains all definitions to work with sorts and references thereof.
@@ -70,4 +70,4 @@ class SortReadContext a => SortContext a where
     --   * All ADTs are constructable
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addAdtDefs :: a -> [ADTDef] -> Either Error a
+    addADTs :: a -> [ADTDef] -> Either Error a

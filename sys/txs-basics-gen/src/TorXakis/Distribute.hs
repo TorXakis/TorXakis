@@ -31,9 +31,9 @@ import Test.QuickCheck
 -- 'Int' was chosen since in accordance with the 
 -- [size of QuickCheck](http://hackage.haskell.org/package/QuickCheck-2.12.6.1/docs/Test-QuickCheck-Gen.html#v:getSize).
 --
--- prop> \(NonNegative n)-> \(NonNegative m) -> length (distribute n m) = m
+-- prop> \(NonNegative n)-> \(NonNegative m) -> length (distribute n m) == m
 --
--- prop> \(NonNegative n)-> \(Positive m) -> sum (distribute n m) = n
+-- prop> \(NonNegative n)-> \(Positive m) -> sum (distribute n m) == n
 --
 distribute :: Int -- ^ number of identical objects (>= 0)
            -> Int -- ^ number of distinct bins (>= 0)
