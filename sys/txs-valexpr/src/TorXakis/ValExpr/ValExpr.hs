@@ -41,8 +41,8 @@ import           TorXakis.FuncSignature
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.ValExprConstructionContext
 import           TorXakis.Value
-import           TorXakis.VarContext
 import           TorXakis.VarDef
 
 -- | ValExpressionView: the public view of value expression 'ValExpression'
@@ -103,10 +103,10 @@ evalView (Vconst v) = Right v
 evalView x          = Left $ Error ("Value Expression is not a constant value " ++ show x)
 
 -- | SortOf instance
-instance VarContext a => HasSort a ValExpression where
+instance ValExprConstructionReadContext a => HasSort a ValExpression where
   getSort c = getSort c . TorXakis.ValExpr.ValExpr.view
 
-instance VarContext a => HasSort a ValExpressionView where
+instance ValExprConstructionReadContext a => HasSort a ValExpressionView where
     getSort ctx (Vconst val)              = getSort ctx val
     getSort ctx (Vvar r)                  = case lookupVar ctx r of
                                                Nothing -> error ("getSort: VarDef not found in context " ++ show r)

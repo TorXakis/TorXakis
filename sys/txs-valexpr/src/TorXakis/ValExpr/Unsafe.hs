@@ -129,7 +129,7 @@ unsafeITE b tb fb | tb == trueValExpr && fb == falseValExpr = Right b
 unsafeITE b tb fb | tb == falseValExpr && fb == trueValExpr = unsafeNot b
 unsafeITE b tb fb                            = Right $ ValExpression (Vite b tb fb)
 
-unsafePredefNonSolvable :: SortContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
+unsafePredefNonSolvable :: SortReadContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
 unsafePredefNonSolvable ctx fs vs = case toMaybeValues vs of
                                         Just values -> evalPredefNonSolvable values
                                         Nothing     -> Right $ ValExpression (Vpredef fs vs)
