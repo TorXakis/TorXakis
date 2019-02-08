@@ -29,3 +29,9 @@ data Error = forall a . Show a => Error a
 -- | Error is instance of show
 instance Show Error where
     show (Error a) = show a
+
+instance Eq Error where
+    a == b = show a == show b
+
+instance Ord Error where
+    compare a b = compare (show a) (show b)

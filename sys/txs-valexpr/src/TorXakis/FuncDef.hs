@@ -23,7 +23,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.FuncDef
 ( FuncDef
-, funcName
+, TorXakis.FuncDef.funcName
 , paramDefs
 , body
 , mkFuncDef
@@ -36,16 +36,17 @@ import qualified Data.Set            as Set
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
-import           TorXakis.ContextValExprConstructionRead
+import           TorXakis.ContextValExprConstruction
 import           TorXakis.Error
 import           TorXakis.FreeVars
-import           TorXakis.FuncSignature (mkFuncSignature, HasFuncSignature(getFuncSignature))
+import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
 import           TorXakis.Name
-import           TorXakis.Sort (getSort, memberSort, SortReadContext)
+import           TorXakis.Sort
+import           TorXakis.VarContext
 import           TorXakis.VarDef
 import           TorXakis.VarsDecl
-import           TorXakis.ValExpr.ValExpr (ValExpression)
+import           TorXakis.ValExpr.ValExpr
 
 -- | Data structure to store the information of a Function Definition:
 -- * A Name
@@ -64,7 +65,7 @@ data FuncDef = FuncDef { -- | The name of the function (of type 'TorXakis.Name')
 -- TODO: what should be checked here?
 --       * also checkbody?
 --       * Don't check sort (is already done to construct VarsDecl)?
-mkFuncDef :: SortReadContext a => a -> Name -> VarsDecl -> ValExpression -> Either Error FuncDef
+mkFuncDef :: FuncSignatureContext a => a -> Name -> VarsDecl -> ValExpression -> Either Error FuncDef
 mkFuncDef ctx n ps b | not (Set.null undefinedVars) = Left $ Error (T.pack ("Undefined variables used in body " ++ show undefinedVars))
                      | not (null undefinedSorts)    = Left $ Error (T.pack ("Variables have undefined sorts " ++ show undefinedSorts))
                      | otherwise                    = Right $ FuncDef n ps b
@@ -73,14 +74,17 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars) = Left $ Error (T.pack ("Und
         undefinedVars = Set.difference (freeVars b) (Set.fromList (map toRefByName (toList ps)))
 
         undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . memberSort ctx . sort) (toList ps)
+        undefinedSorts = filter (not . memberSort ctx . TorXakis.VarDef.sort) (toList ps)
 
-instance FuncSignatureReadContext a => HasFuncSignature a FuncDef
+instance FuncSignatureContext a => HasFuncSignature a FuncDef
     where
-        getFuncSignature sctx (FuncDef fn pds bd) = let vctx = fromFuncSignatureReadContext sctx pds in
-                                                        case mkFuncSignature sctx fn (map (getSort sctx) (toList pds)) (getSort vctx bd) of
-                                                             Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
-                                                             Right x -> x
+        getFuncSignature sctx (FuncDef fn ps bd) = 
+            let vs = toList ps in
+                case addVars (fromFuncSignatureContext sctx) vs of
+                     Left e -> error ("getFuncSignature is unable to make new context" ++ show e)
+                     Right vctx -> case mkFuncSignature sctx fn (map (getSort sctx) vs) (getSort vctx bd) of
+                                         Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
+                                         Right x -> x
 
 -- ----------------------------------------------------------------------------------------- --
 --

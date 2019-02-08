@@ -31,76 +31,76 @@ module TorXakis.ContextValExprConstruction
 where
 import           Control.DeepSeq        (NFData)
 import           Data.Data              (Data)
-import qualified Data.HashMap    as HashMap
+import qualified Data.Set               as Set
 import           GHC.Generics           (Generic)
 
-import           TorXakis.ContextFuncSignature
+import           TorXakis.ContextVar
 import           TorXakis.Error
+import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
-import           TorXakis.Name
-import           TorXakis.Sort (memberSort, SortContext(..), SortReadContext(..))
+import           TorXakis.Sort (memberSort, SortContext(..))
 import           TorXakis.ValExprConstructionContext
 import           TorXakis.VarContext (VarContext(..))
-import           TorXakis.VarDef
 
--- | A minimal instance of 'ContextValExprConstruction'.
-data ContextValExprConstruction a = ContextValExprConstruction { funcSignatureContext :: a
-                                                                 -- var definitions
-                                                               , varDefs :: HashMap.Map (RefByName VarDef) VarDef
+-- | An instance of 'TorXakis.ValExprConstructionContext'.
+data ContextValExprConstruction a = ContextValExprConstruction { varContext :: a
+                                                                 -- funcSignatures
+                                                               , _funcSignatures :: Set.Set FuncSignature
                                                                } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Create ContextValExprConstruction from FuncSignatureContext
-fromFuncSignatureContext :: a -> ContextValExprConstruction a
-fromFuncSignatureContext fc = ContextValExprConstruction fc HashMap.empty
+fromFuncSignatureContext :: FuncSignatureContext a => a -> ContextValExprConstruction (ContextVar a)
+fromFuncSignatureContext fc = ContextValExprConstruction (fromSortContext fc) (Set.fromList (funcSignatures fc))
 
 -- | Create ContextValExprConstruction from VarContext
-fromVarContext :: VarContext a => a -> ContextValExprConstruction (ContextFuncSignature a)
-fromVarContext vc = ContextValExprConstruction (fromSortContext vc) (toMapByName (elemsVar vc))
-
-instance SortReadContext a => SortReadContext (ContextValExprConstruction a) where
-    memberSort = memberSort . funcSignatureContext
-
-    memberADT = memberADT . funcSignatureContext
-
-    lookupADT = lookupADT . funcSignatureContext
-
-    elemsADT = elemsADT . funcSignatureContext
+fromVarContext :: a -> ContextValExprConstruction a
+fromVarContext vc = ContextValExprConstruction vc Set.empty
 
 instance SortContext a => SortContext (ContextValExprConstruction a) where
-    empty = fromFuncSignatureContext empty
-    addADTs ctx as = case addADTs (funcSignatureContext ctx) as of
+    empty = fromVarContext empty
+
+    memberSort = memberSort . varContext
+
+    memberADT = memberADT . varContext
+
+    lookupADT = lookupADT . varContext
+
+    elemsADT = elemsADT . varContext
+
+    addADTs ctx as = case addADTs (varContext ctx) as of
                           Left e     -> Left e
-                          Right sctx -> Right $ ctx {funcSignatureContext = sctx}
+                          Right sctx -> Right $ ctx {varContext = sctx}
 
-instance FuncSignatureReadContext a => FuncSignatureReadContext (ContextValExprConstruction a) where
-    memberFunc = memberFunc . funcSignatureContext
+instance VarContext a => VarContext (ContextValExprConstruction a) where
+    memberVar = memberVar . varContext
 
-    funcSignatures = funcSignatures . funcSignatureContext
+    lookupVar = lookupVar . varContext
 
-instance FuncSignatureContext a => FuncSignatureContext (ContextValExprConstruction a) where
-    addFuncSignatures ctx fs = case addFuncSignatures (funcSignatureContext ctx) fs of
-                                  Left e     -> Left e
-                                  Right fctx -> Right $ ctx {funcSignatureContext = fctx}
+    elemsVar = elemsVar . varContext
 
-instance SortReadContext a => VarReadContext (ContextValExprConstruction a) where
-    memberVar ctx v = HashMap.member v (varDefs ctx)
+    addVars ctx vs = case addVars (varContext ctx) vs of
+                          Left e     -> Left e
+                          Right sctx -> Right $ ctx {varContext = sctx}
 
-    lookupVar ctx v = HashMap.lookup v (varDefs ctx)
+    replaceVars ctx vs = case replaceVars (varContext ctx) vs of
+                              Left e     -> Left e
+                              Right sctx -> Right $ ctx {varContext = sctx}
 
-    elemsVar ctx    = HashMap.elems (varDefs ctx)
+instance VarContext a => FuncSignatureContext (ContextValExprConstruction a) where
+    memberFunc ctx v = Set.member v (_funcSignatures ctx)
 
-instance SortContext a => VarContext (ContextValExprConstruction a) where
-    addVars ctx vs
-        | not $ null nuVarDefs               = Left $ Error ("Non unique variable definitions: " ++ show nuVarDefs)
-        | not $ null undefinedSorts          = Left $ Error ("List of variable definitions with undefined sorts: " ++ show undefinedSorts)
-        | otherwise                          = Right $ ctx {varDefs = HashMap.union (toMapByName vs) (varDefs ctx)}
+    funcSignatures ctx    = Set.toList (_funcSignatures ctx)
+
+instance VarContext a => FuncSignatureModifyContext (ContextValExprConstruction a) (ContextValExprConstruction a) where
+    addFuncSignatures ctx fs
+        | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
+        | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
+        | otherwise                          = Right $ ctx {_funcSignatures = Set.union (Set.fromList fs) (_funcSignatures ctx)}
       where
-        nuVarDefs :: [VarDef]
-        nuVarDefs = repeatedByName vs
+        nuFuncSignatures :: [FuncSignature]
+        nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs
 
-        undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . memberSort ctx . sort) vs
+        undefinedSorts :: [FuncSignature]
+        undefinedSorts = filter (\f -> any (not . memberSort ctx) (returnSort f: args f) ) fs
 
-instance FuncSignatureReadContext a => ValExprConstructionReadContext (ContextValExprConstruction a)
-
-instance FuncSignatureContext a => ValExprConstructionContext (ContextValExprConstruction a)
+instance VarContext a => ValExprConstructionContext (ContextValExprConstruction a)

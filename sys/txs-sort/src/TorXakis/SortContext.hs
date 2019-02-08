@@ -17,10 +17,8 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.SortContext
-( -- * Sort Read Context
-  SortReadContext (..)
-  -- * Sort Context (Read and Write)
-, SortContext (..)
+(-- * Sort Context
+  SortContext (..)
 , prettyPrintSortContext
 )
 where
@@ -31,8 +29,12 @@ import           TorXakis.Name                  (RefByName, toRefByName)
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.SortADT               (Sort(..), ADTDef)
 
--- | Sort Read Context
-class SortReadContext a where
+-- | A Sort Context instance 
+-- contains all definitions to work with sorts and references thereof.
+class SortContext a where
+    -- | An empty sort context (initial state)
+    empty :: a
+
     -- | Is the provided sort a member of the context?
     memberSort :: a -> Sort -> Bool
     -- | All Sort elements in the context
@@ -50,16 +52,6 @@ class SortReadContext a where
     lookupADT :: a -> RefByName ADTDef -> Maybe ADTDef
     -- | All ADTDef elements in the context
     elemsADT :: a -> [ADTDef]
-
--- | Generic Pretty Printer for all instance of 'TorXakis.SortReadContext'.
-prettyPrintSortContext :: SortReadContext a => Options -> a -> TxsString
-prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o sc) (elemsADT sc)))
-
--- | A Sort Context instance 
--- contains all definitions to work with sorts and references thereof.
-class SortReadContext a => SortContext a where
-    -- | An empty sort context (initial state)
-    empty :: a
     -- | Add adt definitions to sort context.
     --   A sort context is returned when the following constraints are satisfied:
     --
@@ -71,3 +63,7 @@ class SortReadContext a => SortContext a where
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addADTs :: a -> [ADTDef] -> Either Error a
+
+-- | Generic Pretty Printer for all instance of 'TorXakis.SortReadContext'.
+prettyPrintSortContext :: SortContext a => Options -> a -> TxsString
+prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o sc) (elemsADT sc)))

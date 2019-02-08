@@ -34,9 +34,7 @@ import           GHC.Generics           (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.Sort          ( SortReadContext(..)
-                                        , SortContext(..)
-                                        )
+import           TorXakis.Sort          ( SortContext(..) )
 import           TorXakis.VarContext
 import           TorXakis.VarDef
 
@@ -50,7 +48,9 @@ data ContextVar a = ContextVar { sortContext :: a
 fromSortContext :: a -> ContextVar a
 fromSortContext srt = ContextVar srt HashMap.empty
 
-instance SortReadContext a => SortReadContext (ContextVar a) where
+instance SortContext a => SortContext (ContextVar a) where
+    empty = fromSortContext empty
+
     memberSort   = memberSort . sortContext
 
     memberADT = memberADT . sortContext
@@ -59,27 +59,31 @@ instance SortReadContext a => SortReadContext (ContextVar a) where
 
     elemsADT  = elemsADT . sortContext
 
-instance SortContext a => SortContext (ContextVar a) where
-    empty = fromSortContext empty
     addADTs ctx as = case addADTs (sortContext ctx) as of
                           Left e     -> Left e
                           Right sctx -> Right $ ctx {sortContext = sctx}
 
-instance SortReadContext a => VarReadContext (ContextVar a) where
+-- | non unique Variable Definitions (i.e. duplicate names)
+nuVarDefs :: [VarDef] -> [VarDef]
+nuVarDefs = repeatedByName
+
+-- | undefined Sorts of Variable Definitions.
+undefinedSorts :: SortContext a => a -> [VarDef] -> [VarDef]
+undefinedSorts ctx = filter (not . memberSort ctx . sort)
+
+instance SortContext a => VarContext (ContextVar a) where
     memberVar ctx v = HashMap.member v (varDefs ctx)
 
     lookupVar ctx v = HashMap.lookup v (varDefs ctx)
 
     elemsVar ctx    = HashMap.elems (varDefs ctx)
 
-instance SortContext a => VarContext (ContextVar a) where
     addVars ctx vs
-        | not $ null nuVarDefs               = Left $ Error ("Non unique variable definitions: " ++ show nuVarDefs)
-        | not $ null undefinedSorts          = Left $ Error ("List of variable definitions with undefined sorts: " ++ show undefinedSorts)
+        | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
+        | not $ null (undefinedSorts ctx vs) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts ctx vs))
         | otherwise                          = Right $ ctx {varDefs = HashMap.union (toMapByName vs) (varDefs ctx)}
-      where
-        nuVarDefs :: [VarDef]
-        nuVarDefs = repeatedByName vs
 
-        undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . memberSort ctx . sort) vs
+    replaceVars ctx vs
+        | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
+        | not $ null (undefinedSorts ctx vs) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts ctx vs))
+        | otherwise                          = Right $ ctx {varDefs = toMapByName vs}

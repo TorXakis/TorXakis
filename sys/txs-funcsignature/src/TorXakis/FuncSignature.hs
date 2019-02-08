@@ -56,7 +56,7 @@ data FuncSignature = FuncSignature { -- | The 'Name' of the function.
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
 -- | Constructor of 'TorXakis.FuncSignature'
-mkFuncSignature :: SortReadContext a => a -> Name -> [Sort] -> Sort -> Either Error FuncSignature
+mkFuncSignature :: SortContext a => a -> Name -> [Sort] -> Sort -> Either Error FuncSignature
 mkFuncSignature ctx n as s | not $ null undefinedSorts = Left $ Error ("mkFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
                            | memberSort ctx s          = Right $ FuncSignature n as s
                            | otherwise                 = Left $ Error ("mkFuncSignature: Return sort has undefined sort " ++ show s)

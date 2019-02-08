@@ -49,6 +49,8 @@ import qualified Data.Set               as Set
 import qualified Data.Text              as T
 import           GHC.Generics           (Generic)
 
+import           TorXakis.ContextValExprConstruction
+import           TorXakis.ContextVar
 import           TorXakis.Error
 import           TorXakis.FreeVars
 import           TorXakis.FuncContext
@@ -56,55 +58,82 @@ import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
 import           TorXakis.Name
-import           TorXakis.Sort (Sort, HasSort, getSort, memberSort, SortReadContext(..), SortContext(..))
+import           TorXakis.Sort
 import           TorXakis.ValExprConstructionContext
 import           TorXakis.ValExprContext
 import           TorXakis.ValExpr.Unsafe
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.ValExpr.ValExprBasis
-import           TorXakis.VarContext (VarReadContext(..), VarContext(..))
+import           TorXakis.VarContext
 import           TorXakis.VarDef
 import           TorXakis.VarsDecl
 
------------------------------------------------------------------------------
--- Context Func
------------------------------------------------------------------------------
--- | An instance of 'TorXakis.FuncContext'.
-data ContextFunc a = ContextFunc { sortContext :: a
-                                   -- funcDefs
-                                 , funcDefs :: HashMap.Map FuncSignature FuncDef
-                                                   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+-- | An instance of 'TorXakis.ValExprConstructionContext'.
+data ContextValExpr a = ContextValExpr { varContext :: a
+                                         -- funcSignatures
+                                       , funcDefs :: HashMap.Map FuncSignature FuncDef
+                                       } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
--- | Create FuncContext from SortContext
-fromSortContext :: a -> ContextFunc a
-fromSortContext srt = ContextFunc srt HashMap.empty
+-- | Create ContextValExpr from FuncSignatureContext
+fromFuncContext :: FuncContext a => a -> ContextValExpr (ContextVar a)
+fromFuncContext fc = ContextValExpr (fromSortContext fc) (toMapByFuncSignature fc (elemsFunc fc))
 
-instance SortReadContext a => SortReadContext (ContextFunc a) where
-    memberSort   = memberSort . sortContext
+-- | Create ContextValExpr from VarContext
+fromVarContext :: a -> ContextValExpr a
+fromVarContext vc = ContextValExpr vc HashMap.empty
 
-    memberADT = memberADT . sortContext
+instance SortContext a => SortContext (ContextValExpr a) where
+    empty = TorXakis.Subst.fromVarContext empty
 
-    lookupADT = lookupADT . sortContext
+    memberSort = memberSort . varContext
 
-    elemsADT  = elemsADT . sortContext
+    memberADT = memberADT . varContext
 
-instance SortContext a => SortContext (ContextFunc a) where
-    empty = fromSortContext empty
-    addADTs ctx as = case addADTs (sortContext ctx) as of
+    lookupADT = lookupADT . varContext
+
+    elemsADT = elemsADT . varContext
+
+    addADTs ctx as = case addADTs (varContext ctx) as of
                           Left e     -> Left e
-                          Right sctx -> Right $ ctx {sortContext = sctx}
+                          Right sctx -> Right $ ctx {varContext = sctx}
 
-instance SortReadContext a => FuncSignatureReadContext (ContextFunc a) where
-    memberFunc ctx v   = HashMap.member v (funcDefs ctx)
+instance VarContext a => VarContext (ContextValExpr a) where
+    memberVar = memberVar . varContext
 
-    funcSignatures ctx = HashMap.keys (funcDefs ctx)
+    lookupVar = lookupVar . varContext
 
-instance SortReadContext a => FuncReadContext (ContextFunc a) where
+    elemsVar = elemsVar . varContext
+
+    addVars ctx vs = case addVars (varContext ctx) vs of
+                          Left e     -> Left e
+                          Right sctx -> Right $ ctx {varContext = sctx}
+
+    replaceVars ctx vs = case replaceVars (varContext ctx) vs of
+                              Left e     -> Left e
+                              Right sctx -> Right $ ctx {varContext = sctx}
+
+instance VarContext a => FuncSignatureContext (ContextValExpr a) where
+    memberFunc ctx v = HashMap.member v (funcDefs ctx)
+
+    funcSignatures ctx    = HashMap.keys (funcDefs ctx)
+
+instance VarContext a => FuncSignatureModifyContext (ContextValExpr a) (ContextValExprConstruction (ContextValExpr a)) where
+    addFuncSignatures ctx fs
+        | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
+        | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
+        | otherwise                          = addFuncSignatures (TorXakis.ContextValExprConstruction.fromVarContext ctx) (fs ++ funcSignatures ctx)
+      where
+        nuFuncSignatures :: [FuncSignature]
+        nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs
+
+        undefinedSorts :: [FuncSignature]
+        undefinedSorts = filter (\f -> any (not . memberSort ctx) (returnSort f: args f) ) fs
+
+instance VarContext a => FuncContext (ContextValExpr a) where
     lookupFunc ctx v = HashMap.lookup v (funcDefs ctx)
 
     elemsFunc ctx    = HashMap.elems (funcDefs ctx)
 
-instance SortContext a => FuncContext (ContextFunc a) where
     addFuncs ctx fds
         | not $ null nuFuncDefs              = Left $ Error (T.pack ("Non unique function signatures: " ++ show nuFuncDefs))
         | not $ null undefinedSorts          = Left $ Error (T.pack ("List of function signatures with undefined sorts: " ++ show undefinedSorts))
@@ -149,8 +178,8 @@ instance SortContext a => FuncContext (ContextFunc a) where
                                             [] -> Nothing
                                             xs -> Just (getFuncSignature ctx fd, Set.fromList xs)
 
-        newCtx :: ContextFunc a -> HashMap.Map FuncSignature FuncDef -> ContextFunc a 
-        newCtx ctx' mfs = let updateCtx :: ContextFunc a
+        newCtx :: ContextValExpr a -> HashMap.Map FuncSignature FuncDef -> ContextValExpr a
+        newCtx ctx' mfs = let updateCtx :: ContextValExpr a
                               updateCtx = ctx'{ funcDefs = HashMap.union (funcDefs ctx') mfs }
                               (lm, rm)  = HashMap.mapEither (newFuncDef updateCtx) mfs in
                                 if HashMap.null lm 
@@ -160,11 +189,11 @@ instance SortContext a => FuncContext (ContextFunc a) where
                                                 else newCtx (ctx'{ funcDefs = HashMap.union (funcDefs ctx') lc }) rc
                                     else error ("All check passed, yet errors occurred\n" ++ show (HashMap.elems lm))
 
-        newFuncDef :: ContextFunc a -> FuncDef -> Either Error FuncDef
+        newFuncDef :: ContextValExpr a -> FuncDef -> Either Error FuncDef
         newFuncDef updateCtx fd = let nm = TorXakis.FuncDef.funcName fd
                                       ps = paramDefs fd
                                       bd = body fd in
-                                        optimize updateCtx bd >>= mkFuncDef ctx nm ps
+                                        unsafeSubst updateCtx HashMap.empty bd >>= mkFuncDef ctx nm ps
         
         isConstBody :: FuncDef -> Bool
         isConstBody fd = case view (body fd) of
@@ -204,6 +233,14 @@ findUndefinedFuncSignature definedFuncSignatures = findUndefinedFuncSignature'
         findUndefinedFuncSignatureView (Viscstr _ _ v)                     = findUndefinedFuncSignature' v
         findUndefinedFuncSignatureView (Vaccess _ _ _ v)                   = findUndefinedFuncSignature' v
 
+instance VarContext a => ValExprConstructionContext (ContextValExpr a)
+
+instance VarContext a => ValExprContext (ContextValExpr a)
+
+unsafeSubst :: ValExprContext a => a -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+unsafeSubst = undefined
+
+{-
 -- | Optimize value expression using func context
 optimize :: FuncContext a => a -> ValExpression -> Either Error ValExpression
 optimize ctx  = optimizeView . view
@@ -262,34 +299,39 @@ optimize ctx  = optimizeView . view
 -----------------------------------------------------------------------------
 -- Context ValExpr Read
 -----------------------------------------------------------------------------
--- | A minimal instance of 'ContextValExprRead'.
-data ContextValExprRead a = ContextValExprRead { funcReadContext :: a
-                                                 -- var definitions
-                                               , varDefs :: HashMap.Map (RefByName VarDef) VarDef
-                                               } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+-- | An instance of 'TorXakis.ValExprContext'.
+data ContextValExpr a = ContextValExpr { funcContext :: a
+                                         -- var definitions
+                                       , varDefs :: HashMap.Map (RefByName VarDef) VarDef
+                                       } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
--- | Create ContextValExprRead from FuncContext
-fromFuncReadContext :: a -> VarsDecl -> ContextValExprRead a
-fromFuncReadContext fc vs = ContextValExprRead fc (toMapByName (toList vs))
+-- | Create ContextValExpr from FuncContext
+fromFuncContext :: a -> ContextValExprRead a
+fromFuncContext fc = ContextValExprRead fc HashMap.empty
 
-instance SortReadContext a => SortReadContext (ContextValExprRead a) where
-    memberSort = memberSort . funcReadContext
+instance SortContext a => SortContext (ContextValExpr a) where
+    empty = ContextValExpr empty HashMap.empty
 
-    memberADT = memberADT . funcReadContext
+    memberSort = memberSort . funcContext
 
-    lookupADT = lookupADT . funcReadContext
+    memberADT = memberADT . funcContext
 
-    elemsADT = elemsADT . funcReadContext
+    lookupADT = lookupADT . funcContext
 
+    elemsADT = elemsADT . funcContext
+
+    addADTs ctx as = case addADTs (sortContext ctx) as of
+                          Left e     -> Left e
+                          Right sctx -> Right $ ctx {sortContext = sctx}
 instance FuncSignatureReadContext a => FuncSignatureReadContext (ContextValExprRead a) where
-    memberFunc = memberFunc . funcReadContext
+    memberFunc = memberFunc . funcContext
 
-    funcSignatures = funcSignatures . funcReadContext
+    funcSignatures = funcSignatures . funcContext
 
-instance FuncReadContext a => FuncReadContext (ContextValExprRead a) where
-    lookupFunc = lookupFunc . funcReadContext
+instance funcContext a => funcContext (ContextValExprRead a) where
+    lookupFunc = lookupFunc . funcContext
 
-    elemsFunc = elemsFunc . funcReadContext
+    elemsFunc = elemsFunc . funcContext
 
 instance SortReadContext a => VarReadContext (ContextValExprRead a) where
     memberVar ctx v = HashMap.member v (varDefs ctx)
@@ -298,9 +340,9 @@ instance SortReadContext a => VarReadContext (ContextValExprRead a) where
 
     elemsVar ctx    = HashMap.elems (varDefs ctx)
 
-instance FuncReadContext a => ValExprConstructionReadContext (ContextValExprRead a)
+instance funcContext a => ValExprConstructionReadContext (ContextValExprRead a)
 
-instance FuncReadContext a => ValExprReadContext (ContextValExprRead a)
+instance funcContext a => ValExprReadContext (ContextValExprRead a)
 
 -----------------------------------------------------------------------------
 -- Substitute
@@ -450,7 +492,10 @@ compSubst ctx mp ve | not (HashMap.null mismatches)    = Left $ Error (T.pack ("
 mkFuncOpt :: ValExprContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
 mkFuncOpt ctx fs vs = mkFunc ctx fs vs >>= optimize ctx
 
-unsafeFunc :: FuncReadContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
+-- TODO? More laziness?
+-- e.g. depending on some parameter value, some other parameter values might be irrelevant
+-- e.g. ANY/Error for not initialized variables of State Automaton translated to a ProcDef
+unsafeFunc :: FuncContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
 unsafeFunc ctx fs vs = case lookupFunc ctx fs of
                             Nothing -> error ("unsafeFunc: function can't be found in context - " ++ show fs)
                             Just fd -> case view (body fd) of
@@ -461,3 +506,4 @@ unsafeFunc ctx fs vs = case lookupFunc ctx fs of
                                                                                          (HashMap.fromList (zip (map toRefByName (toList ps)) vs))
                                                                                          (body fd)
                                                              Nothing -> Right $ ValExpression (Vfunc fs vs)
+-}

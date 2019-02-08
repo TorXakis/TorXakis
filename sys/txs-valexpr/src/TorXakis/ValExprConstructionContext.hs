@@ -17,19 +17,14 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 module TorXakis.ValExprConstructionContext
 ( -- * Context
-  -- ** ValExpr Construction Read Context class
-  ValExprConstructionReadContext
   -- ** ValExpr Construction Context class
-, ValExprConstructionContext
+  ValExprConstructionContext
 , module TorXakis.FuncSignatureContext
 , module TorXakis.VarContext
 )
 where
 import           TorXakis.FuncSignatureContext
 import           TorXakis.VarContext
-
--- | A ValExprConstructionReadContext instance contains all operators to inspect/read needed to construct 'TorXakis.ValExpression'.
-class (FuncSignatureReadContext a, VarReadContext a) => ValExprConstructionReadContext a
 
 -- | A ValExprConstructionContext Context instance contains all definitions to work with 'TorXakis.ValExpression'.
 class (FuncSignatureContext a, VarContext a) => ValExprConstructionContext a

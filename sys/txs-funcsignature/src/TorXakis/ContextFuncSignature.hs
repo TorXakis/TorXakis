@@ -33,9 +33,7 @@ import qualified Data.Set               as Set
 import           GHC.Generics           (Generic)
 
 import           TorXakis.Error
-import           TorXakis.Sort          ( SortReadContext(..)
-                                        , SortContext(..)
-                                        )
+import           TorXakis.Sort          (SortContext(..))
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
 
@@ -49,7 +47,9 @@ data ContextFuncSignature a = ContextFuncSignature { sortContext :: a
 fromSortContext :: a -> ContextFuncSignature a
 fromSortContext srt = ContextFuncSignature srt Set.empty
 
-instance SortReadContext a => SortReadContext (ContextFuncSignature a) where
+instance SortContext a => SortContext (ContextFuncSignature a) where
+    empty = fromSortContext empty
+
     memberSort   = memberSort . sortContext
 
     memberADT = memberADT . sortContext
@@ -58,18 +58,16 @@ instance SortReadContext a => SortReadContext (ContextFuncSignature a) where
 
     elemsADT  = elemsADT . sortContext
 
-instance SortContext a => SortContext (ContextFuncSignature a) where
-    empty = fromSortContext empty
     addADTs ctx as = case addADTs (sortContext ctx) as of
                           Left e     -> Left e
                           Right sctx -> Right $ ctx {sortContext = sctx}
 
-instance SortReadContext a => FuncSignatureReadContext (ContextFuncSignature a) where
+instance SortContext a => FuncSignatureContext (ContextFuncSignature a) where
     memberFunc ctx v = Set.member v (_funcSignatures ctx)
 
     funcSignatures ctx    = Set.toList (_funcSignatures ctx)
 
-instance SortContext a => FuncSignatureContext (ContextFuncSignature a) where
+instance SortContext a => FuncSignatureModifyContext (ContextFuncSignature a) (ContextFuncSignature a) where
     addFuncSignatures ctx fs
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)

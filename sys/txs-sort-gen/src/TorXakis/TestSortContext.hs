@@ -73,15 +73,6 @@ data ContextTestSort = ContextTestSort
                         , mapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
                         } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortReadContext ContextTestSort where
-    memberSort   = memberSort . basis
-
-    memberADT = memberADT . basis
-
-    lookupADT = lookupADT . basis
-
-    elemsADT  = elemsADT . basis
-
 instance SortContext ContextTestSort where
     empty = ContextTestSort empty primitiveSortSize Map.empty
       where
@@ -93,6 +84,14 @@ instance SortContext ContextTestSort where
                                                , SortRegex
                                                ]
                                                (repeat 0)
+
+    memberSort   = memberSort . basis
+
+    memberADT = memberADT . basis
+
+    lookupADT = lookupADT . basis
+
+    elemsADT  = elemsADT . basis
 
     addADTs context as = addADTs (basis context) as >>= (\newBasis ->
                                              let

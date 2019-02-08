@@ -15,25 +15,21 @@ See LICENSE at root directory of this repository.
 --
 -- Context for FuncSignature.
 -----------------------------------------------------------------------------
-{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 module TorXakis.FuncSignatureContext
 ( -- * Context
   -- ** Func Signature Context class
-  FuncSignatureReadContext (..)
-  -- ** Func Signature Context class
-, FuncSignatureContext (..)
+  FuncSignatureContext (..)
+  -- ** Func Signature Modify Context class
+, FuncSignatureModifyContext (..)
 )
 where
 import           TorXakis.Error
 import           TorXakis.FuncSignature
-import           TorXakis.Sort              (SortReadContext
-                                            ,SortContext
-                                            )
+import           TorXakis.Sort              (SortContext)
 
--- | A FuncSignatureReadContext instance contains all operators to inspect/read 'TorXakis.FuncSignature'.
-class SortReadContext a => FuncSignatureReadContext a where
+-- | A FuncSignatureContext Context instance contains all definitions to work with 'TorXakis.FuncSignature'.
+class SortContext a => FuncSignatureContext a where
     -- | Is the provided FuncSignature a member of the context?
     memberFunc :: a -> FuncSignature -> Bool
     -- | All funcSignatures in the context.
@@ -45,8 +41,8 @@ class SortReadContext a => FuncSignatureReadContext a where
     -- prop> Set.toList (Set.fromList (funcSignatures x)) == funcSignatures x
     funcSignatures :: a -> [FuncSignature]
 
--- | A FuncSignatureContext Context instance contains all definitions to work with 'TorXakis.FuncSignature'.
-class (SortContext a, FuncSignatureReadContext a) => FuncSignatureContext a where
+-- | A FuncSignatureModifyContext instance contains all operations that provide as output a modified context of 'TorXakis.FuncSignature'.
+class (FuncSignatureContext a, FuncSignatureContext b) => FuncSignatureModifyContext a b where
     -- | Add funcSignatures to funcSignature context.
     --   A funcSignature context is returned when the following constraints are satisfied:
     --
@@ -55,4 +51,4 @@ class (SortContext a, FuncSignatureReadContext a) => FuncSignatureContext a wher
     --   * All sorts are known
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addFuncSignatures :: a -> [FuncSignature] -> Either Error a
+    addFuncSignatures :: a -> [FuncSignature] -> Either Error b

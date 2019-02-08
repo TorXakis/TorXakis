@@ -46,6 +46,7 @@ import           TorXakis.Value
 import           TorXakis.VarDef
 
 -- | ValExpressionView: the public view of value expression 'ValExpression'
+-- Should we change to Either Error ValExpression to increase laziness (e.g. in ITE, And, concat, func, and cstr)?
 data ValExpressionView = Vconst    Value
                        | Vvar      (RefByName VarDef)
                        -- generic
@@ -103,10 +104,10 @@ evalView (Vconst v) = Right v
 evalView x          = Left $ Error ("Value Expression is not a constant value " ++ show x)
 
 -- | SortOf instance
-instance ValExprConstructionReadContext a => HasSort a ValExpression where
+instance ValExprConstructionContext a => HasSort a ValExpression where
   getSort c = getSort c . TorXakis.ValExpr.ValExpr.view
 
-instance ValExprConstructionReadContext a => HasSort a ValExpressionView where
+instance ValExprConstructionContext a => HasSort a ValExpressionView where
     getSort ctx (Vconst val)              = getSort ctx val
     getSort ctx (Vvar r)                  = case lookupVar ctx r of
                                                Nothing -> error ("getSort: VarDef not found in context " ++ show r)

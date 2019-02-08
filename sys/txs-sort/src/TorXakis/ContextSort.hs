@@ -50,7 +50,9 @@ import           TorXakis.SortContext
 newtype ContextSort = ContextSort { adtDefs :: Map.Map (RefByName ADTDef) ADTDef 
                                   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortReadContext ContextSort where
+instance SortContext ContextSort where
+    empty = ContextSort Map.empty
+
     memberSort ctx (SortADT a) = Map.member a (adtDefs ctx)
     memberSort _   _           = True
 
@@ -59,9 +61,6 @@ instance SortReadContext ContextSort where
     lookupADT ctx adtRef = Map.lookup adtRef (adtDefs ctx)
 
     elemsADT ctx         = Map.elems (adtDefs ctx)
-
-instance SortContext ContextSort where
-    empty = ContextSort Map.empty
 
     addADTs ctx as = case violationsAddAdtDefs of
                                 Just e  -> Left e
