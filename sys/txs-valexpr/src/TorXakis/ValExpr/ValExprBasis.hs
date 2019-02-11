@@ -113,11 +113,12 @@ mkITE ctx b tb fb | memberSort ctx (getSort ctx tb)   = unsafeITE (Right b) (Rig
 mkITE ctx _ tb _                                      = Left $  Error (T.pack ("Sort " ++ show (getSort ctx tb) ++ " not defined in context"))
 
 -- | Create a function call.
+-- TODO: check for undefined entities in arguments (vs)
 mkFunc :: ValExprConstructionContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
 mkFunc ctx fs vs 
     | expected /= actual                    = Left $ Error (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
     | not (null undefinedSorts)             = Left $ Error (T.pack ("Undefined sorts : " ++ show undefinedSorts ) )
-    | not (isPredefNonSolvableFunction fs)  = Left $ Error (T.pack ("Singnature of predefined function : " ++ show fs ) ) -- to avoid confusion and enable round tripping
+    | not (isPredefNonSolvableFunction fs)  = Left $ Error (T.pack ("Signature of predefined function : " ++ show fs ) ) -- to avoid confusion and enable round tripping
     | otherwise                             = Right $ ValExpression (Vfunc fs vs)
         where
             expected = args fs

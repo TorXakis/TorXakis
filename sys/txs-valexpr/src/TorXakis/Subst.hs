@@ -23,26 +23,22 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE ScopedTypeVariables   #-}
 module TorXakis.Subst
 ( -- * Context
-  -- ** instance of FuncContext
-  ContextFunc
-, fromSortContext
   -- ** instance of ValExpr Context
-, ContextValExprRead
-, fromVarContext
+  ContextValExpr
+, TorXakis.Subst.fromVarContext
 , fromFuncContext
   -- * Substitution of variables
-  -- ** Partial Substitution
-, partSubst
-  -- ** Complete Substitution
-, compSubst
+, subst
   -- * Constructor for optimize ValExpression given a FuncContext
 , mkFuncOpt
 )
 where
+import           Control.Arrow          (first)
 import           Control.DeepSeq        (NFData)
 import           Data.Data              (Data)
 import           Data.Either
 import qualified Data.HashMap           as HashMap
+import           Data.List
 import qualified Data.Map               as Map
 import           Data.Maybe
 import qualified Data.Set               as Set
@@ -64,7 +60,6 @@ import           TorXakis.ValExprContext
 import           TorXakis.ValExpr.Unsafe
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.ValExpr.ValExprBasis
-import           TorXakis.VarContext
 import           TorXakis.VarDef
 import           TorXakis.VarsDecl
 
@@ -238,272 +233,92 @@ instance VarContext a => ValExprConstructionContext (ContextValExpr a)
 instance VarContext a => ValExprContext (ContextValExpr a)
 
 unsafeSubst :: ValExprContext a => a -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
-unsafeSubst = undefined
+unsafeSubst ctx  mp = unsafeSubstView . view
+  where
+    unsafeSubstView :: ValExpressionView -> Either Error ValExpression
+    unsafeSubstView (Vconst c)                = unsafeConst c
+    unsafeSubstView (Vvar r)                  = case HashMap.lookup r mp of
+                                                    Nothing -> unsafeVar r
+                                                    Just x  -> Right x
+    unsafeSubstView (Vequal ve1 ve2)          = unsafeEqual (unsafeSubstView (view ve1)) (unsafeSubstView (view ve2))
+    unsafeSubstView (Vite c tb fb)            = unsafeITE (unsafeSubstView (view c)) (unsafeSubstView (view tb)) (unsafeSubstView (view fb))
+    unsafeSubstView (Vfunc fs vs)             = unsafeFunc ctx fs (map (unsafeSubstView . view) vs)
+    unsafeSubstView (Vpredef fs vs)           = unsafePredefNonSolvable ctx fs (map (unsafeSubstView . view) vs)
+    unsafeSubstView (Vnot v)                  = unsafeNot (unsafeSubstView (view v))
+    unsafeSubstView (Vand s)                  = unsafeAnd (Set.map (unsafeSubstView . view) s)
+    unsafeSubstView (Vdivide t n)             = unsafeDivide (unsafeSubstView (view t)) (unsafeSubstView (view n))
+    unsafeSubstView (Vmodulo t n)             = unsafeModulo (unsafeSubstView (view t)) (unsafeSubstView (view n))
+    unsafeSubstView (Vsum m)                  = unsafeSumFactor (map (first (unsafeSubstView . view)) (Map.toList m))
+    unsafeSubstView (Vproduct m)              = unsafeProductFactor (map (first (unsafeSubstView . view)) (Map.toList m))
+    unsafeSubstView (Vgez v)                  = unsafeGEZ (unsafeSubstView (view v))
+    unsafeSubstView (Vlength s)               = unsafeLength (unsafeSubstView (view s))
+    unsafeSubstView (Vat s i)                 = unsafeAt (unsafeSubstView (view s)) (unsafeSubstView (view i))
+    unsafeSubstView (Vconcat s)               = unsafeConcat (map (unsafeSubstView . view) s)
+    unsafeSubstView (Vstrinre s r)            = unsafeStrInRe (unsafeSubstView (view s)) (unsafeSubstView (view r))
+    unsafeSubstView (Vcstr a c l)             = unsafeCstr a c (map (unsafeSubstView . view) l)
+    unsafeSubstView (Viscstr a c v)           = unsafeIsCstr a c (unsafeSubstView (view v))
+    unsafeSubstView (Vaccess a c p v)         = unsafeAccess a c p (unsafeSubstView (view v))
 
-{-
--- | Optimize value expression using func context
-optimize :: FuncContext a => a -> ValExpression -> Either Error ValExpression
-optimize ctx  = optimizeView . view
-    where
-        optimizeView :: ValExpressionView -> Either Error ValExpression
-        optimizeView (Vconst c)                = unsafeConst c
-        optimizeView (Vvar r)                  = unsafeVar r
-        optimizeView (Vequal ve1 ve2)          = optimizeView (view ve1) >>= (\ne1 ->
-                                                 optimizeView (view ve2) >>= 
-                                                 unsafeEqual ne1)
-        optimizeView (Vite c tb fb)            = optimizeView (view tb) >>= (\ntb ->
-                                                 optimizeView (view fb) >>= (\nfb ->
-                                                 optimizeView (view  c) >>= (\nc  ->
-                                                 unsafeITE nc ntb nfb)))
-        optimizeView (Vfunc fs vs)             = case partitionEithers (map (optimizeView . view) vs) of
-                                                    ([], nvs) -> unsafeFunc ctx fs nvs
-                                                    (es, _)   -> Left $ Error (T.pack ("Optimize 'func' failed\n" ++ show es))
-        optimizeView (Vpredef fs vs)           = case partitionEithers (map (optimizeView . view) vs) of
-                                                    ([], nvs) -> unsafePredefNonSolvable ctx fs nvs
-                                                    (es, _)   -> Left $ Error (T.pack ("Optimize 'predef' failed\n" ++ show es))
-        optimizeView (Vnot v)                  = optimizeView (view v) >>= unsafeNot
-        optimizeView (Vand s)                  = case partitionEithers (map (optimizeView . view) (Set.toList s)) of
-                                                    ([], ns) -> unsafeAnd (Set.fromList ns)
-                                                    (es, _)  -> Left $ Error (T.pack ("Optimize 'and' failed\n" ++ show es))
-        optimizeView (Vdivide t n)             = optimizeView (view t) >>= (\nt ->
-                                                 optimizeView (view n) >>=
-                                                 unsafeDivide nt)
-        optimizeView (Vmodulo t n)             = optimizeView (view t) >>= (\nt ->
-                                                 optimizeView (view n) >>=
-                                                 unsafeModulo nt)
-        optimizeView (Vsum m)                  = case partitionEithers (map (\(x,i) -> optimizeView (view x) >>= (\nx -> Right (nx,i)))
-                                                                            (Map.toList m)) of
-                                                    ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
-                                                    (es, _) -> Left $ Error (T.pack ("Optimize 'sum' failed\n" ++ show es))
-        optimizeView (Vproduct m)              = case partitionEithers (map (\(x,i) -> optimizeView (view x) >>= (\nx -> Right (nx,i)))
-                                                                            (Map.toList m)) of
-                                                    ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
-                                                    (es, _) -> Left $ Error (T.pack ("Optimize 'product' failed\n" ++ show es))
-        optimizeView (Vgez v)                  = optimizeView (view v) >>= unsafeGEZ
-        optimizeView (Vlength s)               = optimizeView (view s) >>= unsafeLength
-        optimizeView (Vat s i)                 = optimizeView (view s) >>= (\ns ->
-                                                 optimizeView (view i) >>= 
-                                                 unsafeAt ns)
-        optimizeView (Vconcat s)               = case partitionEithers (map (optimizeView . view) s) of
-                                                    ([], ns) -> unsafeConcat ns
-                                                    (es, _)  -> Left $ Error (T.pack ("Optimize 'concat' failed\n" ++ show es))
-        optimizeView (Vstrinre s r)            = optimizeView (view s) >>= (\ns ->
-                                                 optimizeView (view r) >>= 
-                                                 unsafeStrInRe ns)
-        optimizeView (Vcstr a c l)             = case partitionEithers (map (optimizeView . view) l) of
-                                                    ([], nl) -> unsafeCstr a c nl
-                                                    (es, _)  -> Left $ Error (T.pack ("Optimize 'cstr' failed\n" ++ show es))
-        optimizeView (Viscstr a c v)           = optimizeView (view v) >>= unsafeIsCstr a c
-        optimizeView (Vaccess a c p v)         = optimizeView (view v) >>= unsafeAccess a c p
-
------------------------------------------------------------------------------
--- Context ValExpr Read
------------------------------------------------------------------------------
--- | An instance of 'TorXakis.ValExprContext'.
-data ContextValExpr a = ContextValExpr { funcContext :: a
-                                         -- var definitions
-                                       , varDefs :: HashMap.Map (RefByName VarDef) VarDef
-                                       } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
-
--- | Create ContextValExpr from FuncContext
-fromFuncContext :: a -> ContextValExprRead a
-fromFuncContext fc = ContextValExprRead fc HashMap.empty
-
-instance SortContext a => SortContext (ContextValExpr a) where
-    empty = ContextValExpr empty HashMap.empty
-
-    memberSort = memberSort . funcContext
-
-    memberADT = memberADT . funcContext
-
-    lookupADT = lookupADT . funcContext
-
-    elemsADT = elemsADT . funcContext
-
-    addADTs ctx as = case addADTs (sortContext ctx) as of
-                          Left e     -> Left e
-                          Right sctx -> Right $ ctx {sortContext = sctx}
-instance FuncSignatureReadContext a => FuncSignatureReadContext (ContextValExprRead a) where
-    memberFunc = memberFunc . funcContext
-
-    funcSignatures = funcSignatures . funcContext
-
-instance funcContext a => funcContext (ContextValExprRead a) where
-    lookupFunc = lookupFunc . funcContext
-
-    elemsFunc = elemsFunc . funcContext
-
-instance SortReadContext a => VarReadContext (ContextValExprRead a) where
-    memberVar ctx v = HashMap.member v (varDefs ctx)
-
-    lookupVar ctx v = HashMap.lookup v (varDefs ctx)
-
-    elemsVar ctx    = HashMap.elems (varDefs ctx)
-
-instance funcContext a => ValExprConstructionReadContext (ContextValExprRead a)
-
-instance funcContext a => ValExprReadContext (ContextValExprRead a)
 
 -----------------------------------------------------------------------------
 -- Substitute
 -----------------------------------------------------------------------------
 -- | find mismatches in sort in mapping
-mismatchesSort :: forall c b . (ValExprReadContext c, HasSort c b) => c -> HashMap.Map (RefByName VarDef) b -> HashMap.Map (RefByName VarDef) b
+mismatchesSort :: ValExprConstructionContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> HashMap.Map (RefByName VarDef) ValExpression
 mismatchesSort ctx = HashMap.filterWithKey mismatch
     where
-        mismatch :: RefByName VarDef -> b -> Bool
+        mismatch :: RefByName VarDef -> ValExpression -> Bool
         mismatch r e = case lookupVar ctx r of
                             Nothing -> error ("mismatchesSort - variable not defined in context - " ++ show r)
                             Just v  -> TorXakis.VarDef.sort v /= getSort ctx e
 
--- | Partial Substitution: Substitute some variables by value expressions in a value expression.
+-- | Substitution: Substitute some variables by value expressions in a value expression.
 -- The Either is needed since substitution can cause an invalid ValExpr. 
 -- For example, substitution of a variable by zero can cause a division by zero error
--- TODO: check variables are defined in context
+-- TODO: should we check the replacing val expressions? And the valExpression we get to work on?
 -- TODO: should we support context shrinking, since by replacing the variable a by 10, the variable a might no longer be relevant in the context (and thus be removed)?
-partSubst :: ValExprReadContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
-partSubst ctx mp ve | HashMap.null mp               = Right ve
-                    | not (HashMap.null mismatches) = Left $ Error (T.pack ("Sort mismatches in map : " ++ show mismatches))
-                    | otherwise                     = partSubstView (view ve)
+subst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+subst ctx mp ve | HashMap.null mp               = Right ve
+                | not (HashMap.null mismatches) = Left $ Error (T.pack ("Sort mismatches in map : " ++ show mismatches))
+                | not (null undefinedVars)      = Left $ Error (T.pack ("Undefined variables in map : " ++ show undefinedVars))
+                | otherwise                     = unsafeSubst ctx mp ve
   where
     mismatches :: HashMap.Map (RefByName VarDef) ValExpression
     mismatches = mismatchesSort ctx mp
-    
-    partSubstView :: ValExpressionView -> Either Error ValExpression
-    partSubstView (Vconst c)                = unsafeConst c
-    partSubstView (Vvar r)                  = case HashMap.lookup r mp of
-                                                    Nothing -> unsafeVar r
-                                                    Just x  -> Right x
-    partSubstView (Vequal ve1 ve2)          = partSubstView (view ve1) >>= (\ne1 ->
-                                              partSubstView (view ve2) >>= 
-                                              unsafeEqual ne1)
-    partSubstView (Vite c tb fb)            = partSubstView (view tb) >>= (\ntb ->
-                                              partSubstView (view fb) >>= (\nfb ->
-                                              partSubstView (view c) >>= (\nc ->
-                                              unsafeITE nc ntb nfb)))
-    partSubstView (Vfunc fs vs)             = case partitionEithers (map (partSubstView . view) vs) of
-                                                ([], nvs) -> unsafeFunc ctx fs nvs
-                                                (es, _)   -> Left $ Error (T.pack ("Subst partSubst 'func' failed\n" ++ show es))
-    partSubstView (Vpredef fs vs)           = case partitionEithers (map (partSubstView . view) vs) of
-                                                ([], nvs) -> unsafePredefNonSolvable ctx fs nvs
-                                                (es, _)   -> Left $ Error (T.pack ("Subst partSubst 'predef' failed\n" ++ show es))
-    partSubstView (Vnot v)                  = partSubstView (view v) >>= unsafeNot
-    partSubstView (Vand s)                  = case partitionEithers (map (partSubstView . view) (Set.toList s)) of
-                                                ([], ns) -> unsafeAnd (Set.fromList ns)
-                                                (es, _)  -> Left $ Error (T.pack ("Subst partSubst 'and' failed\n" ++ show es))
-    partSubstView (Vdivide t n)             = partSubstView (view t) >>= (\nt ->
-                                              partSubstView (view n) >>=
-                                              unsafeDivide nt)
-    partSubstView (Vmodulo t n)             = partSubstView (view t) >>= (\nt ->
-                                              partSubstView (view n) >>=
-                                              unsafeModulo nt)
-    partSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> partSubstView (view x) >>= (\nx -> Right (nx,i)))
-                                                                         (Map.toList m)) of
-                                                ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
-                                                (es, _) -> Left $ Error (T.pack ("Subst partSubst 'sum' failed\n" ++ show es))
-    partSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> partSubstView (view x) >>= (\nx -> Right (nx,i)))
-                                                                         (Map.toList m)) of
-                                                ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
-                                                (es, _) -> Left $ Error (T.pack ("Subst partSubst 'product' failed\n" ++ show es))
-    partSubstView (Vgez v)                  = partSubstView (view v) >>= unsafeGEZ
-    partSubstView (Vlength s)               = partSubstView (view s) >>= unsafeLength
-    partSubstView (Vat s i)                 = partSubstView (view s) >>= (\ns ->
-                                              partSubstView (view i) >>= 
-                                              unsafeAt ns)
-    partSubstView (Vconcat s)               = case partitionEithers (map (partSubstView . view) s) of
-                                                ([], ns) -> unsafeConcat ns
-                                                (es, _)  -> Left $ Error (T.pack ("Subst partSubst 'concat' failed\n" ++ show es))
-    partSubstView (Vstrinre s r)            = partSubstView (view s) >>= (\ns ->
-                                              partSubstView (view r) >>= 
-                                              unsafeStrInRe ns)
-    partSubstView (Vcstr a c l)             = case partitionEithers (map (partSubstView . view) l) of
-                                                ([], nl) -> unsafeCstr a c nl
-                                                (es, _)  -> Left $ Error (T.pack ("Subst partSubst 'cstr' failed\n" ++ show es))
-    partSubstView (Viscstr a c v)           = partSubstView (view v) >>= unsafeIsCstr a c
-    partSubstView (Vaccess a c p v)         = partSubstView (view v) >>= unsafeAccess a c p
 
+    undefinedVars :: [RefByName VarDef]
+    undefinedVars = filter (not . memberVar ctx) (HashMap.keys mp)
 
--- | Complete Substitution: Substitute all variables by value expressions in a value expression.
+-- | TODO: needed? Complete Substitution: Substitute all variables by value expressions in a value expression.
 -- Since all variables are changed, one can change the kind of variables.
 -- TODO: from one context to another
-compSubst :: ValExprReadContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
-compSubst ctx mp ve | not (HashMap.null mismatches)    = Left $ Error (T.pack ("Sort mismatches in map : " ++ show mismatches))
-                    | otherwise                        = compSubstView (view ve)
-  where
-    mismatches :: HashMap.Map (RefByName VarDef) ValExpression
-    mismatches = mismatchesSort ctx mp
-
-    compSubstView :: ValExpressionView -> Either Error ValExpression
-    compSubstView (Vconst c)                = unsafeConst c
-    compSubstView (Vvar v)                  = case HashMap.lookup v mp of
-                                                    Nothing -> Left $ Error (T.pack ("Subst compSubst: incomplete. Missing " ++ show v))
-                                                    Just w  -> Right w
-    compSubstView (Vequal ve1 ve2)          = compSubstView (view ve1) >>= (\ne1 ->
-                                              compSubstView (view ve2) >>= 
-                                              unsafeEqual ne1)
-    compSubstView (Vite c tb fb)            = compSubstView (view tb) >>= (\ntb ->
-                                              compSubstView (view fb) >>= (\nfb ->
-                                              compSubstView (view c) >>= (\nc ->
-                                              unsafeITE nc ntb nfb)))
-    compSubstView (Vfunc fs vs)             = case partitionEithers (map (compSubstView . view) vs) of
-                                                    ([], nvs) -> unsafeFunc ctx fs nvs
-                                                    (es, _)   -> Left $ Error (T.pack ("Subst compSubst 'func' failed\n" ++ show es))
-    compSubstView (Vpredef fs vs)           = case partitionEithers (map (compSubstView . view) vs) of
-                                                    ([], nvs) -> unsafePredefNonSolvable ctx fs nvs
-                                                    (es, _)   -> Left $ Error (T.pack ("Subst compSubst 'predef' failed\n" ++ show es))
-    compSubstView (Vnot v)                  = compSubstView (view v) >>= unsafeNot
-    compSubstView (Vand s)                  = case partitionEithers (map (compSubstView . view) (Set.toList s)) of
-                                                    ([], ns) -> unsafeAnd (Set.fromList ns)
-                                                    (es, _)  -> Left $ Error (T.pack ("Subst compSubst 'and' failed\n" ++ show es))
-    compSubstView (Vdivide t n)             = compSubstView (view t) >>= (\nt ->
-                                              compSubstView (view n) >>=
-                                              unsafeDivide nt)
-    compSubstView (Vmodulo t n)             = compSubstView (view t) >>= (\nt ->
-                                              compSubstView (view n) >>=
-                                              unsafeModulo nt)
-    compSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> compSubstView (view x) >>= (\nx -> Right (nx,i)))
-                                                                         (Map.toList m)) of
-                                                    ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
-                                                    (es, _) -> Left $ Error (T.pack ("Subst compSubst 'sum' failed\n" ++ show es))
-    compSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> compSubstView (view x) >>= (\nx -> Right (nx,i)))
-                                                                         (Map.toList m)) of
-                                                    ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
-                                                    (es, _) -> Left $ Error (T.pack ("Subst compSubst 'product' failed\n" ++ show es))
-    compSubstView (Vgez v)                  = compSubstView (view v) >>= unsafeGEZ
-    compSubstView (Vlength s)               = compSubstView (view s) >>= unsafeLength
-    compSubstView (Vat s i)                 = compSubstView (view s) >>= (\ns ->
-                                              compSubstView (view i) >>= 
-                                              unsafeAt ns)
-    compSubstView (Vconcat s)               = case partitionEithers (map (compSubstView . view) s) of
-                                                    ([], ns) -> unsafeConcat ns
-                                                    (es, _)  -> Left $ Error (T.pack ("Subst compSubst 'concat' failed\n" ++ show es))
-    compSubstView (Vstrinre s r)            = compSubstView (view s) >>= (\ns ->
-                                              compSubstView (view r) >>= 
-                                              unsafeStrInRe ns)
-    compSubstView (Vcstr a c l)             = case partitionEithers (map (compSubstView . view) l) of
-                                                    ([], nl) -> unsafeCstr a c nl
-                                                    (es, _)  -> Left $ Error (T.pack ("Subst compSubst 'cstr' failed\n" ++ show es))
-    compSubstView (Viscstr a c v)           = compSubstView (view v) >>= unsafeIsCstr a c
-    compSubstView (Vaccess a c p v)         = compSubstView (view v) >>= unsafeAccess a c p
+-- compSubst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 
 -- | mkFuncOpt
 -- Construct optimized function
--- This function should be prefered over mkFunc whenever a FuncContext is available
+-- This function should be prefered over mkFunc whenever a 'TorXakis.ValExprContext' is available
+-- Note: since arguments of function can contain variables (e.g. the parameters of the calling function) a ValExprContext is needed (instead of a FuncContext)
 mkFuncOpt :: ValExprContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
-mkFuncOpt ctx fs vs = mkFunc ctx fs vs >>= optimize ctx
+mkFuncOpt ctx fs vs = case mkFunc ctx fs vs of
+                        Left e  -> Left e
+                        Right v -> unsafeSubst ctx HashMap.empty v
 
 -- TODO? More laziness?
 -- e.g. depending on some parameter value, some other parameter values might be irrelevant
 -- e.g. ANY/Error for not initialized variables of State Automaton translated to a ProcDef
-unsafeFunc :: FuncContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
-unsafeFunc ctx fs vs = case lookupFunc ctx fs of
-                            Nothing -> error ("unsafeFunc: function can't be found in context - " ++ show fs)
-                            Just fd -> case view (body fd) of
-                                            Vconst x  -> unsafeConst x
-                                            _         -> case toMaybeValues vs of
-                                                             Just _  -> let ps = paramDefs fd
-                                                                            in partSubst (fromFuncReadContext ctx ps)
-                                                                                         (HashMap.fromList (zip (map toRefByName (toList ps)) vs))
-                                                                                         (body fd)
-                                                             Nothing -> Right $ ValExpression (Vfunc fs vs)
--}
+unsafeFunc :: ValExprContext c => c -> FuncSignature -> [Either Error ValExpression] -> Either Error ValExpression
+unsafeFunc ctx fs vs = case partitionEithers vs of
+                             ([], xs)   -> case lookupFunc ctx fs of
+                                                Nothing -> error ("unsafeFunc: function can't be found in context - " ++ show fs)
+                                                Just fd -> case view (body fd) of
+                                                                Vconst x  -> unsafeConst x
+                                                                _         -> case toMaybeValues xs of
+                                                                                 Just _  -> let ps = paramDefs fd
+                                                                                                in case addVars (fromFuncContext ctx) (toList ps) of
+                                                                                                        Left e -> error ("unsafeFunc: can't make new context - " ++ show e)
+                                                                                                        Right nctx -> subst nctx
+                                                                                                                            (HashMap.fromList (zip (map toRefByName (toList ps)) xs))
+                                                                                                                            (body fd)
+                                                                                 Nothing -> Right $ ValExpression (Vfunc fs xs)
+                             (es, _)    -> Left $ Error ("unsafeFunc Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))
+

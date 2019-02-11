@@ -31,9 +31,9 @@ module TorXakis.ValExpr.Unsafe
 , unsafeDivide
 , unsafeModulo
 , unsafeSum
-, unsafeSumFromMap
+, unsafeSumFactor
 , unsafeProduct
-, unsafeProductFromMap
+, unsafeProductFactor
 , unsafeGEZ
 , unsafeLength
 , unsafeAt
@@ -292,10 +292,30 @@ unsafeSum ps = case partitionEithers ps of
     where
         flattenSum :: [ValExpression] -> Map.Map ValExpression Integer
         flattenSum = Map.filter (0 ==) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
-        
+
         fromValExpr :: ValExpression -> Map.Map ValExpression Integer
         fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m) = m
         fromValExpr x                                         = Map.singleton x 1
+
+partitionEitherTuples :: [(Either Error ValExpression, Integer)] -> ([Error], [(ValExpression, Integer)])
+partitionEitherTuples = foldl partitionEitherTuple ([],[])
+    where
+        partitionEitherTuple :: ([Error], [(ValExpression, Integer)]) -> (Either Error ValExpression, Integer) -> ([Error], [(ValExpression, Integer)])
+        partitionEitherTuple (es, xs) (Left  e, _) = (e:es,xs)
+        partitionEitherTuple (es, xs) (Right x, i) = (es,(x,i):xs)
+
+unsafeSumFactor :: [(Either Error ValExpression, Integer)] -> Either Error ValExpression
+unsafeSumFactor ps = case partitionEitherTuples ps of
+                            ([], xs) -> unsafeSumFromMap (flattenSum xs)
+                            (es, _)  -> Left $ Error ("Sum Factor Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))
+    where
+        flattenSum :: [(ValExpression,Integer)] -> Map.Map ValExpression Integer
+        flattenSum = Map.filter (0 ==) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
+        
+        fromValExpr :: (ValExpression, Integer) -> Map.Map ValExpression Integer
+        fromValExpr (_                                      , i) | i == 0 = error "Factor of Sum is equal to zero: violates invariant"
+        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m, i)          = Map.map (*i) m
+        fromValExpr (x                                      , i)          = Map.singleton x i
 
 -- unsafeSumFromMap doesn't contain elements of type Vsum.
 unsafeSumFromMap :: Map.Map ValExpression Integer -> Either Error ValExpression
@@ -332,10 +352,26 @@ unsafeProduct ps = case partitionEithers ps of
     where
         flattenProduct :: [ValExpression] -> Map.Map ValExpression Integer
         flattenProduct = Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted)
-        
+
         fromValExpr :: ValExpression -> Map.Map ValExpression Integer
         fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vproduct m) = m
         fromValExpr x                                             = Map.singleton x 1
+
+-- TODO: add more laziness (if wanted)
+-- 0 * x = 0
+-- yet what about 0 * 1/0 ?
+unsafeProductFactor :: [(Either Error ValExpression, Integer)] -> Either Error ValExpression
+unsafeProductFactor ps = case partitionEitherTuples ps of
+                            ([], xs) -> unsafeProductFromMap (flattenProduct xs)
+                            (es, _)  -> Left $ Error ("Product Factor Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))
+    where
+        flattenProduct :: [(ValExpression,Integer)] -> Map.Map ValExpression Integer
+        flattenProduct = Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted)
+
+        fromValExpr :: (ValExpression, Integer) -> Map.Map ValExpression Integer
+        fromValExpr (_                                      , i) | i <= 0 = error "Factor of Product is not positive: violates invariant"
+        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m, i)          = Map.map (*i) m
+        fromValExpr (x                                      , i)          = Map.singleton x i
 
 -- Flatten Product doesn't contain elements of type Vproduct.
 unsafeProductFromMap  :: Map.Map ValExpression Integer -> Either Error ValExpression
