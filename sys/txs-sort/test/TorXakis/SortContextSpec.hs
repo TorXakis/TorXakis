@@ -15,8 +15,6 @@ See LICENSE at root directory of this repository.
 --
 -- Test specifications for 'SortContext'.
 -----------------------------------------------------------------------------
-{-# LANGUAGE AllowAmbiguousTypes   #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.SortContextSpec
 (spec
 )
@@ -24,8 +22,11 @@ where
 import qualified Data.Text           as T
 import           Test.Hspec
 
+import           TorXakis.ContextSort
 import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.SortContext
+
 
 unsafeName :: String -> Name
 unsafeName n = case mkName (T.pack n) of

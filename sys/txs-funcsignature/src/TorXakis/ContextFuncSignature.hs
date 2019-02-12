@@ -13,61 +13,58 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Context for Function Signatures.
+-- Context for Variables.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
 module TorXakis.ContextFuncSignature
 ( -- * Context Variable instance
   ContextFuncSignature
 , fromSortContext
 )
 where
-import           Control.DeepSeq        (NFData)
-import           Data.Data              (Data)
-import qualified Data.Set               as Set
-import           GHC.Generics           (Generic)
+import qualified Data.Set    as Set
 
 import           TorXakis.Error
-import           TorXakis.Sort          (SortContext(..))
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
+import           TorXakis.SortContext
 
--- | An instance of 'TorXakis.FuncSignatureContext'.
-data ContextFuncSignature a = ContextFuncSignature { sortContext :: a
-                                                     -- funcSignatures
-                                                   , _funcSignatures :: Set.Set FuncSignature
-                                                   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+-- | An instance of 'TorXakis.VarContext'.
+data ContextFuncSignature = forall a . SortContext a => 
+                            ContextFuncSignature { _sortContext :: a -- use _ to prevent warning "Defined but not used: `sortContext'"
+                                                   -- defined funcSignatures
+                                                 , _funcSignatures :: Set.Set FuncSignature
+                                                 }
+-- | Constructor from SortContext
+fromSortContext :: SortContext b => b -> ContextFuncSignature
+fromSortContext ctx = ContextFuncSignature ctx Set.empty
 
--- | Create VarContext from SortContext
-fromSortContext :: a -> ContextFuncSignature a
-fromSortContext srt = ContextFuncSignature srt Set.empty
+instance SortContext ContextFuncSignature where
+    -- Can't use
+    -- memberSort   = memberSort . sortContext
+    -- since compiler complains:
+    --        * Cannot use record selector `sortContext' as a function due to escaped type variables
+    --          Probable fix: use pattern-matching syntax instead
+    -- For more info see: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=existentialquantification#extension-ExistentialQuantification
+    memberSort (ContextFuncSignature ctx _) = memberSort ctx
 
-instance SortContext a => SortContext (ContextFuncSignature a) where
-    empty = fromSortContext empty
+    memberADT (ContextFuncSignature ctx _) = memberADT ctx
 
-    memberSort   = memberSort . sortContext
+    lookupADT (ContextFuncSignature ctx _) = lookupADT ctx
 
-    memberADT = memberADT . sortContext
+    elemsADT (ContextFuncSignature ctx _) = elemsADT ctx
 
-    lookupADT = lookupADT . sortContext
+    addADTs (ContextFuncSignature ctx vs) as = case addADTs ctx as of
+                                                Left e     -> Left e
+                                                Right sctx -> Right $ ContextFuncSignature sctx vs
 
-    elemsADT  = elemsADT . sortContext
-
-    addADTs ctx as = case addADTs (sortContext ctx) as of
-                          Left e     -> Left e
-                          Right sctx -> Right $ ctx {sortContext = sctx}
-
-instance SortContext a => FuncSignatureContext (ContextFuncSignature a) where
+instance FuncSignatureContext ContextFuncSignature where
     memberFunc ctx v = Set.member v (_funcSignatures ctx)
 
-    funcSignatures ctx    = Set.toList (_funcSignatures ctx)
+    funcSignatures ctx = Set.toList (_funcSignatures ctx)
 
-instance SortContext a => FuncSignatureModifyContext (ContextFuncSignature a) (ContextFuncSignature a) where
+instance FuncSignatureModifyContext ContextFuncSignature ContextFuncSignature where
     addFuncSignatures ctx fs
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)

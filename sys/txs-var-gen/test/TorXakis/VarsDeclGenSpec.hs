@@ -26,6 +26,7 @@ import           Test.QuickCheck
 
 import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.SortContext
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
 import           TorXakis.VarDef

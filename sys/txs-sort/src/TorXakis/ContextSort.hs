@@ -22,11 +22,12 @@ See LICENSE at root directory of this repository.
 module TorXakis.ContextSort
 ( -- * Sort Context
   ContextSort(ContextSort)
+, empty
 )
 where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
-import qualified Data.HashMap        as Map
+import qualified Data.HashMap        as HashMap
 import qualified Data.List           as List
 import           Data.Maybe          (mapMaybe)
 import           GHC.Generics        (Generic)
@@ -47,24 +48,26 @@ import           TorXakis.SortADT    ( Sort ( SortADT )
 import           TorXakis.SortContext
 
 -- | An instance of 'SortContext'.
-newtype ContextSort = ContextSort { adtDefs :: Map.Map (RefByName ADTDef) ADTDef 
+newtype ContextSort = ContextSort { adtDefs :: HashMap.Map (RefByName ADTDef) ADTDef 
                                   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortContext ContextSort where
-    empty = ContextSort Map.empty
+-- | Constructor of empty SortContext
+empty :: ContextSort
+empty = ContextSort HashMap.empty
 
-    memberSort ctx (SortADT a) = Map.member a (adtDefs ctx)
+instance SortContext ContextSort where
+    memberSort ctx (SortADT a) = HashMap.member a (adtDefs ctx)
     memberSort _   _           = True
 
-    memberADT ctx adtRef = Map.member adtRef (adtDefs ctx)
+    memberADT ctx adtRef = HashMap.member adtRef (adtDefs ctx)
 
-    lookupADT ctx adtRef = Map.lookup adtRef (adtDefs ctx)
+    lookupADT ctx adtRef = HashMap.lookup adtRef (adtDefs ctx)
 
-    elemsADT ctx         = Map.elems (adtDefs ctx)
+    elemsADT ctx         = HashMap.elems (adtDefs ctx)
 
     addADTs ctx as = case violationsAddAdtDefs of
                                 Just e  -> Left e
-                                Nothing -> Right $ ctx { adtDefs = Map.union (adtDefs ctx) (toMapByName as) }
+                                Nothing -> Right $ ctx { adtDefs = HashMap.union (adtDefs ctx) (toMapByName as) }
         where
             -- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
             --   The error reflects the violations of any of the following constraints:
@@ -82,7 +85,7 @@ instance SortContext ContextSort where
                 | otherwise                       = Nothing
                 where
                     definedADTs :: [ADTDef]
-                    definedADTs = Map.elems (adtDefs ctx)
+                    definedADTs = HashMap.elems (adtDefs ctx)
                     
                     nonUniqueNames :: [ADTDef]
                     nonUniqueNames = repeatedByNameIncremental definedADTs as

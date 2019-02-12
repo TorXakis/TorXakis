@@ -25,8 +25,6 @@ module TorXakis.ContextValExprConstruction
 ( -- * Context
   -- ** instance of ValExpr Context
   ContextValExprConstruction
-, fromVarContext
-, fromFuncSignatureContext
 )
 where
 import           Control.DeepSeq        (NFData)
@@ -34,7 +32,6 @@ import           Data.Data              (Data)
 import qualified Data.Set               as Set
 import           GHC.Generics           (Generic)
 
-import           TorXakis.ContextVar
 import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
@@ -48,16 +45,8 @@ data ContextValExprConstruction a = ContextValExprConstruction { varContext :: a
                                                                , _funcSignatures :: Set.Set FuncSignature
                                                                } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
--- | Create ContextValExprConstruction from FuncSignatureContext
-fromFuncSignatureContext :: FuncSignatureContext a => a -> ContextValExprConstruction (ContextVar a)
-fromFuncSignatureContext fc = ContextValExprConstruction (fromSortContext fc) (Set.fromList (funcSignatures fc))
-
--- | Create ContextValExprConstruction from VarContext
-fromVarContext :: a -> ContextValExprConstruction a
-fromVarContext vc = ContextValExprConstruction vc Set.empty
-
-instance SortContext a => SortContext (ContextValExprConstruction a) where
-    empty = fromVarContext empty
+instance forall a . VarContext a => SortContext (ContextValExprConstruction a) where
+    empty = fromVarContext (empty::a)
 
     memberSort = memberSort . varContext
 
@@ -104,3 +93,4 @@ instance VarContext a => FuncSignatureModifyContext (ContextValExprConstruction 
         undefinedSorts = filter (\f -> any (not . memberSort ctx) (returnSort f: args f) ) fs
 
 instance VarContext a => ValExprConstructionContext (ContextValExprConstruction a)
+

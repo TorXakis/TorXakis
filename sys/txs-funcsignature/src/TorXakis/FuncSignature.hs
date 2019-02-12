@@ -44,6 +44,7 @@ import           GHC.Generics         (Generic)
 import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.SortContext
 
 -- | A generalized, type-safe reference.
 data FuncSignature = FuncSignature { -- | The 'Name' of the function.

@@ -18,9 +18,9 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 module TorXakis.FuncDef
 ( FuncDef
 , TorXakis.FuncDef.funcName
@@ -37,6 +37,7 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.ContextValExprConstruction
+import           TorXakis.ContextVar
 import           TorXakis.Error
 import           TorXakis.FreeVars
 import           TorXakis.FuncSignature
@@ -46,6 +47,7 @@ import           TorXakis.Sort
 import           TorXakis.VarContext
 import           TorXakis.VarDef
 import           TorXakis.VarsDecl
+import           TorXakis.ValExprConstructionContext
 import           TorXakis.ValExpr.ValExpr
 
 -- | Data structure to store the information of a Function Definition:
@@ -76,13 +78,16 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars) = Left $ Error (T.pack ("Und
         undefinedSorts :: [VarDef]
         undefinedSorts = filter (not . memberSort ctx . TorXakis.VarDef.sort) (toList ps)
 
-instance FuncSignatureContext a => HasFuncSignature a FuncDef
+instance forall a . FuncSignatureContext a => HasFuncSignature a FuncDef
     where
-        getFuncSignature sctx (FuncDef fn ps bd) = 
-            let vs = toList ps in
-                case addVars (fromFuncSignatureContext sctx) vs of
+        getFuncSignature ctx (FuncDef fn ps bd) = 
+            let vs = toList ps
+                nctx :: ContextValExprConstruction (ContextVar a)
+                nctx = fromFuncSignatureContext ctx
+                in
+                case addVars nctx vs of
                      Left e -> error ("getFuncSignature is unable to make new context" ++ show e)
-                     Right vctx -> case mkFuncSignature sctx fn (map (getSort sctx) vs) (getSort vctx bd) of
+                     Right vctx -> case mkFuncSignature ctx fn (map (getSort ctx) vs) (getSort vctx bd) of
                                          Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
                                          Right x -> x
 

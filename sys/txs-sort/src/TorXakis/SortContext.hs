@@ -32,9 +32,6 @@ import           TorXakis.SortADT               (Sort(..), ADTDef)
 -- | A Sort Context instance 
 -- contains all definitions to work with sorts and references thereof.
 class SortContext a where
-    -- | An empty sort context (initial state)
-    empty :: a
-
     -- | Is the provided sort a member of the context?
     memberSort :: a -> Sort -> Bool
     -- | All Sort elements in the context

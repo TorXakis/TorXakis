@@ -23,7 +23,7 @@ import           Debug.Trace
 import           Test.Hspec
 import           Test.QuickCheck
 
-import           TorXakis.Sort
+import           TorXakis.SortContext
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
 

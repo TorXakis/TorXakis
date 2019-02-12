@@ -34,6 +34,7 @@ import           Text.Regex.TDFA
 import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.SortContext
 import           TorXakis.Value.Value
 import           TorXakis.Value.ValueAlex
 import           TorXakis.Value.ValueHappy

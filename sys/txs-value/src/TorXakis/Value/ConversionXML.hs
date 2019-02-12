@@ -36,6 +36,7 @@ import           Text.XML.Expat.Tree
 import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.SortContext
 import           TorXakis.Value.Value
 
 

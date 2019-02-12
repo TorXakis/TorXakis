@@ -21,6 +21,8 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.Sort
+  - TorXakis.SortContext
+  - TorXakis.ContextSort
   dependencies:
   - deepseq
   - hashable

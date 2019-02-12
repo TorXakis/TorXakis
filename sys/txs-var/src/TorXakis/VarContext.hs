@@ -23,7 +23,7 @@ module TorXakis.VarContext
 where
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.Sort ( SortContext(..) )
+import           TorXakis.SortContext
 import           TorXakis.VarDef
 
 -- | A Variable Context instance contains all definitions to work with sorts and variables

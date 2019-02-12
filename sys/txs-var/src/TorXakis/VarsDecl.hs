@@ -31,7 +31,7 @@ import           GHC.Generics        (Generic)
 
 import TorXakis.Error
 import TorXakis.Name
-import TorXakis.Sort (SortContext, memberSort)
+import TorXakis.SortContext
 import TorXakis.VarDef
 
 -- | Data for a variables declarations.

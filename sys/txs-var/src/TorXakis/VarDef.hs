@@ -35,7 +35,8 @@ import           GHC.Generics        (Generic)
 
 import TorXakis.Error
 import TorXakis.Name
-import TorXakis.Sort (Sort, HasSort(getSort), SortContext(memberSort))
+import TorXakis.Sort (Sort, HasSort(getSort))
+import TorXakis.SortContext
 
 -- | Data for a variable definition.
 -- TODO: should VarDef have additional type to separated different variables (e.g. user defined, channel variables, etc.)

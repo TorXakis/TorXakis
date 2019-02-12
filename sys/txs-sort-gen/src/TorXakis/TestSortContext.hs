@@ -25,6 +25,7 @@ module TorXakis.TestSortContext
 (-- * Test Sort Context
   TestSortContext (..)
 , ContextTestSort(..)
+, TorXakis.TestSortContext.empty
 )
 where
 import           Control.DeepSeq     (NFData)
@@ -33,9 +34,12 @@ import qualified Data.HashMap        as Map
 import           Data.Maybe          (catMaybes, fromMaybe)
 import           GHC.Generics        (Generic)
 
+import           TorXakis.ContextSort
 import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.SortContext
+
 
 
 -- | A TestSortContext instance contains all definitions to work with sort and reference thereof for test purposes
@@ -73,8 +77,9 @@ data ContextTestSort = ContextTestSort
                         , mapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
                         } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortContext ContextTestSort where
-    empty = ContextTestSort empty primitiveSortSize Map.empty
+-- | Constructor of empty TestSortContext
+empty :: ContextTestSort
+empty = ContextTestSort TorXakis.ContextSort.empty primitiveSortSize Map.empty
       where
         primitiveSortSize :: Map.Map Sort Int
         primitiveSortSize = Map.fromList $ zip [ SortBool
@@ -85,6 +90,7 @@ instance SortContext ContextTestSort where
                                                ]
                                                (repeat 0)
 
+instance SortContext ContextTestSort where
     memberSort   = memberSort . basis
 
     memberADT = memberADT . basis

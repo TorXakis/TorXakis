@@ -33,9 +33,9 @@ import qualified Data.MultiMap       as MultiMap
 import           Test.QuickCheck
 
 import           TorXakis.Error
-import           TorXakis.Sort ( Sort
-                               , SortContext ( memberSort )
-                               )
+import           TorXakis.Sort ( Sort )
+import           TorXakis.SortContext
+
 
 -- | GenCollection - stores generators
 newtype GenCollection c a = GenCollection ( HashMap.Map Sort ( MultiMap.MultiMap Int (c -> Gen a) ) )

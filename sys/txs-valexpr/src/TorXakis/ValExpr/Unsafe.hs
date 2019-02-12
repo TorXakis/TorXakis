@@ -260,7 +260,7 @@ unsafeDivide :: Either Error ValExpression -> Either Error ValExpression -> Eith
 unsafeDivide (Left e1)                                                   (Left e2)                                                   = Left $ Error ("Divide Error 2" ++ "\nDividend: " ++ show e1 ++ "\nDivisor:" ++ show e2)
 unsafeDivide (Left e1)                                                   _                                                           = Left $ Error ("Divide Error 1" ++ "\nDividend: " ++ show e1                     )
 unsafeDivide _                                                           (Left e2)                                                   = Left $ Error ("Divide Error 1" ++                              "\nDivisor:" ++ show e2)
-unsafeDivide _                                                           (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint 0)))  = Left $ Error ("Divide Error: Divisor equal to zero")
+unsafeDivide _                                                           (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint 0)))  = Left $ Error  "Divide Error: Divisor equal to zero"
 unsafeDivide (Right (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t))) (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)))  = unsafeConst (Cint (t `div` n) )
 unsafeDivide (Right vet)                                                 (Right ven)                                                 = Right $ ValExpression (Vdivide vet ven)
 
@@ -268,7 +268,7 @@ unsafeModulo :: Either Error ValExpression -> Either Error ValExpression -> Eith
 unsafeModulo (Left e1)                                                   (Left e2)                                                   = Left $ Error ("Modulo Error 2" ++ "\nDividend: " ++ show e1 ++ "\nDivisor:" ++ show e2)
 unsafeModulo (Left e1)                                                   _                                                           = Left $ Error ("Modulo Error 1" ++ "\nDividend: " ++ show e1                     )
 unsafeModulo _                                                           (Left e2)                                                   = Left $ Error ("Modulo Error 1" ++                              "\nDivisor:" ++ show e2)
-unsafeModulo _                                                           (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint 0)))  = Left $ Error ("Modulo Error: Divisor equal to zero")
+unsafeModulo _                                                           (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint 0)))  = Left $ Error  "Modulo Error: Divisor equal to zero"
 unsafeModulo (Right (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t))) (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)))  = unsafeConst (Cint (t `mod` n) )
 unsafeModulo (Right vet)                                                 (Right ven)                                                 = Right $ ValExpression (Vmodulo vet ven)
 

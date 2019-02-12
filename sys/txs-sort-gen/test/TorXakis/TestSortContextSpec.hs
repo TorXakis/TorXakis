@@ -26,6 +26,7 @@ import           Test.Hspec
 
 import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.SortContext
 import           TorXakis.TestSortContext
 
 unsafeName :: String -> Name

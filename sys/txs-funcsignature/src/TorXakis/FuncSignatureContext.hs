@@ -26,7 +26,7 @@ module TorXakis.FuncSignatureContext
 where
 import           TorXakis.Error
 import           TorXakis.FuncSignature
-import           TorXakis.Sort              (SortContext)
+import           TorXakis.SortContext
 
 -- | A FuncSignatureContext Context instance contains all definitions to work with 'TorXakis.FuncSignature'.
 class SortContext a => FuncSignatureContext a where

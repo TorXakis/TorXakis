@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  ContextVar
+-- Module      :  ContextVarExposed
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -15,14 +15,19 @@ See LICENSE at root directory of this repository.
 --
 -- Context for Variables.
 -----------------------------------------------------------------------------
-{-# LANGUAGE ExistentialQuantification #-}
-module TorXakis.ContextVar
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+module TorXakis.ContextVarExposed
 ( -- * Context Variable instance
   ContextVar
 , fromSortContext
 )
 where
+import           Control.DeepSeq        (NFData)
+import           Data.Data              (Data)
 import qualified Data.HashMap    as HashMap
+import           GHC.Generics           (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Name
@@ -31,33 +36,27 @@ import           TorXakis.VarContext
 import           TorXakis.VarDef
 
 -- | An instance of 'TorXakis.VarContext'.
-data ContextVar = forall a . SortContext a => 
-                            ContextVar { _sortContext :: a -- use _ to prevent warning "Defined but not used: `sortContext'"
-                                         -- variable definitions
-                                       , varDefs :: HashMap.Map (RefByName VarDef) VarDef
-                                       }
+data ContextVar a = ContextVar { sortContext :: a
+                                 -- variable definitions
+                               , varDefs :: HashMap.Map (RefByName VarDef) VarDef
+                               } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
 -- | Constructor from SortContext
-fromSortContext :: SortContext b => b -> ContextVar
+fromSortContext :: a -> ContextVar a
 fromSortContext ctx = ContextVar ctx HashMap.empty
 
-instance SortContext ContextVar where
-    -- Can't use
-    -- memberSort   = memberSort . sortContext
-    -- since compiler complains:
-    --        * Cannot use record selector `sortContext' as a function due to escaped type variables
-    --          Probable fix: use pattern-matching syntax instead
-    -- For more info see: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=existentialquantification#extension-ExistentialQuantification
-    memberSort (ContextVar ctx _) = memberSort ctx
+instance SortContext a => SortContext (ContextVar a) where
+    memberSort   = memberSort . sortContext
 
-    memberADT (ContextVar ctx _) = memberADT ctx
+    memberADT = memberADT . sortContext
 
-    lookupADT (ContextVar ctx _) = lookupADT ctx
+    lookupADT = lookupADT . sortContext
 
-    elemsADT (ContextVar ctx _) = elemsADT ctx
+    elemsADT  = elemsADT . sortContext
 
-    addADTs (ContextVar ctx vs) as = case addADTs ctx as of
-                                                Left e     -> Left e
-                                                Right sctx -> Right $ ContextVar sctx vs
+    addADTs ctx as = case addADTs (sortContext ctx) as of
+                          Left e     -> Left e
+                          Right sctx -> Right $ ctx {sortContext = sctx}
 
 -- | non unique Variable Definitions (i.e. duplicate names)
 nuVarDefs :: [VarDef] -> [VarDef]
@@ -67,7 +66,7 @@ nuVarDefs = repeatedByName
 undefinedSorts :: SortContext a => a -> [VarDef] -> [VarDef]
 undefinedSorts ctx = filter (not . memberSort ctx . sort)
 
-instance VarContext ContextVar where
+instance SortContext a => VarContext (ContextVar a) where
     memberVar ctx v = HashMap.member v (varDefs ctx)
 
     lookupVar ctx v = HashMap.lookup v (varDefs ctx)
