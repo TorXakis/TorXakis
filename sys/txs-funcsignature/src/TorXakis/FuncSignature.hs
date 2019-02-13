@@ -25,6 +25,8 @@ module TorXakis.FuncSignature
 ( -- * Function Signature
   FuncSignature (funcName, args, returnSort)
 , mkFuncSignature
+, isReservedFuncSignature
+, isPredefinedNonSolvableFuncSignature
   -- * Has Function Signature class
 , HasFuncSignature (..)
   -- ** Conversion List to Map By Function Signature
@@ -56,11 +58,92 @@ data FuncSignature = FuncSignature { -- | The 'Name' of the function.
                                    }
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
--- | Constructor of 'TorXakis.FuncSignature'
+-- | is Prefined NonSolvable Function Signature?
+-- One can make funcSignatures for Prefined NonSolvable Functions
+-- However these funcSignature can't be added to a Func(Signature)Context.
+isPredefinedNonSolvableFuncSignature :: FuncSignature -> Bool
+isPredefinedNonSolvableFuncSignature f =
+    let str = TorXakis.Name.toString (funcName f) in
+        case (str,            args f,                   returnSort f ) of
+             ("toString",     [_],                      SortString   ) -> True  -- toString with single argument is predefined for all Sorts
+             ("fromString",   [SortString],             _            ) -> True
+             ("toXML",        [_],                      SortString   ) -> True
+             ("fromXML",      [SortString],             _            ) -> True
+             ("takeWhile",    [SortString, SortString], SortString   ) -> True
+             ("takeWhileNot", [SortString, SortString], SortString   ) -> True
+             ("dropWhile",    [SortString, SortString], SortString   ) -> True
+             ("dropWhileNot", [SortString, SortString], SortString   ) -> True
+             _                                                         -> False
+
+-- | isReservedFuncSignature
+-- Includes 
+-- * TorXakis FuncSignatures that are mapped onto special constructors
+-- * FuncSignatures that are implicitly defined by defining Sorts / ADTDefs
+isReservedFuncSignature :: SortContext a => a -> Name -> [Sort] -> Sort -> Bool
+isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
+                                     || isSortFuncSignature
+  where
+    isMappedFuncSignature :: Bool
+    isMappedFuncSignature =
+        let str = TorXakis.Name.toString n in
+            case (str,           ss,                         s          ) of
+                 ("==",          [a,b],                      SortBool   ) -> a == b   -- equality is defined for all types
+                 ("<>",          [a,b],                      SortBool   ) -> a == b   -- not equality is defined for all types
+                 ("not",         [SortBool],                 SortBool   ) -> True
+                 ("/\\",         [SortBool, SortBool],       SortBool   ) -> True
+                 ("\\/",         [SortBool, SortBool],       SortBool   ) -> True
+                 ("\\|/",        [SortBool, SortBool],       SortBool   ) -> True
+                 ("=>",          [SortBool, SortBool],       SortBool   ) -> True
+                 ("+",           [SortInt],                  SortInt    ) -> True
+                 ("-",           [SortInt],                  SortInt    ) -> True
+                 ("abs",         [SortInt],                  SortInt    ) -> True
+                 ("+",           [SortInt, SortInt],         SortInt    ) -> True
+                 ("-",           [SortInt, SortInt],         SortInt    ) -> True
+                 ("*",           [SortInt, SortInt],         SortInt    ) -> True
+                 ("/",           [SortInt, SortInt],         SortInt    ) -> True
+                 ("%",           [SortInt, SortInt],         SortInt    ) -> True
+                 ("<",           [SortInt, SortInt],         SortBool   ) -> True
+                 ("<=",          [SortInt, SortInt],         SortBool   ) -> True
+                 (">=",          [SortInt, SortInt],         SortBool   ) -> True
+                 (">",           [SortInt, SortInt],         SortBool   ) -> True
+                 ("len",         [SortString],               SortInt    ) -> True
+                 ("++",          [SortString, SortString],   SortString ) -> True
+                 ("at",          [SortString, SortInt],      SortString ) -> True
+                 ("strinre",     [SortString, SortRegex],    SortBool   ) -> True
+                 _                                                        -> False
+
+    isSortFuncSignature :: Bool
+    isSortFuncSignature =
+        case ss of
+             [SortADT a] -> case lookupADT ctx a of
+                                Nothing   -> error ("isReservedFuncSignature -- ADTDef " ++ show a ++ " not defined in context ")
+                                Just aDef -> equalsIsConstructorFunc aDef || equalsAccessorFunc aDef
+             _           -> False
+
+    -- | exists constructor : funcName == isCstrName
+    equalsIsConstructorFunc :: ADTDef -> Bool
+    equalsIsConstructorFunc aDef =
+           s == SortBool 
+        && any (\c -> TorXakis.Name.toString n == "is" ++ TorXakis.Name.toString (constructorName c)) (elemsConstructor aDef)
+
+    -- | exists field : funcName == fieldName && funcReturnSort == fieldSort
+    equalsAccessorFunc :: ADTDef -> Bool
+    equalsAccessorFunc aDef =
+        any (\c -> any (\f -> fieldName f == n && sort f == s) (fields c)) (elemsConstructor aDef) 
+
+-- | Constructor of 'TorXakis.FuncSignature'.
+-- An FuncSignature is returned when the following constraints are satisfied:
+--
+--   * FuncSignature is not a reserved signature (both default and depending on sort).
+--
+--   * Sorts of arguments and return value are defined.
+--
+--   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
 mkFuncSignature :: SortContext a => a -> Name -> [Sort] -> Sort -> Either Error FuncSignature
-mkFuncSignature ctx n as s | not $ null undefinedSorts = Left $ Error ("mkFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
-                           | memberSort ctx s          = Right $ FuncSignature n as s
-                           | otherwise                 = Left $ Error ("mkFuncSignature: Return sort has undefined sort " ++ show s)
+mkFuncSignature ctx n as s | not $ null undefinedSorts          = Left $ Error ("mkFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
+                           | isReservedFuncSignature ctx n as s = Left $ Error ("mkFuncSignature: Reserved function signature " ++ show n ++ " " ++ show as ++ " " ++ show s)
+                           | memberSort ctx s                   = Right $ FuncSignature n as s
+                           | otherwise                          = Left $ Error ("mkFuncSignature: Return sort has undefined sort " ++ show s)
     where
         undefinedSorts :: [Sort]
         undefinedSorts = filter (not . memberSort ctx) as

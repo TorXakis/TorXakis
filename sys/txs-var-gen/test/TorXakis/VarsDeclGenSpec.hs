@@ -29,8 +29,7 @@ import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
-import           TorXakis.VarDef
-import           TorXakis.VarsDecl
+import           TorXakis.Var
 import           TorXakis.VarsDeclGen
 
 propertyInContext  :: (ContextTestSort -> Gen Bool) -> Gen Bool

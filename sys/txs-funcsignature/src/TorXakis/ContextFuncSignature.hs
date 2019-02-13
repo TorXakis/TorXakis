@@ -28,13 +28,12 @@ import qualified Data.Set    as Set
 import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
-import           TorXakis.SortContext
 
 -- | An instance of 'TorXakis.VarContext'.
 data ContextFuncSignature = forall a . SortContext a => 
-                            ContextFuncSignature { _sortContext :: a -- use _ to prevent warning "Defined but not used: `sortContext'"
+                            ContextFuncSignature { _sortContext :: a -- not used due to compiler
                                                    -- defined funcSignatures
-                                                 , _funcSignatures :: Set.Set FuncSignature
+                                                 , localFuncSignatures :: Set.Set FuncSignature
                                                  }
 -- | Constructor from SortContext
 fromSortContext :: SortContext b => b -> ContextFuncSignature
@@ -60,15 +59,15 @@ instance SortContext ContextFuncSignature where
                                                 Right sctx -> Right $ ContextFuncSignature sctx vs
 
 instance FuncSignatureContext ContextFuncSignature where
-    memberFunc ctx v = Set.member v (_funcSignatures ctx)
+    memberFunc ctx v = Set.member v (localFuncSignatures ctx)
 
-    funcSignatures ctx = Set.toList (_funcSignatures ctx)
+    funcSignatures ctx = Set.toList (localFuncSignatures ctx)
 
 instance FuncSignatureModifyContext ContextFuncSignature ContextFuncSignature where
     addFuncSignatures ctx fs
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
-        | otherwise                          = Right $ ctx {_funcSignatures = Set.union (Set.fromList fs) (_funcSignatures ctx)}
+        | otherwise                          = Right $ ctx {localFuncSignatures = Set.union (Set.fromList fs) (localFuncSignatures ctx)}
       where
         nuFuncSignatures :: [FuncSignature]
         nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs

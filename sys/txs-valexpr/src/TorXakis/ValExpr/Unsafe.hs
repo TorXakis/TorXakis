@@ -58,10 +58,11 @@ import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.SortContext
 import           TorXakis.ValExpr.RegexXSD2Posix
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.Value
-import           TorXakis.VarDef
+import           TorXakis.Var
 
 trueValExpr :: ValExpression
 trueValExpr = ValExpression $ Vconst (Cbool True)

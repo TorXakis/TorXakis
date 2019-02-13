@@ -20,6 +20,10 @@ module TorXakis.SortGenContext
   arbitrarySort
 , arbitraryADTDefs
 , arbitraryTestSortContext
+  -- dependencies, yet part of interface
+, Sort
+, ADTDef
+, ContextTestSort
 )
 where
 import qualified Data.Set            as Set

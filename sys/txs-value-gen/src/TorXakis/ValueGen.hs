@@ -28,6 +28,7 @@ import           Test.QuickCheck
 import TorXakis.Distribute
 import TorXakis.Name
 import TorXakis.Sort
+import TorXakis.SortContext
 import TorXakis.Value
 import TorXakis.TestSortContext
 import TorXakis.SortGenContext

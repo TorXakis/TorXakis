@@ -1,0 +1,24 @@
+TODO: minimize dependencies by re-exporting used definitions.
+
+E.g. Producer makes X (where X is defined in other package)
+     Consumer takes X.
+     
+     When I want to store X (in a buffer) to decouple Producer and Consumer, I need to import X as well.
+     This creates a dependency that we might not want!
+
+     See https://github.com/ndmitchell/hlint/issues/596 for more info
+     
+This makes import and export more delicate:
+Both Sorts and Variables are referenced by Name.
+Yet should I use this implementation detail of SortContext, when specifying a Variable Context?
+If not, I get the following warning:
+    src\TorXakis\VarContext.hs:23:3: warning: [-Wduplicate-exports]
+            `RefByName' is exported by `RefByName' and `module TorXakis.SortContext'
+           |
+        23 | , RefByName
+           |   ^^^^^^^^^
+           
+--------------------------------------------------------------------------------------------------------
+How to hide information?
+
+See e.g. https://mail.haskell.org/pipermail/haskell-cafe/2019-February/130693.html

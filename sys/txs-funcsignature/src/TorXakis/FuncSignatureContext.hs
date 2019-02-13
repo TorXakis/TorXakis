@@ -22,9 +22,11 @@ module TorXakis.FuncSignatureContext
   FuncSignatureContext (..)
   -- ** Func Signature Modify Context class
 , FuncSignatureModifyContext (..)
+  -- dependencies, yet part of interface
+, module TorXakis.SortContext
+, FuncSignature
 )
 where
-import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.SortContext
 

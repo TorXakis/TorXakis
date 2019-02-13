@@ -28,7 +28,7 @@ import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.SortContext
 import           TorXakis.VarContext
-import           TorXakis.VarDef
+import           TorXakis.Var
 
 -- | An instance of 'TorXakis.VarContext'.
 data ContextVarHidden = forall a . SortContext a => 

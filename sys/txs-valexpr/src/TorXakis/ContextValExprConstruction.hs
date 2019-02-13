@@ -13,78 +13,86 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Context containing Value Expressions.
+-- Context containing Value Expressions for construction.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
 module TorXakis.ContextValExprConstruction
 ( -- * Context
-  -- ** instance of ValExpr Context
+  -- ** instance of ValExpr Context for construction
   ContextValExprConstruction
+, fromVarContext
+, fromFuncSignatureContext
 )
 where
-import           Control.DeepSeq        (NFData)
-import           Data.Data              (Data)
 import qualified Data.Set               as Set
-import           GHC.Generics           (Generic)
 
+import           TorXakis.ContextVar
 import           TorXakis.Error
 import           TorXakis.FuncSignature
-import           TorXakis.FuncSignatureContext
-import           TorXakis.Sort (memberSort, SortContext(..))
 import           TorXakis.ValExprConstructionContext
-import           TorXakis.VarContext (VarContext(..))
+
+-- TODO: how is this context used? If always add Variables to a funcSignatureContext then the implementation should be swapped!
 
 -- | An instance of 'TorXakis.ValExprConstructionContext'.
-data ContextValExprConstruction a = ContextValExprConstruction { varContext :: a
-                                                                 -- funcSignatures
-                                                               , _funcSignatures :: Set.Set FuncSignature
-                                                               } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+data ContextValExprConstruction = forall a . VarContext a => 
+                                        ContextValExprConstruction { _varContext :: a -- not used due to compiler
+                                                                     -- funcSignatures
+                                                                   , localFuncSignatures :: Set.Set FuncSignature
+                                                                   }
 
-instance forall a . VarContext a => SortContext (ContextValExprConstruction a) where
-    empty = fromVarContext (empty::a)
+-- | Constructor from VarContext
+fromVarContext :: VarContext b => b -> ContextValExprConstruction
+fromVarContext ctx = ContextValExprConstruction ctx Set.empty
 
-    memberSort = memberSort . varContext
+-- | Constructor from FuncSignatureContext
+fromFuncSignatureContext :: FuncSignatureContext b => b -> ContextValExprConstruction
+fromFuncSignatureContext ctx = ContextValExprConstruction (fromSortContext ctx) (Set.fromList (funcSignatures ctx))
 
-    memberADT = memberADT . varContext
+instance SortContext ContextValExprConstruction where
+    -- Can't use
+    -- memberSort   = memberSort . varContext
+    -- since compiler complains:
+    --        * Cannot use record selector `sortContext' as a function due to escaped type variables
+    --          Probable fix: use pattern-matching syntax instead
+    -- For more info see: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=existentialquantification#extension-ExistentialQuantification
+    memberSort (ContextValExprConstruction ctx _) = memberSort ctx
 
-    lookupADT = lookupADT . varContext
+    memberADT (ContextValExprConstruction ctx _) = memberADT ctx
 
-    elemsADT = elemsADT . varContext
+    lookupADT (ContextValExprConstruction ctx _) = lookupADT ctx
 
-    addADTs ctx as = case addADTs (varContext ctx) as of
-                          Left e     -> Left e
-                          Right sctx -> Right $ ctx {varContext = sctx}
+    elemsADT (ContextValExprConstruction ctx _) = elemsADT ctx
 
-instance VarContext a => VarContext (ContextValExprConstruction a) where
-    memberVar = memberVar . varContext
+    addADTs (ContextValExprConstruction ctx vs) as = case addADTs ctx as of
+                                                        Left e     -> Left e
+                                                        Right sctx -> Right $ ContextValExprConstruction sctx vs
 
-    lookupVar = lookupVar . varContext
+instance VarContext ContextValExprConstruction where
+    memberVar (ContextValExprConstruction ctx _) = memberVar ctx
 
-    elemsVar = elemsVar . varContext
+    lookupVar (ContextValExprConstruction ctx _) = lookupVar ctx
 
-    addVars ctx vs = case addVars (varContext ctx) vs of
-                          Left e     -> Left e
-                          Right sctx -> Right $ ctx {varContext = sctx}
+    elemsVar (ContextValExprConstruction ctx _) = elemsVar ctx
 
-    replaceVars ctx vs = case replaceVars (varContext ctx) vs of
-                              Left e     -> Left e
-                              Right sctx -> Right $ ctx {varContext = sctx}
+    addVars (ContextValExprConstruction ctx vs) as = case addVars ctx as of
+                                                        Left e     -> Left e
+                                                        Right sctx -> Right $ ContextValExprConstruction sctx vs
 
-instance VarContext a => FuncSignatureContext (ContextValExprConstruction a) where
-    memberFunc ctx v = Set.member v (_funcSignatures ctx)
+    replaceVars (ContextValExprConstruction ctx vs) as = case replaceVars ctx as of
+                                                                Left e     -> Left e
+                                                                Right sctx -> Right $ ContextValExprConstruction sctx vs
 
-    funcSignatures ctx    = Set.toList (_funcSignatures ctx)
+instance FuncSignatureContext ContextValExprConstruction where
+    memberFunc ctx v = Set.member v (localFuncSignatures ctx)
 
-instance VarContext a => FuncSignatureModifyContext (ContextValExprConstruction a) (ContextValExprConstruction a) where
+    funcSignatures ctx    = Set.toList (localFuncSignatures ctx)
+
+instance FuncSignatureModifyContext ContextValExprConstruction ContextValExprConstruction where
     addFuncSignatures ctx fs
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
-        | otherwise                          = Right $ ctx {_funcSignatures = Set.union (Set.fromList fs) (_funcSignatures ctx)}
+        | otherwise                          = Right $ ctx {localFuncSignatures = Set.union (Set.fromList fs) (localFuncSignatures ctx)}
       where
         nuFuncSignatures :: [FuncSignature]
         nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs
@@ -92,5 +100,4 @@ instance VarContext a => FuncSignatureModifyContext (ContextValExprConstruction 
         undefinedSorts :: [FuncSignature]
         undefinedSorts = filter (\f -> any (not . memberSort ctx) (returnSort f: args f) ) fs
 
-instance VarContext a => ValExprConstructionContext (ContextValExprConstruction a)
-
+instance ValExprConstructionContext ContextValExprConstruction

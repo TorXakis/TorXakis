@@ -18,7 +18,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
-module TorXakis.VarsDecl
+module TorXakis.Var.VarsDecl
 ( VarsDecl
 , mkVarsDecl
 , toList
@@ -32,7 +32,7 @@ import           GHC.Generics        (Generic)
 import TorXakis.Error
 import TorXakis.Name
 import TorXakis.SortContext
-import TorXakis.VarDef
+import TorXakis.Var.VarDef
 
 -- | Data for a variables declarations.
 --   The order of the variables declarations is relevant.
@@ -51,3 +51,4 @@ mkVarsDecl ctx l | not $ null nuVars            = Left $ Error ("Non unique name
 
         undefinedSorts :: [VarDef]
         undefinedSorts = filter (not . memberSort ctx . sort) l
+

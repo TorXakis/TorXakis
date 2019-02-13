@@ -15,12 +15,8 @@ See LICENSE at root directory of this repository.
 --
 -- Context containing Value Expressions.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
 module TorXakis.Subst
 ( -- * Context
   -- ** instance of ValExpr Context
@@ -34,8 +30,6 @@ module TorXakis.Subst
 )
 where
 import           Control.Arrow          (first)
-import           Control.DeepSeq        (NFData)
-import           Data.Data              (Data)
 import           Data.Either
 import qualified Data.HashMap           as HashMap
 import           Data.List
@@ -43,12 +37,10 @@ import qualified Data.Map               as Map
 import           Data.Maybe
 import qualified Data.Set               as Set
 import qualified Data.Text              as T
-import           GHC.Generics           (Generic)
 
 import           TorXakis.ContextValExprConstruction
 import           TorXakis.ContextVar
 import           TorXakis.Error
-import           TorXakis.FreeVars
 import           TorXakis.FuncContext
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
@@ -60,59 +52,63 @@ import           TorXakis.ValExprContext
 import           TorXakis.ValExpr.Unsafe
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.ValExpr.ValExprBasis
-import           TorXakis.VarDef
-import           TorXakis.VarsDecl
+import           TorXakis.Var
 
 -- | An instance of 'TorXakis.ValExprConstructionContext'.
-data ContextValExpr a = ContextValExpr { varContext :: a
-                                         -- funcSignatures
-                                       , funcDefs :: HashMap.Map FuncSignature FuncDef
-                                       } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+data ContextValExpr = forall a . VarContext a => 
+                            ContextValExpr { _varContext :: a
+                                             -- funcSignatures
+                                           , funcDefs :: HashMap.Map FuncSignature FuncDef
+                                           }
 
 -- | Create ContextValExpr from FuncSignatureContext
-fromFuncContext :: FuncContext a => a -> ContextValExpr (ContextVar a)
+fromFuncContext :: FuncContext a => a -> ContextValExpr
 fromFuncContext fc = ContextValExpr (fromSortContext fc) (toMapByFuncSignature fc (elemsFunc fc))
 
 -- | Create ContextValExpr from VarContext
-fromVarContext :: a -> ContextValExpr a
+fromVarContext :: VarContext a => a -> ContextValExpr
 fromVarContext vc = ContextValExpr vc HashMap.empty
 
-instance SortContext a => SortContext (ContextValExpr a) where
-    empty = TorXakis.Subst.fromVarContext empty
+instance SortContext ContextValExpr where
+    -- Can't use
+    -- memberSort   = memberSort . varContext
+    -- since compiler complains:
+    --        * Cannot use record selector `sortContext' as a function due to escaped type variables
+    --          Probable fix: use pattern-matching syntax instead
+    -- For more info see: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=existentialquantification#extension-ExistentialQuantification
+    memberSort (ContextValExpr ctx _) = memberSort ctx
 
-    memberSort = memberSort . varContext
+    memberADT (ContextValExpr ctx _) = memberADT ctx
 
-    memberADT = memberADT . varContext
+    lookupADT (ContextValExpr ctx _) = lookupADT ctx
 
-    lookupADT = lookupADT . varContext
+    elemsADT (ContextValExpr ctx _) = elemsADT ctx
 
-    elemsADT = elemsADT . varContext
+    addADTs (ContextValExpr ctx vs) as = case addADTs ctx as of
+                                                        Left e     -> Left e
+                                                        Right sctx -> Right $ ContextValExpr sctx vs
 
-    addADTs ctx as = case addADTs (varContext ctx) as of
-                          Left e     -> Left e
-                          Right sctx -> Right $ ctx {varContext = sctx}
+instance VarContext ContextValExpr where
+    memberVar (ContextValExpr ctx _) = memberVar ctx
 
-instance VarContext a => VarContext (ContextValExpr a) where
-    memberVar = memberVar . varContext
+    lookupVar (ContextValExpr ctx _) = lookupVar ctx
 
-    lookupVar = lookupVar . varContext
+    elemsVar (ContextValExpr ctx _) = elemsVar ctx
 
-    elemsVar = elemsVar . varContext
+    addVars (ContextValExpr ctx vs) as = case addVars ctx as of
+                                            Left e     -> Left e
+                                            Right sctx -> Right $ ContextValExpr sctx vs
 
-    addVars ctx vs = case addVars (varContext ctx) vs of
-                          Left e     -> Left e
-                          Right sctx -> Right $ ctx {varContext = sctx}
+    replaceVars (ContextValExpr ctx vs) as = case replaceVars ctx as of
+                                                Left e     -> Left e
+                                                Right sctx -> Right $ ContextValExpr sctx vs
 
-    replaceVars ctx vs = case replaceVars (varContext ctx) vs of
-                              Left e     -> Left e
-                              Right sctx -> Right $ ctx {varContext = sctx}
-
-instance VarContext a => FuncSignatureContext (ContextValExpr a) where
+instance FuncSignatureContext ContextValExpr where
     memberFunc ctx v = HashMap.member v (funcDefs ctx)
 
     funcSignatures ctx    = HashMap.keys (funcDefs ctx)
 
-instance VarContext a => FuncSignatureModifyContext (ContextValExpr a) (ContextValExprConstruction (ContextValExpr a)) where
+instance FuncSignatureModifyContext ContextValExpr ContextValExprConstruction where
     addFuncSignatures ctx fs
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
@@ -124,7 +120,7 @@ instance VarContext a => FuncSignatureModifyContext (ContextValExpr a) (ContextV
         undefinedSorts :: [FuncSignature]
         undefinedSorts = filter (\f -> any (not . memberSort ctx) (returnSort f: args f) ) fs
 
-instance VarContext a => FuncContext (ContextValExpr a) where
+instance FuncContext ContextValExpr where
     lookupFunc ctx v = HashMap.lookup v (funcDefs ctx)
 
     elemsFunc ctx    = HashMap.elems (funcDefs ctx)
@@ -173,9 +169,8 @@ instance VarContext a => FuncContext (ContextValExpr a) where
                                             [] -> Nothing
                                             xs -> Just (getFuncSignature ctx fd, Set.fromList xs)
 
-        newCtx :: ContextValExpr a -> HashMap.Map FuncSignature FuncDef -> ContextValExpr a
-        newCtx ctx' mfs = let updateCtx :: ContextValExpr a
-                              updateCtx = ctx'{ funcDefs = HashMap.union (funcDefs ctx') mfs }
+        newCtx :: ContextValExpr -> HashMap.Map FuncSignature FuncDef -> ContextValExpr
+        newCtx ctx' mfs = let updateCtx = ctx'{ funcDefs = HashMap.union (funcDefs ctx') mfs }
                               (lm, rm)  = HashMap.mapEither (newFuncDef updateCtx) mfs in
                                 if HashMap.null lm 
                                     then let (lc, rc) = HashMap.partition isConstBody rm in
@@ -184,7 +179,7 @@ instance VarContext a => FuncContext (ContextValExpr a) where
                                                 else newCtx (ctx'{ funcDefs = HashMap.union (funcDefs ctx') lc }) rc
                                     else error ("All check passed, yet errors occurred\n" ++ show (HashMap.elems lm))
 
-        newFuncDef :: ContextValExpr a -> FuncDef -> Either Error FuncDef
+        newFuncDef :: ContextValExpr -> FuncDef -> Either Error FuncDef
         newFuncDef updateCtx fd = let nm = TorXakis.FuncDef.funcName fd
                                       ps = paramDefs fd
                                       bd = body fd in
@@ -228,9 +223,9 @@ findUndefinedFuncSignature definedFuncSignatures = findUndefinedFuncSignature'
         findUndefinedFuncSignatureView (Viscstr _ _ v)                     = findUndefinedFuncSignature' v
         findUndefinedFuncSignatureView (Vaccess _ _ _ v)                   = findUndefinedFuncSignature' v
 
-instance VarContext a => ValExprConstructionContext (ContextValExpr a)
+instance ValExprConstructionContext ContextValExpr
 
-instance VarContext a => ValExprContext (ContextValExpr a)
+instance ValExprContext ContextValExpr
 
 unsafeSubst :: ValExprContext a => a -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 unsafeSubst ctx  mp = unsafeSubstView . view
@@ -270,7 +265,7 @@ mismatchesSort ctx = HashMap.filterWithKey mismatch
         mismatch :: RefByName VarDef -> ValExpression -> Bool
         mismatch r e = case lookupVar ctx r of
                             Nothing -> error ("mismatchesSort - variable not defined in context - " ++ show r)
-                            Just v  -> TorXakis.VarDef.sort v /= getSort ctx e
+                            Just v  -> TorXakis.Var.sort v /= getSort ctx e
 
 -- | Substitution: Substitute some variables by value expressions in a value expression.
 -- The Either is needed since substitution can cause an invalid ValExpr. 

@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  FreeVars
+-- Module      :  Var
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -13,23 +13,14 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Free Variables in Value Expression related functionality.
+-- Variable Definition
 -----------------------------------------------------------------------------
-module TorXakis.FreeVars
-( FreeVars (..)
+module TorXakis.Var
+( module TorXakis.Var.FreeVars
+, module TorXakis.Var.VarDef
+, module TorXakis.Var.VarsDecl
 )
 where
-import qualified Data.Set               as Set
-
-
-import TorXakis.Name
-import TorXakis.VarDef
-
--- | Class for Free Variables
-class FreeVars a where
-    -- | Determine the free variables
-    freeVars :: a -> Set.Set (RefByName VarDef)
-    -- | Is expression closed?
-    -- A closed expression has no free variables.
-    isClosed :: a -> Bool
-    isClosed = Set.null . freeVars
+import           TorXakis.Var.FreeVars
+import           TorXakis.Var.VarDef
+import           TorXakis.Var.VarsDecl

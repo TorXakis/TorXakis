@@ -19,12 +19,13 @@ module TorXakis.VarContext
 ( -- * Context
   -- ** Variable Context class
   VarContext (..)
+  -- dependencies, yet part of interface
+, module TorXakis.SortContext
+, VarDef
 )
 where
-import           TorXakis.Error
-import           TorXakis.Name
 import           TorXakis.SortContext
-import           TorXakis.VarDef
+import           TorXakis.Var
 
 -- | A Variable Context instance contains all definitions to work with sorts and variables
     -- TODO? addVarsDecl function -> don't need to check uniqueness of added variables (still need to check for undefined sorts).

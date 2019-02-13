@@ -20,7 +20,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module TorXakis.VarDef
+module TorXakis.Var.VarDef
 ( VarDef
 , name
 , sort

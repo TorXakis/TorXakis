@@ -19,9 +19,9 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.FuncDef
+  - TorXakis.Subst
   - TorXakis.ValExpr
   - TorXakis.ValExprConstructionContext
-  - TorXakis.ValExprContext
   dependencies:
   - array
   - containers

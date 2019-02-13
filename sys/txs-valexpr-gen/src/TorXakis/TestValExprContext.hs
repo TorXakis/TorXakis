@@ -22,7 +22,7 @@ See LICENSE at root directory of this repository.
 module TorXakis.TestValExprContext
 (-- * Test Sort Context
   TestValExprContext(..)
-, MinimalTestValExprContext(..)
+, ContextTestValExpr(..)
 )
 where
 --import           Debug.Trace
@@ -41,7 +41,7 @@ import           TorXakis.ValExpr
 import           TorXakis.Value
 import           TorXakis.ValueGen
 import           TorXakis.VarContext
-import           TorXakis.VarDef
+import           TorXakis.Var
 
 -------------------------------------------------------------------------------
 -- Generic Generators
@@ -82,9 +82,11 @@ nonZero ctx = do
 division :: TestValExprContext a => a -> Gen (ValExpression, ValExpression)
 division ctx = do
     n <- getSize
-    teller <- resize (n-2) (arbitraryValExprOfSort ctx SortInt)
-    noemer <- resize (n-2) (nonZero ctx)
-    return (teller, noemer)
+    let available = n - 2 in do -- distrubte available size over two intervals
+        t <- choose (0, available)
+        teller <- resize t             (arbitraryValExprOfSort ctx SortInt)
+        noemer <- resize (available-t) (nonZero ctx)
+        return (teller, noemer)
 
 genValExprModulo :: TestValExprContext a => a -> Gen ValExpression
 genValExprModulo ctx = do
@@ -112,9 +114,9 @@ class (TestSortContext a, VarContext a)
         arbitraryValExprOfSort ctx s
     arbitraryValExprOfSort :: a -> Sort -> Gen ValExpression
 
-data MinimalTestValExprContext = MinimalTestValExprContext 
-                                    { testSortContext :: MinimalTestSortContext
-                                    , _genMap :: TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
+data ContextTestValExpr = ContextTestValExpr 
+                                    { testSortContext :: ContextTestSort
+                                    , _genMap :: TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
                                     -- to be added
                                     -- 0. predefined operators (modulo, and, not, sum , etc)
                                     -- 1. value generation for all defined sorts
@@ -122,87 +124,110 @@ data MinimalTestValExprContext = MinimalTestValExprContext
                                     -- 3. If THEN Else etc.
                                     -- 4. generators for variables (based on variables defined in context)
                                     -- 5. generators for funcInstantiation (based on funcSignatures defined in context)
-
-                                    , _varDefs :: HashMap.Map (RefByName VarDef) VarDef
+                                    , varDefs :: HashMap.Map (RefByName VarDef) VarDef
                                     }
 
-instance SortContext MinimalTestValExprContext where
-    empty = MinimalTestValExprContext empty
-                                      ( addSuccess SortBool   0 (genValExprValueOfSort SortBool)
-                                      $ addSuccess SortBool   1 genValExprNot
-                                      $ addSuccess SortInt    0 (genValExprValueOfSort SortInt)
-                                      $ addSuccess SortInt    2 genValExprModulo
-                                      $ addSuccess SortInt    2 genValExprDivide
-                                      $ addSuccess SortChar   0 (genValExprValueOfSort SortChar)
-                                      $ addSuccess SortString 0 (genValExprValueOfSort SortString)
-                                      $ addSuccess SortRegex  0 (genValExprValueOfSort SortRegex)
-                                        TorXakis.GenCollection.empty
-                                      )
-                                      HashMap.empty
-        where
-             addSuccess :: Sort 
-                        -> Int 
-                        -> (MinimalTestValExprContext -> Gen ValExpression) 
-                        -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
-                        -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
-             addSuccess s n g c = let ctx = MinimalTestValExprContext empty TorXakis.GenCollection.empty HashMap.empty
-                                    in 
-                                        case TorXakis.GenCollection.add ctx s n g c of
-                                            Left e -> error ("empty - successful add expected, yet " ++ show e)
-                                            Right c' -> c'
+initialGenMap :: TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
+initialGenMap =   addSuccess SortBool   0 (genValExprValueOfSort SortBool)
+                $ addSuccess SortBool   1 genValExprNot
+                $ addSuccess SortInt    0 (genValExprValueOfSort SortInt)
+                $ addSuccess SortInt    2 genValExprModulo
+                $ addSuccess SortInt    2 genValExprDivide
+                $ addSuccess SortChar   0 (genValExprValueOfSort SortChar)
+                $ addSuccess SortString 0 (genValExprValueOfSort SortString)
+                $ addSuccess SortRegex  0 (genValExprValueOfSort SortRegex)
+                  TorXakis.GenCollection.empty
+    where
+         addSuccess :: Sort
+                    -> Int
+                    -> (ContextTestValExpr -> Gen ValExpression) 
+                    -> TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
+                    -> TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
+         addSuccess s n g c = let ctx = ContextTestValExpr TorXakis.SortGen.empty TorXakis.GenCollection.empty HashMap.empty
+                                in 
+                                    case TorXakis.GenCollection.add ctx s n g c of
+                                        Left e -> error ("empty - successful add expected, yet " ++ show e)
+                                        Right c' -> c'
 
-    adtDefs ctx    = adtDefs (testSortContext ctx)
+empty :: ContextTestValExpr
+empty = ContextTestValExpr TorXakis.SortGen.empty
+                           initialGenMap
+                           HashMap.empty
+    
+instance SortContext ContextTestValExpr where
+    memberSort   = memberSort . testSortContext
+
+    memberADT = memberADT . testSortContext
+
+    lookupADT = lookupADT . testSortContext
+
+    elemsADT  = elemsADT . testSortContext
+
     addADTs ctx as = case addADTs (testSortContext ctx) as of
                           Left e     -> Left e
                           Right vctx -> Right $ ctx { _genMap = addValueGens (_genMap ctx) as
                                                     , testSortContext = vctx
                                                     }
         where
-            addValueGens :: TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
+            addValueGens :: TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
                         -> [ADTDef]
-                        -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
+                        -> TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
             addValueGens = foldl addValueGen
                 where
-                    addValueGen :: TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
+                    addValueGen :: TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
                                 -> ADTDef
-                                -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
+                                -> TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
                     addValueGen m a = let srt = SortADT (toRefByName a)
                                         in
                                           case TorXakis.GenCollection.add ctx srt 0 (genValExprValueOfSort srt) m of
                                             Left e -> error ("addADTs - successful add expected, yet " ++ show e)
                                             Right c -> c
 
-instance TestSortContext MinimalTestValExprContext where
-    mapSortSize ctx                 = mapSortSize (testSortContext ctx)
-    mapAdtMapConstructorSize ctx    = mapAdtMapConstructorSize (testSortContext ctx)
+instance TestSortContext ContextTestValExpr where
+    sortSize = sortSize . testSortContext
+    adtSize = adtSize . testSortContext
+    constructorSize = constructorSize . testSortContext
 
-instance VarContext MinimalTestValExprContext where
-    varDefs = _varDefs
+-- | non unique Variable Definitions (i.e. duplicate names)
+nuVarDefs :: [VarDef] -> [VarDef]
+nuVarDefs = repeatedByName
+
+-- | undefined Sorts of Variable Definitions.
+undefinedSorts :: SortContext a => a -> [VarDef] -> [VarDef]
+undefinedSorts ctx = filter (not . memberSort ctx . TorXakis.Var.sort)
+
+addVarGen :: ContextTestValExpr
+          -> [VarDef]
+          -> TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
+          -> TorXakis.GenCollection.GenCollection ContextTestValExpr ValExpression
+addVarGen _ []       m = m
+addVarGen ctx xs@(x:_) m = let t = TorXakis.Var.sort x
+                               (ts,os) = List.partition (\v -> TorXakis.Var.sort v == t) xs
+                            in
+                              case TorXakis.GenCollection.add ctx t 0 ( genValExprVar (map toRefByName ts) ) m of
+                                       Left e -> error ("addVars - successful add expected, yet " ++ show e)
+                                       Right c -> addVarGen ctx os c
+
+instance VarContext ContextTestValExpr where
+    memberVar ctx v = HashMap.member v (varDefs ctx)
+
+    lookupVar ctx v = HashMap.lookup v (varDefs ctx)
+
+    elemsVar ctx    = HashMap.elems (varDefs ctx)
+
     addVars ctx vs
-        | not $ null nuVarDefs               = Left $ MinError (T.pack ("Non unique variable definitions: " ++ show nuVarDefs))
-        | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of variable definitions with undefined sorts: " ++ show undefinedSorts))
-        | otherwise                          = Right $ ctx { _genMap = addVarGen vs (_genMap ctx)
-                                                           , _varDefs = HashMap.union (toMapByName vs) (varDefs ctx)
-                                                           }
-      where
-        nuVarDefs :: [VarDef]
-        nuVarDefs = repeatedByName vs
+        | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
+        | not $ null (undefinedSorts ctx vs) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts ctx vs))
+        | otherwise                          = Right $ ctx { _genMap = addVarGen ctx vs (_genMap ctx)
+                                                           , varDefs = HashMap.union (toMapByName vs) (varDefs ctx)}
 
-        undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . memberSort ctx . TorXakis.VarDef.sort) vs
+    replaceVars ctx vs
+        | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
+        | not $ null (undefinedSorts ctx vs) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts ctx vs))
+        | otherwise                          = Right $ ctx { _genMap = addVarGen ctx vs initialGenMap
+                                                           , varDefs = toMapByName vs}
 
-        addVarGen :: [VarDef]
-                  -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
-                  -> TorXakis.GenCollection.GenCollection MinimalTestValExprContext ValExpression
-        addVarGen []       m = m
-        addVarGen xs@(x:_) m = let t = TorXakis.VarDef.sort x
-                                   (ts,os) = List.partition (\v -> TorXakis.VarDef.sort v == t) xs
-                                 in
-                                   case TorXakis.GenCollection.add ctx t 0 ( genValExprVar (map toRefByName ts) ) m of
-                                            Left e -> error ("addVars - successful add expected, yet " ++ show e)
-                                            Right c -> addVarGen os c
-
-instance TestValExprContext MinimalTestValExprContext where
+instance TestValExprContext ContextTestValExpr where
     arbitraryValExprOfSort ctx s = do
         n <- getSize
         case TorXakis.GenCollection.get (_genMap ctx) s n of
@@ -271,29 +296,29 @@ instance TestSortContext a => TestFuncContext (MinimalTestFuncContext a)
 class (VarContext a, TestFuncSignatureContext a) => TestValExprContext a
 
 -- | A minimal instance of 'TestValExprContext'.
-data MinimalTestValExprContext a = MinimalTestValExprContext 
+data ContextTestValExpr a = ContextTestValExpr 
                                     { testFuncContext :: a
                                     , _varDefs :: HashMap.Map (RefByName VarDef) VarDef
                                     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortContext a => SortContext (MinimalTestValExprContext a) where
-    empty             = MinimalTestValExprContext empty HashMap.empty
+instance SortContext a => SortContext (ContextTestValExpr a) where
+    empty             = ContextTestValExpr empty HashMap.empty
     adtDefs ctx       = adtDefs (testFuncContext ctx)
     addADTs ctx as = case addADTs (testFuncContext ctx) as of
                             Left e     -> Left e
                             Right tctx -> Right $ ctx { testFuncContext = tctx }
 
-instance TestSortContext a => TestSortContext (MinimalTestValExprContext a) where
+instance TestSortContext a => TestSortContext (ContextTestValExpr a) where
     mapSortSize ctx              = mapSortSize (testFuncContext ctx)
     mapAdtMapConstructorSize ctx = mapAdtMapConstructorSize (testFuncContext ctx)
 
-instance FuncContext a => FuncContext (MinimalTestValExprContext a) where
+instance FuncContext a => FuncContext (ContextTestValExpr a) where
     funcDefs ctx = funcDefs (testFuncContext ctx)
     addFuncDefs ctx fds = case addFuncDefs (testFuncContext ctx) fds of
                             Left e     -> Left e
                             Right tctx -> Right $ ctx { testFuncContext = tctx }
 
-instance SortContext a => VarContext (MinimalTestValExprContext a) where
+instance SortContext a => VarContext (ContextTestValExpr a) where
     varDefs = _varDefs
     addVars ctx vs
         | not $ null nuVarDefs               = Left $ MinError (T.pack ("Non unique variable definitions: " ++ show nuVarDefs))
@@ -307,7 +332,7 @@ instance SortContext a => VarContext (MinimalTestValExprContext a) where
         undefinedSorts = filter (not . memberSort ctx . sort) vs
 
 
-instance TestFuncContext a => TestFuncContext (MinimalTestValExprContext a)
+instance TestFuncContext a => TestFuncContext (ContextTestValExpr a)
 
-instance TestFuncContext a => TestValExprContext (MinimalTestValExprContext a)
+instance TestFuncContext a => TestValExprContext (ContextTestValExpr a)
 -}

@@ -26,16 +26,24 @@ import           TorXakis.NameGen
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
 
+arbitrarySignature :: TestSortContext a => a -> Gen (Name, [Sort], Sort)
+arbitrarySignature ctx =
+    do
+        n <- arbitrary :: Gen NameGen
+        ps <- listOf (arbitrarySort ctx)
+        r <- arbitrarySort ctx
+        if isReservedFuncSignature ctx (unNameGen n) ps r
+            then arbitrarySignature ctx
+            else return (unNameGen n, ps, r)
 
 -- | generate a random function signature within a test sort context.
 -- test sort context is needed to link complexity/size to function signature for termination
 arbitraryFuncSignature :: TestSortContext a => a -> Gen FuncSignature
 arbitraryFuncSignature ctx = 
     do
-        n <- arbitrary :: Gen NameGen
-        ps <- listOf (arbitrarySort ctx)
-        r <- arbitrarySort ctx
-
-        case mkFuncSignature ctx (unNameGen n) ps r of
+        (n, ps, r) <- arbitrarySignature ctx
+        case mkFuncSignature ctx n ps r of
             Left e  -> error ("arbitraryFuncSignature  - constructor failed\n" ++ show e)
             Right x -> return x
+
+-- TODO: make arbitrary that doesn't generate predefined Function (takeWhile, dropWhileNot etc).

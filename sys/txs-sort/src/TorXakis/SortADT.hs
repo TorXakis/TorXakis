@@ -148,6 +148,9 @@ mkADTDef _ [] = Left $ Error "Empty Constructor List"
 mkADTDef m cs
     | not $ null nuCstrDefs   = Left $ Error ("Non-unique constructor definitions" ++ show nuCstrDefs)
     | not $ null nuFieldNames = Left $ Error ("Non-unique field definitions" ++ show nuFieldNames)
+      -- TODO: for roundtripping - for each constructor TorXakis adds isCstr :: X -> Bool function which should not conflict with 
+      --                                        the accessor function field :: X -> SortField 
+      -- hence check that fields of type Bool don't have a name equal to "is" ++ constructor Name!
     | otherwise               = Right $ ADTDef m (toMapByName cs)
     where
         nuCstrDefs :: [ConstructorDef]

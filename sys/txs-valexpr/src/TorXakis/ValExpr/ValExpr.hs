@@ -36,14 +36,13 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
-import           TorXakis.FreeVars
 import           TorXakis.FuncSignature
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.ValExprConstructionContext
 import           TorXakis.Value
-import           TorXakis.VarDef
+import           TorXakis.Var
 
 -- | ValExpressionView: the public view of value expression 'ValExpression'
 -- Should we change to Either Error ValExpression to increase laziness (e.g. in ITE, And, concat, func, and cstr)?

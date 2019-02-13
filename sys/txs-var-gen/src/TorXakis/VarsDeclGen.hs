@@ -32,8 +32,7 @@ import           TorXakis.NameGen
 import           TorXakis.Sort (Sort)
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
-import           TorXakis.VarDef
-import           TorXakis.VarsDecl
+import           TorXakis.Var
 
 -- | Generate VarsDecl within this context
 arbitraryVarsDecl :: TestSortContext a => a -> Gen VarsDecl

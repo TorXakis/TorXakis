@@ -19,11 +19,9 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.FreeVars
+  - TorXakis.Var
   - TorXakis.ContextVar
   - TorXakis.VarContext
-  - TorXakis.VarDef
-  - TorXakis.VarsDecl
   dependencies:
   - containers
   - deepseq

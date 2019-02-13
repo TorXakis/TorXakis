@@ -22,6 +22,8 @@ module TorXakis.NameGen
 ( 
 -- * Name Generator
   NameGen(..)
+  -- dependencies, yet part of interface
+, Name
 )
 where
 
@@ -50,7 +52,7 @@ genText = do
     c <- elements nameStartChars
     s <- listOf (elements nameChars)
     let text = T.pack (c:s) in
-        if isPredefined text
+        if isReservedName text
         then genText
         else return text
 

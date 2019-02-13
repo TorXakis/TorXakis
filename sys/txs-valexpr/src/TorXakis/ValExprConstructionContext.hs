@@ -19,33 +19,14 @@ See LICENSE at root directory of this repository.
 module TorXakis.ValExprConstructionContext
 ( -- * Context
   -- ** ValExpr Construction Context class
-  ValExprConstructionContext(..)
-  -- hide fromSortContext since is both implemented by VarContext and FuncSignatureContext
-, FuncSignatureContext( memberFunc
-                      , funcSignatures
-                      )
-, VarContext ( memberVar
-             , lookupVar
-             , elemsVar
-             , addVars
-             )
+  ValExprConstructionContext
+  -- dependencies, yet part of interface
+, module TorXakis.FuncSignatureContext
+, module TorXakis.VarContext
 )
 where
 import           TorXakis.FuncSignatureContext
 import           TorXakis.VarContext
 
 -- | A ValExprConstructionContext Context instance contains all definitions to work with 'TorXakis.ValExpression'.
-class (FuncSignatureContext a, VarContext a) => ValExprConstructionContext a where
-    -- | Constructor from FuncSignatureContext
-    fromFuncSignatureContext :: forall b . FuncSignatureModifyContext b a => b -> a
-    fromFuncSignatureContext ctx = let sctx :: b
-                                       sctx = TorXakis.FuncSignatureContext.fromSortContext ctx
-                                      in case addFuncSignatures sctx (funcSignatures ctx) of
-                                                Right x -> x
-                                                Left e  -> error ("fromFuncSignatureContext should succeed since FuncSignatureContext should adhere to all constraints, yet " ++ show e)
-
-    -- | Constructor from VarContext
-    fromVarContext :: VarContext b => b -> a
-    fromVarContext ctx = case addVars (TorXakis.VarContext.fromSortContext ctx) (elemsVar ctx) of
-                            Right x -> x
-                            Left e  -> error ("fromVarContext should succeed since VarContext should adhere to all constraints, yet " ++ show e)
+class (FuncSignatureContext a, VarContext a) => ValExprConstructionContext a

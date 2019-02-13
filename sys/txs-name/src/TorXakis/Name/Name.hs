@@ -27,10 +27,11 @@ module TorXakis.Name.Name
   Name
 -- ** Name conversion
 , toText
+, toString
 -- ** Smart constructor for Name
 , mkName
--- ** Is predefined name?
-, isPredefined
+-- ** Is reserved name?
+, isReservedName
 -- * HasName class
 , HasName (..)
 -- ** Repeated Names functions
@@ -45,7 +46,7 @@ import           Data.Data          (Data)
 import           Data.Hashable      (Hashable(hashWithSalt))
 import           Data.List.Unique   (repeated)
 import           Data.Set           (Set, fromList, member)
-import           Data.Text          (Text, pack)
+import           Data.Text          (Text, pack, unpack)
 import           GHC.Generics       (Generic)
 
 import           TorXakis.Error     (Error(Error))
@@ -75,19 +76,23 @@ instance (HasName a, HasName b) => HasName (Either a b) where
 toText :: Name -> Text
 toText = XMLName.toText . toXMLName
 
--- | Is name a Predefined name?
-isPredefined :: Text -> Bool
-isPredefined = (`member` predefinedNames)
+-- | 'Data.String' representation of Name.
+toString :: Name -> String
+toString = unpack . toText
+
+-- | Is name a reserved name?
+isReservedName :: Text -> Bool
+isReservedName = (`member` torxakisKeywords)
     where
-        predefinedNames :: Set Text
-        predefinedNames = fromList (map pack
+        torxakisKeywords :: Set Text
+        torxakisKeywords = fromList (map pack
                                         [ "Int", "Bool", "Char", "String", "Regex"           -- Sorts
                                         , "TYPEDEF", "FUNCDEF", "PROCDEF", "MODELDEF", "CHANDEF"
                                         , "PURPDEF", "CNECTDEF", "STAUTDEF", "ENDDEF"        -- Definitions
                                         , "IF", "THEN", "ELSE", "FI"                         -- ValExpr
                                         , "ISTEP", "EXIT"                                    -- PROCDEF terms
                                         , "GOAL", "HIT", "MISS"                              -- GOALDEF terms
-                                        , "CHAN", "IN", "OUT", "BEHAVIOUR"                   -- MODELDEF terms
+                                        , "CHAN", "IN", "OUT", "BEHAVIOUR", "SYNC"           -- MODELDEF terms
                                         , "CLIENTSOCK", "SERVERSOCK", "ENCODE", "DECODE"
                                         , "HOST", "PORT"                                     -- CNECTDEF terms
                                         , "STATE", "VAR", "INIT", "TRANS"                    -- STAUTDEF terms
@@ -103,14 +108,14 @@ isPredefined = (`member` predefinedNames)
 --
 --   * The remaining characters adhere to [A-Z] | \'_\' | [a-z] | \'-\' | [0-9]
 --
---   * The provided 'Data.Text.Text' value is not a predefined name.
+--   * The provided 'Data.Text.Text' value is not a reserved name.
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 --
 --   These constraints are enforced to be able to use Names as fields in XML.
 --   See e.g. http://www.w3.org/TR/REC-xml/#NT-NameStartChar and http://www.w3.org/TR/REC-xml/#NT-NameChar
 mkName :: Text -> Either Error Name
-mkName s | isPredefined s   = Left $ Error ("Illegal input: Predefined Name " ++ show s)
+mkName s | isReservedName s   = Left $ Error ("Illegal input: Reserved Name " ++ show s)
          | otherwise        = XMLName.mkXMLName s >>= Right . Name
 
 -- |  Return the elements with non-unique names that the second list contains in the combination of the first and second list.

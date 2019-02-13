@@ -20,6 +20,12 @@ module TorXakis.SortContext
 (-- * Sort Context
   SortContext (..)
 , prettyPrintSortContext
+  -- dependencies, yet part of interface
+, RefByName
+, Error
+, Sort
+, ADTDef
+, Options
 )
 where
 import qualified Data.Text           as T

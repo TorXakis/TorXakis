@@ -28,14 +28,15 @@ import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.SortContext
 import           TorXakis.VarContext
-import           TorXakis.VarDef
+import           TorXakis.Var
 
 -- | An instance of 'TorXakis.VarContext'.
 data ContextVar = forall a . SortContext a => 
-                            ContextVar { _sortContext :: a -- use _ to prevent warning "Defined but not used: `sortContext'"
+                            ContextVar { _sortContext :: a -- not used due to compiler
                                          -- variable definitions
                                        , varDefs :: HashMap.Map (RefByName VarDef) VarDef
                                        }
+
 -- | Constructor from SortContext
 fromSortContext :: SortContext b => b -> ContextVar
 fromSortContext ctx = ContextVar ctx HashMap.empty
