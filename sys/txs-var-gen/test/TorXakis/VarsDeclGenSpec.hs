@@ -67,7 +67,7 @@ prop_SameElements ctx = check <$> arbitraryVarsDecl ctx
 
 spec :: Spec
 spec = do
-  describe "A VarDecl has the following constraints:" $
+  describe "A VarsDecl has the following constraints:" $
       do
         it "unique names" $ property (propertyInContext prop_UniqueNames)
         it "defined sort" $ property (propertyInContext prop_DefinedSorts)

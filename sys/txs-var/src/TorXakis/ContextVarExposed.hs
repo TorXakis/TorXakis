@@ -20,8 +20,9 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 module TorXakis.ContextVarExposed
 ( -- * Context Variable instance
-  ContextVar
+  ContextVarExposed
 , fromSortContext
+, toSortContext
 )
 where
 import           Control.DeepSeq        (NFData)
@@ -36,27 +37,27 @@ import           TorXakis.VarContext
 import           TorXakis.Var
 
 -- | An instance of 'TorXakis.VarContext'.
-data ContextVar a = ContextVar { sortContext :: a
+data ContextVarExposed a = ContextVarExposed { toSortContext :: a
                                  -- variable definitions
                                , varDefs :: HashMap.Map (RefByName VarDef) VarDef
                                } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Constructor from SortContext
-fromSortContext :: a -> ContextVar a
-fromSortContext ctx = ContextVar ctx HashMap.empty
+fromSortContext :: a -> ContextVarExposed a
+fromSortContext ctx = ContextVarExposed ctx HashMap.empty
 
-instance SortContext a => SortContext (ContextVar a) where
-    memberSort   = memberSort . sortContext
+instance SortContext a => SortContext (ContextVarExposed a) where
+    memberSort   = memberSort . toSortContext
 
-    memberADT = memberADT . sortContext
+    memberADT = memberADT . toSortContext
 
-    lookupADT = lookupADT . sortContext
+    lookupADT = lookupADT . toSortContext
 
-    elemsADT  = elemsADT . sortContext
+    elemsADT  = elemsADT . toSortContext
 
-    addADTs ctx as = case addADTs (sortContext ctx) as of
+    addADTs ctx as = case addADTs (toSortContext ctx) as of
                           Left e     -> Left e
-                          Right sctx -> Right $ ctx {sortContext = sctx}
+                          Right sctx -> Right $ ctx {toSortContext = sctx}
 
 -- | non unique Variable Definitions (i.e. duplicate names)
 nuVarDefs :: [VarDef] -> [VarDef]
@@ -66,7 +67,7 @@ nuVarDefs = repeatedByName
 undefinedSorts :: SortContext a => a -> [VarDef] -> [VarDef]
 undefinedSorts ctx = filter (not . memberSort ctx . sort)
 
-instance SortContext a => VarContext (ContextVar a) where
+instance SortContext a => VarContext (ContextVarExposed a) where
     memberVar ctx v = HashMap.member v (varDefs ctx)
 
     lookupVar ctx v = HashMap.lookup v (varDefs ctx)

@@ -44,9 +44,9 @@ prop_notNull :: NameGen -> Bool
 prop_notNull (NameGen nm) =
     ( not . T.null . toText ) nm
 
-prop_notPredefined :: NameGen -> Bool
-prop_notPredefined (NameGen nm) =
-    ( not . isPredefined . toText ) nm
+prop_notReservedName :: NameGen -> Bool
+prop_notReservedName (NameGen nm) =
+    ( not . isReservedName . toText ) nm
 
 prop_RepeatedByName_Set :: Set.Set NameGen -> Bool
 prop_RepeatedByName_Set s =
@@ -75,7 +75,7 @@ spec :: Spec
 spec = do
   describe "A Generated Name" $ do
     it "does not contain the empty string" $ property prop_notNull
-    it "does not contain a predefined string"$ property prop_notPredefined
+    it "does not contain a predefined string"$ property prop_notReservedName
     it "is an instance of Eq" $ property prop_Eq
     it "is an instance of Ord" $ property prop_Ord
     it "is an instance of Read and Show - read . show is identity" $ property prop_ReadShow

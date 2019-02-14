@@ -1,0 +1,4 @@
+Programmers mistakes should result in crashes as quickly as possible (using haskell's assert or error)
+
+Errors in models should be captured (e.g. division by zero or accessor on instance made by another constructor)
+via Error.

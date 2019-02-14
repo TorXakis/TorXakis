@@ -21,7 +21,7 @@ module TorXakis.SortContext
   SortContext (..)
 , prettyPrintSortContext
   -- dependencies, yet part of interface
-, RefByName
+, module TorXakis.Referable
 , Error
 , Sort
 , ADTDef
@@ -31,15 +31,15 @@ where
 import qualified Data.Text           as T
 
 import           TorXakis.Error                 (Error)
-import           TorXakis.Name                  (RefByName, toRefByName)
 import           TorXakis.PrettyPrint.TorXakis
+import           TorXakis.Referable
 import           TorXakis.SortADT               (Sort(..), ADTDef)
 
 -- | A Sort Context instance 
 -- contains all definitions to work with sorts and references thereof.
 class SortContext a where
     -- | Is the provided sort a member of the context?
-    memberSort :: a -> Sort -> Bool
+    memberSort :: Sort -> a -> Bool
     -- | All Sort elements in the context
     elemsSort :: a -> [Sort]
     elemsSort ctx =   SortBool
@@ -47,25 +47,25 @@ class SortContext a where
                     : SortChar
                     : SortString
                     : SortRegex
-                    : map (SortADT . toRefByName) (elemsADT ctx)
+                    : map (SortADT . toRef) (elemsADT ctx)
 
-    -- | Refers the provided ADTDef name to an ADTDef in the context?
-    memberADT :: a -> RefByName ADTDef -> Bool
-    -- | lookup ADTDef
-    lookupADT :: a -> RefByName ADTDef -> Maybe ADTDef
+    -- | Points the provided ADTDef reference to an ADTDef in the context?
+    memberADT :: Ref ADTDef -> a -> Bool
+    -- | lookup ADTDef using the provided ADTDef reference
+    lookupADT :: Ref ADTDef -> a -> Maybe ADTDef
     -- | All ADTDef elements in the context
     elemsADT :: a -> [ADTDef]
     -- | Add adt definitions to sort context.
     --   A sort context is returned when the following constraints are satisfied:
     --
-    --   * The 'Name's of ADTDef are unique
+    --   * The references of ADTDef are unique
     --
     --   * All references are known
     --
     --   * All ADTs are constructable
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addADTs :: a -> [ADTDef] -> Either Error a
+    addADTs :: [ADTDef] -> a -> Either Error a
 
 -- | Generic Pretty Printer for all instance of 'TorXakis.SortReadContext'.
 prettyPrintSortContext :: SortContext a => Options -> a -> TxsString

@@ -19,8 +19,9 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.Var
   - TorXakis.ContextVar
+  - TorXakis.ContextVarExposed
+  - TorXakis.Var
   - TorXakis.VarContext
   dependencies:
   - containers

@@ -19,10 +19,15 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.Error
+  - TorXakis.Referable
+  - TorXakis.RefMap
   - TorXakis.PrettyPrint.TorXakis
   dependencies:
   - deepseq
+  - hashable
+  - hashmap
   - text
+  - Unique
 
 tests:
     txs-basics-test:

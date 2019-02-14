@@ -24,19 +24,19 @@ See LICENSE at root directory of this repository.
 module TorXakis.TestSortContext
 (-- * Test Sort Context
   TestSortContext (..)
-, ContextTestSort(..)
+, ContextTestSort (mapSortSize, mapAdtMapConstructorSize)
 , TorXakis.TestSortContext.empty
+  -- dependencies, yet part of interface
+, module TorXakis.SortContext
+, ConstructorDef
 )
 where
-import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import qualified Data.HashMap        as Map
 import           Data.Maybe          (catMaybes, fromMaybe)
 import           GHC.Generics        (Generic)
 
 import           TorXakis.ContextSort
-import           TorXakis.Error
-import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.SortContext
 
@@ -45,37 +45,29 @@ import           TorXakis.SortContext
 -- | A TestSortContext instance contains all definitions to work with sort and reference thereof for test purposes
 class SortContext a => TestSortContext a where
     -- | Sort Size
-    --   A size of complexity (indicated by an 'Int') is returned when the following constraint is satisfied:
-    --
-    --   * The context contains the 'TorXakis.Sort' reference.
-    --
-    --   Otherwise an error is return. The error reflects the violations of the formentioned constraint.
-    sortSize :: a -> Sort -> Either Error Int
+    --   The size of the provided 'TorXakis.Sort' is returned.
+    --   The size is a measurement of complexity and is indicated by an 'Int'.
+    --   Note that the function should crash when the context does not contain the 'TorXakis.Sort' reference.
+    sortSize :: Sort -> a -> Int
     
     -- |  adt Size
-    --   A size of complexity (indicated by an 'Int') is returned when the following constraint is satisfied:
-    --
-    --   * The context contains the 'TorXakis.ADTDef' reference.
-    --
-    --   Otherwise an error is return. The error reflects the violations of the formentioned constraint.
-    adtSize :: a -> RefByName ADTDef -> Either Error Int
+    --   The size of the provided 'TorXakis.ADTDef' is returned.
+    --   The size is a measurement of complexity and is indicated by an 'Int'.
+    --   Note that the function should crash when the context does not contain the 'TorXakis.ADTDef' and any related 'TorXakis.Sort' references.
+    adtSize :: Ref ADTDef -> a -> Int
 
     -- |  constructor Size
-    --   A size of complexity (indicated by an 'Int') is returned when the following constraints are satisfied:
-    --
-    --   * The context contains the 'TorXakis.ADTDef' reference.
-    --
-    --   * The context contains the 'TorXakis.ConstructorDef' reference for the referred 'TorXakis.ADTDef'.
-    --
-    --   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
-    constructorSize :: a -> RefByName ADTDef -> RefByName ConstructorDef -> Either Error Int
+    --   The size of the provided constructor as specified by the references to 'TorXakis.ADTDef' and 'TorXakis.ConstructorDef' is returned.
+    --   The size is a measurement of complexity and is indicated by an 'Int'.
+    --   Note that the function should crash when the context does not contain the 'TorXakis.ADTDef', 'TorXakis.ConstructorDef' and any related 'TorXakis.Sort' references.
+    constructorSize :: Ref ADTDef -> Ref ConstructorDef -> a -> Int
 
 -- | An instance of 'TestSortContext'.
 data ContextTestSort = ContextTestSort 
                         { basis :: ContextSort
                         , mapSortSize :: Map.Map Sort Int
-                        , mapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
-                        } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+                        , mapAdtMapConstructorSize :: Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int)
+                        } deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor of empty TestSortContext
 empty :: ContextTestSort
@@ -91,53 +83,53 @@ empty = ContextTestSort TorXakis.ContextSort.empty primitiveSortSize Map.empty
                                                (repeat 0)
 
 instance SortContext ContextTestSort where
-    memberSort   = memberSort . basis
+    memberSort r = memberSort r . basis
 
-    memberADT = memberADT . basis
+    memberADT r = memberADT r . basis
 
-    lookupADT = lookupADT . basis
+    lookupADT r = lookupADT r . basis
 
     elemsADT  = elemsADT . basis
 
-    addADTs context as = addADTs (basis context) as >>= (\newBasis ->
+    addADTs as ctx = addADTs as (basis ctx) >>= (\newBasis ->
                                              let
-                                               newMapSortSize = addToMapSortSize (mapSortSize context) as 
-                                               newMapAdtMapConstructorSize = addToMapAdtMapConstructorSize (mapAdtMapConstructorSize context) newMapSortSize as 
+                                               newMapSortSize = addToMapSortSize as (mapSortSize ctx)
+                                               newMapAdtMapConstructorSize = addToMapAdtMapConstructorSize (mapAdtMapConstructorSize ctx) newMapSortSize as
                                              in
                                                 Right $ ContextTestSort  newBasis
                                                                          newMapSortSize
                                                                          newMapAdtMapConstructorSize
                                              )
       where
-            addToMapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
+            addToMapAdtMapConstructorSize :: Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int)
                                           -> Map.Map Sort Int
                                           -> [ADTDef]
-                                          -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
+                                          -> Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int)
             addToMapAdtMapConstructorSize cMap sMap =
                 foldl addConstructorSizes cMap
               where
-                addConstructorSizes :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int) 
+                addConstructorSizes :: Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int) 
                                     -> ADTDef 
-                                    -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
+                                    -> Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int)
                 addConstructorSizes iMap adef =
-                    let ra = toRefByName adef in
+                    let ra = toRef adef in
                         if Map.member ra iMap 
                             then error ("Invariant violated: adding already contained ADTDef " ++ show adef)
-                            else Map.insert ra (Map.fromList (map (\c -> (toRefByName c, getConstructorSize sMap c) ) (elemsConstructor adef) ) ) iMap
+                            else Map.insert ra (Map.fromList (map (\c -> (toRef c, getConstructorSize sMap c) ) (elemsConstructor adef) ) ) iMap
 
-            addToMapSortSize :: Map.Map Sort Int -> [ADTDef] -> Map.Map Sort Int
-            addToMapSortSize defined adefs =
+            addToMapSortSize :: [ADTDef] -> Map.Map Sort Int -> Map.Map Sort Int
+            addToMapSortSize adefs defined =
                 let newDefined = foldl addCurrent defined adefs
                     in if newDefined == defined 
-                        then if any (`Map.notMember` newDefined) (map (SortADT . toRefByName) adefs)
+                        then if any (`Map.notMember` newDefined) (map (SortADT . toRef) adefs)
                                 then error ("Invariant violated: non constructable ADTDefs in " ++ show adefs)
                                 else newDefined
-                        else addToMapSortSize newDefined adefs
+                        else addToMapSortSize adefs newDefined
               where 
                 addCurrent :: Map.Map Sort Int -> ADTDef -> Map.Map Sort Int
                 addCurrent mp aDef = case getKnownAdtSize mp aDef of
                                         Nothing -> mp
-                                        Just i  -> Map.insert (SortADT (toRefByName aDef)) i mp
+                                        Just i  -> Map.insert (SortADT (toRef aDef)) i mp
 
                 getKnownAdtSize :: Map.Map Sort Int -> ADTDef -> Maybe Int
                 getKnownAdtSize mp adef =
@@ -166,16 +158,13 @@ instance SortContext ContextTestSort where
                                                         (getKnownConstructorSize defined cdef)
 
 instance TestSortContext ContextTestSort where
-    sortSize ctx s = case Map.lookup s (mapSortSize ctx) of
-                        Just i  -> Right i
-                        Nothing -> Left $ Error ("sort not contained in context " ++ show s)
+    sortSize s ctx = fromMaybe (error ("sort not contained in context " ++ show s))
+                               $ Map.lookup s (mapSortSize ctx)
     
-    adtSize ctx r = case Map.lookup (SortADT r) (mapSortSize ctx) of
-                        Just i  -> Right i
-                        Nothing -> Left $ Error ("reference not contained in context " ++ show r)
+    adtSize r ctx = fromMaybe (error ("reference not contained in context " ++ show r))
+                              $ Map.lookup (SortADT r) (mapSortSize ctx)
 
-    constructorSize ctx r c = case Map.lookup r (mapAdtMapConstructorSize ctx) of
-                                Nothing -> Left $ Error ("ADT reference not contained in context " ++ show r)
-                                Just m -> case Map.lookup c m of
-                                            Nothing -> Left $ Error ("component reference " ++ show c ++ " not contained in ADT " ++ show r)
-                                            Just i -> Right i
+    constructorSize r c ctx = case Map.lookup r (mapAdtMapConstructorSize ctx) of
+                                Nothing -> error ("ADT reference not contained in context " ++ show r)
+                                Just m -> fromMaybe (error ("component reference " ++ show c ++ " not contained in ADT " ++ show r))
+                                                    $ Map.lookup c m

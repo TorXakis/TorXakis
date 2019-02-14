@@ -22,23 +22,16 @@ See LICENSE at root directory of this repository.
 module TorXakis.ContextSort
 ( -- * Sort Context
   ContextSort(ContextSort)
-, empty
+, TorXakis.ContextSort.empty
 )
 where
-import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
-import qualified Data.HashMap        as HashMap
 import qualified Data.List           as List
 import           Data.Maybe          (mapMaybe)
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error      ( Error ( Error ) )
-import           TorXakis.Name       ( Name
-                                     , getName
-                                     , RefByName ( toName )
-                                     , toMapByName
-                                     , repeatedByNameIncremental
-                                     )
+import           TorXakis.RefMap
 import           TorXakis.SortADT    ( Sort ( SortADT )
                                      , ADTDef
                                      , elemsConstructor
@@ -48,26 +41,26 @@ import           TorXakis.SortADT    ( Sort ( SortADT )
 import           TorXakis.SortContext
 
 -- | An instance of 'SortContext'.
-newtype ContextSort = ContextSort { adtDefs :: HashMap.Map (RefByName ADTDef) ADTDef 
-                                  } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+newtype ContextSort = ContextSort { adtDefs :: RefMap ADTDef 
+                                  } deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor of empty SortContext
 empty :: ContextSort
-empty = ContextSort HashMap.empty
+empty = ContextSort TorXakis.RefMap.empty
 
 instance SortContext ContextSort where
-    memberSort ctx (SortADT a) = HashMap.member a (adtDefs ctx)
-    memberSort _   _           = True
+    memberSort (SortADT a) = member a . adtDefs
+    memberSort _           = const True
 
-    memberADT ctx adtRef = HashMap.member adtRef (adtDefs ctx)
+    memberADT adtRef = member adtRef . adtDefs
 
-    lookupADT ctx adtRef = HashMap.lookup adtRef (adtDefs ctx)
+    lookupADT adtRef = TorXakis.RefMap.lookup adtRef . adtDefs
 
-    elemsADT ctx         = HashMap.elems (adtDefs ctx)
+    elemsADT = elems . adtDefs
 
-    addADTs ctx as = case violationsAddAdtDefs of
+    addADTs as ctx = case violationsAddAdtDefs of
                                 Just e  -> Left e
-                                Nothing -> Right $ ctx { adtDefs = HashMap.union (adtDefs ctx) (toMapByName as) }
+                                Nothing -> Right $ ctx { adtDefs = union (adtDefs ctx) (toRefMap as) }
         where
             -- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
             --   The error reflects the violations of any of the following constraints:
@@ -79,36 +72,36 @@ instance SortContext ContextSort where
             --   * All ADTs are constructable
             violationsAddAdtDefs :: Maybe Error
             violationsAddAdtDefs
-                | not $ null nonUniqueNames       = Just $ Error ("Non unique names : " ++ show nonUniqueNames)
-                | not $ null unknownRefs          = Just $ Error ("Unknown references : " ++ show unknownRefs)
+                | not $ null nonUniqueReferences  = Just $ Error ("Non unique references : " ++ show nonUniqueReferences)
+                | not $ null unknownReferences    = Just $ Error ("Unknown references : " ++ show unknownReferences)
                 | not $ null nonConstructableADTs = Just $ Error ("Non constructable ADTs : " ++ show nonConstructableADTs)
                 | otherwise                       = Nothing
                 where
                     definedADTs :: [ADTDef]
-                    definedADTs = HashMap.elems (adtDefs ctx)
+                    definedADTs = elems (adtDefs ctx)
                     
-                    nonUniqueNames :: [ADTDef]
-                    nonUniqueNames = repeatedByNameIncremental definedADTs as
+                    nonUniqueReferences :: [ADTDef]
+                    nonUniqueReferences = repeatedByRefIncremental definedADTs as
                     
-                    definedNames :: [Name]
-                    definedNames = map getName (definedADTs ++ as)
+                    definedReferences :: [Ref ADTDef]
+                    definedReferences = map toRef (definedADTs ++ as)
                     
-                    hasUnknownRefs :: ADTDef -> Maybe (ADTDef, [Sort])
-                    hasUnknownRefs adtdef = 
+                    hasUnknownReferences :: ADTDef -> Maybe (ADTDef, [Sort])
+                    hasUnknownReferences adtdef = 
                         let xs = filter (not . isDefined) (concatMap ( map sort . fields ) (elemsConstructor adtdef) ) in
                             if null xs 
                                 then Nothing
                                 else Just (adtdef,xs)
 
                     isDefined :: Sort -> Bool
-                    isDefined (SortADT t) = toName t `elem` definedNames
+                    isDefined (SortADT t) = t `elem` definedReferences
                     isDefined _           = True
 
-                    unknownRefs :: [(ADTDef, [Sort])]
-                    unknownRefs = mapMaybe hasUnknownRefs as
+                    unknownReferences :: [(ADTDef, [Sort])]
+                    unknownReferences = mapMaybe hasUnknownReferences as
                     
                     nonConstructableADTs :: [ADTDef]
-                    nonConstructableADTs =  verifyConstructibleADTs (map getName definedADTs) as
+                    nonConstructableADTs =  verifyConstructibleADTs (map toRef definedADTs) as
                       where
                         -- | Verifies if given list of 'ADTDef's are constructable.
                         --
@@ -122,22 +115,22 @@ instance SortContext ContextSort where
                         --
                         --   * A list of non-constructable 'ADTDef's
                         --
-                        verifyConstructibleADTs ::[Name]
+                        verifyConstructibleADTs :: [Ref ADTDef]
                                                 -> [ADTDef]
                                                 -> [ADTDef]
-                        verifyConstructibleADTs constructableSortNames uADTDfs =
+                        verifyConstructibleADTs constructableReferences uADTDfs =
                             let (cs, ncs)  = List.partition
-                                            (any (allFieldsConstructable constructableSortNames) . elemsConstructor)
+                                            (any (allFieldsConstructable constructableReferences) . elemsConstructor)
                                             uADTDfs
                             in if null cs
                             then uADTDfs
-                            else verifyConstructibleADTs (map getName cs ++ constructableSortNames) ncs
+                            else verifyConstructibleADTs (map toRef cs ++ constructableReferences) ncs
 
-                        allFieldsConstructable :: [Name] -> ConstructorDef -> Bool
-                        allFieldsConstructable constructableSortNames cDef =
-                            all ( isSortConstructable constructableSortNames . sort )
+                        allFieldsConstructable :: [Ref ADTDef] -> ConstructorDef -> Bool
+                        allFieldsConstructable constructableReferences cDef =
+                            all ( isSortConstructable constructableReferences . sort )
                                 $ fields cDef
 
-                        isSortConstructable :: [Name] -> Sort -> Bool
-                        isSortConstructable ns (SortADT t) = toName t `elem` ns
+                        isSortConstructable :: [Ref ADTDef] -> Sort -> Bool
+                        isSortConstructable ns (SortADT t) = t `elem` ns
                         isSortConstructable _  _           = True

@@ -32,13 +32,13 @@ prop_Increments :: Gen Bool
 prop_Increments = 
     let c0 = empty :: ContextTestSort in do
         incr1 <- arbitraryADTDefs c0
-        case addADTs c0 incr1 of
+        case addADTs incr1 c0 of
             Left e1  -> error ("Invalid generator 1 - " ++ show e1)
             Right c1 -> do
                             incr2 <- arbitraryADTDefs c1
-                            case addADTs c1 incr2 of
+                            case addADTs incr2 c1 of
                                 Left e2  -> error ("Invalid generator 2 - " ++ show e2)
-                                Right c2 -> return $ case addADTs c0 (incr2++incr1) of
+                                Right c2 -> return $ case addADTs (incr2++incr1) c0 of
                                                         Left e    -> trace ("error = " ++ show e) False
                                                         Right c12 -> c12 == c2 || trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) False
 

@@ -18,7 +18,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 module TorXakis.ContextFuncSignature
-( -- * Context Variable instance
+( -- * Context FuncSignature instance
   ContextFuncSignature
 , fromSortContext
 )
@@ -29,7 +29,7 @@ import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
 
--- | An instance of 'TorXakis.VarContext'.
+-- | An instance of 'TorXakis.FuncSignatureContext'.
 data ContextFuncSignature = forall a . SortContext a => 
                             ContextFuncSignature { _sortContext :: a -- not used due to compiler
                                                    -- defined funcSignatures

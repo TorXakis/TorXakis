@@ -46,9 +46,9 @@ empty = GenCollection HashMap.empty
 
 -- | Add Generator to GenCollection
 add :: SortContext c => c -> Sort -> Int -> (d -> Gen a) -> GenCollection d a -> Either Error (GenCollection d a)
-add ctx s n g (GenCollection c) | memberSort ctx s = let mm = HashMap.findWithDefault MultiMap.empty s c
+add ctx s n g (GenCollection c) | memberSort s ctx = let mm = HashMap.findWithDefault MultiMap.empty s c
                                                          newMM = MultiMap.insert n g mm
-                                                     in
+                                                      in
                                                         Right $ GenCollection (HashMap.insert s newMM c)
                                 | otherwise      = Left $ Error ("Add: Sort " ++ show s ++ " not defined in context.")
 

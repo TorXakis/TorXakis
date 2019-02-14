@@ -21,7 +21,6 @@ library:
   exposed-modules:
   - TorXakis.ValueGen
   dependencies:
-    - hashmap
     - text
     - txs-name
     - txs-basics-gen

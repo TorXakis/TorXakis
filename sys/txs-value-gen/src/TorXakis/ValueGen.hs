@@ -70,11 +70,11 @@ arbitraryValueOfSort ctx (SortADT a) =
         n <- getSize
         case lookupADT ctx a of
             Nothing      -> error ("ADTDef " ++ show a ++ " not in context ")
-            Just adtDef  -> let availableCstr = mapMaybe (\d -> case constructorSize ctx a (toRefByName d) of
-                                                                     Left e -> error ("ADTDef and constructor in context, yet no size - " ++ show e)
-                                                                     Right v -> if v <= n
-                                                                                 then Just (v, d)
-                                                                                 else Nothing)
+            Just adtDef  -> let availableCstr = mapMaybe (\d -> let v = constructorSize ctx a (toRefByName d) in
+                                                                    if v <= n
+                                                                        then Just (v, d)
+                                                                        else Nothing
+                                                         )
                                                          (elemsConstructor adtDef)
                               in case availableCstr of
                                     [] -> error ("Unexpected: No Constructor available for " ++ show a)
@@ -83,11 +83,7 @@ arbitraryValueOfSort ctx (SortADT a) =
                                             let cFields = fields cstrDef
                                               in do
                                                 additionalComplexity <- distribute (n-minSize) (length cFields)
-                                                let sFields = map (\f -> case sortSize ctx (sort f) of
-                                                                            Left e -> error ("Sort of Field not defined in context" ++ show e)
-                                                                            Right v -> v
-                                                                  ) 
-                                                                  cFields
+                                                let sFields = map (sortSize ctx . sort) cFields
                                                     aFields = zipWith (+) sFields additionalComplexity
                                                   in do
                                                     fs <- mapM (\(c,f) -> resize c (arbitraryValueOfSort ctx (sort f))) $ zip aFields cFields

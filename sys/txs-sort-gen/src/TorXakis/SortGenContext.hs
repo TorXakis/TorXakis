@@ -41,9 +41,7 @@ arbitrarySort :: TestSortContext a => a -> Gen Sort
 arbitrarySort ctx =
     do
         n <- getSize
-        let availableSort = filter (\s -> case sortSize ctx s of
-                                            Left e  -> error ("Sort in context, yet no size " ++ show e)
-                                            Right v -> v <= n)
+        let availableSort = filter (\s -> sortSize s ctx <= n)
                                    (elemsSort ctx)
          in
             case availableSort of
@@ -101,8 +99,8 @@ arbitraryADTDefs ctx =
             toADTDefs [] _ = return []
             toADTDefs uNames@(n:ns) s = 
                 do
-                    cs <- arbitraryConstructors s (map (SortADT . RefByName) uNames)
-                    aDefs <- toADTDefs ns (SortADT (RefByName n) : s)
+                    cs <- arbitraryConstructors s (map SortADT uNames)
+                    aDefs <- toADTDefs ns (SortADT n : s)
                     return $ case mkADTDef n cs of
                         Left  _    -> error "error in generator: creating valid ADTDef"
                         Right aDef -> aDef : aDefs
@@ -114,6 +112,6 @@ arbitraryTestSortContext :: Gen ContextTestSort
 arbitraryTestSortContext =
         let emp = empty :: ContextTestSort in do
             incr <- arbitraryADTDefs emp
-            case addADTs emp incr of
+            case addADTs incr emp of
                 Left e    -> error ("arbitraryTestSortContext: Invalid generator - " ++ show e)
                 Right ctx -> return ctx

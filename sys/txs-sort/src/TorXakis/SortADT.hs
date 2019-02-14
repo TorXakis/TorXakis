@@ -23,6 +23,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 module TorXakis.SortADT
 ( -- * Sort
   Sort (..)
@@ -50,14 +51,14 @@ where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           Data.Hashable       (Hashable(hashWithSalt))
-import qualified Data.HashMap        as HashMap
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
-import           TorXakis.Error                     (Error(Error))
-import           TorXakis.Name                      (Name, toText, repeatedByName, HasName, getName, RefByName ( toName ), toMapByName)
+import           TorXakis.Error
+import           TorXakis.Name
 import           TorXakis.PrettyPrint.TorXakis
-
+import           TorXakis.Referable
+import           TorXakis.RefMap
 -----------------------------------------------------------------------------
 -- Sort
 -----------------------------------------------------------------------------
@@ -67,7 +68,7 @@ data Sort = SortBool
           | SortChar
           | SortString
           | SortRegex
-          | SortADT (RefByName ADTDef)
+          | SortADT (Ref ADTDef)
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 -- If we want to make Sort package more flexible, we can use SortPrim "Int" & SortADT "WhatEver".
 
@@ -77,7 +78,7 @@ instance Hashable Sort where
     hashWithSalt s SortChar    = s `hashWithSalt` T.pack "Char"
     hashWithSalt s SortString  = s `hashWithSalt` T.pack "String"
     hashWithSalt s SortRegex   = s `hashWithSalt` T.pack "Regex"
-    hashWithSalt s (SortADT r) = s `hashWithSalt` (TorXakis.Name.toText . toName) r  -- ADT name differs from predefined names
+    hashWithSalt s (SortADT r) = s `hashWithSalt` TorXakis.Name.toText r  -- ADT name differs from predefined names
 
 -- | Enables 'Sort's of entities to be accessed in a common way.
 class HasSort c a where
@@ -105,9 +106,14 @@ data ConstructorDef = ConstructorDef
                           -- | Field definitions of the constructor
                           --   Note that the position in the list is relevant as it represents implicitly
                           --   the position of the fields in a constructor.
+                          --   In other words, fields are referred to by their position among others to speed up (de)serialization.
                         , fields :: [FieldDef]
                         }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance Referable ConstructorDef where
+    type Ref ConstructorDef = Name
+    toRef = constructorName
 
 instance HasName ConstructorDef where
     getName = constructorName
@@ -127,9 +133,13 @@ data ADTDef = ADTDef
     { -- | Name of the ADT
       adtName      :: Name
       -- | Constructor definitions of the ADT
-    , constructors :: HashMap.Map (RefByName ConstructorDef) ConstructorDef
+    , constructors :: RefMap ConstructorDef
     }
-    deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+    deriving (Eq, Ord, Read, Show, Generic, Data)
+
+instance Referable ADTDef where
+    type Ref ADTDef = Name
+    toRef = adtName
 
 instance HasName ADTDef where
     getName = adtName
@@ -151,7 +161,7 @@ mkADTDef m cs
       -- TODO: for roundtripping - for each constructor TorXakis adds isCstr :: X -> Bool function which should not conflict with 
       --                                        the accessor function field :: X -> SortField 
       -- hence check that fields of type Bool don't have a name equal to "is" ++ constructor Name!
-    | otherwise               = Right $ ADTDef m (toMapByName cs)
+    | otherwise               = Right $ ADTDef m (toRefMap cs)
     where
         nuCstrDefs :: [ConstructorDef]
         nuCstrDefs   = repeatedByName cs
@@ -160,16 +170,16 @@ mkADTDef m cs
         nuFieldNames = repeatedByName (concatMap fields cs)
 
 -- | Refers the provided ConstructorDef name to a ConstrucotrDef in the given ADTDef?
-memberConstructor :: ADTDef -> RefByName ConstructorDef -> Bool
-memberConstructor a r = HashMap.member r (constructors a)
+memberConstructor :: Ref ConstructorDef -> ADTDef -> Bool
+memberConstructor r a = member r (constructors a)
 
 -- | lookup ConstructorDef
-lookupConstructor :: ADTDef -> RefByName ConstructorDef -> Maybe ConstructorDef
-lookupConstructor a r = HashMap.lookup r (constructors a)
+lookupConstructor :: Ref ConstructorDef -> ADTDef -> Maybe ConstructorDef
+lookupConstructor r a = TorXakis.RefMap.lookup r (constructors a)
 
 -- | All ConstructorDefs of given ADTDef
 elemsConstructor :: ADTDef -> [ConstructorDef]
-elemsConstructor = HashMap.elems . constructors
+elemsConstructor = elems . constructors
 
 -- Pretty Print 
 instance PrettyPrint a Sort where
@@ -178,7 +188,7 @@ instance PrettyPrint a Sort where
     prettyPrint _ _ SortChar     = TxsString (T.pack "Char")
     prettyPrint _ _ SortString   = TxsString (T.pack "String")
     prettyPrint _ _ SortRegex    = TxsString (T.pack "Regex")
-    prettyPrint _ _ (SortADT a)  = (TxsString . TorXakis.Name.toText . toName) a
+    prettyPrint _ _ (SortADT a)  = (TxsString . TorXakis.Name.toText) a
 
 instance PrettyPrint a FieldDef where
     prettyPrint o c fd = TxsString ( T.concat [ TorXakis.Name.toText (fieldName fd)

@@ -46,26 +46,26 @@ unsafeADTDef n cs = case mkADTDef n cs of
 -- | An ADTDef is not constructable when it needs itself to be constructed
 prop_ADTDefs_nonConstructable :: Bool
 prop_ADTDefs_nonConstructable =
-    let aName = unsafeName "adtName"
+    let aName = unsafeName "adtName"                         -- Use Ref ADTDef == Name
         cyclicAdtdef = unsafeADTDef aName 
                                     [ unsafeConstructorDef (unsafeName "cstrName")
-                                                           [ FieldDef (unsafeName "fieldName") (SortADT (RefByName aName)) ]
+                                                           [ FieldDef (unsafeName "fieldName") (SortADT aName) ]
                                     ]
       in
-        case addADTs (empty :: ContextSort) [cyclicAdtdef] of
+        case addADTs [cyclicAdtdef] (empty :: ContextSort) of
             Right _ -> False
             Left _  -> True
 
 -- | An ADTDef can not contain unknown references in a context
 prop_ADTDefs_unknownReference :: Bool
 prop_ADTDefs_unknownReference =
-    let unknownName = unsafeName "unknown"
+    let unknownName = unsafeName "unknown"                  -- Use Ref ADTDef == Name
         undefinedRefAdtdef = unsafeADTDef (unsafeName "adtName") 
                                           [ unsafeConstructorDef (unsafeName "cstrName")
-                                                                 [ FieldDef (unsafeName "fieldName") (SortADT (RefByName unknownName)) ]
+                                                                 [ FieldDef (unsafeName "fieldName") (SortADT unknownName) ]
                                           ]
       in
-        case addADTs (empty :: ContextSort) [undefinedRefAdtdef] of
+        case addADTs [undefinedRefAdtdef] (empty :: ContextSort) of
             Right _ -> False
             Left _  -> True
 
@@ -75,26 +75,20 @@ prop_ADTDefs_unique =
     let adtdef = unsafeADTDef (unsafeName "adtName") 
                               [ unsafeConstructorDef (unsafeName "cstrName") [] ]
       in
-        case addADTs (empty :: ContextSort) [adtdef, adtdef] of
+        case addADTs [adtdef, adtdef] (empty :: ContextSort) of
             Right _ -> False
             Left _  -> True
 
 -- | ADTDefs can be dependent on each other
 prop_ADTDefs_Dependent :: Bool
 prop_ADTDefs_Dependent =
-    let aName = unsafeName "A"
+    let aName = unsafeName "A"      -- Use Ref ADTDef == Name
         bName = unsafeName "B"
         cName = unsafeName "C"
-        aRef :: RefByName ADTDef
-        aRef = RefByName aName
-        bRef :: RefByName ADTDef
-        bRef = RefByName bName
-        cRef :: RefByName ADTDef
-        cRef = RefByName cName
         depConstructorDef = unsafeConstructorDef (unsafeName "dependent")
-                                                 [ FieldDef aName (SortADT aRef)
-                                                 , FieldDef bName (SortADT bRef)
-                                                 , FieldDef cName (SortADT cRef)
+                                                 [ FieldDef aName (SortADT aName)
+                                                 , FieldDef bName (SortADT bName)
+                                                 , FieldDef cName (SortADT cName)
                                                  ]
         cstrName = unsafeName "cstr"
         aDef = unsafeADTDef aName
@@ -104,17 +98,17 @@ prop_ADTDefs_Dependent =
         bDef = unsafeADTDef bName
                             [ depConstructorDef
                             , unsafeConstructorDef cstrName
-                                                   [ FieldDef (unsafeName "diffA") (SortADT aRef) ]
+                                                   [ FieldDef (unsafeName "diffA") (SortADT aName) ]
                             ]
         cDef = unsafeADTDef cName
                             [ depConstructorDef
                             , unsafeConstructorDef cstrName
-                                                   [ FieldDef (unsafeName "diffA") (SortADT aRef)
-                                                   , FieldDef (unsafeName "diffB") (SortADT bRef)
+                                                   [ FieldDef (unsafeName "diffA") (SortADT aName)
+                                                   , FieldDef (unsafeName "diffB") (SortADT bName)
                                                    ]
                             ]
       in
-        case addADTs (empty :: ContextSort) [aDef, bDef, cDef] of
+        case addADTs [aDef, bDef, cDef] (empty :: ContextSort) of
             Left  _      -> False
             Right newCtx -> elemsADT newCtx == [aDef, bDef, cDef]
 

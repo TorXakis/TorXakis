@@ -15,19 +15,17 @@ See LICENSE at root directory of this repository.
 --
 -- Function Context
 -----------------------------------------------------------------------------
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.FuncContext
 ( -- * Context
   -- ** Func Context class
   FuncContext (..)
+  -- dependencies, yet part of interface
+, module TorXakis.FuncSignatureContext
+, FuncDef
 )
 where
 
-import           TorXakis.Error
 import           TorXakis.FuncDef
-import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
 
 -- | A FuncContext Context instance contains all definitions to work with 'TorXakis.FuncDef'.

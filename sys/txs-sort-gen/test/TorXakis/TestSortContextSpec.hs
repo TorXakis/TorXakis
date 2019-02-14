@@ -50,10 +50,10 @@ prop_ADTDefs_nonConstructable =
     let aName = unsafeName "adtName"
         adtdef = unsafeADTDef aName 
                               [ unsafeConstructorDef (unsafeName "cstrName")
-                                                     [ FieldDef (unsafeName "fieldName") (SortADT (RefByName aName)) ]
+                                                     [ FieldDef (unsafeName "fieldName") (SortADT aName) ]
                               ]
       in
-        case addADTs (empty::ContextTestSort) [adtdef] of
+        case addADTs [adtdef] (empty::ContextTestSort) of
             Right _ -> False
             Left _  -> True
 
@@ -63,10 +63,10 @@ prop_ADTDefs_unknownReference =
     let unknownName = unsafeName "unknown"
         adtdef = unsafeADTDef (unsafeName "adtName") 
                               [ unsafeConstructorDef (unsafeName "cstrName")
-                                                     [ FieldDef (unsafeName "fieldName") (SortADT (RefByName unknownName)) ]
+                                                     [ FieldDef (unsafeName "fieldName") (SortADT unknownName) ]
                               ]
       in
-        case addADTs (empty::ContextTestSort) [adtdef] of
+        case addADTs [adtdef] (empty::ContextTestSort) of
             Right _ -> False
             Left _  -> True
 
@@ -76,7 +76,7 @@ prop_ADTDefs_unique =
     let adtdef = unsafeADTDef (unsafeName "adtName") 
                               [ unsafeConstructorDef (unsafeName "cstrName") [] ]
       in
-        case addADTs (empty::ContextTestSort) [adtdef, adtdef] of
+        case addADTs [adtdef, adtdef] (empty::ContextTestSort) of
             Right _ -> False
             Left _  -> True
 
@@ -86,24 +86,13 @@ prop_ADTDefs_Dependent =
     let aName = unsafeName "A"
         bName = unsafeName "B"
         cName = unsafeName "C"
-        aRef :: RefByName ADTDef
-        aRef = RefByName aName
-        bRef :: RefByName ADTDef
-        bRef = RefByName bName
-        cRef :: RefByName ADTDef
-        cRef = RefByName cName
-        
         depName = unsafeName "dependent"
-        depRef :: RefByName ConstructorDef
-        depRef = RefByName depName
         cstrName = unsafeName "cstr"
-        cstrRef :: RefByName ConstructorDef
-        cstrRef = RefByName cstrName
         
         depConstructorDef = unsafeConstructorDef depName
-                                                 [ FieldDef aName (SortADT aRef)
-                                                 , FieldDef bName (SortADT bRef)
-                                                 , FieldDef cName (SortADT cRef)
+                                                 [ FieldDef aName (SortADT aName)
+                                                 , FieldDef bName (SortADT bName)
+                                                 , FieldDef cName (SortADT cName)
                                                  ]
         aDef = unsafeADTDef aName
                             [ depConstructorDef
@@ -112,13 +101,13 @@ prop_ADTDefs_Dependent =
         bDef = unsafeADTDef bName
                             [ depConstructorDef
                             , unsafeConstructorDef cstrName
-                                                   [ FieldDef (unsafeName "diffA") (SortADT aRef) ]
+                                                   [ FieldDef (unsafeName "diffA") (SortADT aName) ]
                             ]
         cDef = unsafeADTDef cName
                             [ depConstructorDef
                             , unsafeConstructorDef cstrName
-                                                   [ FieldDef (unsafeName "diffA") (SortADT aRef)
-                                                   , FieldDef (unsafeName "diffB") (SortADT bRef)
+                                                   [ FieldDef (unsafeName "diffA") (SortADT aName)
+                                                   , FieldDef (unsafeName "diffB") (SortADT bName)
                                                    ]
                             ]
         complexityA :: Int
@@ -127,15 +116,15 @@ prop_ADTDefs_Dependent =
         complexityC   = 2 + complexityA + complexityB
         complexityDep = 3 + complexityA + complexityB + complexityC
       in
-        case addADTs (empty::ContextTestSort) [cDef, bDef, aDef] of
+        case addADTs [cDef, bDef, aDef] (empty::ContextTestSort) of
             Left  _      -> False
             Right newCtx ->     elemsADT newCtx == [ aDef, bDef, cDef ]
-                            &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT aRef, complexityA)
-                                                                               ,(SortADT bRef, complexityB)
-                                                                               ,(SortADT cRef, complexityC)] -- also primitive Sorts are contained
-                            &&  mapAdtMapConstructorSize newCtx == Map.fromList [ (aRef, Map.fromList [(depRef, complexityDep), (cstrRef, complexityA)])
-                                                                                , (bRef, Map.fromList [(depRef, complexityDep), (cstrRef, complexityB)])
-                                                                                , (cRef, Map.fromList [(depRef, complexityDep), (cstrRef, complexityC)])
+                            &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT aName, complexityA)
+                                                                               ,(SortADT bName, complexityB)
+                                                                               ,(SortADT cName, complexityC)] -- also primitive Sorts are contained
+                            &&  mapAdtMapConstructorSize newCtx == Map.fromList [ (aName, Map.fromList [(depName, complexityDep), (cstrName, complexityA)])
+                                                                                , (bName, Map.fromList [(depName, complexityDep), (cstrName, complexityB)])
+                                                                                , (cName, Map.fromList [(depName, complexityDep), (cstrName, complexityC)])
                                                                                 ]
 
 -- | a sort context can be incrementally extended - which should be the same as creating it in one step.
@@ -145,33 +134,26 @@ prop_increment =
         aName = unsafeName "A"
         aDef = unsafeADTDef aName
                             [ unsafeConstructorDef (unsafeName "CstrA") [] ]
-        aRef :: RefByName ADTDef
-        aRef = RefByName aName
         bName = unsafeName "B"
         bDef = unsafeADTDef bName
-                            [ unsafeConstructorDef (unsafeName "CstrB") [ FieldDef (unsafeName "FieldB") (SortADT aRef) ] ]
-        bRef :: RefByName ADTDef
-        bRef = RefByName bName
-        
+                            [ unsafeConstructorDef (unsafeName "CstrB") [ FieldDef (unsafeName "FieldB") (SortADT aName) ] ]
         dName = unsafeName "D"
         dDef = unsafeADTDef dName
                             [ unsafeConstructorDef (unsafeName "CstrD") [] ]
-        dRef :: RefByName ADTDef
-        dRef = RefByName dName
         cName = unsafeName "C"
         cDef = unsafeADTDef cName
-                            [ unsafeConstructorDef (unsafeName "CstrCbyB") [ FieldDef (unsafeName "FieldB") (SortADT bRef) ] 
-                            , unsafeConstructorDef (unsafeName "CstrCbyD") [ FieldDef (unsafeName "FieldD") (SortADT dRef) ]
+                            [ unsafeConstructorDef (unsafeName "CstrCbyB") [ FieldDef (unsafeName "FieldB") (SortADT bName) ]
+                            , unsafeConstructorDef (unsafeName "CstrCbyD") [ FieldDef (unsafeName "FieldD") (SortADT dName) ]
                             ]
         c0 = empty :: ContextTestSort
         incr1 = [aDef, bDef]
         incr2 = [cDef, dDef]
       in
-        case addADTs c0 incr1 of
+        case addADTs incr1 c0 of
             Left e1  -> error ("Invalid incr1 - " ++ show e1)
-            Right c1 -> case addADTs c1 incr2 of
+            Right c1 -> case addADTs incr2 c1 of
                                 Left e2  -> error ("Invalid incr2 - " ++ show e2)
-                                Right c2 -> case addADTs c0 (incr2 ++ incr1) of
+                                Right c2 -> case addADTs (incr2 ++ incr1) c0 of
                                                 Left e    -> trace ("error = " ++ show e) False
                                                 Right c12 -> c12 == c2 || trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) False
 

@@ -23,6 +23,8 @@ library:
   exposed-modules:
   - TorXakis.FuncSignatureGen
   dependencies:
+    - deepseq
+    - txs-sort-gen
     - txs-name-gen
 
 tests:

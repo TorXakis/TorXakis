@@ -27,6 +27,8 @@ module TorXakis.Subst
 , subst
   -- * Constructor for optimize ValExpression given a FuncContext
 , mkFuncOpt
+  -- dependencies, yet part of interface
+, module TorXakis.ValExprContext
 )
 where
 import           Control.Arrow          (first)
@@ -44,7 +46,6 @@ import           TorXakis.Error
 import           TorXakis.FuncContext
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
-import           TorXakis.FuncSignatureContext
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.ValExprConstructionContext

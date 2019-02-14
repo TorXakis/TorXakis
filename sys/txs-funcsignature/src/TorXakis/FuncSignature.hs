@@ -129,7 +129,7 @@ isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
     -- | exists field : funcName == fieldName && funcReturnSort == fieldSort
     equalsAccessorFunc :: ADTDef -> Bool
     equalsAccessorFunc aDef =
-        any (\c -> any (\f -> fieldName f == n && sort f == s) (fields c)) (elemsConstructor aDef) 
+        any (any (\f -> fieldName f == n && sort f == s) . fields) (elemsConstructor aDef) 
 
 -- | Constructor of 'TorXakis.FuncSignature'.
 -- An FuncSignature is returned when the following constraints are satisfied:
