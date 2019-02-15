@@ -59,6 +59,7 @@ import           TorXakis.Name
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Referable
 import           TorXakis.RefMap
+import           Torxakis.RefByName
 -----------------------------------------------------------------------------
 -- Sort
 -----------------------------------------------------------------------------
