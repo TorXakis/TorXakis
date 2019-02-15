@@ -15,21 +15,27 @@ See LICENSE at root directory of this repository.
 --
 -- This module provides the RefMap.
 -- A Map created by using the reference to the items.
------------------------------------------------------------------------------
+----------------------------------------------------------------------------
+{-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module TorXakis.RefMap
-( RefMap (..)
+( RefMap
 , empty
 , member
 , TorXakis.RefMap.lookup
 , elems
 , insert
 , union
+, fromList
 , repeatedByRefIncremental
 , repeatedByRef
 )
 where
+import           Control.Arrow
+import           Control.DeepSeq
+import           Data.Data
 import           Data.Hashable
 import qualified Data.HashMap         as HashMap
 import           Data.List.Unique     (repeated)
@@ -39,36 +45,37 @@ import           TorXakis.Referable
 -- | Map of Referable objects.
 data RefMap a where
     RefMap :: (Referable a, Ord (Ref a), Hashable (Ref a)) =>
-                [a] -> RefMap a
+                HashMap.Map (Ref a) a -> RefMap a
 
--- | Convert list of referable objects into HashMap
-toHashMap :: (Referable a, Ord (Ref a), Hashable (Ref a)) => [a] -> HashMap.Map (Ref a) a
-toHashMap = HashMap.fromList . map (\e -> (toRef e,e))
 
 -- | The empty map.
 empty :: (Referable a, Ord (Ref a), Hashable (Ref a)) => RefMap a
-empty = RefMap ([]::[a])
+empty = RefMap HashMap.empty
 
 -- | Is the key a member of the map?
 member :: Ref a -> RefMap a -> Bool
-member r (RefMap xs) = HashMap.member r (toHashMap xs)
+member r (RefMap m) = HashMap.member r m
 
 -- | Lookup the value at a key in the map.
 lookup :: Ref a -> RefMap a -> Maybe a
-lookup r (RefMap xs) = HashMap.lookup r (toHashMap xs)
+lookup r (RefMap m) = HashMap.lookup r m
 
 -- | Return all elements of the map in arbitrary order of their keys.
 elems :: RefMap a -> [a]
-elems (RefMap xs) = xs
+elems (RefMap m) = HashMap.elems m
 
 -- | Insert a new value in the map using its reference as key. 
 -- If the key is already present in the map, the associated value is replaced with the supplied value.
 insert :: a -> RefMap a -> RefMap a
-insert v (RefMap m) = RefMap (HashMap.elems (HashMap.insert (toRef v) v (toHashMap m)))
+insert v (RefMap m) = RefMap (HashMap.insert (toRef v) v m)
 
 -- | The (left-biased) union of two maps. It prefers the first map when duplicate keys are encountered.
 union :: RefMap a -> RefMap a -> RefMap a
-union (RefMap a) (RefMap b) = RefMap (HashMap.elems (HashMap.union (toHashMap a) (toHashMap b)))
+union (RefMap a) (RefMap b) = RefMap (HashMap.union a b)
+
+-- | Create a map from a list of Referable objects.
+fromList :: (Referable a, Ord (Ref a), Hashable (Ref a)) => [a] -> RefMap a
+fromList = RefMap . HashMap.fromList . map (\e -> (toRef e, e))
 
 -- | Return the elements with non-unique references that the second list contains in the combination of the first and second list.
 repeatedByRefIncremental :: (Referable a, Ord (Ref a)) => [a] -> [a] -> [a]
@@ -79,3 +86,38 @@ repeatedByRefIncremental xs ys = filter ((`elem` nuRefs) . toRef) ys
 -- the elements with a reference that is present more than once in the list.
 repeatedByRef :: (Referable a, Ord (Ref a)) => [a] -> [a]
 repeatedByRef = repeatedByRefIncremental []
+
+---------------------------------------------------------------
+-- instances
+---------------------------------------------------------------
+instance (Eq a, Eq (Ref a)) => Eq (RefMap a) where
+    (RefMap a) == (RefMap b) = a == b
+
+instance (Ord a, Ord (Ref a)) => Ord (RefMap a) where
+    compare (RefMap a) (RefMap b) = compare a b
+
+instance (Show a, Show (Ref a)) => Show (RefMap a) where
+    show (RefMap m) = show m
+
+instance ( Referable a, Ord (Ref a), Hashable (Ref a)
+         , Read a, Read (Ref a)
+         ) => Read (RefMap a) where
+    readsPrec n input = map (first RefMap) (readsPrec n input)
+
+instance ( Referable a, Ord (Ref a), Hashable (Ref a)
+         , Data a, Data (Ref a)
+         ) => Data (RefMap a) where
+    gunfold k z _ = k (z RefMap)
+
+    toConstr (RefMap _) = con_RefMap
+
+    dataTypeOf _ = ty_T
+
+con_RefMap :: Constr
+con_RefMap = mkConstr ty_T "RefMap" [] Prefix
+
+ty_T :: DataType
+ty_T = mkDataType "TorXakis.RefMap" [con_RefMap]
+
+instance (NFData a, NFData (Ref a)) => NFData (RefMap a) where
+    rnf (RefMap m) = rnf m

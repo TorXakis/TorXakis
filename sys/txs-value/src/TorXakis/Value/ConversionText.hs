@@ -90,10 +90,17 @@ valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar '\'' c ++ "'")
 valueToText _   (Cstring s)    = T.pack ("\"" ++ encodeString '"' (T.unpack s) ++ "\"")
 valueToText _   (Cregex r)     = T.pack ("`" ++ encodeString '`' (T.unpack r) ++ "`")
 -- valueToText _   (Ccstr _ c []) = TorXakis.Name.toText (toName c)  -- TODO: desired? - parser need to be changed as well!
-valueToText ctx (Ccstr _ c as) = TorXakis.Name.toText (toName c) 
-                                    <> T.pack "("
-                                    <> T.intercalate (T.pack ",") (map (valueToText ctx) as) 
-                                    <> T.pack ")"
+valueToText ctx (Ccstr a c as) =            -- TODO: is performance acceptable or should we misuse the constructor reference that is a Ref by Name?
+        let adtDef = fromMaybe (error ("ADTDef " ++ show a ++ " not in context"))
+                               (lookupADT a ctx)
+            cstrDef = fromMaybe (error ("cstrDef " ++ show c ++ " not in ADTDef " ++ show a))
+                                (lookupConstructor c adtDef)
+            cNode = (TorXakis.Name.toText . constructorName) cstrDef
+         in
+            cNode
+            <> T.pack "("
+            <> T.intercalate (T.pack ",") (map (valueToText ctx) as) 
+            <> T.pack ")"
 valueToText _   (Cany _)       = error "ANY not supported"
 
 -- | 'TorXakis.Value.Value' from 'Data.Text.Text' conversion.
@@ -115,9 +122,9 @@ valueFromText ctx s t =
             case mkName n of
                 Left e   -> Left $ Error ("Illegal name " ++ show n ++ "\n" ++ show e)
                 Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
-                                                   (lookupADT ctx a)
-                                c = RefByName n'
-                            in case lookupConstructor adtDef c of
+                                                   (lookupADT a ctx)
+                                c = mkConstructorRef n'
+                            in case lookupConstructor c adtDef of
                                     Nothing   -> Left $ Error ("Constructor " ++ show n ++  " not defined for ADT " ++ show a)
                                     Just cDef -> let fs = fields cDef
                                                      actual = length fs

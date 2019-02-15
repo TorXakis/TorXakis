@@ -47,13 +47,14 @@ unsafeADTDef n cs = case mkADTDef n cs of
 -- | An ADTDef is not constructable when it needs itself to be constructed
 prop_ADTDefs_nonConstructable :: Bool
 prop_ADTDefs_nonConstructable =
-    let aName = unsafeName "adtName"
-        adtdef = unsafeADTDef aName 
+    let aName = unsafeName "aName"
+        aRef = mkADTRef aName
+        aDef = unsafeADTDef aName 
                               [ unsafeConstructorDef (unsafeName "cstrName")
-                                                     [ FieldDef (unsafeName "fieldName") (SortADT aName) ]
+                                                     [ FieldDef (unsafeName "fieldName") (SortADT aRef) ]
                               ]
       in
-        case addADTs [adtdef] (empty::ContextTestSort) of
+        case addADTs [aDef] (empty::ContextTestSort) of
             Right _ -> False
             Left _  -> True
 
@@ -61,9 +62,10 @@ prop_ADTDefs_nonConstructable =
 prop_ADTDefs_unknownReference :: Bool
 prop_ADTDefs_unknownReference =
     let unknownName = unsafeName "unknown"
-        adtdef = unsafeADTDef (unsafeName "adtName") 
+        unknownRef = mkADTRef unknownName
+        adtdef = unsafeADTDef (unsafeName "aName") 
                               [ unsafeConstructorDef (unsafeName "cstrName")
-                                                     [ FieldDef (unsafeName "fieldName") (SortADT unknownName) ]
+                                                     [ FieldDef (unsafeName "fieldName") (SortADT unknownRef) ]
                               ]
       in
         case addADTs [adtdef] (empty::ContextTestSort) of
@@ -73,7 +75,7 @@ prop_ADTDefs_unknownReference =
 -- | A context cannot contain ADTDefs with the same name
 prop_ADTDefs_unique :: Bool
 prop_ADTDefs_unique =
-    let adtdef = unsafeADTDef (unsafeName "adtName") 
+    let adtdef = unsafeADTDef (unsafeName "aName") 
                               [ unsafeConstructorDef (unsafeName "cstrName") [] ]
       in
         case addADTs [adtdef, adtdef] (empty::ContextTestSort) of
@@ -86,29 +88,37 @@ prop_ADTDefs_Dependent =
     let aName = unsafeName "A"
         bName = unsafeName "B"
         cName = unsafeName "C"
+        
+        aRef = mkADTRef aName
+        bRef = mkADTRef bName
+        cRef = mkADTRef cName
+        
         depName = unsafeName "dependent"
         cstrName = unsafeName "cstr"
         
         depConstructorDef = unsafeConstructorDef depName
-                                                 [ FieldDef aName (SortADT aName)
-                                                 , FieldDef bName (SortADT bName)
-                                                 , FieldDef cName (SortADT cName)
+                                                 [ FieldDef aName (SortADT aRef)
+                                                 , FieldDef bName (SortADT bRef)
+                                                 , FieldDef cName (SortADT cRef)
                                                  ]
+        aConstructorDef = unsafeConstructorDef cstrName []
+        bConstructorDef = unsafeConstructorDef cstrName
+                                               [ FieldDef (unsafeName "diffA") (SortADT aRef) ]
+        cConstructorDef = unsafeConstructorDef cstrName
+                                               [ FieldDef (unsafeName "diffA") (SortADT aRef)
+                                               , FieldDef (unsafeName "diffB") (SortADT bRef)
+                                               ]
         aDef = unsafeADTDef aName
                             [ depConstructorDef
-                            , unsafeConstructorDef cstrName []
+                            , aConstructorDef
                             ]
         bDef = unsafeADTDef bName
                             [ depConstructorDef
-                            , unsafeConstructorDef cstrName
-                                                   [ FieldDef (unsafeName "diffA") (SortADT aName) ]
+                            , bConstructorDef
                             ]
         cDef = unsafeADTDef cName
                             [ depConstructorDef
-                            , unsafeConstructorDef cstrName
-                                                   [ FieldDef (unsafeName "diffA") (SortADT aName)
-                                                   , FieldDef (unsafeName "diffB") (SortADT bName)
-                                                   ]
+                            , cConstructorDef
                             ]
         complexityA :: Int
         complexityA   = 0
@@ -119,13 +129,18 @@ prop_ADTDefs_Dependent =
         case addADTs [cDef, bDef, aDef] (empty::ContextTestSort) of
             Left  _      -> False
             Right newCtx ->     elemsADT newCtx == [ aDef, bDef, cDef ]
-                            &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT aName, complexityA)
-                                                                               ,(SortADT bName, complexityB)
-                                                                               ,(SortADT cName, complexityC)] -- also primitive Sorts are contained
-                            &&  mapAdtMapConstructorSize newCtx == Map.fromList [ (aName, Map.fromList [(depName, complexityDep), (cstrName, complexityA)])
-                                                                                , (bName, Map.fromList [(depName, complexityDep), (cstrName, complexityB)])
-                                                                                , (cName, Map.fromList [(depName, complexityDep), (cstrName, complexityC)])
+                            &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT (toRef aDef), complexityA)
+                                                                               ,(SortADT (toRef bDef), complexityB)
+                                                                               ,(SortADT (toRef cDef), complexityC)] -- also primitive Sorts are contained
+                            &&  mapAdtMapConstructorSize newCtx == Map.fromList [ (toRef aDef, Map.fromList [(toRef depConstructorDef, complexityDep), (toRef aConstructorDef, complexityA)])
+                                                                                , (toRef bDef, Map.fromList [(toRef depConstructorDef, complexityDep), (toRef bConstructorDef, complexityB)])
+                                                                                , (toRef cDef, Map.fromList [(toRef depConstructorDef, complexityDep), (toRef cConstructorDef, complexityC)])
                                                                                 ]
+
+prop_initial :: Bool
+prop_initial =
+       all ( (0==) . snd ) (Map.toList (mapSortSize (empty :: ContextTestSort)))
+    && Map.null (mapAdtMapConstructorSize (empty :: ContextTestSort))
 
 -- | a sort context can be incrementally extended - which should be the same as creating it in one step.
 prop_increment :: Bool
@@ -136,14 +151,14 @@ prop_increment =
                             [ unsafeConstructorDef (unsafeName "CstrA") [] ]
         bName = unsafeName "B"
         bDef = unsafeADTDef bName
-                            [ unsafeConstructorDef (unsafeName "CstrB") [ FieldDef (unsafeName "FieldB") (SortADT aName) ] ]
+                            [ unsafeConstructorDef (unsafeName "CstrB") [ FieldDef (unsafeName "FieldB") (SortADT (toRef aDef)) ] ]
         dName = unsafeName "D"
         dDef = unsafeADTDef dName
                             [ unsafeConstructorDef (unsafeName "CstrD") [] ]
         cName = unsafeName "C"
         cDef = unsafeADTDef cName
-                            [ unsafeConstructorDef (unsafeName "CstrCbyB") [ FieldDef (unsafeName "FieldB") (SortADT bName) ]
-                            , unsafeConstructorDef (unsafeName "CstrCbyD") [ FieldDef (unsafeName "FieldD") (SortADT dName) ]
+                            [ unsafeConstructorDef (unsafeName "CstrCbyB") [ FieldDef (unsafeName "FieldB") (SortADT (toRef bDef)) ]
+                            , unsafeConstructorDef (unsafeName "CstrCbyD") [ FieldDef (unsafeName "FieldD") (SortADT (toRef dDef)) ]
                             ]
         c0 = empty :: ContextTestSort
         incr1 = [aDef, bDef]
@@ -164,4 +179,5 @@ spec =
     it "cannot be extended with ADTDefs with unknown references" prop_ADTDefs_unknownReference
     it "cannot be extended such that names are no longer unique" prop_ADTDefs_unique
     it "can contain dependent ADTDefs" prop_ADTDefs_Dependent
+    it "contains initially only basic sorts" prop_initial
     it "can be incrementally extended" prop_increment

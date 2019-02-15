@@ -60,7 +60,7 @@ instance SortContext ContextSort where
 
     addADTs as ctx = case violationsAddAdtDefs of
                                 Just e  -> Left e
-                                Nothing -> Right $ ctx { adtDefs = union (adtDefs ctx) (toRefMap as) }
+                                Nothing -> Right $ ctx { adtDefs = union (adtDefs ctx) (fromList as) }
         where
             -- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
             --   The error reflects the violations of any of the following constraints:
