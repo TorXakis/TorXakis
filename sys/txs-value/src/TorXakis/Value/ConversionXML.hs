@@ -89,11 +89,11 @@ valueToXML ctx = pairToXML rootNodeName
         pairToXML node (Cregex r)     = nodeTextToXML node (encodeString r)
         pairToXML node (Ccstr a c as) = 
             let adtDef = fromMaybe (error ("ADTDef " ++ show a ++ " not in context"))
-                                   (lookupADT ctx a)
+                                   (lookupADT a ctx)
                 cstrDef = fromMaybe (error ("cstrDef " ++ show c ++ " not in ADTDef " ++ show a))
-                                    (lookupConstructor adtDef c)
+                                    (lookupConstructor c adtDef)
                 fieldTexts = map (TorXakis.Name.toText . fieldName) ( fields cstrDef )
-                cNode = (TorXakis.Name.toText . toName) c
+                cNode = (TorXakis.Name.toText . constructorName) cstrDef
                 txt = nodeTextToXML cNode (T.concat (zipWith pairToXML fieldTexts as))
               in nodeTextToXML node txt
         pairToXML _   (Cany _)       = error "ANY not supported"
@@ -137,9 +137,9 @@ valueFromXML ctx s t =
                 = case mkName cname of
                     Left e   -> Left $ Error ("Illegal name " ++ show n ++ "\n" ++ show e)
                     Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
-                                                       (lookupADT ctx a)
-                                    c = RefByName n'
-                                  in case lookupConstructor adtDef c of
+                                                       (lookupADT a ctx)
+                                    c = mkConstructorRef n'
+                                  in case lookupConstructor c adtDef of
                                         Nothing   -> Left $ Error ("Constructor " ++ show n ++  " not defined for ADT " ++ show a)
                                         Just cDef -> let fs = fields cDef
                                                          actual = length fs

@@ -46,10 +46,11 @@ unsafeADTDef n cs = case mkADTDef n cs of
 -- | An ADTDef is not constructable when it needs itself to be constructed
 prop_ADTDefs_nonConstructable :: Bool
 prop_ADTDefs_nonConstructable =
-    let aName = unsafeName "adtName"                         -- Use Ref ADTDef == Name
+    let aName = unsafeName "adtName"
+        aRef = mkADTRef aName
         cyclicAdtdef = unsafeADTDef aName 
                                     [ unsafeConstructorDef (unsafeName "cstrName")
-                                                           [ FieldDef (unsafeName "fieldName") (SortADT aName) ]
+                                                           [ FieldDef (unsafeName "fieldName") (SortADT aRef) ]
                                     ]
       in
         case addADTs [cyclicAdtdef] (empty :: ContextSort) of
@@ -59,10 +60,11 @@ prop_ADTDefs_nonConstructable =
 -- | An ADTDef can not contain unknown references in a context
 prop_ADTDefs_unknownReference :: Bool
 prop_ADTDefs_unknownReference =
-    let unknownName = unsafeName "unknown"                  -- Use Ref ADTDef == Name
+    let unknownName = unsafeName "unknown"
+        unknownRef = mkADTRef unknownName
         undefinedRefAdtdef = unsafeADTDef (unsafeName "adtName") 
                                           [ unsafeConstructorDef (unsafeName "cstrName")
-                                                                 [ FieldDef (unsafeName "fieldName") (SortADT unknownName) ]
+                                                                 [ FieldDef (unsafeName "fieldName") (SortADT unknownRef) ]
                                           ]
       in
         case addADTs [undefinedRefAdtdef] (empty :: ContextSort) of
@@ -82,13 +84,16 @@ prop_ADTDefs_unique =
 -- | ADTDefs can be dependent on each other
 prop_ADTDefs_Dependent :: Bool
 prop_ADTDefs_Dependent =
-    let aName = unsafeName "A"      -- Use Ref ADTDef == Name
+    let aName = unsafeName "A"
         bName = unsafeName "B"
         cName = unsafeName "C"
+        aRef = mkADTRef aName
+        bRef = mkADTRef bName
+        cRef = mkADTRef cName
         depConstructorDef = unsafeConstructorDef (unsafeName "dependent")
-                                                 [ FieldDef aName (SortADT aName)
-                                                 , FieldDef bName (SortADT bName)
-                                                 , FieldDef cName (SortADT cName)
+                                                 [ FieldDef aName (SortADT aRef)
+                                                 , FieldDef bName (SortADT bRef)
+                                                 , FieldDef cName (SortADT cRef)
                                                  ]
         cstrName = unsafeName "cstr"
         aDef = unsafeADTDef aName
@@ -98,13 +103,13 @@ prop_ADTDefs_Dependent =
         bDef = unsafeADTDef bName
                             [ depConstructorDef
                             , unsafeConstructorDef cstrName
-                                                   [ FieldDef (unsafeName "diffA") (SortADT aName) ]
+                                                   [ FieldDef (unsafeName "diffA") (SortADT aRef) ]
                             ]
         cDef = unsafeADTDef cName
                             [ depConstructorDef
                             , unsafeConstructorDef cstrName
-                                                   [ FieldDef (unsafeName "diffA") (SortADT aName)
-                                                   , FieldDef (unsafeName "diffB") (SortADT bName)
+                                                   [ FieldDef (unsafeName "diffA") (SortADT aRef)
+                                                   , FieldDef (unsafeName "diffB") (SortADT bRef)
                                                    ]
                             ]
       in

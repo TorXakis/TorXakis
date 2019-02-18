@@ -99,8 +99,8 @@ arbitraryADTDefs ctx =
             toADTDefs [] _ = return []
             toADTDefs uNames@(n:ns) s = 
                 do
-                    cs <- arbitraryConstructors s (map SortADT uNames)
-                    aDefs <- toADTDefs ns (SortADT n : s)
+                    cs <- arbitraryConstructors s (map (SortADT . mkADTRef) uNames)
+                    aDefs <- toADTDefs ns (SortADT (mkADTRef n) : s)
                     return $ case mkADTDef n cs of
                         Left  _    -> error "error in generator: creating valid ADTDef"
                         Right aDef -> aDef : aDefs

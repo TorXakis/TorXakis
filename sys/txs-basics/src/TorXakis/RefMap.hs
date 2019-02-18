@@ -15,10 +15,11 @@ See LICENSE at root directory of this repository.
 --
 -- This module provides the RefMap.
 -- A Map created by using the reference to the items.
------------------------------------------------------------------------------
+----------------------------------------------------------------------------
 {-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module TorXakis.RefMap
 ( RefMap
 , empty
@@ -32,54 +33,91 @@ module TorXakis.RefMap
 , repeatedByRef
 )
 where
-import           Data.Data            (Data)
+import           Control.Arrow
+import           Control.DeepSeq
+import           Data.Data
+import           Data.Hashable
 import qualified Data.HashMap         as HashMap
 import           Data.List.Unique     (repeated)
 
 import           TorXakis.Referable
 
 -- | Map of Referable objects.
-data Referable a => -- hlint says make it newtype, I agree yet: https://ghc.haskell.org/trac/ghc/ticket/16319
-            RefMap a = RefMap { -- | the HashMap
-                                toHashMap :: HashMap.Map (Ref a) a
-                              } deriving (Eq, Ord, Show, Read, Data)
+data RefMap a where
+    RefMap :: (Referable a, Ord (Ref a), Hashable (Ref a)) =>
+                HashMap.Map (Ref a) a -> RefMap a
+
 
 -- | The empty map.
-empty :: Referable a => RefMap a
+empty :: (Referable a, Ord (Ref a), Hashable (Ref a)) => RefMap a
 empty = RefMap HashMap.empty
 
 -- | Is the key a member of the map?
-member :: Referable a => Ref a -> RefMap a -> Bool
-member r = HashMap.member r . toHashMap
+member :: Ref a -> RefMap a -> Bool
+member r (RefMap m) = HashMap.member r m
 
 -- | Lookup the value at a key in the map.
-lookup :: Referable a => Ref a -> RefMap a -> Maybe a
-lookup r = HashMap.lookup r . toHashMap
+lookup :: Ref a -> RefMap a -> Maybe a
+lookup r (RefMap m) = HashMap.lookup r m
 
 -- | Return all elements of the map in arbitrary order of their keys.
-elems :: Referable a => RefMap a -> [a]
-elems = HashMap.elems . toHashMap
+elems :: RefMap a -> [a]
+elems (RefMap m) = HashMap.elems m
 
 -- | Insert a new value in the map using its reference as key. 
 -- If the key is already present in the map, the associated value is replaced with the supplied value.
-insert :: Referable a => a -> RefMap a -> RefMap a
-insert v m = RefMap (HashMap.insert (toRef v) v (toHashMap m))
+insert :: a -> RefMap a -> RefMap a
+insert v (RefMap m) = RefMap (HashMap.insert (toRef v) v m)
 
 -- | The (left-biased) union of two maps. It prefers the first map when duplicate keys are encountered.
-union :: Referable a => RefMap a -> RefMap a -> RefMap a
-union a b = RefMap (HashMap.union (toHashMap a) (toHashMap b))
+union :: RefMap a -> RefMap a -> RefMap a
+union (RefMap a) (RefMap b) = RefMap (HashMap.union a b)
 
--- | Return 'Data.HashMap.Map' where the reference of the element is taken as key
---   and the element itself is taken as value.
-toRefMap :: Referable a => [a] -> RefMap a
+-- | Create a map from a list of Referable objects.
+toRefMap :: (Referable a, Ord (Ref a), Hashable (Ref a)) => [a] -> RefMap a
 toRefMap = RefMap . HashMap.fromList . map (\e -> (toRef e, e))
 
 -- | Return the elements with non-unique references that the second list contains in the combination of the first and second list.
-repeatedByRefIncremental :: (Referable a, Referable b, Ref a ~ Ref b) => [a] -> [b] -> [b]
+repeatedByRefIncremental :: (Referable a, Ord (Ref a)) => [a] -> [a] -> [a]
 repeatedByRefIncremental xs ys = filter ((`elem` nuRefs) . toRef) ys
     where nuRefs = repeated $ map toRef xs ++ map toRef ys
 
 -- | Return the elements with non-unique references: 
 -- the elements with a reference that is present more than once in the list.
-repeatedByRef :: forall a . Referable a => [a] -> [a]
-repeatedByRef = repeatedByRefIncremental ([] :: [a])
+repeatedByRef :: (Referable a, Ord (Ref a)) => [a] -> [a]
+repeatedByRef = repeatedByRefIncremental []
+
+---------------------------------------------------------------
+-- instances
+---------------------------------------------------------------
+instance (Eq a, Eq (Ref a)) => Eq (RefMap a) where
+    (RefMap a) == (RefMap b) = a == b
+
+instance (Ord a, Ord (Ref a)) => Ord (RefMap a) where
+    compare (RefMap a) (RefMap b) = compare a b
+
+instance (Show a, Show (Ref a)) => Show (RefMap a) where
+    show (RefMap m) = show m
+
+instance ( Referable a, Ord (Ref a), Hashable (Ref a)
+         , Read a, Read (Ref a)
+         ) => Read (RefMap a) where
+    readsPrec n input = map (first RefMap) (readsPrec n input)
+
+instance ( Referable a, Ord (Ref a), Hashable (Ref a)
+         , Data a, Data (Ref a)
+         ) => Data (RefMap a) where
+    gunfold k z _ = k (z RefMap)
+
+    toConstr (RefMap _) = con_RefMap
+
+    dataTypeOf _ = ty_T
+
+con_RefMap :: Constr
+con_RefMap = mkConstr ty_T "RefMap" [] Prefix
+
+ty_T :: DataType
+ty_T = mkDataType "TorXakis.RefMap" [con_RefMap]
+
+instance (NFData a, NFData (Ref a)) => NFData (RefMap a) where
+    rnf (RefMap m) = rnf m

@@ -26,7 +26,6 @@ import qualified Data.Text          as T
 import           Test.QuickCheck
 
 import TorXakis.Distribute
-import TorXakis.Name
 import TorXakis.Sort
 import TorXakis.SortContext
 import TorXakis.Value
@@ -68,9 +67,9 @@ arbitraryValueOfSort _   SortRegex =
 arbitraryValueOfSort ctx (SortADT a) = 
     do
         n <- getSize
-        case lookupADT ctx a of
+        case lookupADT a ctx of
             Nothing      -> error ("ADTDef " ++ show a ++ " not in context ")
-            Just adtDef  -> let availableCstr = mapMaybe (\d -> let v = constructorSize ctx a (toRefByName d) in
+            Just adtDef  -> let availableCstr = mapMaybe (\d -> let v = constructorSize a (toRef d) ctx in
                                                                     if v <= n
                                                                         then Just (v, d)
                                                                         else Nothing
@@ -83,8 +82,8 @@ arbitraryValueOfSort ctx (SortADT a) =
                                             let cFields = fields cstrDef
                                               in do
                                                 additionalComplexity <- distribute (n-minSize) (length cFields)
-                                                let sFields = map (sortSize ctx . sort) cFields
+                                                let sFields = map (flip sortSize ctx . sort) cFields
                                                     aFields = zipWith (+) sFields additionalComplexity
                                                   in do
                                                     fs <- mapM (\(c,f) -> resize c (arbitraryValueOfSort ctx (sort f))) $ zip aFields cFields
-                                                    return $ Ccstr a (toRefByName cstrDef) fs
+                                                    return $ Ccstr a (toRef cstrDef) fs

@@ -37,6 +37,7 @@ module TorXakis.SortADT
 , constructorName
 , fields
 , mkConstructorDef
+, mkConstructorRef
   -- ** Abstract Data Type Definition
 , ADTDef
 , adtName
@@ -44,6 +45,7 @@ module TorXakis.SortADT
 , lookupConstructor
 , elemsConstructor
 , mkADTDef
+, mkADTRef
 -- dependencies, yet part of interface
 , module TorXakis.Referable
 )
@@ -60,6 +62,7 @@ import           TorXakis.Name
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Referable
 import           TorXakis.RefMap
+import           TorXakis.RefByName
 -----------------------------------------------------------------------------
 -- Sort
 -----------------------------------------------------------------------------
@@ -79,7 +82,7 @@ instance Hashable Sort where
     hashWithSalt s SortChar    = s `hashWithSalt` T.pack "Char"
     hashWithSalt s SortString  = s `hashWithSalt` T.pack "String"
     hashWithSalt s SortRegex   = s `hashWithSalt` T.pack "Regex"
-    hashWithSalt s (SortADT r) = s `hashWithSalt` TorXakis.Name.toText r  -- ADT name differs from predefined names
+    hashWithSalt s (SortADT r) = s `hashWithSalt` (TorXakis.Name.toText . toName) r  -- ADT name differs from predefined names
 
 -- | Enables 'Sort's of entities to be accessed in a common way.
 class HasSort c a where
@@ -113,8 +116,8 @@ data ConstructorDef = ConstructorDef
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Referable ConstructorDef where
-    type Ref ConstructorDef = Name
-    toRef = constructorName
+    type Ref ConstructorDef = RefByName ConstructorDef
+    toRef = RefByName . constructorName
 
 instance HasName ConstructorDef where
     getName = constructorName
@@ -128,6 +131,10 @@ mkConstructorDef n fs
         nuFieldNames :: [FieldDef]
         nuFieldNames = repeatedByName fs
 
+-- | For looking up a constructor we need a reference (e.g. needed for de-serialization).
+mkConstructorRef :: Name -> Ref ConstructorDef
+mkConstructorRef = RefByName
+
 -- | Data structure for Abstract Data Type (ADT) definition.
 -- TODO: hide decision to use HashMap - provide elems, lookup and member functions for constructors
 data ADTDef = ADTDef
@@ -136,11 +143,15 @@ data ADTDef = ADTDef
       -- | Constructor definitions of the ADT
     , constructors :: RefMap ConstructorDef
     }
-    deriving (Eq, Ord, Read, Show, Generic, Data)
+    deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
+
+-- | For recursive data types we have to make a reference before we have the instance.
+mkADTRef :: Name -> Ref ADTDef
+mkADTRef = RefByName
 
 instance Referable ADTDef where
-    type Ref ADTDef = Name
-    toRef = adtName
+    type Ref ADTDef = RefByName ADTDef
+    toRef = RefByName . adtName
 
 instance HasName ADTDef where
     getName = adtName
@@ -189,7 +200,7 @@ instance PrettyPrint a Sort where
     prettyPrint _ _ SortChar     = TxsString (T.pack "Char")
     prettyPrint _ _ SortString   = TxsString (T.pack "String")
     prettyPrint _ _ SortRegex    = TxsString (T.pack "Regex")
-    prettyPrint _ _ (SortADT a)  = (TxsString . TorXakis.Name.toText) a
+    prettyPrint _ _ (SortADT a)  = (TxsString . TorXakis.Name.toText . toName) a
 
 instance PrettyPrint a FieldDef where
     prettyPrint o c fd = TxsString ( T.concat [ TorXakis.Name.toText (fieldName fd)
