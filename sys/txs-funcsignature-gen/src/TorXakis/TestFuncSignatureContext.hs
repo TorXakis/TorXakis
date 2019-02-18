@@ -31,7 +31,6 @@ module TorXakis.TestFuncSignatureContext
 , module TorXakis.FuncSignatureContext
 )
 where
-import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
 
@@ -51,43 +50,43 @@ class (TestSortContext a, FuncSignatureContext a) => TestFuncSignatureContext a 
     funcSize ctx f = sum (useSize (returnSort f): map useSize (args f))
         where
             useSize :: Sort -> Int
-            useSize s = 1 + sortSize ctx s
+            useSize s = 1 + sortSize s ctx
 
 -- | An instance of 'TestFuncSignatureContext'.
 newtype ContextTestFuncSignature = ContextTestFuncSignature { basis :: ContextFuncSignatureExposed ContextTestSort }
-                                                            deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+                                                            deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor
 fromTestSortContext :: ContextTestSort -> ContextTestFuncSignature
 fromTestSortContext = ContextTestFuncSignature . fromSortContext
 
 instance SortContext ContextTestFuncSignature where
-    memberSort   = memberSort . basis
+    memberSort r = memberSort r . basis
 
-    memberADT = memberADT . basis
+    memberADT r = memberADT r . basis
 
-    lookupADT = lookupADT . basis
+    lookupADT r = lookupADT r . basis
 
     elemsADT  = elemsADT . basis
 
-    addADTs ctx as = case addADTs (basis ctx) as of
+    addADTs as ctx = case addADTs as (basis ctx) of
                           Left e     -> Left e
                           Right ctx' -> Right $ ctx {basis = ctx'}
 
 instance TestSortContext ContextTestFuncSignature where
-    sortSize = sortSize . toSortContext . basis
+    sortSize r = sortSize r . toSortContext . basis
     
-    adtSize = adtSize . toSortContext . basis
+    adtSize a = adtSize a . toSortContext . basis
     
-    constructorSize = constructorSize . toSortContext . basis
+    constructorSize a c = constructorSize a c . toSortContext . basis
 
 instance FuncSignatureContext ContextTestFuncSignature where
-    memberFunc = memberFunc . basis
+    memberFunc f = memberFunc f . basis
 
     funcSignatures = funcSignatures . basis
 
 instance FuncSignatureModifyContext ContextTestFuncSignature ContextTestFuncSignature where
-    addFuncSignatures ctx fs = case addFuncSignatures (basis ctx) fs of
+    addFuncSignatures fs ctx = case addFuncSignatures fs (basis ctx) of
                                     Left e     -> Left e
                                     Right ctx' -> Right $ ctx {basis = ctx'}
 

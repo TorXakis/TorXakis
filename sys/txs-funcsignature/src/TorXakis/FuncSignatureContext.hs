@@ -33,7 +33,7 @@ import           TorXakis.SortContext
 -- | A FuncSignatureContext Context instance contains all definitions to work with 'TorXakis.FuncSignature'.
 class SortContext a => FuncSignatureContext a where
     -- | Is the provided FuncSignature a member of the context?
-    memberFunc :: a -> FuncSignature -> Bool
+    memberFunc :: FuncSignature -> a -> Bool
     -- | All funcSignatures in the context.
     -- 
     -- Since all funcSignatures are distinct the following properties hold:
@@ -53,4 +53,4 @@ class (FuncSignatureContext a, FuncSignatureContext b) => FuncSignatureModifyCon
     --   * All sorts are known
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addFuncSignatures :: a -> [FuncSignature] -> Either Error b
+    addFuncSignatures :: [FuncSignature] -> a -> Either Error b

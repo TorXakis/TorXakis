@@ -46,31 +46,31 @@ fromSortContext :: a -> ContextFuncSignatureExposed a
 fromSortContext ctx = ContextFuncSignatureExposed ctx Set.empty
 
 instance SortContext a => SortContext (ContextFuncSignatureExposed a) where
-    memberSort   = memberSort . toSortContext
+    memberSort r = memberSort r . toSortContext
 
-    memberADT = memberADT . toSortContext
+    memberADT r = memberADT r . toSortContext
 
-    lookupADT = lookupADT . toSortContext
+    lookupADT r = lookupADT r . toSortContext
 
     elemsADT  = elemsADT . toSortContext
 
-    addADTs ctx as = case addADTs (toSortContext ctx) as of
+    addADTs as ctx = case addADTs as (toSortContext ctx) of
                           Left e     -> Left e
                           Right sctx -> Right $ ctx {toSortContext = sctx}
 
 instance SortContext a => FuncSignatureContext (ContextFuncSignatureExposed a) where
-    memberFunc ctx v = Set.member v (localFuncSignatures ctx)
+    memberFunc v ctx = Set.member v (localFuncSignatures ctx)
 
     funcSignatures ctx = Set.toList (localFuncSignatures ctx)
 
 instance SortContext a => FuncSignatureModifyContext (ContextFuncSignatureExposed a) (ContextFuncSignatureExposed a) where
-    addFuncSignatures ctx fs
+    addFuncSignatures fs ctx
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
         | otherwise                          = Right $ ctx {localFuncSignatures = Set.union (Set.fromList fs) (localFuncSignatures ctx)}
       where
         nuFuncSignatures :: [FuncSignature]
-        nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs
+        nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs -- TODO: discuss a funcSignature has a reference (identity)?
 
         undefinedSorts :: [FuncSignature]
-        undefinedSorts = filter (\f -> any (not . memberSort ctx) (returnSort f: args f) ) fs
+        undefinedSorts = filter (\f -> any (not . flip memberSort ctx) (returnSort f: args f) ) fs

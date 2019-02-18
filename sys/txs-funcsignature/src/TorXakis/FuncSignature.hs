@@ -115,7 +115,7 @@ isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
     isSortFuncSignature :: Bool
     isSortFuncSignature =
         case ss of
-             [SortADT a] -> case lookupADT ctx a of
+             [SortADT a] -> case lookupADT a ctx of
                                 Nothing   -> error ("isReservedFuncSignature -- ADTDef " ++ show a ++ " not defined in context ")
                                 Just aDef -> equalsIsConstructorFunc aDef || equalsAccessorFunc aDef
              _           -> False
@@ -142,11 +142,11 @@ isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
 mkFuncSignature :: SortContext a => a -> Name -> [Sort] -> Sort -> Either Error FuncSignature
 mkFuncSignature ctx n as s | not $ null undefinedSorts          = Left $ Error ("mkFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
                            | isReservedFuncSignature ctx n as s = Left $ Error ("mkFuncSignature: Reserved function signature " ++ show n ++ " " ++ show as ++ " " ++ show s)
-                           | memberSort ctx s                   = Right $ FuncSignature n as s
+                           | memberSort s ctx                   = Right $ FuncSignature n as s
                            | otherwise                          = Left $ Error ("mkFuncSignature: Return sort has undefined sort " ++ show s)
     where
         undefinedSorts :: [Sort]
-        undefinedSorts = filter (not . memberSort ctx) as
+        undefinedSorts = filter (not . flip memberSort ctx) as
 
 -- | Enables 'FuncSignature's of entities to be accessed in a common way.
 class HasFuncSignature c e where

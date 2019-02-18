@@ -41,30 +41,30 @@ fromSortContext ctx = ContextFuncSignature ctx Set.empty
 
 instance SortContext ContextFuncSignature where
     -- Can't use
-    -- memberSort   = memberSort . sortContext
+    -- memberSort r = memberSort r . sortContext
     -- since compiler complains:
     --        * Cannot use record selector `sortContext' as a function due to escaped type variables
     --          Probable fix: use pattern-matching syntax instead
     -- For more info see: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=existentialquantification#extension-ExistentialQuantification
-    memberSort (ContextFuncSignature ctx _) = memberSort ctx
+    memberSort r (ContextFuncSignature ctx _) = memberSort r ctx
 
-    memberADT (ContextFuncSignature ctx _) = memberADT ctx
+    memberADT r (ContextFuncSignature ctx _) = memberADT r ctx
 
-    lookupADT (ContextFuncSignature ctx _) = lookupADT ctx
+    lookupADT r (ContextFuncSignature ctx _) = lookupADT r ctx
 
     elemsADT (ContextFuncSignature ctx _) = elemsADT ctx
 
-    addADTs (ContextFuncSignature ctx vs) as = case addADTs ctx as of
+    addADTs as (ContextFuncSignature ctx vs) = case addADTs as ctx of
                                                 Left e     -> Left e
                                                 Right sctx -> Right $ ContextFuncSignature sctx vs
 
 instance FuncSignatureContext ContextFuncSignature where
-    memberFunc ctx v = Set.member v (localFuncSignatures ctx)
+    memberFunc v ctx = Set.member v (localFuncSignatures ctx)
 
     funcSignatures ctx = Set.toList (localFuncSignatures ctx)
 
 instance FuncSignatureModifyContext ContextFuncSignature ContextFuncSignature where
-    addFuncSignatures ctx fs
+    addFuncSignatures fs ctx
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
         | otherwise                          = Right $ ctx {localFuncSignatures = Set.union (Set.fromList fs) (localFuncSignatures ctx)}
@@ -73,4 +73,4 @@ instance FuncSignatureModifyContext ContextFuncSignature ContextFuncSignature wh
         nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs
 
         undefinedSorts :: [FuncSignature]
-        undefinedSorts = filter (\f -> any (not . memberSort ctx) (returnSort f: args f) ) fs
+        undefinedSorts = filter (\f -> any (not . flip memberSort ctx) (returnSort f: args f) ) fs
