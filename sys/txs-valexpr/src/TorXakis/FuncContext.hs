@@ -31,7 +31,7 @@ import           TorXakis.FuncSignatureContext
 -- | A FuncContext Context instance contains all definitions to work with 'TorXakis.FuncDef'.
 class FuncSignatureContext a => FuncContext a where
     -- | lookup FuncDef
-    lookupFunc :: a -> FuncSignature -> Maybe FuncDef
+    lookupFunc :: FuncSignature -> a -> Maybe FuncDef
     -- | All FuncDef elements in the context
     elemsFunc :: a -> [FuncDef]
     -- | Add FuncDefs to func context.
@@ -42,7 +42,7 @@ class FuncSignatureContext a => FuncContext a where
     --   * All references are known (sort, variables, func signatures)
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addFuncs :: a -> [FuncDef] -> Either Error a
+    addFuncs :: [FuncDef] -> a -> Either Error a
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

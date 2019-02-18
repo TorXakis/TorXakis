@@ -87,27 +87,27 @@ import           TorXakis.ValExprConstructionContext
 
 -- | Create a constant value as a value expression.
 mkConst :: ValExprConstructionContext c => c -> Value -> Either Error ValExpression
-mkConst ctx v = if memberSort ctx (getSort ctx v)
+mkConst ctx v = if memberSort (getSort ctx v) ctx
                     then unsafeConst v
                     else Left $  Error ("Sort " ++ show (getSort ctx v) ++ " not defined in context")
 
 -- | Create a variable as a value expression.
-mkVar :: ValExprConstructionContext c => c -> RefByName VarDef -> Either Error ValExpression
-mkVar ctx r = case lookupVar ctx r of
+mkVar :: ValExprConstructionContext c => c -> Ref VarDef -> Either Error ValExpression
+mkVar ctx r = case lookupVar r ctx of
                 Nothing -> Left $ Error ("Variable " ++ show r ++ " not defined in context")
                 Just _  -> unsafeVar r
 
 -- | Apply operator Equal on the provided value expressions.
 mkEqual :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkEqual ctx ve1 ve2 | getSort ctx ve1 /= getSort ctx ve2    = Left $ Error ("Sort of value expressions in equal differ " ++ show (getSort ctx ve1) ++ " versus " ++ show (getSort ctx ve2))
-mkEqual ctx ve1 ve2 | memberSort ctx (getSort ctx ve1)      = unsafeEqual (Right ve1) (Right ve2)
+mkEqual ctx ve1 ve2 | memberSort (getSort ctx ve1) ctx      = unsafeEqual (Right ve1) (Right ve2)
 mkEqual ctx ve1 _                                           = Left $  Error ("Sort " ++ show (getSort ctx ve1) ++ " not defined in context")
 
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
 mkITE :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> ValExpression -> Either Error ValExpression
 mkITE ctx b _  _  | getSort ctx b  /= SortBool        = Left $ Error ("Condition of ITE is not of expected sort Bool but " ++ show (getSort ctx b))
 mkITE ctx _ tb fb | getSort ctx tb /= getSort ctx fb  = Left $ Error ("Sorts of branches differ " ++ show (getSort ctx tb) ++ " versus " ++ show (getSort ctx fb))
-mkITE ctx b tb fb | memberSort ctx (getSort ctx tb)   = unsafeITE (Right b) (Right tb) (Right fb)
+mkITE ctx b tb fb | memberSort (getSort ctx tb) ctx   = unsafeITE (Right b) (Right tb) (Right fb)
 mkITE ctx _ tb _                                      = Left $  Error ("Sort " ++ show (getSort ctx tb) ++ " not defined in context")
 
 -- | Create a function call.
@@ -121,7 +121,7 @@ mkFunc ctx fs vs
         where
             expected = args fs
             actual = map (getSort ctx) vs
-            undefinedSorts = filter (not . memberSort ctx)  expected
+            undefinedSorts = filter (not . flip memberSort ctx)  expected
 
 
 -- | Make a call to some predefined functions
@@ -201,39 +201,39 @@ mkStrInRe ctx _ r | getSort ctx r /= SortRegex  = Left $ Error ("Second argument
 mkStrInRe _   s r                               = unsafeStrInRe (Right s) (Right r)
 
 -- get ConstructorDef when possible
-getCstr :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> Either Error (ADTDef, ConstructorDef)
-getCstr ctx aName cName = case lookupADT ctx aName of
-                                Nothing   -> Left $ Error ("ADTDefinition " ++ show aName ++ " not defined in context")
-                                Just aDef -> case lookupConstructor aDef cName of
-                                                Nothing   -> Left $ Error ("Constructor " ++ show cName ++ " not defined for ADTDefinition " ++ show aName)
+getCstr :: SortContext c => c -> Ref ADTDef -> Ref ConstructorDef -> Either Error (ADTDef, ConstructorDef)
+getCstr ctx aRef cRef = case lookupADT aRef ctx of
+                                Nothing   -> Left $ Error ("ADTDefinition " ++ show aRef ++ " not defined in context")
+                                Just aDef -> case lookupConstructor cRef aDef of
+                                                Nothing   -> Left $ Error ("Constructor " ++ show cRef ++ " not defined for ADTDefinition " ++ show aRef)
                                                 Just cDef -> Right (aDef, cDef)
 -- | Apply ADT Constructor of the given ADT Name and Constructor Name on the provided arguments (the list of value expressions).
-mkCstr :: ValExprConstructionContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression] -> Either Error ValExpression
-mkCstr ctx aName cName as = getCstr ctx aName cName >>= const (unsafeCstr aName cName (map Right as))
+mkCstr :: ValExprConstructionContext c => c -> Ref ADTDef -> Ref ConstructorDef -> [ValExpression] -> Either Error ValExpression
+mkCstr ctx aRef cRef as = getCstr ctx aRef cRef >>= const (unsafeCstr aRef cRef (map Right as))
 
 -- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
-mkIsCstr :: ValExprConstructionContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> Either Error ValExpression
-mkIsCstr ctx aName cName v = getCstr ctx aName cName >>= structuralIsCstr aName cName v
+mkIsCstr :: ValExprConstructionContext c => c -> Ref ADTDef -> Ref ConstructorDef -> ValExpression -> Either Error ValExpression
+mkIsCstr ctx aRef cRef v = getCstr ctx aRef cRef >>= structuralIsCstr aRef cRef v
 
 -- One time only check - will never change (since structural)
 -- After type checking holds:
 -- IsX(t::T) with T having only one constructor (X) <==> true
-structuralIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> (ADTDef, ConstructorDef) -> Either Error ValExpression
-structuralIsCstr aName cName v (aDef,_) = case elemsConstructor aDef of
+structuralIsCstr :: Ref ADTDef -> Ref ConstructorDef -> ValExpression -> (ADTDef, ConstructorDef) -> Either Error ValExpression
+structuralIsCstr aRef cRef v (aDef,_) = case elemsConstructor aDef of
                                                     [_] -> Right trueValExpr
-                                                    _   -> unsafeIsCstr aName cName (Right v)
+                                                    _   -> unsafeIsCstr aRef cRef (Right v)
 
 -- | Access field made by ADT Constructor of the given ADT Name and Constructor Name on the provided argument.
-mkAccess :: ValExprConstructionContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpression -> Either Error ValExpression
-mkAccess ctx aName cName fName v = getCstr ctx aName cName >>= getFieldPosition . snd >>= (\p -> unsafeAccess aName cName p (Right v))
+mkAccess :: ValExprConstructionContext c => c -> Ref ADTDef -> Ref ConstructorDef -> Name -> ValExpression -> Either Error ValExpression
+mkAccess ctx aRef cRef fName v = getCstr ctx aRef cRef >>= getFieldPosition . snd >>= (\p -> unsafeAccess aRef cRef p (Right v))
     where
         getFieldPosition :: ConstructorDef -> Either Error Int
         getFieldPosition cDef = case lookupField (zip (fields cDef) [0..]) of
-                                Nothing  -> Left $ Error ("FieldName " ++ show fName ++ " not contained in constructor " ++ show cName ++ " of ADTDefinition " ++ show aName)
+                                Nothing  -> Left $ Error ("FieldName " ++ show fName ++ " not contained in constructor " ++ show cRef ++ " of ADTDefinition " ++ show aRef)
                                 Just pos -> Right pos
             where                    
                 lookupField :: [(FieldDef, Int)] -> Maybe Int
                 lookupField []            = Nothing
-                lookupField ((f,p):xs)    = if fieldName f == toName fName
+                lookupField ((f,p):xs)    = if fieldName f == fName
                                             then Just p
                                             else lookupField xs

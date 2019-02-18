@@ -47,7 +47,7 @@ import           TorXakis.Var
 -- | ValExpressionView: the public view of value expression 'ValExpression'
 -- Should we change to Either Error ValExpression to increase laziness (e.g. in ITE, And, concat, func, and cstr)?
 data ValExpressionView = Vconst    Value
-                       | Vvar      (RefByName VarDef)
+                       | Vvar      (Ref VarDef)
                        -- generic
                        | Vequal    ValExpression
                                    ValExpression
@@ -76,9 +76,9 @@ data ValExpressionView = Vconst    Value
                        | Vstrinre  ValExpression
                                    ValExpression
                        -- ADT
-                       | Vcstr     (RefByName ADTDef) (RefByName ConstructorDef) [ValExpression]
-                       | Viscstr   (RefByName ADTDef) (RefByName ConstructorDef) ValExpression
-                       | Vaccess   (RefByName ADTDef) (RefByName ConstructorDef) Int ValExpression
+                       | Vcstr     (Ref ADTDef) (Ref ConstructorDef) [ValExpression]
+                       | Viscstr   (Ref ADTDef) (Ref ConstructorDef) ValExpression
+                       | Vaccess   (Ref ADTDef) (Ref ConstructorDef) Int ValExpression
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | ValExpression: value expression
@@ -108,7 +108,7 @@ instance ValExprConstructionContext a => HasSort a ValExpression where
 
 instance ValExprConstructionContext a => HasSort a ValExpressionView where
     getSort ctx (Vconst val)              = getSort ctx val
-    getSort ctx (Vvar r)                  = case lookupVar ctx r of
+    getSort ctx (Vvar r)                  = case lookupVar r ctx of
                                                Nothing -> error ("getSort: VarDef not found in context " ++ show r)
                                                Just v  -> getSort ctx v
     getSort _    Vequal { }               = SortBool
@@ -126,9 +126,9 @@ instance ValExprConstructionContext a => HasSort a ValExpressionView where
     getSort _    Vstrinre { }             = SortBool
     getSort _   (Vcstr a _c _vexps)       = SortADT a
     getSort _    Viscstr { }              = SortBool
-    getSort ctx (Vaccess a c p _vexps)    = case lookupADT ctx a of
+    getSort ctx (Vaccess a c p _vexps)    = case lookupADT a ctx of
                                                Nothing   -> error ("getSort: ADTDef not found in context " ++ show a)
-                                               Just aDef -> case lookupConstructor aDef c of
+                                               Just aDef -> case lookupConstructor c aDef of
                                                                Nothing   -> error ("getSort: Constructor not found in ADTDef " ++ show c)
                                                                Just cDef -> getSort ctx ( fields cDef !! p )
     getSort _   (Vfunc fs _vexps)         = returnSort fs
@@ -160,12 +160,14 @@ instance FreeVars ValExpressionView where
     freeVars (Vaccess _ _ _ v) = freeVars v
 
 -- Pretty Print 
-instance SortContext c => PrettyPrint c ValExpression where
+instance VarContext c => PrettyPrint c ValExpression where
   prettyPrint o c = prettyPrint o c . view
 
-instance SortContext c => PrettyPrint c ValExpressionView where
+instance VarContext c => PrettyPrint c ValExpressionView where
   prettyPrint _ ctx (Vconst c)          = TxsString (valueToText ctx c)
-  prettyPrint _ _   (Vvar v)            = TxsString (TorXakis.Name.toText (toName v))
+  prettyPrint _ ctx (Vvar v)            = case lookupVar v ctx of
+                                            Nothing     -> error ("Pretty Print accessor refers to undefined var " ++ show v)
+                                            Just vDef   -> TxsString (TorXakis.Name.toText (name vDef))
   prettyPrint o ctx (Vequal a b)        = infixOperator o ctx (T.pack "==") [a,b]
   prettyPrint o ctx (Vite c tb fb)      = TxsString (T.concat [ T.pack "IF "
                                                               , indent (T.pack "   ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o ctx c))
@@ -191,17 +193,25 @@ instance SortContext c => PrettyPrint c ValExpressionView where
   prettyPrint o ctx (Vat s p)           = funcInst o ctx (T.pack "at") [s,p]
   prettyPrint o ctx (Vconcat vs)        = infixOperator o ctx (T.pack "++") vs
   prettyPrint o ctx (Vstrinre s r)      = funcInst o ctx (T.pack "strinre") [s,r]
-  prettyPrint o ctx (Vcstr _ c vs)      = funcInst o ctx (TorXakis.Name.toText (TorXakis.Name.toName c)) vs
-  prettyPrint o ctx (Viscstr _ c v)     = funcInst o ctx (T.append (T.pack "is") (TorXakis.Name.toText (TorXakis.Name.toName c))) [v]
-  prettyPrint o ctx (Vaccess a c p v)   = case lookupADT ctx a of
+  prettyPrint o ctx (Vcstr a c vs)      = case lookupADT a ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
-                                            Just aDef   -> case lookupConstructor aDef c of
+                                            Just aDef   -> case lookupConstructor c aDef of
+                                                                Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
+                                                                Just cDef   -> funcInst o ctx (TorXakis.Name.toText (constructorName cDef)) vs
+  prettyPrint o ctx (Viscstr a c v)     = case lookupADT a ctx of
+                                            Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
+                                            Just aDef   -> case lookupConstructor c aDef of
+                                                                Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
+                                                                Just cDef   -> funcInst o ctx (T.append (T.pack "is") (TorXakis.Name.toText (constructorName cDef))) [v]
+  prettyPrint o ctx (Vaccess a c p v)   = case lookupADT a ctx of
+                                            Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
+                                            Just aDef   -> case lookupConstructor c aDef of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
                                                                 Just cDef   -> let field = fields cDef !! p in
                                                                                     funcInst o ctx (TorXakis.Name.toText (fieldName field)) [v]
 
 -- | Helper function since func and predef both are function Instantations in TorXakis
-funcInst :: SortContext c => Options -> c -> T.Text -> [ValExpression] -> TxsString
+funcInst :: VarContext c => Options -> c -> T.Text -> [ValExpression] -> TxsString
 funcInst o ctx fName vs = TxsString (T.concat [ fName
                                               , T.pack " ( "
                                               , T.intercalate (if multiline o 
@@ -217,7 +227,7 @@ funcInst o ctx fName vs = TxsString (T.concat [ fName
                                               , T.pack ")"
                                               ])
 
-infixOperator :: SortContext c => Options -> c -> T.Text -> [ValExpression] -> TxsString
+infixOperator :: VarContext c => Options -> c -> T.Text -> [ValExpression] -> TxsString
 infixOperator o ctx oName vs = 
         let offset = if multiline o then T.replicate (T.length oName + 1) (T.singleton ' ')
                                     else T.empty
@@ -237,7 +247,7 @@ infixOperator o ctx oName vs =
                                 , T.singleton ')'
                                 ])
 
-occuranceOperator :: SortContext c => Options -> c -> T.Text -> T.Text -> [(ValExpression, Integer)] -> TxsString
+occuranceOperator :: VarContext c => Options -> c -> T.Text -> T.Text -> [(ValExpression, Integer)] -> TxsString
 occuranceOperator o ctx op1 op2 occuranceList =
         let offset1 = if multiline o then T.replicate (T.length op1 + 1) (T.singleton ' ')
                                      else T.empty

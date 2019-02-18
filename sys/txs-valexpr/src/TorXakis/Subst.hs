@@ -46,7 +46,6 @@ import           TorXakis.Error
 import           TorXakis.FuncContext
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
-import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.ValExprConstructionContext
 import           TorXakis.ValExprContext
@@ -77,56 +76,56 @@ instance SortContext ContextValExpr where
     --        * Cannot use record selector `sortContext' as a function due to escaped type variables
     --          Probable fix: use pattern-matching syntax instead
     -- For more info see: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=existentialquantification#extension-ExistentialQuantification
-    memberSort (ContextValExpr ctx _) = memberSort ctx
+    memberSort r (ContextValExpr ctx _) = memberSort r ctx
 
-    memberADT (ContextValExpr ctx _) = memberADT ctx
+    memberADT r (ContextValExpr ctx _) = memberADT r ctx
 
-    lookupADT (ContextValExpr ctx _) = lookupADT ctx
+    lookupADT r (ContextValExpr ctx _) = lookupADT r ctx
 
     elemsADT (ContextValExpr ctx _) = elemsADT ctx
 
-    addADTs (ContextValExpr ctx vs) as = case addADTs ctx as of
+    addADTs as (ContextValExpr ctx vs) = case addADTs as ctx of
                                                         Left e     -> Left e
                                                         Right sctx -> Right $ ContextValExpr sctx vs
 
 instance VarContext ContextValExpr where
-    memberVar (ContextValExpr ctx _) = memberVar ctx
+    memberVar v (ContextValExpr ctx _) = memberVar v ctx
 
-    lookupVar (ContextValExpr ctx _) = lookupVar ctx
+    lookupVar v (ContextValExpr ctx _) = lookupVar v ctx
 
     elemsVar (ContextValExpr ctx _) = elemsVar ctx
 
-    addVars (ContextValExpr ctx vs) as = case addVars ctx as of
+    addVars vs (ContextValExpr ctx fs) = case addVars vs ctx of
                                             Left e     -> Left e
-                                            Right sctx -> Right $ ContextValExpr sctx vs
+                                            Right sctx -> Right $ ContextValExpr sctx fs
 
-    replaceVars (ContextValExpr ctx vs) as = case replaceVars ctx as of
+    replaceVars vs(ContextValExpr ctx fs) = case replaceVars vs ctx of
                                                 Left e     -> Left e
-                                                Right sctx -> Right $ ContextValExpr sctx vs
+                                                Right sctx -> Right $ ContextValExpr sctx fs
 
 instance FuncSignatureContext ContextValExpr where
-    memberFunc ctx v = HashMap.member v (funcDefs ctx)
+    memberFunc f ctx = HashMap.member f (funcDefs ctx)
 
     funcSignatures ctx    = HashMap.keys (funcDefs ctx)
 
 instance FuncSignatureModifyContext ContextValExpr ContextValExprConstruction where
-    addFuncSignatures ctx fs
+    addFuncSignatures fs ctx
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
-        | otherwise                          = addFuncSignatures (TorXakis.ContextValExprConstruction.fromVarContext ctx) (fs ++ funcSignatures ctx)
+        | otherwise                          = addFuncSignatures (fs ++ funcSignatures ctx) (TorXakis.ContextValExprConstruction.fromVarContext ctx)
       where
         nuFuncSignatures :: [FuncSignature]
         nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs
 
         undefinedSorts :: [FuncSignature]
-        undefinedSorts = filter (\f -> any (not . memberSort ctx) (returnSort f: args f) ) fs
+        undefinedSorts = filter (\f -> any (not . flip memberSort ctx) (returnSort f: args f) ) fs
 
 instance FuncContext ContextValExpr where
-    lookupFunc ctx v = HashMap.lookup v (funcDefs ctx)
+    lookupFunc f ctx = HashMap.lookup f (funcDefs ctx)
 
     elemsFunc ctx    = HashMap.elems (funcDefs ctx)
 
-    addFuncs ctx fds
+    addFuncs fds ctx
         | not $ null nuFuncDefs              = Left $ Error (T.pack ("Non unique function signatures: " ++ show nuFuncDefs))
         | not $ null undefinedSorts          = Left $ Error (T.pack ("List of function signatures with undefined sorts: " ++ show undefinedSorts))
         | not $ null undefinedVariables      = Left $ Error (T.pack ("List of function signatures with undefined variables in their bodies: " ++ show undefinedVariables))
@@ -144,16 +143,16 @@ instance FuncContext ContextValExpr where
                                as = args fs
                                rs = returnSort fs
                              in
-                                case filter (not . memberSort ctx) (rs:as) of
+                                case filter (not . flip memberSort ctx) (rs:as) of
                                     [] -> Nothing
                                     xs -> Just (fs, Set.fromList xs)
 
-        undefinedVariables :: [(FuncSignature, Set.Set (RefByName VarDef))]
+        undefinedVariables :: [(FuncSignature, Set.Set (Ref VarDef))]
         undefinedVariables = mapMaybe undefinedVariable fds
 
-        undefinedVariable :: FuncDef -> Maybe (FuncSignature, Set.Set (RefByName VarDef))
-        undefinedVariable fd = let definedVars   :: Set.Set (RefByName VarDef)
-                                   definedVars   = Set.fromList (map toRefByName (toList (paramDefs fd)))
+        undefinedVariable :: FuncDef -> Maybe (FuncSignature, Set.Set (Ref VarDef))
+        undefinedVariable fd = let definedVars   :: Set.Set (Ref VarDef)
+                                   definedVars   = Set.fromList (map toRef (toList (paramDefs fd)))
                                    usedVars      = freeVars (body fd)
                                    undefinedVars = Set.difference usedVars definedVars
                                 in
@@ -228,7 +227,7 @@ instance ValExprConstructionContext ContextValExpr
 
 instance ValExprContext ContextValExpr
 
-unsafeSubst :: ValExprContext a => a -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+unsafeSubst :: ValExprContext a => a -> HashMap.Map (Ref VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 unsafeSubst ctx  mp = unsafeSubstView . view
   where
     unsafeSubstView :: ValExpressionView -> Either Error ValExpression
@@ -260,11 +259,11 @@ unsafeSubst ctx  mp = unsafeSubstView . view
 -- Substitute
 -----------------------------------------------------------------------------
 -- | find mismatches in sort in mapping
-mismatchesSort :: ValExprConstructionContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> HashMap.Map (RefByName VarDef) ValExpression
+mismatchesSort :: ValExprConstructionContext c => c -> HashMap.Map (Ref VarDef) ValExpression -> HashMap.Map (Ref VarDef) ValExpression
 mismatchesSort ctx = HashMap.filterWithKey mismatch
     where
-        mismatch :: RefByName VarDef -> ValExpression -> Bool
-        mismatch r e = case lookupVar ctx r of
+        mismatch :: Ref VarDef -> ValExpression -> Bool
+        mismatch r e = case lookupVar r ctx of
                             Nothing -> error ("mismatchesSort - variable not defined in context - " ++ show r)
                             Just v  -> TorXakis.Var.sort v /= getSort ctx e
 
@@ -273,22 +272,22 @@ mismatchesSort ctx = HashMap.filterWithKey mismatch
 -- For example, substitution of a variable by zero can cause a division by zero error
 -- TODO: should we check the replacing val expressions? And the valExpression we get to work on?
 -- TODO: should we support context shrinking, since by replacing the variable a by 10, the variable a might no longer be relevant in the context (and thus be removed)?
-subst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+subst :: ValExprContext c => c -> HashMap.Map (Ref VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 subst ctx mp ve | HashMap.null mp               = Right ve
                 | not (HashMap.null mismatches) = Left $ Error (T.pack ("Sort mismatches in map : " ++ show mismatches))
                 | not (null undefinedVars)      = Left $ Error (T.pack ("Undefined variables in map : " ++ show undefinedVars))
                 | otherwise                     = unsafeSubst ctx mp ve
   where
-    mismatches :: HashMap.Map (RefByName VarDef) ValExpression
+    mismatches :: HashMap.Map (Ref VarDef) ValExpression
     mismatches = mismatchesSort ctx mp
 
-    undefinedVars :: [RefByName VarDef]
-    undefinedVars = filter (not . memberVar ctx) (HashMap.keys mp)
+    undefinedVars :: [Ref VarDef]
+    undefinedVars = filter (not . flip memberVar ctx) (HashMap.keys mp)
 
 -- | TODO: needed? Complete Substitution: Substitute all variables by value expressions in a value expression.
 -- Since all variables are changed, one can change the kind of variables.
 -- TODO: from one context to another
--- compSubst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+-- compSubst :: ValExprContext c => c -> HashMap.Map (Ref VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 
 -- | mkFuncOpt
 -- Construct optimized function
@@ -304,16 +303,16 @@ mkFuncOpt ctx fs vs = case mkFunc ctx fs vs of
 -- e.g. ANY/Error for not initialized variables of State Automaton translated to a ProcDef
 unsafeFunc :: ValExprContext c => c -> FuncSignature -> [Either Error ValExpression] -> Either Error ValExpression
 unsafeFunc ctx fs vs = case partitionEithers vs of
-                             ([], xs)   -> case lookupFunc ctx fs of
+                             ([], xs)   -> case lookupFunc fs ctx of
                                                 Nothing -> error ("unsafeFunc: function can't be found in context - " ++ show fs)
                                                 Just fd -> case view (body fd) of
                                                                 Vconst x  -> unsafeConst x
                                                                 _         -> case toMaybeValues xs of
                                                                                  Just _  -> let ps = paramDefs fd
-                                                                                                in case addVars (fromFuncContext ctx) (toList ps) of
+                                                                                                in case addVars (toList ps) (fromFuncContext ctx) of
                                                                                                         Left e -> error ("unsafeFunc: can't make new context - " ++ show e)
                                                                                                         Right nctx -> subst nctx
-                                                                                                                            (HashMap.fromList (zip (map toRefByName (toList ps)) xs))
+                                                                                                                            (HashMap.fromList (zip (map toRef (toList ps)) xs))
                                                                                                                             (body fd)
                                                                                  Nothing -> Right $ ValExpression (Vfunc fs xs)
                              (es, _)    -> Left $ Error ("unsafeFunc Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))

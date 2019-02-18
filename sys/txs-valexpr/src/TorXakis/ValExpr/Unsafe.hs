@@ -79,7 +79,7 @@ zeroValExpr = ValExpression $ Vconst (Cint 0)
 unsafeConst :: Value -> Either Error ValExpression
 unsafeConst = Right . ValExpression . Vconst
 
-unsafeVar :: RefByName VarDef -> Either Error ValExpression
+unsafeVar :: Ref VarDef -> Either Error ValExpression
 unsafeVar = Right . ValExpression . Vvar
 
 unsafeEqual :: Either Error ValExpression -> Either Error ValExpression -> Either Error ValExpression
@@ -487,30 +487,30 @@ toMaybeValues = foldl toMaybeValue (Just [])
 
 -- TODO? More laziness?
 -- e.g. when used in an accessor, only one field is relevant
-unsafeCstr :: RefByName ADTDef -> RefByName ConstructorDef -> [Either Error ValExpression] -> Either Error ValExpression
+unsafeCstr :: Ref ADTDef -> Ref ConstructorDef -> [Either Error ValExpression] -> Either Error ValExpression
 unsafeCstr aName cName ps = case partitionEithers ps of
                                  ([], as)   -> unsafeCstr' aName cName as
                                  (es, _)    -> Left $ Error ("Cstr " ++ show cName ++ " of " ++ show aName ++ " Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))
 
-unsafeCstr' :: RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression] -> Either Error ValExpression
+unsafeCstr' :: Ref ADTDef -> Ref ConstructorDef -> [ValExpression] -> Either Error ValExpression
 unsafeCstr' aName cName as = case toMaybeValues as of
                                   Just vs -> unsafeConst (Ccstr aName cName vs)
                                   Nothing -> Right $ ValExpression (Vcstr aName cName as)
 
-unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> Either Error ValExpression -> Either Error ValExpression
+unsafeIsCstr :: Ref ADTDef -> Ref ConstructorDef -> Either Error ValExpression -> Either Error ValExpression
 unsafeIsCstr aName cName (Left e) = Left $ Error ("Is Cstr " ++ show cName ++ " of " ++ show aName ++ " Error: " ++ show e)
 unsafeIsCstr aName cName (Right v) = unsafeIsCstr' aName cName v
 
-unsafeIsCstr' :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> Either Error ValExpression
+unsafeIsCstr' :: Ref ADTDef -> Ref ConstructorDef -> ValExpression -> Either Error ValExpression
 unsafeIsCstr' aName cName (TorXakis.ValExpr.ValExpr.view -> Vcstr a c _)          = unsafeConst (Cbool (aName == a && cName == c))
 unsafeIsCstr' aName cName (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr a c _)) = unsafeConst (Cbool (aName == a && cName == c))
 unsafeIsCstr' aName cName v                                                       = Right $ ValExpression (Viscstr aName cName v)
 
-unsafeAccess :: RefByName ADTDef -> RefByName ConstructorDef -> Int -> Either Error ValExpression -> Either Error ValExpression
+unsafeAccess :: Ref ADTDef -> Ref ConstructorDef -> Int -> Either Error ValExpression -> Either Error ValExpression
 unsafeAccess _ _ _ (Left e) = Left $ Error ("Access Error " ++ show e)
 unsafeAccess aName cName pos (Right v) = unsafeAccess' aName cName pos v
 
-unsafeAccess' :: RefByName ADTDef -> RefByName ConstructorDef -> Int -> ValExpression -> Either Error ValExpression
+unsafeAccess' :: Ref ADTDef -> Ref ConstructorDef -> Int -> ValExpression -> Either Error ValExpression
 -- Note: different sort is impossible so aName for both the same
 unsafeAccess' _ cName pos (TorXakis.ValExpr.ValExpr.view -> Vcstr _ c fs) = 
     if cName == c

@@ -58,9 +58,15 @@ data FuncDef = FuncDef { -- | The name of the function (of type 'TorXakis.Name')
                        }
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
+{- TODO: How to make a Reference of a funcdef without a context?
+instance Referable FuncDef where
+    Ref FuncDef = FuncSignature
+    toRef = 
+-}
+
 sortOfBody :: FuncSignatureContext a => a -> [VarDef] -> ValExpression -> Sort
 sortOfBody ctx vs b =
-    case addVars (fromFuncSignatureContext ctx) vs of
+    case addVars vs (fromFuncSignatureContext ctx) of
         Left e      -> error ("sortOfBody is unable to make new context" ++ show e)
         Right vctx  -> getSort vctx b
 
@@ -79,11 +85,11 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             
         vs :: [VarDef]
         vs = toList ps
         
-        undefinedVars :: Set.Set (RefByName VarDef)
-        undefinedVars = Set.difference (freeVars b) (Set.fromList (map toRefByName vs))
+        undefinedVars :: Set.Set (Ref VarDef)
+        undefinedVars = Set.difference (freeVars b) (Set.fromList (map toRef vs))
 
         undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . memberSort ctx . TorXakis.Var.sort) vs
+        undefinedSorts = filter (not . flip memberSort ctx . TorXakis.Var.sort) vs
 
         argSorts :: [Sort]
         argSorts = map (getSort ctx) vs

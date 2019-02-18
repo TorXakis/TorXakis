@@ -56,40 +56,40 @@ instance SortContext ContextValExprConstruction where
     --        * Cannot use record selector `sortContext' as a function due to escaped type variables
     --          Probable fix: use pattern-matching syntax instead
     -- For more info see: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=existentialquantification#extension-ExistentialQuantification
-    memberSort (ContextValExprConstruction ctx _) = memberSort ctx
+    memberSort r (ContextValExprConstruction ctx _) = memberSort r ctx
 
-    memberADT (ContextValExprConstruction ctx _) = memberADT ctx
+    memberADT r (ContextValExprConstruction ctx _) = memberADT r ctx
 
-    lookupADT (ContextValExprConstruction ctx _) = lookupADT ctx
+    lookupADT r (ContextValExprConstruction ctx _) = lookupADT r ctx
 
     elemsADT (ContextValExprConstruction ctx _) = elemsADT ctx
 
-    addADTs (ContextValExprConstruction ctx vs) as = case addADTs ctx as of
+    addADTs as (ContextValExprConstruction ctx vs) = case addADTs as ctx of
                                                         Left e     -> Left e
                                                         Right sctx -> Right $ ContextValExprConstruction sctx vs
 
 instance VarContext ContextValExprConstruction where
-    memberVar (ContextValExprConstruction ctx _) = memberVar ctx
+    memberVar v (ContextValExprConstruction ctx _) = memberVar v ctx
 
-    lookupVar (ContextValExprConstruction ctx _) = lookupVar ctx
+    lookupVar v (ContextValExprConstruction ctx _) = lookupVar v ctx
 
     elemsVar (ContextValExprConstruction ctx _) = elemsVar ctx
 
-    addVars (ContextValExprConstruction ctx vs) as = case addVars ctx as of
+    addVars vs (ContextValExprConstruction ctx fs) = case addVars vs ctx of
                                                         Left e     -> Left e
-                                                        Right sctx -> Right $ ContextValExprConstruction sctx vs
+                                                        Right sctx -> Right $ ContextValExprConstruction sctx fs
 
-    replaceVars (ContextValExprConstruction ctx vs) as = case replaceVars ctx as of
+    replaceVars vs (ContextValExprConstruction ctx fs) = case replaceVars vs ctx of
                                                                 Left e     -> Left e
-                                                                Right sctx -> Right $ ContextValExprConstruction sctx vs
+                                                                Right sctx -> Right $ ContextValExprConstruction sctx fs
 
 instance FuncSignatureContext ContextValExprConstruction where
-    memberFunc ctx v = Set.member v (localFuncSignatures ctx)
+    memberFunc f ctx = Set.member f (localFuncSignatures ctx)
 
     funcSignatures ctx    = Set.toList (localFuncSignatures ctx)
 
 instance FuncSignatureModifyContext ContextValExprConstruction ContextValExprConstruction where
-    addFuncSignatures ctx fs
+    addFuncSignatures fs ctx
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
         | otherwise                          = Right $ ctx {localFuncSignatures = Set.union (Set.fromList fs) (localFuncSignatures ctx)}
@@ -98,6 +98,6 @@ instance FuncSignatureModifyContext ContextValExprConstruction ContextValExprCon
         nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs
 
         undefinedSorts :: [FuncSignature]
-        undefinedSorts = filter (\f -> any (not . memberSort ctx) (returnSort f: args f) ) fs
+        undefinedSorts = filter (\f -> any (not . flip memberSort ctx) (returnSort f: args f) ) fs
 
 instance ValExprConstructionContext ContextValExprConstruction
