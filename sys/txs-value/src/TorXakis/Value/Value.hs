@@ -32,7 +32,6 @@ import           Data.Data       (Data)
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
-import           TorXakis.Name
 import           TorXakis.Sort
 
 -- | Union of Boolean, Integer, Char, String, and AlgebraicDataType value values.
@@ -48,7 +47,7 @@ data Value = -- | Constructor of Boolean value.
            | Cregex Text                 -- PvdL: performance gain: translate only once,
                                          --       storing SMT string as well
              -- | Constructor of constructor value (value of ADT).
-           | Ccstr (RefByName ADTDef) (RefByName ConstructorDef) [Value]
+           | Ccstr (Ref ADTDef) (Ref ConstructorDef) [Value]
              -- | Constructor of ANY value - temporary hack : don't use.
            | Cany Sort -- TODO: replace by generic - Maybe
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)

@@ -29,7 +29,6 @@ module TorXakis.SortADT
   Sort (..)
   -- ** Has Sort
 , HasSort (..)
-
   -- * Abstract Data Types
   -- ** Field Definition
 , FieldDef (..)
@@ -45,6 +44,8 @@ module TorXakis.SortADT
 , lookupConstructor
 , elemsConstructor
 , mkADTDef
+-- dependencies, yet part of interface
+, module TorXakis.Referable
 )
 where
 
