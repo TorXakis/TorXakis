@@ -18,9 +18,7 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE FlexibleContexts      #-}
---{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
---{-# LANGUAGE UndecidableInstances  #-}
 module TorXakis.Referable
 ( -- * Referable
   Referable(..)

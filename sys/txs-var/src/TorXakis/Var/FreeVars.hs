@@ -22,13 +22,12 @@ where
 import qualified Data.Set               as Set
 
 
-import TorXakis.Name
 import TorXakis.Var.VarDef
 
 -- | Class for Free Variables
 class FreeVars a where
     -- | Determine the free variables
-    freeVars :: a -> Set.Set (RefByName VarDef)
+    freeVars :: a -> Set.Set (Ref VarDef)
     -- | Is expression closed?
     -- A closed expression has no free variables.
     isClosed :: a -> Bool

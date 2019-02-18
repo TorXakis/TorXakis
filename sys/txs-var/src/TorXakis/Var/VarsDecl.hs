@@ -50,5 +50,5 @@ mkVarsDecl ctx l | not $ null nuVars            = Left $ Error ("Non unique name
         nuVars = repeatedByName l
 
         undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . memberSort ctx . sort) l
+        undefinedSorts = filter (not . flip memberSort ctx . sort) l
 

@@ -31,7 +31,6 @@ module TorXakis.TestVarContext
 , module TorXakis.VarContext
 )
 where
-import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
 
@@ -47,54 +46,54 @@ class (TestSortContext a, VarContext a) => TestVarContext a where
     --   The size of the provided var as specified by the references to 'TorXakis.Var' is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.Var' and any related 'TorXakis.Sort' references.
-    varSize :: a -> RefByName VarDef -> Int
-    varSize ctx r = case lookupVar ctx r of 
+    varSize :: Ref VarDef -> a -> Int
+    varSize r ctx = case lookupVar r ctx of 
                         Nothing -> error ("Reference " ++ show r ++ " does not refer to a variable in the provided context")
                         Just v  -> useSize (sort v)
         where
             useSize :: Sort -> Int
-            useSize s = 1 + sortSize ctx s
+            useSize s = 1 + sortSize s ctx
 
 -- | An instance of 'TestVarContext'.
 newtype ContextTestVar = ContextTestVar { basis :: ContextVarExposed ContextTestSort }
-                                        deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+                                        deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor
 fromTestSortContext :: ContextTestSort -> ContextTestVar
 fromTestSortContext = ContextTestVar . fromSortContext
 
 instance SortContext ContextTestVar where
-    memberSort   = memberSort . basis
+    memberSort r = memberSort r . basis
 
-    memberADT = memberADT . basis
+    memberADT r = memberADT r . basis
 
-    lookupADT = lookupADT . basis
+    lookupADT r = lookupADT r . basis
 
     elemsADT  = elemsADT . basis
 
-    addADTs ctx as = case addADTs (basis ctx) as of
+    addADTs as ctx = case addADTs as (basis ctx) of
                           Left e     -> Left e
                           Right ctx' -> Right $ ctx {basis = ctx'}
 
 instance TestSortContext ContextTestVar where
-    sortSize = sortSize . toSortContext . basis
+    sortSize r = sortSize r . toSortContext . basis
 
-    adtSize = adtSize . toSortContext . basis
+    adtSize r = adtSize r . toSortContext . basis
 
-    constructorSize = constructorSize . toSortContext . basis
+    constructorSize a c = constructorSize a c . toSortContext . basis
 
 instance VarContext ContextTestVar where
-    memberVar = memberVar . basis
+    memberVar v = memberVar v . basis
 
-    lookupVar = lookupVar . basis
+    lookupVar v = lookupVar v . basis
 
     elemsVar  = elemsVar . basis
 
-    addVars ctx as = case addVars (basis ctx) as of
+    addVars vs ctx = case addVars vs (basis ctx) of
                           Left e     -> Left e
                           Right ctx' -> Right $ ctx {basis = ctx'}
 
-    replaceVars ctx as = case replaceVars (basis ctx) as of
+    replaceVars vs ctx = case replaceVars vs (basis ctx) of
                           Left e     -> Left e
                           Right ctx' -> Right $ ctx {basis = ctx'}
 

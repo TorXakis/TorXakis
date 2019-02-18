@@ -17,10 +17,8 @@ See LICENSE at root directory of this repository.
 -- A Map created by using the reference to the items.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
 module TorXakis.RefMap
 ( RefMap
 , empty

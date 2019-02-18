@@ -22,10 +22,9 @@ module TorXakis.ContextVar
 , fromSortContext
 )
 where
-import qualified Data.HashMap    as HashMap
-
 import           TorXakis.Error
 import           TorXakis.Name
+import           TorXakis.RefMap
 import           TorXakis.SortContext
 import           TorXakis.VarContext
 import           TorXakis.Var
@@ -34,12 +33,12 @@ import           TorXakis.Var
 data ContextVar = forall a . SortContext a => 
                             ContextVar { _sortContext :: a -- not used due to compiler
                                          -- variable definitions
-                                       , varDefs :: HashMap.Map (RefByName VarDef) VarDef
+                                       , varDefs :: RefMap VarDef
                                        }
 
 -- | Constructor from SortContext
 fromSortContext :: SortContext b => b -> ContextVar
-fromSortContext ctx = ContextVar ctx HashMap.empty
+fromSortContext ctx = ContextVar ctx empty
 
 instance SortContext ContextVar where
     -- Can't use
@@ -48,15 +47,15 @@ instance SortContext ContextVar where
     --        * Cannot use record selector `sortContext' as a function due to escaped type variables
     --          Probable fix: use pattern-matching syntax instead
     -- For more info see: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=existentialquantification#extension-ExistentialQuantification
-    memberSort (ContextVar ctx _) = memberSort ctx
+    memberSort r (ContextVar ctx _) = memberSort r ctx
 
-    memberADT (ContextVar ctx _) = memberADT ctx
+    memberADT r (ContextVar ctx _) = memberADT r ctx
 
-    lookupADT (ContextVar ctx _) = lookupADT ctx
+    lookupADT r (ContextVar ctx _) = lookupADT r ctx
 
     elemsADT (ContextVar ctx _) = elemsADT ctx
 
-    addADTs (ContextVar ctx vs) as = case addADTs ctx as of
+    addADTs as (ContextVar ctx vs) = case addADTs as ctx of
                                                 Left e     -> Left e
                                                 Right sctx -> Right $ ContextVar sctx vs
 
@@ -65,22 +64,22 @@ nuVarDefs :: [VarDef] -> [VarDef]
 nuVarDefs = repeatedByName
 
 -- | undefined Sorts of Variable Definitions.
-undefinedSorts :: SortContext a => a -> [VarDef] -> [VarDef]
-undefinedSorts ctx = filter (not . memberSort ctx . sort)
+undefinedSorts :: SortContext a => [VarDef] -> a -> [VarDef]
+undefinedSorts vs ctx = filter (not . flip memberSort ctx . sort) vs
 
 instance VarContext ContextVar where
-    memberVar ctx v = HashMap.member v (varDefs ctx)
+    memberVar v ctx = member v (varDefs ctx)
 
-    lookupVar ctx v = HashMap.lookup v (varDefs ctx)
+    lookupVar v ctx = TorXakis.RefMap.lookup v (varDefs ctx)
 
-    elemsVar ctx    = HashMap.elems (varDefs ctx)
+    elemsVar ctx    = elems (varDefs ctx)
 
-    addVars ctx vs
+    addVars vs ctx
         | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
-        | not $ null (undefinedSorts ctx vs) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts ctx vs))
-        | otherwise                          = Right $ ctx {varDefs = HashMap.union (toMapByName vs) (varDefs ctx)}
+        | not $ null (undefinedSorts vs ctx) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts vs ctx))
+        | otherwise                          = Right $ ctx {varDefs = union (toRefMap vs) (varDefs ctx)}
 
-    replaceVars ctx vs
+    replaceVars vs ctx
         | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
-        | not $ null (undefinedSorts ctx vs) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts ctx vs))
-        | otherwise                          = Right $ ctx {varDefs = toMapByName vs}
+        | not $ null (undefinedSorts vs ctx) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts vs ctx))
+        | otherwise                          = Right $ ctx {varDefs = toRefMap vs}

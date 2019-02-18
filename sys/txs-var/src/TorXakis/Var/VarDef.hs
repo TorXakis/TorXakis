@@ -20,21 +20,27 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 module TorXakis.Var.VarDef
 ( VarDef
 , name
 , sort
 , mkVarDef
+  -- dependencies, yet part of interface
+, Name
+, Sort
+, module TorXakis.Referable
 )
 where
 
-import           Control.DeepSeq     (NFData)
-import           Data.Data           (Data)
-import           Data.Hashable       (Hashable(hashWithSalt))
-import           GHC.Generics        (Generic)
+import           Control.DeepSeq      (NFData)
+import           Data.Data            (Data)
+import           Data.Hashable        (Hashable(hashWithSalt))
+import           GHC.Generics         (Generic)
 
 import TorXakis.Error
 import TorXakis.Name
+import TorXakis.Referable
 import TorXakis.Sort (Sort, HasSort(getSort))
 import TorXakis.SortContext
 
@@ -48,12 +54,16 @@ data VarDef = VarDef {   -- | Name
          deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 mkVarDef :: SortContext a => a -> Name -> Sort -> Either Error VarDef
-mkVarDef ctx n s | memberSort ctx s = Right $ VarDef n s
-                 | otherwise      = Left $ Error ("Sort not defined in context " ++ show s)
+mkVarDef ctx n s | memberSort s ctx = Right $ VarDef n s
+                 | otherwise        = Left $ Error ("Sort not defined in context " ++ show s)
 
 instance Hashable VarDef where
     hashWithSalt s (VarDef nm srt) = s `hashWithSalt` nm
                                        `hashWithSalt` srt
+
+instance Referable VarDef where
+    type Ref VarDef = Name
+    toRef = name
 
 instance HasName VarDef where
     getName = name

@@ -25,37 +25,36 @@ module TorXakis.ContextVarExposed
 , toSortContext
 )
 where
-import           Control.DeepSeq        (NFData)
 import           Data.Data              (Data)
-import qualified Data.HashMap    as HashMap
 import           GHC.Generics           (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Name
+import           TorXakis.RefMap
 import           TorXakis.SortContext
 import           TorXakis.VarContext
 import           TorXakis.Var
 
 -- | An instance of 'TorXakis.VarContext'.
 data ContextVarExposed a = ContextVarExposed { toSortContext :: a
-                                 -- variable definitions
-                               , varDefs :: HashMap.Map (RefByName VarDef) VarDef
-                               } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+                                               -- variable definitions
+                                             , varDefs :: RefMap VarDef
+                                             } deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor from SortContext
 fromSortContext :: a -> ContextVarExposed a
-fromSortContext ctx = ContextVarExposed ctx HashMap.empty
+fromSortContext ctx = ContextVarExposed ctx empty
 
 instance SortContext a => SortContext (ContextVarExposed a) where
-    memberSort   = memberSort . toSortContext
+    memberSort r = memberSort r . toSortContext
 
-    memberADT = memberADT . toSortContext
+    memberADT r = memberADT r . toSortContext
 
-    lookupADT = lookupADT . toSortContext
+    lookupADT r = lookupADT r . toSortContext
 
-    elemsADT  = elemsADT . toSortContext
+    elemsADT = elemsADT . toSortContext
 
-    addADTs ctx as = case addADTs (toSortContext ctx) as of
+    addADTs as ctx = case addADTs as (toSortContext ctx) of
                           Left e     -> Left e
                           Right sctx -> Right $ ctx {toSortContext = sctx}
 
@@ -64,22 +63,22 @@ nuVarDefs :: [VarDef] -> [VarDef]
 nuVarDefs = repeatedByName
 
 -- | undefined Sorts of Variable Definitions.
-undefinedSorts :: SortContext a => a -> [VarDef] -> [VarDef]
-undefinedSorts ctx = filter (not . memberSort ctx . sort)
+undefinedSorts :: SortContext a => [VarDef] -> a -> [VarDef]
+undefinedSorts vs ctx = filter (not . flip memberSort ctx . sort) vs
 
 instance SortContext a => VarContext (ContextVarExposed a) where
-    memberVar ctx v = HashMap.member v (varDefs ctx)
+    memberVar v ctx = member v (varDefs ctx)
 
-    lookupVar ctx v = HashMap.lookup v (varDefs ctx)
+    lookupVar v ctx = TorXakis.RefMap.lookup v (varDefs ctx)
 
-    elemsVar ctx    = HashMap.elems (varDefs ctx)
+    elemsVar ctx    = elems (varDefs ctx)
 
-    addVars ctx vs
+    addVars vs ctx
         | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
-        | not $ null (undefinedSorts ctx vs) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts ctx vs))
-        | otherwise                          = Right $ ctx {varDefs = HashMap.union (toMapByName vs) (varDefs ctx)}
+        | not $ null (undefinedSorts vs ctx) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts vs ctx))
+        | otherwise                          = Right $ ctx {varDefs = union (toRefMap vs) (varDefs ctx)}
 
-    replaceVars ctx vs
+    replaceVars vs ctx
         | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
-        | not $ null (undefinedSorts ctx vs) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts ctx vs))
-        | otherwise                          = Right $ ctx {varDefs = toMapByName vs}
+        | not $ null (undefinedSorts vs ctx) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts vs ctx))
+        | otherwise                          = Right $ ctx {varDefs = toRefMap vs}
