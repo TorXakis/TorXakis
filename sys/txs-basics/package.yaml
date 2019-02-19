@@ -18,6 +18,8 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
+  - TorXakis.ContextEmpty
+  - TorXakis.EmptyContext
   - TorXakis.Error
   - TorXakis.Referable
   - TorXakis.RefMap

@@ -44,12 +44,12 @@ import           TorXakis.Referable
 
 -- | Map of Referable objects.
 data RefMap a where
-    RefMap :: (Referable a, Ord (Ref a), Hashable (Ref a)) =>
+    RefMap :: (Referable a c, Ord (Ref a), Hashable (Ref a)) =>
                 HashMap.Map (Ref a) a -> RefMap a
 
 
 -- | The empty map.
-empty :: (Referable a, Ord (Ref a), Hashable (Ref a)) => RefMap a
+empty :: (Referable a c, Ord (Ref a), Hashable (Ref a)) => RefMap a
 empty = RefMap HashMap.empty
 
 -- | Is the key a member of the map?
@@ -78,9 +78,9 @@ toRefMap :: (Referable a, Ord (Ref a), Hashable (Ref a)) => [a] -> RefMap a
 toRefMap = RefMap . HashMap.fromList . map (\e -> (toRef e, e))
 
 -- | Return the elements with non-unique references that the second list contains in the combination of the first and second list.
-repeatedByRefIncremental :: (Referable a, Ord (Ref a)) => [a] -> [a] -> [a]
-repeatedByRefIncremental xs ys = filter ((`elem` nuRefs) . toRef) ys
-    where nuRefs = repeated $ map toRef xs ++ map toRef ys
+repeatedByRefIncremental :: (Referable a c, Ord (Ref a)) => c -> [a] -> [a] -> [a]
+repeatedByRefIncremental ctx xs ys = filter ((`elem` nuRefs) . (toRef ctx)) ys
+    where nuRefs = repeated $ map (toRef ctx) xs ++ map (toRef ctx) ys
 
 -- | Return the elements with non-unique references: 
 -- the elements with a reference that is present more than once in the list.

@@ -23,6 +23,8 @@ module TorXakis.Referable
 )
 where
 -- | A referable class
-class Referable a where
+class Referable a c where
     type Ref a
-    toRef :: a -> Ref a
+    -- | Derive reference from provided definition.
+    -- Functions and processes need a context to be able to derive the return sort of their bodies.
+    toRef :: c -> a -> Ref a
