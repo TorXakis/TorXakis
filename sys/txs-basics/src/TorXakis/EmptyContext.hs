@@ -20,5 +20,7 @@ module TorXakis.EmptyContext
   EmptyContext
 )
 where
--- | An Empty Context instance contains nothing 
+
+-- | An Empty Context instance contains nothing.
+-- Comparable to Java's Object.
 class EmptyContext a

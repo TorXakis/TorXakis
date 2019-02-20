@@ -44,12 +44,12 @@ import           TorXakis.Referable
 
 -- | Map of Referable objects.
 data RefMap a where
-    RefMap :: (Referable a c, Ord (Ref a), Hashable (Ref a)) =>
+    RefMap :: (Referable a, Ord (Ref a), Hashable (Ref a)) =>
                 HashMap.Map (Ref a) a -> RefMap a
 
 
 -- | The empty map.
-empty :: (Referable a c, Ord (Ref a), Hashable (Ref a)) => RefMap a
+empty :: (Referable a, Ord (Ref a), Hashable (Ref a)) => RefMap a
 empty = RefMap HashMap.empty
 
 -- | Is the key a member of the map?
@@ -64,28 +64,32 @@ lookup r (RefMap m) = HashMap.lookup r m
 elems :: RefMap a -> [a]
 elems (RefMap m) = HashMap.elems m
 
--- | Insert a new value in the map using its reference as key. 
+-- | Insert a new value in the map using the provided reference as key.
 -- If the key is already present in the map, the associated value is replaced with the supplied value.
-insert :: a -> RefMap a -> RefMap a
-insert v (RefMap m) = RefMap (HashMap.insert (toRef v) v m)
+--
+-- The user must ensure for derivable references that the provided key and value adhere to
+-- toRef c v == k
+-- where c is the context needed to derive the reference from the value.
+insert :: Ref a -> a -> RefMap a -> RefMap a
+insert k v (RefMap m) = RefMap (HashMap.insert k v m)
 
 -- | The (left-biased) union of two maps. It prefers the first map when duplicate keys are encountered.
 union :: RefMap a -> RefMap a -> RefMap a
 union (RefMap a) (RefMap b) = RefMap (HashMap.union a b)
 
 -- | Create a map from a list of Referable objects.
-toRefMap :: (Referable a, Ord (Ref a), Hashable (Ref a)) => [a] -> RefMap a
-toRefMap = RefMap . HashMap.fromList . map (\e -> (toRef e, e))
+toRefMap :: (RefDerivable a c, Ord (Ref a), Hashable (Ref a)) => c -> [a] -> RefMap a
+toRefMap ctx = RefMap . HashMap.fromList . map (\e -> (toRef ctx e, e))
 
 -- | Return the elements with non-unique references that the second list contains in the combination of the first and second list.
-repeatedByRefIncremental :: (Referable a c, Ord (Ref a)) => c -> [a] -> [a] -> [a]
+repeatedByRefIncremental :: (RefDerivable a c, Ord (Ref a)) => c -> [a] -> [a] -> [a]
 repeatedByRefIncremental ctx xs ys = filter ((`elem` nuRefs) . (toRef ctx)) ys
     where nuRefs = repeated $ map (toRef ctx) xs ++ map (toRef ctx) ys
 
 -- | Return the elements with non-unique references: 
 -- the elements with a reference that is present more than once in the list.
-repeatedByRef :: (Referable a, Ord (Ref a)) => [a] -> [a]
-repeatedByRef = repeatedByRefIncremental []
+repeatedByRef :: (RefDerivable a c, Ord (Ref a)) => c -> [a] -> [a]
+repeatedByRef ctx = repeatedByRefIncremental ctx []
 
 ---------------------------------------------------------------
 -- instances
