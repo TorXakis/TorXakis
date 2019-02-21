@@ -21,9 +21,9 @@ module TorXakis.SortContext
   SortContext (..)
 , prettyPrintSortContext
   -- dependencies, yet part of interface
-, module TorXakis.Referable
 , Error
 , Sort
+, RefByName
 , ADTDef
 , Options
 )
@@ -31,9 +31,9 @@ where
 import qualified Data.Text           as T
 
 import           TorXakis.Error                 (Error)
+import           TorXakis.Name
 import           TorXakis.PrettyPrint.TorXakis
-import           TorXakis.Referable
-import           TorXakis.SortADT               (Sort(..), ADTDef)
+import           TorXakis.SortADT               (Sort(..), ADTDef(adtName))
 
 -- | A Sort Context instance 
 -- contains all definitions to work with sorts and references thereof.
@@ -47,12 +47,12 @@ class SortContext a where
                     : SortChar
                     : SortString
                     : SortRegex
-                    : map (SortADT . toRef) (elemsADT ctx)
+                    : map (SortADT . RefByName . adtName) (elemsADT ctx)
 
-    -- | Points the provided ADTDef reference to an ADTDef in the context?
-    memberADT :: Ref ADTDef -> a -> Bool
-    -- | lookup ADTDef using the provided ADTDef reference
-    lookupADT :: Ref ADTDef -> a -> Maybe ADTDef
+    -- | Points the provided name to an ADTDef in the context?
+    memberADT :: Name -> a -> Bool
+    -- | lookup ADTDef using the provided name
+    lookupADT :: Name -> a -> Maybe ADTDef
     -- | All ADTDef elements in the context
     elemsADT :: a -> [ADTDef]
     -- | Add adt definitions to sort context.

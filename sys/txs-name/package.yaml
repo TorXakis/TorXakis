@@ -20,6 +20,7 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.Name
+  - TorXakis.NameMap
   - TorXakis.XMLName
   dependencies:
   - containers

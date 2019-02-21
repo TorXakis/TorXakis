@@ -18,7 +18,7 @@ See LICENSE at root directory of this repository.
 --
 -- This module provides a generalized, type-safe reference.
 -----------------------------------------------------------------------------
-module TorXakis.RefByName
+module TorXakis.Name.RefByName
 ( -- * Reference By Name
   RefByName (..)
 ) where
@@ -27,7 +27,7 @@ import           Control.DeepSeq      (NFData)
 import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hashWithSalt))
 
-import           TorXakis.Name
+import           TorXakis.Name.Name
 
 -- | A generalized, type-safe reference.
 newtype RefByName t = RefByName { -- | This reference keeps a 'Name' that represents the entity.

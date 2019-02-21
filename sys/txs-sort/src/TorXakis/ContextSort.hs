@@ -31,36 +31,39 @@ import           Data.Maybe          (mapMaybe)
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error      ( Error ( Error ) )
-import           TorXakis.RefMap
+import           TorXakis.Name
+import           TorXakis.NameMap
 import           TorXakis.SortADT    ( Sort ( SortADT )
                                      , ADTDef
+                                     , adtName
                                      , elemsConstructor
-                                     , ConstructorDef ( fields )
+                                     , ConstructorDef
+                                     , elemsField
                                      , sort
                                      )
 import           TorXakis.SortContext
 
 -- | An instance of 'SortContext'.
-newtype ContextSort = ContextSort { adtDefs :: RefMap ADTDef 
+newtype ContextSort = ContextSort { adtDefs :: NameMap ADTDef 
                                   } deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor of empty SortContext
 empty :: ContextSort
-empty = ContextSort TorXakis.RefMap.empty
+empty = ContextSort TorXakis.NameMap.empty
 
 instance SortContext ContextSort where
-    memberSort (SortADT a) = member a . adtDefs
+    memberSort (SortADT a) = member (toName a) . adtDefs
     memberSort _           = const True
 
     memberADT adtRef = member adtRef . adtDefs
 
-    lookupADT adtRef = TorXakis.RefMap.lookup adtRef . adtDefs
+    lookupADT adtRef = TorXakis.NameMap.lookup adtRef . adtDefs
 
     elemsADT = elems . adtDefs
 
     addADTs as ctx = case violationsAddAdtDefs of
                                 Just e  -> Left e
-                                Nothing -> Right $ ctx { adtDefs = union (adtDefs ctx) (toRefMap as) }
+                                Nothing -> Right $ ctx { adtDefs = union (adtDefs ctx) (toNameMap as) }
         where
             -- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
             --   The error reflects the violations of any of the following constraints:
@@ -79,29 +82,29 @@ instance SortContext ContextSort where
                 where
                     definedADTs :: [ADTDef]
                     definedADTs = elems (adtDefs ctx)
-                    
+
                     nonUniqueReferences :: [ADTDef]
-                    nonUniqueReferences = repeatedByRefIncremental definedADTs as
-                    
-                    definedReferences :: [Ref ADTDef]
-                    definedReferences = map toRef (definedADTs ++ as)
+                    nonUniqueReferences = repeatedByNameIncremental definedADTs as
+
+                    definedReferences :: [Name]
+                    definedReferences = map adtName (definedADTs ++ as)
                     
                     hasUnknownReferences :: ADTDef -> Maybe (ADTDef, [Sort])
                     hasUnknownReferences adtdef = 
-                        let xs = filter (not . isDefined) (concatMap ( map sort . fields ) (elemsConstructor adtdef) ) in
+                        let xs = filter (not . isDefined) (concatMap ( map sort . elemsField ) (elemsConstructor adtdef) ) in
                             if null xs 
                                 then Nothing
                                 else Just (adtdef,xs)
 
                     isDefined :: Sort -> Bool
-                    isDefined (SortADT t) = t `elem` definedReferences
+                    isDefined (SortADT t) = (toName t) `elem` definedReferences
                     isDefined _           = True
 
                     unknownReferences :: [(ADTDef, [Sort])]
                     unknownReferences = mapMaybe hasUnknownReferences as
                     
                     nonConstructableADTs :: [ADTDef]
-                    nonConstructableADTs =  verifyConstructibleADTs (map toRef definedADTs) as
+                    nonConstructableADTs =  verifyConstructibleADTs (map adtName definedADTs) as
                       where
                         -- | Verifies if given list of 'ADTDef's are constructable.
                         --
@@ -111,11 +114,11 @@ instance SortContext ContextSort where
                         --
                         --   * A list of 'ADTDef's to be verified
                         --
-                        --   Output: A tuple consisting of:
+                        --   Output:
                         --
                         --   * A list of non-constructable 'ADTDef's
                         --
-                        verifyConstructibleADTs :: [Ref ADTDef]
+                        verifyConstructibleADTs :: [Name]
                                                 -> [ADTDef]
                                                 -> [ADTDef]
                         verifyConstructibleADTs constructableReferences uADTDfs =
@@ -124,13 +127,13 @@ instance SortContext ContextSort where
                                             uADTDfs
                             in if null cs
                             then uADTDfs
-                            else verifyConstructibleADTs (map toRef cs ++ constructableReferences) ncs
+                            else verifyConstructibleADTs (map adtName cs ++ constructableReferences) ncs
 
-                        allFieldsConstructable :: [Ref ADTDef] -> ConstructorDef -> Bool
+                        allFieldsConstructable :: [Name] -> ConstructorDef -> Bool
                         allFieldsConstructable constructableReferences cDef =
                             all ( isSortConstructable constructableReferences . sort )
-                                $ fields cDef
+                                $ elemsField cDef
 
-                        isSortConstructable :: [Ref ADTDef] -> Sort -> Bool
-                        isSortConstructable ns (SortADT t) = t `elem` ns
+                        isSortConstructable :: [Name] -> Sort -> Bool
+                        isSortConstructable ns (SortADT t) = (toName t) `elem` ns
                         isSortConstructable _  _           = True
