@@ -89,11 +89,11 @@ valueToXML ctx = pairToXML rootNodeName
         pairToXML node (Cregex r)     = nodeTextToXML node (encodeString r)
         pairToXML node (Ccstr a c as) = 
             let adtDef = fromMaybe (error ("ADTDef " ++ show a ++ " not in context"))
-                                   (lookupADT a ctx)
+                                   (lookupADT (toName a) ctx)
                 cstrDef = fromMaybe (error ("cstrDef " ++ show c ++ " not in ADTDef " ++ show a))
-                                    (lookupConstructor c adtDef)
-                fieldTexts = map (TorXakis.Name.toText . fieldName) ( fields cstrDef )
+                                    (lookupConstructor (toName c) adtDef)
                 cNode = (TorXakis.Name.toText . constructorName) cstrDef
+                fieldTexts = map (TorXakis.Name.toText . fieldName) ( elemsField cstrDef )
                 txt = nodeTextToXML cNode (T.concat (zipWith pairToXML fieldTexts as))
               in nodeTextToXML node txt
         pairToXML _   (Cany _)       = error "ANY not supported"
@@ -133,20 +133,19 @@ valueFromXML ctx s t =
                 = Right $ Cstring (stringFromList list)
         fromXML SortRegex  n (Element nt [] list) | nt == n
                 = Right $ Cregex (stringFromList list)
-        fromXML (SortADT a) n (Element nt [] [Element cname [] list]) | nt == n
-                = case mkName cname of
-                    Left e   -> Left $ Error ("Illegal name " ++ show n ++ "\n" ++ show e)
-                    Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
-                                                       (lookupADT a ctx)
-                                    c = mkConstructorRef n'
-                                  in case lookupConstructor c adtDef of
-                                        Nothing   -> Left $ Error ("Constructor " ++ show n ++  " not defined for ADT " ++ show a)
-                                        Just cDef -> let fs = fields cDef
-                                                         actual = length fs
-                                                         expected = length list
-                                                      in if actual == expected
-                                                        then case partitionEithers (zipWith3 fromXML (map TorXakis.Sort.sort fs) (map (TorXakis.Name.toText . fieldName) fs) list) of
-                                                                  ([], vs) -> Right $ Ccstr a c vs
-                                                                  (es, _)  -> Left $ Error $ intercalate "\n" (map show es)
-                                                        else Left $ Error ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual)
+        fromXML (SortADT a) n (Element nt [] [Element ctext [] list]) | nt == n
+                = case mkName ctext of
+                    Left e      -> Left $ Error ("Illegal name " ++ show ctext ++ "\n" ++ show e)
+                    Right cname -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
+                                                          (lookupADT (toName a) ctx)
+                                     in case lookupConstructor cname adtDef of
+                                            Nothing   -> Left $ Error ("Constructor " ++ show cname ++ " not defined for ADT " ++ show a)
+                                            Just cDef -> let fs = elemsField cDef
+                                                             actual = length fs
+                                                             expected = length list
+                                                          in if actual == expected
+                                                            then case partitionEithers (zipWith3 fromXML (map TorXakis.Sort.sort fs) (map (TorXakis.Name.toText . fieldName) fs) list) of
+                                                                      ([], vs) -> Right $ Ccstr a (RefByName cname) vs
+                                                                      (es, _)  -> Left $ Error $ intercalate "\n" (map show es)
+                                                            else Left $ Error ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual)
         fromXML s' n l = Left $ Error ("Sort " ++ show s' ++ " of node " ++ show n ++ " mismatch with XML value " ++ show l)

@@ -90,13 +90,9 @@ valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar '\'' c ++ "'")
 valueToText _   (Cstring s)    = T.pack ("\"" ++ encodeString '"' (T.unpack s) ++ "\"")
 valueToText _   (Cregex r)     = T.pack ("`" ++ encodeString '`' (T.unpack r) ++ "`")
 -- valueToText _   (Ccstr _ c []) = TorXakis.Name.toText (toName c)  -- TODO: desired? - parser need to be changed as well!
-valueToText ctx (Ccstr a c as) =            -- TODO: is performance acceptable or should we misuse the constructor reference that is a Ref by Name?
-        let adtDef = fromMaybe (error ("ADTDef " ++ show a ++ " not in context"))
-                               (lookupADT a ctx)
-            cstrDef = fromMaybe (error ("cstrDef " ++ show c ++ " not in ADTDef " ++ show a))
-                                (lookupConstructor c adtDef)
-            cNode = (TorXakis.Name.toText . constructorName) cstrDef
-         in
+valueToText ctx (Ccstr _ c as) =
+        let cNode = (TorXakis.Name.toText . toName) c
+          in
             cNode
             <> T.pack "("
             <> T.intercalate (T.pack ",") (map (valueToText ctx) as) 
@@ -118,20 +114,19 @@ valueFromText ctx s t =
         fromParseValue SortChar    (Pchar c)    = Right $ Cchar (decodeChar c)
         fromParseValue SortString  (Pstring s') = Right $ Cstring (T.pack (decodeString s'))
         fromParseValue SortRegex   (Pregex r)   = Right $ Cregex (T.pack (decodeString r))
-        fromParseValue (SortADT a) (Pcstr n ps) =
-            case mkName n of
-                Left e   -> Left $ Error ("Illegal name " ++ show n ++ "\n" ++ show e)
-                Right n' -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
-                                                   (lookupADT a ctx)
-                                c = mkConstructorRef n'
-                            in case lookupConstructor c adtDef of
-                                    Nothing   -> Left $ Error ("Constructor " ++ show n ++  " not defined for ADT " ++ show a)
-                                    Just cDef -> let fs = fields cDef
-                                                     actual = length fs
-                                                     expected = length ps
-                                                  in if actual == expected
-                                                        then case partitionEithers (zipWith fromParseValue (map TorXakis.Sort.sort fs) ps) of
-                                                                  ([], vs) -> Right $ Ccstr a c vs
-                                                                  (es, _)  -> Left $ Error $ intercalate "\n" (map show es)
-                                                        else Left $ Error ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual)
+        fromParseValue (SortADT a) (Pcstr ctext ps) =
+            case mkName ctext of
+                Left e      -> Left $ Error ("Illegal name " ++ show ctext ++ "\n" ++ show e)
+                Right cname -> let adtDef = fromMaybe (error ("ADTDef "++ show a ++ " not in context"))
+                                                      (lookupADT (toName a) ctx)
+                                in case lookupConstructor cname adtDef of
+                                        Nothing   -> Left $ Error ("Constructor " ++ show cname ++  " not defined for ADT " ++ show a)
+                                        Just cDef -> let fs = elemsField cDef
+                                                         actual = length fs
+                                                         expected = length ps
+                                                      in if actual == expected
+                                                            then case partitionEithers (zipWith fromParseValue (map TorXakis.Sort.sort fs) ps) of
+                                                                      ([], vs) -> Right $ Ccstr a (RefByName cname) vs
+                                                                      (es, _)  -> Left $ Error $ intercalate "\n" (map show es)
+                                                            else Left $ Error ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual)
         fromParseValue s' p                     = Left $ Error ("Sort " ++ show s' ++ " mismatch with parsed value " ++ show p ++ "\nNote ANY is not supported")

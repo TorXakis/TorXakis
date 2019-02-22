@@ -85,7 +85,7 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             
         vs :: [VarDef]
         vs = toList ps
         
-        undefinedVars :: Set.Set (Ref VarDef)
+        undefinedVars :: Set.Set (RefByName VarDef)
         undefinedVars = Set.difference (freeVars b) (Set.fromList (map toRef vs))
 
         undefinedSorts :: [VarDef]

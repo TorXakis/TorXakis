@@ -26,6 +26,7 @@ import qualified Data.Text          as T
 import           Test.QuickCheck
 
 import TorXakis.Distribute
+import TorXakis.Name
 import TorXakis.Sort
 import TorXakis.SortContext
 import TorXakis.Value
@@ -67,11 +68,11 @@ arbitraryValueOfSort _   SortRegex =
 arbitraryValueOfSort ctx (SortADT a) = 
     do
         n <- getSize
-        case lookupADT a ctx of
+        case lookupADT (toName a) ctx of
             Nothing      -> error ("ADTDef " ++ show a ++ " not in context ")
-            Just adtDef  -> let availableCstr = mapMaybe (\d -> let v = constructorSize a (toRef d) ctx in
+            Just adtDef  -> let availableCstr = mapMaybe (\c -> let v = constructorSize a (toConstructorRef c) ctx in
                                                                     if v <= n
-                                                                        then Just (v, d)
+                                                                        then Just (v, c)
                                                                         else Nothing
                                                          )
                                                          (elemsConstructor adtDef)
@@ -79,11 +80,14 @@ arbitraryValueOfSort ctx (SortADT a) =
                                     [] -> error ("Unexpected: No Constructor available for " ++ show a)
                                     _  -> do
                                             (minSize, cstrDef) <- elements availableCstr
-                                            let cFields = fields cstrDef
+                                            let cFields = elemsField cstrDef
                                               in do
                                                 additionalComplexity <- distribute (n-minSize) (length cFields)
                                                 let sFields = map (flip sortSize ctx . sort) cFields
                                                     aFields = zipWith (+) sFields additionalComplexity
                                                   in do
                                                     fs <- mapM (\(c,f) -> resize c (arbitraryValueOfSort ctx (sort f))) $ zip aFields cFields
-                                                    return $ Ccstr a (toRef cstrDef) fs
+                                                    return $ Ccstr a (toConstructorRef cstrDef) fs
+  where
+        toConstructorRef :: ConstructorDef -> RefByName ConstructorDef
+        toConstructorRef = RefByName . constructorName

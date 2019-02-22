@@ -24,7 +24,7 @@ module TorXakis.ContextVar
 where
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.RefMap
+import           TorXakis.NameMap
 import           TorXakis.SortContext
 import           TorXakis.VarContext
 import           TorXakis.Var
@@ -33,7 +33,7 @@ import           TorXakis.Var
 data ContextVar = forall a . SortContext a => 
                             ContextVar { _sortContext :: a -- not used due to compiler
                                          -- variable definitions
-                                       , varDefs :: RefMap VarDef
+                                       , varDefs :: NameMap VarDef
                                        }
 
 -- | Constructor from SortContext
@@ -70,16 +70,16 @@ undefinedSorts vs ctx = filter (not . flip memberSort ctx . sort) vs
 instance VarContext ContextVar where
     memberVar v ctx = member v (varDefs ctx)
 
-    lookupVar v ctx = TorXakis.RefMap.lookup v (varDefs ctx)
+    lookupVar v ctx = TorXakis.NameMap.lookup v (varDefs ctx)
 
     elemsVar ctx    = elems (varDefs ctx)
 
     addVars vs ctx
         | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
         | not $ null (undefinedSorts vs ctx) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts vs ctx))
-        | otherwise                          = Right $ ctx {varDefs = union (toRefMap vs) (varDefs ctx)}
+        | otherwise                          = Right $ ctx {varDefs = toNameMap vs `union` varDefs ctx}
 
     replaceVars vs ctx
         | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
         | not $ null (undefinedSorts vs ctx) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts vs ctx))
-        | otherwise                          = Right $ ctx {varDefs = toRefMap vs}
+        | otherwise                          = Right $ ctx {varDefs = toNameMap vs}

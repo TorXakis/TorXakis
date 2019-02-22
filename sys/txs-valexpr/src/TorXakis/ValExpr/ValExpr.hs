@@ -37,8 +37,9 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
 import           TorXakis.FuncSignature
-import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Name
+import           TorXakis.PrettyPrint.TorXakis
+import           TorXakis.RefByIndex
 import           TorXakis.Sort
 import           TorXakis.ValExprConstructionContext
 import           TorXakis.Value
@@ -47,7 +48,7 @@ import           TorXakis.Var
 -- | ValExpressionView: the public view of value expression 'ValExpression'
 -- Should we change to Either Error ValExpression to increase laziness (e.g. in ITE, And, concat, func, and cstr)?
 data ValExpressionView = Vconst    Value
-                       | Vvar      (Ref VarDef)
+                       | Vvar      (RefByName VarDef)
                        -- generic
                        | Vequal    ValExpression
                                    ValExpression
@@ -76,9 +77,9 @@ data ValExpressionView = Vconst    Value
                        | Vstrinre  ValExpression
                                    ValExpression
                        -- ADT
-                       | Vcstr     (Ref ADTDef) (Ref ConstructorDef) [ValExpression]
-                       | Viscstr   (Ref ADTDef) (Ref ConstructorDef) ValExpression
-                       | Vaccess   (Ref ADTDef) (Ref ConstructorDef) Int ValExpression
+                       | Vcstr     (RefByName ADTDef) (RefByName ConstructorDef) [ValExpression]
+                       | Viscstr   (RefByName ADTDef) (RefByName ConstructorDef) ValExpression
+                       | Vaccess   (RefByName ADTDef) (RefByName ConstructorDef) (RefByIndex FieldDef) ValExpression
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | ValExpression: value expression
@@ -108,7 +109,7 @@ instance ValExprConstructionContext a => HasSort a ValExpression where
 
 instance ValExprConstructionContext a => HasSort a ValExpressionView where
     getSort ctx (Vconst val)              = getSort ctx val
-    getSort ctx (Vvar r)                  = case lookupVar r ctx of
+    getSort ctx (Vvar r)                  = case lookupVar (toName r) ctx of
                                                Nothing -> error ("getSort: VarDef not found in context " ++ show r)
                                                Just v  -> getSort ctx v
     getSort _    Vequal { }               = SortBool
@@ -126,11 +127,11 @@ instance ValExprConstructionContext a => HasSort a ValExpressionView where
     getSort _    Vstrinre { }             = SortBool
     getSort _   (Vcstr a _c _vexps)       = SortADT a
     getSort _    Viscstr { }              = SortBool
-    getSort ctx (Vaccess a c p _vexps)    = case lookupADT a ctx of
+    getSort ctx (Vaccess a c p _vexps)    = case lookupADT (toName a) ctx of
                                                Nothing   -> error ("getSort: ADTDef not found in context " ++ show a)
-                                               Just aDef -> case lookupConstructor c aDef of
+                                               Just aDef -> case lookupConstructor (toName c) aDef of
                                                                Nothing   -> error ("getSort: Constructor not found in ADTDef " ++ show c)
-                                                               Just cDef -> getSort ctx ( fields cDef !! p )
+                                                               Just cDef -> getSort ctx ( elemsField cDef !! toIndex p )
     getSort _   (Vfunc fs _vexps)         = returnSort fs
     getSort _   (Vpredef fs _vexps)       = returnSort fs
 
@@ -165,7 +166,7 @@ instance VarContext c => PrettyPrint c ValExpression where
 
 instance VarContext c => PrettyPrint c ValExpressionView where
   prettyPrint _ ctx (Vconst c)          = TxsString (valueToText ctx c)
-  prettyPrint _ ctx (Vvar v)            = case lookupVar v ctx of
+  prettyPrint _ ctx (Vvar v)            = case lookupVar (toName v) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined var " ++ show v)
                                             Just vDef   -> TxsString (TorXakis.Name.toText (name vDef))
   prettyPrint o ctx (Vequal a b)        = infixOperator o ctx (T.pack "==") [a,b]
@@ -193,21 +194,21 @@ instance VarContext c => PrettyPrint c ValExpressionView where
   prettyPrint o ctx (Vat s p)           = funcInst o ctx (T.pack "at") [s,p]
   prettyPrint o ctx (Vconcat vs)        = infixOperator o ctx (T.pack "++") vs
   prettyPrint o ctx (Vstrinre s r)      = funcInst o ctx (T.pack "strinre") [s,r]
-  prettyPrint o ctx (Vcstr a c vs)      = case lookupADT a ctx of
+  prettyPrint o ctx (Vcstr a c vs)      = case lookupADT (toName a) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
-                                            Just aDef   -> case lookupConstructor c aDef of
+                                            Just aDef   -> case lookupConstructor (toName c) aDef of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
                                                                 Just cDef   -> funcInst o ctx (TorXakis.Name.toText (constructorName cDef)) vs
-  prettyPrint o ctx (Viscstr a c v)     = case lookupADT a ctx of
+  prettyPrint o ctx (Viscstr a c v)     = case lookupADT (toName a) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
-                                            Just aDef   -> case lookupConstructor c aDef of
+                                            Just aDef   -> case lookupConstructor (toName c) aDef of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
                                                                 Just cDef   -> funcInst o ctx (T.append (T.pack "is") (TorXakis.Name.toText (constructorName cDef))) [v]
-  prettyPrint o ctx (Vaccess a c p v)   = case lookupADT a ctx of
+  prettyPrint o ctx (Vaccess a c p v)   = case lookupADT (toName a) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
-                                            Just aDef   -> case lookupConstructor c aDef of
+                                            Just aDef   -> case lookupConstructor (toName c) aDef of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
-                                                                Just cDef   -> let field = fields cDef !! p in
+                                                                Just cDef   -> let field = elemsField cDef !! toIndex p in
                                                                                     funcInst o ctx (TorXakis.Name.toText (fieldName field)) [v]
 
 -- | Helper function since func and predef both are function Instantations in TorXakis

@@ -20,12 +20,11 @@ library:
   exposed-modules:
   - TorXakis.Error
   - TorXakis.PrettyPrint.TorXakis
+  - TorXakis.RefByIndex
   dependencies:
   - deepseq
   - hashable
-  - hashmap
   - text
-  - Unique
 
 tests:
     txs-basics-test:

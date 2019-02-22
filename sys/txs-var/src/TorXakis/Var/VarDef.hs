@@ -29,7 +29,6 @@ module TorXakis.Var.VarDef
   -- dependencies, yet part of interface
 , Name
 , Sort
-, module TorXakis.Referable
 )
 where
 
@@ -40,7 +39,6 @@ import           GHC.Generics         (Generic)
 
 import TorXakis.Error
 import TorXakis.Name
-import TorXakis.Referable
 import TorXakis.Sort (Sort, HasSort(getSort))
 import TorXakis.SortContext
 
@@ -60,10 +58,6 @@ mkVarDef ctx n s | memberSort s ctx = Right $ VarDef n s
 instance Hashable VarDef where
     hashWithSalt s (VarDef nm srt) = s `hashWithSalt` nm
                                        `hashWithSalt` srt
-
-instance Referable VarDef where
-    type Ref VarDef = Name
-    toRef = name
 
 instance HasName VarDef where
     getName = name

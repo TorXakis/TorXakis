@@ -19,14 +19,15 @@ dependencies:
 - txs-sort
 - txs-sort-gen
 - txs-var
+- txs-name
 
 library:
   source-dirs: src
   exposed-modules:
+  - TorXakis.TestVarContext
   - TorXakis.VarsDeclGen
   dependencies:
     - containers
-    - deepseq
     - txs-name-gen
 
 tests:

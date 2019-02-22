@@ -27,7 +27,6 @@ library:
   - containers
   - deepseq
   - hashable
-  - hashmap
   - txs-basics
   - txs-name
 

@@ -28,7 +28,6 @@ library:
   - TorXakis.TestSortContext
   dependencies:
     - containers
-    - deepseq
     - multimap
     - txs-basics
     - txs-name-gen

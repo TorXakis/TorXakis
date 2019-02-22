@@ -218,7 +218,7 @@ instance VarContext ContextTestValExpr where
         | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
         | not $ null (undefinedSorts ctx vs) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts ctx vs))
         | otherwise                          = Right $ ctx { _genMap = addVarGen ctx vs (_genMap ctx)
-                                                           , varDefs = union (toRefMap vs) (varDefs ctx)}
+                                                           , varDefs = toRefMap vs `union` varDefs ctx}
 
     replaceVars vs ctx
         | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))

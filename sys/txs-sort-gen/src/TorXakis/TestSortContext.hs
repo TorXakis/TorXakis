@@ -16,7 +16,6 @@ See LICENSE at root directory of this repository.
 -- Sort Context for Test: 
 -- Additional functionality to ensure termination for QuickCheck
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -37,6 +36,7 @@ import           Data.Maybe          (catMaybes, fromMaybe)
 import           GHC.Generics        (Generic)
 
 import           TorXakis.ContextSort
+import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.SortContext
 
@@ -51,22 +51,22 @@ class SortContext a => TestSortContext a where
     sortSize :: Sort -> a -> Int
     
     -- |  adt Size
-    --   The size of the provided 'TorXakis.ADTDef' is returned.
+    --   The size of the provided reference to 'TorXakis.ADTDef' is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.ADTDef' and any related 'TorXakis.Sort' references.
-    adtSize :: Ref ADTDef -> a -> Int
+    adtSize :: RefByName ADTDef -> a -> Int
 
     -- |  constructor Size
     --   The size of the provided constructor as specified by the references to 'TorXakis.ADTDef' and 'TorXakis.ConstructorDef' is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.ADTDef', 'TorXakis.ConstructorDef' and any related 'TorXakis.Sort' references.
-    constructorSize :: Ref ADTDef -> Ref ConstructorDef -> a -> Int
+    constructorSize :: RefByName ADTDef -> RefByName ConstructorDef -> a -> Int
 
 -- | An instance of 'TestSortContext'.
 data ContextTestSort = ContextTestSort 
                         { basis :: ContextSort
                         , mapSortSize :: Map.Map Sort Int
-                        , mapAdtMapConstructorSize :: Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int)
+                        , mapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
                         } deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor of empty TestSortContext
@@ -101,27 +101,28 @@ instance SortContext ContextTestSort where
                                                                          newMapAdtMapConstructorSize
                                              )
       where
-            addToMapAdtMapConstructorSize :: Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int)
+            addToMapAdtMapConstructorSize :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
                                           -> Map.Map Sort Int
                                           -> [ADTDef]
-                                          -> Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int)
+                                          -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
             addToMapAdtMapConstructorSize cMap sMap =
                 foldl addConstructorSizes cMap
               where
-                addConstructorSizes :: Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int) 
+                addConstructorSizes :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int) 
                                     -> ADTDef 
-                                    -> Map.Map (Ref ADTDef) (Map.Map (Ref ConstructorDef) Int)
+                                    -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
                 addConstructorSizes iMap adef =
-                    let ra = toRef adef in
+                    let ra :: RefByName ADTDef
+                        ra = (RefByName . adtName) adef in
                         if Map.member ra iMap 
                             then error ("Invariant violated: adding already contained ADTDef " ++ show adef)
-                            else Map.insert ra (Map.fromList (map (\c -> (toRef c, getConstructorSize sMap c) ) (elemsConstructor adef) ) ) iMap
+                            else Map.insert ra (Map.fromList (map (\c -> (RefByName (constructorName c), getConstructorSize sMap c) ) (elemsConstructor adef) ) ) iMap
 
             addToMapSortSize :: [ADTDef] -> Map.Map Sort Int -> Map.Map Sort Int
             addToMapSortSize adefs defined =
                 let newDefined = foldl addCurrent defined adefs
                     in if newDefined == defined 
-                        then if any (`Map.notMember` newDefined) (map (SortADT . toRef) adefs)
+                        then if any (`Map.notMember` newDefined) (map (SortADT . RefByName . adtName) adefs)
                                 then error ("Invariant violated: non constructable ADTDefs in " ++ show adefs)
                                 else newDefined
                         else addToMapSortSize adefs newDefined
@@ -129,7 +130,7 @@ instance SortContext ContextTestSort where
                 addCurrent :: Map.Map Sort Int -> ADTDef -> Map.Map Sort Int
                 addCurrent mp aDef = case getKnownAdtSize mp aDef of
                                         Nothing -> mp
-                                        Just i  -> Map.insert (SortADT (toRef aDef)) i mp
+                                        Just i  -> Map.insert ((SortADT . RefByName . adtName) aDef) i mp
 
                 getKnownAdtSize :: Map.Map Sort Int -> ADTDef -> Maybe Int
                 getKnownAdtSize mp adef =
@@ -151,7 +152,7 @@ instance SortContext ContextTestSort where
                                                                                     -- complexity of sort starts at zero (due to QuickCheck), we want the more fields the more complexity
                                                 Nothing -> Nothing
                                       )
-                                      (fields cdef)
+                                      (elemsField cdef)
 
             getConstructorSize :: Map.Map Sort Int -> ConstructorDef -> Int
             getConstructorSize defined cdef = fromMaybe (error ("Invariant violated: unable to calculate size of ConstructorDef " ++ show cdef) )

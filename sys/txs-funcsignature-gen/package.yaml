@@ -22,8 +22,8 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.FuncSignatureGen
+  - TorXakis.TestFuncSignatureContext
   dependencies:
-    - deepseq
     - txs-sort-gen
     - txs-name-gen
 

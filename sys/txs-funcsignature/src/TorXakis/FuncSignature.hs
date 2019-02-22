@@ -115,7 +115,7 @@ isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
     isSortFuncSignature :: Bool
     isSortFuncSignature =
         case ss of
-             [SortADT a] -> case lookupADT a ctx of
+             [SortADT a] -> case lookupADT (toName a) ctx of
                                 Nothing   -> error ("isReservedFuncSignature -- ADTDef " ++ show a ++ " not defined in context ")
                                 Just aDef -> equalsIsConstructorFunc aDef || equalsAccessorFunc aDef
              _           -> False
@@ -129,7 +129,7 @@ isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
     -- | exists field : funcName == fieldName && funcReturnSort == fieldSort
     equalsAccessorFunc :: ADTDef -> Bool
     equalsAccessorFunc aDef =
-        any (any (\f -> fieldName f == n && sort f == s) . fields) (elemsConstructor aDef) 
+        any (any (\f -> fieldName f == n && sort f == s) . elemsField) (elemsConstructor aDef) 
 
 -- | Constructor of 'TorXakis.FuncSignature'.
 -- An FuncSignature is returned when the following constraints are satisfied:

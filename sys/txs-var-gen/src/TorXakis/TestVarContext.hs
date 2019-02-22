@@ -16,7 +16,6 @@ See LICENSE at root directory of this repository.
 -- Var Context for Test: 
 -- Additional functionality to ensure termination for QuickCheck
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -35,6 +34,7 @@ import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
 
 import           TorXakis.ContextVarExposed
+import           TorXakis.Name
 import           TorXakis.Var
 import           TorXakis.VarContext
 import           TorXakis.TestSortContext
@@ -43,10 +43,10 @@ import           TorXakis.TestSortContext
 -- | A TestVarContext instance contains all definitions to work with vars and reference thereof for test purposes
 class (TestSortContext a, VarContext a) => TestVarContext a where
     -- | Var Size
-    --   The size of the provided var as specified by the references to 'TorXakis.Var' is returned.
+    --   The size of the provided var as specified by its name is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.Var' and any related 'TorXakis.Sort' references.
-    varSize :: Ref VarDef -> a -> Int
+    varSize :: Name -> a -> Int
     varSize r ctx = case lookupVar r ctx of 
                         Nothing -> error ("Reference " ++ show r ++ " does not refer to a variable in the provided context")
                         Just v  -> useSize (sort v)

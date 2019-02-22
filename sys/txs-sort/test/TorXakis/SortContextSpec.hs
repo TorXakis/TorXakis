@@ -47,7 +47,8 @@ unsafeADTDef n cs = case mkADTDef n cs of
 prop_ADTDefs_nonConstructable :: Bool
 prop_ADTDefs_nonConstructable =
     let aName = unsafeName "adtName"
-        aRef = mkADTRef aName
+        aRef :: RefByName ADTDef
+        aRef = RefByName aName
         cyclicAdtdef = unsafeADTDef aName 
                                     [ unsafeConstructorDef (unsafeName "cstrName")
                                                            [ FieldDef (unsafeName "fieldName") (SortADT aRef) ]
@@ -61,7 +62,8 @@ prop_ADTDefs_nonConstructable =
 prop_ADTDefs_unknownReference :: Bool
 prop_ADTDefs_unknownReference =
     let unknownName = unsafeName "unknown"
-        unknownRef = mkADTRef unknownName
+        unknownRef :: RefByName ADTDef
+        unknownRef = RefByName unknownName
         undefinedRefAdtdef = unsafeADTDef (unsafeName "adtName") 
                                           [ unsafeConstructorDef (unsafeName "cstrName")
                                                                  [ FieldDef (unsafeName "fieldName") (SortADT unknownRef) ]
@@ -87,9 +89,12 @@ prop_ADTDefs_Dependent =
     let aName = unsafeName "A"
         bName = unsafeName "B"
         cName = unsafeName "C"
-        aRef = mkADTRef aName
-        bRef = mkADTRef bName
-        cRef = mkADTRef cName
+        aRef :: RefByName ADTDef
+        aRef = RefByName aName
+        bRef :: RefByName ADTDef
+        bRef = RefByName bName
+        cRef :: RefByName ADTDef
+        cRef = RefByName cName
         depConstructorDef = unsafeConstructorDef (unsafeName "dependent")
                                                  [ FieldDef aName (SortADT aRef)
                                                  , FieldDef bName (SortADT bRef)

@@ -41,7 +41,7 @@ prop_DefinedSorts ctx = check <$> arbitraryFuncSignature ctx
           check f = let l :: [Sort]
                         l = returnSort f : args f
                       in
-                        all (flip memberSort ctx) l
+                        all (`memberSort` ctx) l
 
 spec :: Spec
 spec =

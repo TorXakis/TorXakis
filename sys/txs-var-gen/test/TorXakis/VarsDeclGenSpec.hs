@@ -57,7 +57,7 @@ prop_DefinedSorts ctx = check <$> arbitraryVarsDecl ctx
                         ss :: [Sort]
                         ss = map (getSort ctx) l
                       in
-                        all (flip memberSort ctx) ss
+                        all (`memberSort` ctx) ss
 
 -- | toMultiMap clusters the elements
 prop_SameElements :: TestSortContext a => a -> Gen Bool

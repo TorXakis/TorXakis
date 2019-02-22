@@ -31,9 +31,9 @@ import           TorXakis.Var
     -- TODO? addVarsDecl function -> don't need to check uniqueness of added variables (still need to check for undefined sorts).
 class SortContext a => VarContext a where
     -- | Refers the provided VarDef name to a VarDef in the context?
-    memberVar :: Ref VarDef -> a -> Bool
+    memberVar :: Name -> a -> Bool
     -- | lookup VarDef
-    lookupVar :: Ref VarDef -> a -> Maybe VarDef
+    lookupVar :: Name -> a -> Maybe VarDef
     -- | All VarDef elements in the context
     elemsVar :: a -> [VarDef]
     -- | Add variables to variable context.

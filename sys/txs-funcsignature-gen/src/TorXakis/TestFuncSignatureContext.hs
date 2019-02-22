@@ -16,7 +16,6 @@ See LICENSE at root directory of this repository.
 -- FuncSignature Context for Test: 
 -- Additional functionality to ensure termination for QuickCheck
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}

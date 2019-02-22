@@ -15,7 +15,6 @@ See LICENSE at root directory of this repository.
 --
 -- Instance of Sort Context: ContextSort
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -63,7 +62,7 @@ instance SortContext ContextSort where
 
     addADTs as ctx = case violationsAddAdtDefs of
                                 Just e  -> Left e
-                                Nothing -> Right $ ctx { adtDefs = union (adtDefs ctx) (toNameMap as) }
+                                Nothing -> Right $ ctx { adtDefs = adtDefs ctx `union` toNameMap as }
         where
             -- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
             --   The error reflects the violations of any of the following constraints:
@@ -97,7 +96,7 @@ instance SortContext ContextSort where
                                 else Just (adtdef,xs)
 
                     isDefined :: Sort -> Bool
-                    isDefined (SortADT t) = (toName t) `elem` definedReferences
+                    isDefined (SortADT t) = toName t `elem` definedReferences
                     isDefined _           = True
 
                     unknownReferences :: [(ADTDef, [Sort])]
@@ -135,5 +134,5 @@ instance SortContext ContextSort where
                                 $ elemsField cDef
 
                         isSortConstructable :: [Name] -> Sort -> Bool
-                        isSortConstructable ns (SortADT t) = (toName t) `elem` ns
+                        isSortConstructable ns (SortADT t) = toName t `elem` ns
                         isSortConstructable _  _           = True

@@ -126,13 +126,13 @@ mkConstructorDef n fs
 
 -- | Refers the provided name to a FieldDef in the given ConstructorDef?
 memberField :: Name -> ConstructorDef -> Bool
-memberField n c = elem n (map fieldName (fields c))
+memberField n c = n `elem` map fieldName (fields c)
 
 -- | lookup Field
 lookupField :: Name -> ConstructorDef -> Maybe FieldDef
 lookupField n = find (\f -> n == fieldName f) . fields
 
--- | All FieldDefs of given ConstructorDef
+-- | All FieldDefs of given ConstructorDef in order.
 elemsField :: ConstructorDef -> [FieldDef]
 elemsField = fields
 

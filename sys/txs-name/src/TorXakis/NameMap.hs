@@ -16,7 +16,6 @@ See LICENSE at root directory of this repository.
 -- This module provides the NameMap.
 -- A Map created by using the reference to the items.
 ----------------------------------------------------------------------------
-{-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE UndecidableInstances  #-}
@@ -91,15 +90,15 @@ instance (Read a, HasName a) => Read (NameMap a) where
 instance (Data a, HasName a) => Data (NameMap a) where
     gunfold k z _ = k (z NameMap)
 
-    toConstr (NameMap _) = con_RefMap
+    toConstr (NameMap _) = conRefMap
 
-    dataTypeOf _ = ty_T
+    dataTypeOf _ = tyT
 
-con_RefMap :: Constr
-con_RefMap = mkConstr ty_T "NameMap" [] Prefix
+conRefMap :: Constr
+conRefMap = mkConstr tyT "NameMap" [] Prefix
 
-ty_T :: DataType
-ty_T = mkDataType "TorXakis.NameMap" [con_RefMap]
+tyT :: DataType
+tyT = mkDataType "TorXakis.NameMap" [conRefMap]
 
 instance NFData a => NFData (NameMap a) where
     rnf (NameMap m) = rnf m
