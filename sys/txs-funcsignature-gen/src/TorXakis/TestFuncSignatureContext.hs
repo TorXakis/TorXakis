@@ -16,8 +16,6 @@ See LICENSE at root directory of this repository.
 -- FuncSignature Context for Test: 
 -- Additional functionality to ensure termination for QuickCheck
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.TestFuncSignatureContext
@@ -30,9 +28,6 @@ module TorXakis.TestFuncSignatureContext
 , module TorXakis.FuncSignatureContext
 )
 where
-import           Data.Data           (Data)
-import           GHC.Generics        (Generic)
-
 import           TorXakis.ContextFuncSignatureExposed
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
@@ -53,7 +48,6 @@ class (TestSortContext a, FuncSignatureContext a) => TestFuncSignatureContext a 
 
 -- | An instance of 'TestFuncSignatureContext'.
 newtype ContextTestFuncSignature = ContextTestFuncSignature { basis :: ContextFuncSignatureExposed ContextTestSort }
-                                                            deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor
 fromTestSortContext :: ContextTestSort -> ContextTestFuncSignature

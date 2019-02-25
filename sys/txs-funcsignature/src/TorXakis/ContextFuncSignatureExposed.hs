@@ -37,9 +37,9 @@ import           TorXakis.FuncSignatureContext
 
 -- | An instance of 'TorXakis.FuncSignatureContext'.
 data ContextFuncSignatureExposed a = ContextFuncSignatureExposed { toSortContext :: a
-                                 -- variable definitions
-                               , localFuncSignatures :: Set.Set FuncSignature
-                               } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+                                                                   -- variable definitions
+                                                                 , toFuncSignatures :: Set.Set FuncSignature
+                                                                 } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Constructor from SortContext
 fromSortContext :: a -> ContextFuncSignatureExposed a
@@ -56,18 +56,18 @@ instance SortContext a => SortContext (ContextFuncSignatureExposed a) where
 
     addADTs as ctx = case addADTs as (toSortContext ctx) of
                           Left e     -> Left e
-                          Right sctx -> Right $ ctx {toSortContext = sctx}
+                          Right sctx -> Right $ ContextFuncSignatureExposed sctx (toFuncSignatures ctx)
 
 instance SortContext a => FuncSignatureContext (ContextFuncSignatureExposed a) where
-    memberFunc v ctx = Set.member v (localFuncSignatures ctx)
+    memberFunc v ctx = Set.member v (toFuncSignatures ctx)
 
-    funcSignatures ctx = Set.toList (localFuncSignatures ctx)
+    funcSignatures ctx = Set.toList (toFuncSignatures ctx)
 
 instance SortContext a => FuncSignatureModifyContext (ContextFuncSignatureExposed a) (ContextFuncSignatureExposed a) where
     addFuncSignatures fs ctx
         | not $ null undefinedSorts          = Left $ Error ("List of function signatures with undefined sorts: " ++ show undefinedSorts)
         | not $ null nuFuncSignatures        = Left $ Error ("Non unique function signatures: " ++ show nuFuncSignatures)
-        | otherwise                          = Right $ ctx {localFuncSignatures = Set.union (Set.fromList fs) (localFuncSignatures ctx)}
+        | otherwise                          = Right $ ContextFuncSignatureExposed (toSortContext ctx) (Set.union (Set.fromList fs) (toFuncSignatures ctx))
       where
         nuFuncSignatures :: [FuncSignature]
         nuFuncSignatures = repeatedByFuncSignatureIncremental ctx (funcSignatures ctx) fs -- TODO: discuss a funcSignature has a reference (identity)?

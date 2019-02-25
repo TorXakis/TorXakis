@@ -50,7 +50,7 @@ import           TorXakis.Var
 -- Generic Generators
 -------------------------------------------------------------------------------
 genValExprVar :: TestValExprContext a => RefByName VarDef -> a -> Gen ValExpression
-genValExprVar v ctx = do
+genValExprVar v ctx =
     case mkVar ctx v of
         Left e  -> error ("genValExprVar constructor with " ++ show v ++ " fails " ++ show e)
         Right x -> return x

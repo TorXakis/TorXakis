@@ -115,14 +115,13 @@ mkITE ctx _ tb _                                      = Left $  Error ("Sort " +
 -- TODO: check for undefined entities in arguments (vs)
 -- TODO: when func signature exists, all sorts are defined. When func signature doesn't exist, we already report an error... so useless to check sorts?
 mkFunc :: ValExprConstructionContext c => c -> RefByFuncSignature -> [ValExpression] -> Either Error ValExpression
-mkFunc ctx r vs 
+mkFunc ctx r@(RefByFuncSignature fs) vs 
     | expected /= actual                        = Left $ Error ("Sorts of signature and arguments differ: " ++ show (zip expected actual))
     | not (null undefinedSorts)                 = Left $ Error ("Undefined sorts : " ++ show undefinedSorts)
     | isPredefinedNonSolvableFuncSignature fs   = Left $ Error ("Signature of predefined function : " ++ show fs) -- to avoid confusion and enable round tripping
     | not (memberFunc fs ctx)                   = Left $ Error ("Undefined FuncSignature : " ++ show fs)
     | otherwise                                 = Right $ ValExpression (Vfunc r vs)
         where
-            fs = toFuncSignature r
             expected = args fs
             actual = map (getSort ctx) vs
             undefinedSorts = filter (not . flip memberSort ctx)  expected
@@ -131,12 +130,11 @@ mkFunc ctx r vs
 -- | Make a call to some predefined functions
 -- Only allowed in CNECTDEF
 mkPredefNonSolvable :: ValExprConstructionContext c => c -> RefByFuncSignature -> [ValExpression] -> Either Error ValExpression
-mkPredefNonSolvable ctx r vs
+mkPredefNonSolvable ctx r@(RefByFuncSignature fs) vs
     | not (isPredefinedNonSolvableFuncSignature fs) = Left $ Error ("Signature is not of a predefined function: " ++ show fs)
     | expected /= actual                            = Left $ Error ("Sorts of signature and arguments differ: " ++ show (zip expected actual) )
     | otherwise                                     = unsafePredefNonSolvable ctx r (map Right vs)
         where
-            fs = toFuncSignature r
             expected = args fs
             actual = map (getSort ctx) vs
             
