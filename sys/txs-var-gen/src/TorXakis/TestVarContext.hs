@@ -93,8 +93,4 @@ instance VarContext ContextTestVar where
                           Left e     -> Left e
                           Right ctx' -> Right $ ctx {basis = ctx'}
 
-    replaceVars vs ctx = case replaceVars vs (basis ctx) of
-                          Left e     -> Left e
-                          Right ctx' -> Right $ ctx {basis = ctx'}
-
 instance TestVarContext ContextTestVar

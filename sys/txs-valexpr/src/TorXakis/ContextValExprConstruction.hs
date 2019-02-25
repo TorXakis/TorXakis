@@ -79,10 +79,6 @@ instance VarContext ContextValExprConstruction where
                                                         Left e     -> Left e
                                                         Right sctx -> Right $ ContextValExprConstruction sctx fs
 
-    replaceVars vs (ContextValExprConstruction ctx fs) = case replaceVars vs ctx of
-                                                                Left e     -> Left e
-                                                                Right sctx -> Right $ ContextValExprConstruction sctx fs
-
 instance FuncSignatureContext ContextValExprConstruction where
     memberFunc f ctx = Set.member f (localFuncSignatures ctx)
 

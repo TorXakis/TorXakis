@@ -18,6 +18,8 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.Var.VarsDecl
 ( VarsDecl
 , mkVarsDecl
@@ -25,14 +27,16 @@ module TorXakis.Var.VarsDecl
 )
 where
 
-import           Control.DeepSeq     (NFData)
-import           Data.Data           (Data)
-import           GHC.Generics        (Generic)
+import           Control.DeepSeq      (NFData)
+import           Data.Data            (Data)
+import qualified Data.Text            as T
+import           GHC.Generics         (Generic)
 
-import TorXakis.Error
-import TorXakis.Name
-import TorXakis.SortContext
-import TorXakis.Var.VarDef
+import           TorXakis.Error
+import           TorXakis.Name
+import           TorXakis.PrettyPrint.TorXakis
+import           TorXakis.SortContext
+import           TorXakis.Var.VarDef
 
 -- | Data for a variables declarations.
 --   The order of the variables declarations is relevant.
@@ -52,3 +56,12 @@ mkVarsDecl ctx l | not $ null nuVars            = Left $ Error ("Non unique name
         undefinedSorts :: [VarDef]
         undefinedSorts = filter (not . flip memberSort ctx . sort) l
 
+instance PrettyPrint a VarsDecl where
+    prettyPrint o c vs = TxsString (T.concat [ T.pack "( "
+                                             , T.intercalate sepParam (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o c) (toList vs))
+                                             , close
+                                             ])
+        where sepParam = if multiline o then T.pack "\n, "
+                                        else T.pack ", "
+              close = if multiline o then T.pack "\n)"
+                                     else T.pack ")"

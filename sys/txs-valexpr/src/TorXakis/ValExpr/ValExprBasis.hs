@@ -75,6 +75,7 @@ import qualified Data.Set        as Set
 import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.Name
+import           TorXakis.RefByIndex
 import           TorXakis.Sort
 import           TorXakis.ValExpr.Unsafe
 import           TorXakis.ValExpr.ValExpr
@@ -92,8 +93,8 @@ mkConst ctx v = if memberSort (getSort ctx v) ctx
                     else Left $  Error ("Sort " ++ show (getSort ctx v) ++ " not defined in context")
 
 -- | Create a variable as a value expression.
-mkVar :: ValExprConstructionContext c => c -> Ref VarDef -> Either Error ValExpression
-mkVar ctx r = case lookupVar r ctx of
+mkVar :: ValExprConstructionContext c => c -> RefByName VarDef -> Either Error ValExpression
+mkVar ctx r = case lookupVar (toName r) ctx of
                 Nothing -> Left $ Error ("Variable " ++ show r ++ " not defined in context")
                 Just _  -> unsafeVar r
 
@@ -112,13 +113,16 @@ mkITE ctx _ tb _                                      = Left $  Error ("Sort " +
 
 -- | Create a function call.
 -- TODO: check for undefined entities in arguments (vs)
-mkFunc :: ValExprConstructionContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
-mkFunc ctx fs vs 
-    | expected /= actual                        = Left $ Error ("Sorts of signature and arguments differ: " ++ show (zip expected actual) )
-    | not (null undefinedSorts)                 = Left $ Error ("Undefined sorts : " ++ show undefinedSorts )
-    | isPredefinedNonSolvableFuncSignature fs   = Left $ Error ("Signature of predefined function : " ++ show fs ) -- to avoid confusion and enable round tripping
-    | otherwise                                 = Right $ ValExpression (Vfunc fs vs)
+-- TODO: when func signature exists, all sorts are defined. When func signature doesn't exist, we already report an error... so useless to check sorts?
+mkFunc :: ValExprConstructionContext c => c -> RefByFuncSignature -> [ValExpression] -> Either Error ValExpression
+mkFunc ctx r vs 
+    | expected /= actual                        = Left $ Error ("Sorts of signature and arguments differ: " ++ show (zip expected actual))
+    | not (null undefinedSorts)                 = Left $ Error ("Undefined sorts : " ++ show undefinedSorts)
+    | isPredefinedNonSolvableFuncSignature fs   = Left $ Error ("Signature of predefined function : " ++ show fs) -- to avoid confusion and enable round tripping
+    | not (memberFunc fs ctx)                   = Left $ Error ("Undefined FuncSignature : " ++ show fs)
+    | otherwise                                 = Right $ ValExpression (Vfunc r vs)
         where
+            fs = toFuncSignature r
             expected = args fs
             actual = map (getSort ctx) vs
             undefinedSorts = filter (not . flip memberSort ctx)  expected
@@ -126,12 +130,13 @@ mkFunc ctx fs vs
 
 -- | Make a call to some predefined functions
 -- Only allowed in CNECTDEF
-mkPredefNonSolvable :: ValExprConstructionContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
-mkPredefNonSolvable ctx fs vs
+mkPredefNonSolvable :: ValExprConstructionContext c => c -> RefByFuncSignature -> [ValExpression] -> Either Error ValExpression
+mkPredefNonSolvable ctx r vs
     | not (isPredefinedNonSolvableFuncSignature fs) = Left $ Error ("Signature is not of a predefined function: " ++ show fs)
     | expected /= actual                            = Left $ Error ("Sorts of signature and arguments differ: " ++ show (zip expected actual) )
-    | otherwise                                     = unsafePredefNonSolvable ctx fs (map Right vs)
+    | otherwise                                     = unsafePredefNonSolvable ctx r (map Right vs)
         where
+            fs = toFuncSignature r
             expected = args fs
             actual = map (getSort ctx) vs
             
@@ -201,39 +206,31 @@ mkStrInRe ctx _ r | getSort ctx r /= SortRegex  = Left $ Error ("Second argument
 mkStrInRe _   s r                               = unsafeStrInRe (Right s) (Right r)
 
 -- get ConstructorDef when possible
-getCstr :: SortContext c => c -> Ref ADTDef -> Ref ConstructorDef -> Either Error (ADTDef, ConstructorDef)
-getCstr ctx aRef cRef = case lookupADT aRef ctx of
+getCstr :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> Either Error (ADTDef, ConstructorDef)
+getCstr ctx aRef cRef = case lookupADT (toName aRef) ctx of
                                 Nothing   -> Left $ Error ("ADTDefinition " ++ show aRef ++ " not defined in context")
-                                Just aDef -> case lookupConstructor cRef aDef of
+                                Just aDef -> case lookupConstructor (toName cRef) aDef of
                                                 Nothing   -> Left $ Error ("Constructor " ++ show cRef ++ " not defined for ADTDefinition " ++ show aRef)
                                                 Just cDef -> Right (aDef, cDef)
 -- | Apply ADT Constructor of the given ADT Name and Constructor Name on the provided arguments (the list of value expressions).
-mkCstr :: ValExprConstructionContext c => c -> Ref ADTDef -> Ref ConstructorDef -> [ValExpression] -> Either Error ValExpression
+mkCstr :: ValExprConstructionContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression] -> Either Error ValExpression
 mkCstr ctx aRef cRef as = getCstr ctx aRef cRef >>= const (unsafeCstr aRef cRef (map Right as))
 
 -- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
-mkIsCstr :: ValExprConstructionContext c => c -> Ref ADTDef -> Ref ConstructorDef -> ValExpression -> Either Error ValExpression
+mkIsCstr :: ValExprConstructionContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> Either Error ValExpression
 mkIsCstr ctx aRef cRef v = getCstr ctx aRef cRef >>= structuralIsCstr aRef cRef v
 
 -- One time only check - will never change (since structural)
 -- After type checking holds:
 -- IsX(t::T) with T having only one constructor (X) <==> true
-structuralIsCstr :: Ref ADTDef -> Ref ConstructorDef -> ValExpression -> (ADTDef, ConstructorDef) -> Either Error ValExpression
+structuralIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> (ADTDef, ConstructorDef) -> Either Error ValExpression
 structuralIsCstr aRef cRef v (aDef,_) = case elemsConstructor aDef of
                                                     [_] -> Right trueValExpr
                                                     _   -> unsafeIsCstr aRef cRef (Right v)
 
 -- | Access field made by ADT Constructor of the given ADT Name and Constructor Name on the provided argument.
-mkAccess :: ValExprConstructionContext c => c -> Ref ADTDef -> Ref ConstructorDef -> Name -> ValExpression -> Either Error ValExpression
-mkAccess ctx aRef cRef fName v = getCstr ctx aRef cRef >>= getFieldPosition . snd >>= (\p -> unsafeAccess aRef cRef p (Right v))
-    where
-        getFieldPosition :: ConstructorDef -> Either Error Int
-        getFieldPosition cDef = case lookupField (zip (fields cDef) [0..]) of
-                                Nothing  -> Left $ Error ("FieldName " ++ show fName ++ " not contained in constructor " ++ show cRef ++ " of ADTDefinition " ++ show aRef)
-                                Just pos -> Right pos
-            where                    
-                lookupField :: [(FieldDef, Int)] -> Maybe Int
-                lookupField []            = Nothing
-                lookupField ((f,p):xs)    = if fieldName f == fName
-                                            then Just p
-                                            else lookupField xs
+mkAccess :: ValExprConstructionContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpression -> Either Error ValExpression
+mkAccess ctx aRef cRef fRef v = getCstr ctx aRef cRef >>= (\(_,cDef) -> case positionField (toName fRef) cDef of
+                                                                            Just p  -> unsafeAccess aRef cRef (RefByIndex p) (Right v)
+                                                                            Nothing -> Left $ Error ("FieldName " ++ show (toName fRef) ++ " not contained in constructor " ++ show (toName cRef) ++ " of ADTDefinition " ++ show (toName aRef))
+                                                           )

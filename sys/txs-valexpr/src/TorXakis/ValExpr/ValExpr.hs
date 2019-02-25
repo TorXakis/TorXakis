@@ -55,8 +55,8 @@ data ValExpressionView = Vconst    Value
                        | Vite      ValExpression
                                    ValExpression
                                    ValExpression
-                       | Vfunc     FuncSignature [ValExpression]
-                       | Vpredef   FuncSignature [ValExpression]
+                       | Vfunc     RefByFuncSignature [ValExpression]
+                       | Vpredef   RefByFuncSignature [ValExpression]
                        -- Boolean
                        | Vnot      ValExpression
                        | Vand      (Set.Set ValExpression)
@@ -132,8 +132,8 @@ instance ValExprConstructionContext a => HasSort a ValExpressionView where
                                                Just aDef -> case lookupConstructor (toName c) aDef of
                                                                Nothing   -> error ("getSort: Constructor not found in ADTDef " ++ show c)
                                                                Just cDef -> getSort ctx ( elemsField cDef !! toIndex p )
-    getSort _   (Vfunc fs _vexps)         = returnSort fs
-    getSort _   (Vpredef fs _vexps)       = returnSort fs
+    getSort _   (Vfunc r _vexps)         = returnSort (toFuncSignature r)
+    getSort _   (Vpredef r _vexps)       = returnSort (toFuncSignature r)
 
 instance FreeVars ValExpression where
     freeVars = freeVars . view
@@ -181,8 +181,8 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                                               , separator o
                                                               , T.pack "FI"
                                                               ])
-  prettyPrint o ctx (Vfunc fs vs)       = funcInst o ctx (TorXakis.Name.toText (funcName fs)) vs
-  prettyPrint o ctx (Vpredef fs vs)     = funcInst o ctx (TorXakis.Name.toText (funcName fs)) vs
+  prettyPrint o ctx (Vfunc r vs)       = funcInst o ctx ((TorXakis.Name.toText . funcName . toFuncSignature) r) vs
+  prettyPrint o ctx (Vpredef r vs)     = funcInst o ctx ((TorXakis.Name.toText . funcName . toFuncSignature) r) vs
   prettyPrint o ctx (Vnot x)            = funcInst o ctx (T.pack "not") [x]
   prettyPrint o ctx (Vand s)            = infixOperator o ctx (T.pack "/\\") (Set.toList s)
   prettyPrint o ctx (Vdivide t n)       = infixOperator o ctx (T.pack "/") [t,n]

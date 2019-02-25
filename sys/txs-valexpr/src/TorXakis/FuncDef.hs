@@ -30,15 +30,17 @@ module TorXakis.FuncDef
 )
 where
 
-import           Control.DeepSeq     (NFData)
-import           Data.Data           (Data)
-import qualified Data.Set            as Set
-import           GHC.Generics        (Generic)
+import           Control.DeepSeq      (NFData)
+import           Data.Data            (Data)
+import qualified Data.Set             as Set
+import qualified Data.Text            as T
+import           GHC.Generics         (Generic)
 
 import           TorXakis.ContextValExprConstruction
 import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
+import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.VarContext
@@ -64,11 +66,11 @@ instance Referable FuncDef where
     toRef = 
 -}
 
-sortOfBody :: FuncSignatureContext a => a -> [VarDef] -> ValExpression -> Sort
-sortOfBody ctx vs b =
+toValExprConstructionContext :: FuncSignatureContext a => a -> [VarDef] -> ContextValExprConstruction
+toValExprConstructionContext ctx vs =
     case addVars vs (fromFuncSignatureContext ctx) of
-        Left e      -> error ("sortOfBody is unable to make new context" ++ show e)
-        Right vctx  -> getSort vctx b
+        Left e      -> error ("toValExprConstructionContext is unable to make new context" ++ show e)
+        Right vctx  -> vctx
 
 -- | constructor for FuncDef
 -- TODO: what should be checked here?
@@ -86,7 +88,7 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             
         vs = toList ps
         
         undefinedVars :: Set.Set (RefByName VarDef)
-        undefinedVars = Set.difference (freeVars b) (Set.fromList (map toRef vs))
+        undefinedVars = Set.difference (freeVars b) (Set.fromList (map (RefByName . name) vs))
 
         undefinedSorts :: [VarDef]
         undefinedSorts = filter (not . flip memberSort ctx . TorXakis.Var.sort) vs
@@ -95,7 +97,7 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             
         argSorts = map (getSort ctx) vs
 
         retSort :: Sort
-        retSort = sortOfBody ctx vs b
+        retSort = getSort (toValExprConstructionContext ctx vs) b
 
         signature :: FuncSignature
         signature = case mkFuncSignature ctx n argSorts retSort of
@@ -106,9 +108,26 @@ instance forall a . FuncSignatureContext a => HasFuncSignature a FuncDef
     where
         getFuncSignature ctx (FuncDef fn ps bd) =
             let vs = toList ps in
-                case mkFuncSignature ctx fn (map (getSort ctx) vs) (sortOfBody ctx vs bd) of
+                case mkFuncSignature ctx fn (map (getSort ctx) vs) (getSort (toValExprConstructionContext ctx vs) bd) of
                      Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
                      Right x -> x
+
+instance FuncSignatureContext a => PrettyPrint a FuncDef where
+    prettyPrint o c fd = 
+        let vctx = toValExprConstructionContext c (toList (paramDefs fd)) in
+            TxsString ( T.concat [ T.pack "FUNCDEF "
+                                 , TorXakis.Name.toText (TorXakis.FuncDef.funcName fd)
+                                 , separator o
+                                 , indent (T.pack "   ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o c (paramDefs fd)))
+                                 , T.pack " :: "
+                                 , TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o c (getSort vctx (body fd)))
+                                 , separator o
+                                 , T.pack "::="
+                                 , separator o
+                                 , indent (T.pack "   ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o vctx (body fd)))
+                                 , separator o
+                                 , T.pack "ENDDEF"
+                                 ] )
 
 -- ----------------------------------------------------------------------------------------- --
 --

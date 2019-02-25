@@ -46,6 +46,7 @@ import           TorXakis.Error
 import           TorXakis.FuncContext
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
+import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.ValExprConstructionContext
 import           TorXakis.ValExprContext
@@ -99,10 +100,6 @@ instance VarContext ContextValExpr where
                                             Left e     -> Left e
                                             Right sctx -> Right $ ContextValExpr sctx fs
 
-    replaceVars vs(ContextValExpr ctx fs) = case replaceVars vs ctx of
-                                                Left e     -> Left e
-                                                Right sctx -> Right $ ContextValExpr sctx fs
-
 instance FuncSignatureContext ContextValExpr where
     memberFunc f ctx = HashMap.member f (funcDefs ctx)
 
@@ -147,12 +144,12 @@ instance FuncContext ContextValExpr where
                                     [] -> Nothing
                                     xs -> Just (fs, Set.fromList xs)
 
-        undefinedVariables :: [(FuncSignature, Set.Set (Ref VarDef))]
+        undefinedVariables :: [(FuncSignature, Set.Set (RefByName VarDef))]
         undefinedVariables = mapMaybe undefinedVariable fds
 
-        undefinedVariable :: FuncDef -> Maybe (FuncSignature, Set.Set (Ref VarDef))
-        undefinedVariable fd = let definedVars   :: Set.Set (Ref VarDef)
-                                   definedVars   = Set.fromList (map toRef (toList (paramDefs fd)))
+        undefinedVariable :: FuncDef -> Maybe (FuncSignature, Set.Set (RefByName VarDef))
+        undefinedVariable fd = let definedVars   :: Set.Set (RefByName VarDef)
+                                   definedVars   = Set.fromList (map (RefByName . name) (toList (paramDefs fd)))
                                    usedVars      = freeVars (body fd)
                                    undefinedVars = Set.difference usedVars definedVars
                                 in
@@ -202,9 +199,10 @@ findUndefinedFuncSignature definedFuncSignatures = findUndefinedFuncSignature'
         findUndefinedFuncSignatureView Vvar{}                              = []
         findUndefinedFuncSignatureView (Vequal v1 v2)                      = findUndefinedFuncSignature' v1 ++ findUndefinedFuncSignature' v2
         findUndefinedFuncSignatureView (Vite c t f)                        = findUndefinedFuncSignature' c ++ findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' f
-        findUndefinedFuncSignatureView (Vfunc f as)                        = (if HashMap.member f definedFuncSignatures
+        findUndefinedFuncSignatureView (Vfunc r as)                        = let fs = toFuncSignature r in
+                                                                              (  if HashMap.member fs definedFuncSignatures
                                                                                     then []
-                                                                                    else [f]
+                                                                                    else [fs]
                                                                               )
                                                                               ++ concatMap findUndefinedFuncSignature' as
         findUndefinedFuncSignatureView (Vpredef _ as)                      = concatMap findUndefinedFuncSignature' as
@@ -227,7 +225,7 @@ instance ValExprConstructionContext ContextValExpr
 
 instance ValExprContext ContextValExpr
 
-unsafeSubst :: ValExprContext a => a -> HashMap.Map (Ref VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+unsafeSubst :: ValExprContext a => a -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 unsafeSubst ctx  mp = unsafeSubstView . view
   where
     unsafeSubstView :: ValExpressionView -> Either Error ValExpression
@@ -237,8 +235,8 @@ unsafeSubst ctx  mp = unsafeSubstView . view
                                                     Just x  -> Right x
     unsafeSubstView (Vequal ve1 ve2)          = unsafeEqual (unsafeSubstView (view ve1)) (unsafeSubstView (view ve2))
     unsafeSubstView (Vite c tb fb)            = unsafeITE (unsafeSubstView (view c)) (unsafeSubstView (view tb)) (unsafeSubstView (view fb))
-    unsafeSubstView (Vfunc fs vs)             = unsafeFunc ctx fs (map (unsafeSubstView . view) vs)
-    unsafeSubstView (Vpredef fs vs)           = unsafePredefNonSolvable ctx fs (map (unsafeSubstView . view) vs)
+    unsafeSubstView (Vfunc r vs)              = unsafeFunc ctx r (map (unsafeSubstView . view) vs)
+    unsafeSubstView (Vpredef r vs)            = unsafePredefNonSolvable ctx r (map (unsafeSubstView . view) vs)
     unsafeSubstView (Vnot v)                  = unsafeNot (unsafeSubstView (view v))
     unsafeSubstView (Vand s)                  = unsafeAnd (Set.map (unsafeSubstView . view) s)
     unsafeSubstView (Vdivide t n)             = unsafeDivide (unsafeSubstView (view t)) (unsafeSubstView (view n))
@@ -259,11 +257,11 @@ unsafeSubst ctx  mp = unsafeSubstView . view
 -- Substitute
 -----------------------------------------------------------------------------
 -- | find mismatches in sort in mapping
-mismatchesSort :: ValExprConstructionContext c => c -> HashMap.Map (Ref VarDef) ValExpression -> HashMap.Map (Ref VarDef) ValExpression
+mismatchesSort :: ValExprConstructionContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> HashMap.Map (RefByName VarDef) ValExpression
 mismatchesSort ctx = HashMap.filterWithKey mismatch
     where
-        mismatch :: Ref VarDef -> ValExpression -> Bool
-        mismatch r e = case lookupVar r ctx of
+        mismatch :: RefByName VarDef -> ValExpression -> Bool
+        mismatch r e = case lookupVar (toName r) ctx of
                             Nothing -> error ("mismatchesSort - variable not defined in context - " ++ show r)
                             Just v  -> TorXakis.Var.sort v /= getSort ctx e
 
@@ -272,37 +270,38 @@ mismatchesSort ctx = HashMap.filterWithKey mismatch
 -- For example, substitution of a variable by zero can cause a division by zero error
 -- TODO: should we check the replacing val expressions? And the valExpression we get to work on?
 -- TODO: should we support context shrinking, since by replacing the variable a by 10, the variable a might no longer be relevant in the context (and thus be removed)?
-subst :: ValExprContext c => c -> HashMap.Map (Ref VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+subst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 subst ctx mp ve | HashMap.null mp               = Right ve
                 | not (HashMap.null mismatches) = Left $ Error (T.pack ("Sort mismatches in map : " ++ show mismatches))
                 | not (null undefinedVars)      = Left $ Error (T.pack ("Undefined variables in map : " ++ show undefinedVars))
                 | otherwise                     = unsafeSubst ctx mp ve
   where
-    mismatches :: HashMap.Map (Ref VarDef) ValExpression
+    mismatches :: HashMap.Map (RefByName VarDef) ValExpression
     mismatches = mismatchesSort ctx mp
 
-    undefinedVars :: [Ref VarDef]
-    undefinedVars = filter (not . flip memberVar ctx) (HashMap.keys mp)
+    undefinedVars :: [RefByName VarDef]
+    undefinedVars = filter (not . flip memberVar ctx . toName) (HashMap.keys mp)
 
 -- | TODO: needed? Complete Substitution: Substitute all variables by value expressions in a value expression.
 -- Since all variables are changed, one can change the kind of variables.
 -- TODO: from one context to another
--- compSubst :: ValExprContext c => c -> HashMap.Map (Ref VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+-- compSubst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 
 -- | mkFuncOpt
 -- Construct optimized function
 -- This function should be prefered over mkFunc whenever a 'TorXakis.ValExprContext' is available
 -- Note: since arguments of function can contain variables (e.g. the parameters of the calling function) a ValExprContext is needed (instead of a FuncContext)
-mkFuncOpt :: ValExprContext c => c -> FuncSignature -> [ValExpression] -> Either Error ValExpression
-mkFuncOpt ctx fs vs = case mkFunc ctx fs vs of
+mkFuncOpt :: ValExprContext c => c -> RefByFuncSignature -> [ValExpression] -> Either Error ValExpression
+mkFuncOpt ctx r vs = case mkFunc ctx r vs of
                         Left e  -> Left e
                         Right v -> unsafeSubst ctx HashMap.empty v
 
 -- TODO? More laziness?
 -- e.g. depending on some parameter value, some other parameter values might be irrelevant
 -- e.g. ANY/Error for not initialized variables of State Automaton translated to a ProcDef
-unsafeFunc :: ValExprContext c => c -> FuncSignature -> [Either Error ValExpression] -> Either Error ValExpression
-unsafeFunc ctx fs vs = case partitionEithers vs of
+unsafeFunc :: ValExprContext c => c -> RefByFuncSignature -> [Either Error ValExpression] -> Either Error ValExpression
+unsafeFunc ctx r vs = let fs = toFuncSignature r in
+                        case partitionEithers vs of
                              ([], xs)   -> case lookupFunc fs ctx of
                                                 Nothing -> error ("unsafeFunc: function can't be found in context - " ++ show fs)
                                                 Just fd -> case view (body fd) of
@@ -312,8 +311,8 @@ unsafeFunc ctx fs vs = case partitionEithers vs of
                                                                                                 in case addVars (toList ps) (fromFuncContext ctx) of
                                                                                                         Left e -> error ("unsafeFunc: can't make new context - " ++ show e)
                                                                                                         Right nctx -> subst nctx
-                                                                                                                            (HashMap.fromList (zip (map toRef (toList ps)) xs))
+                                                                                                                            (HashMap.fromList (zip (map (RefByName . name) (toList ps)) xs))
                                                                                                                             (body fd)
-                                                                                 Nothing -> Right $ ValExpression (Vfunc fs xs)
+                                                                                 Nothing -> Right $ ValExpression (Vfunc r xs)
                              (es, _)    -> Left $ Error ("unsafeFunc Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))
 

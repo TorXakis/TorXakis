@@ -19,14 +19,17 @@ module TorXakis.FuncContext
 ( -- * Context
   -- ** Func Context class
   FuncContext (..)
+, prettyPrintFuncContext
   -- dependencies, yet part of interface
 , module TorXakis.FuncSignatureContext
 , FuncDef
 )
 where
+import qualified Data.Text           as T
 
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignatureContext
+import           TorXakis.PrettyPrint.TorXakis
 
 -- | A FuncContext Context instance contains all definitions to work with 'TorXakis.FuncDef'.
 class FuncSignatureContext a => FuncContext a where
@@ -43,6 +46,15 @@ class FuncSignatureContext a => FuncContext a where
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addFuncs :: [FuncDef] -> a -> Either Error a
+
+-- | Generic Pretty Printer for all instance of 'TorXakis.FuncContext'.
+prettyPrintFuncContext :: FuncContext a => Options -> a -> TxsString
+prettyPrintFuncContext o fc =
+    TxsString (T.concat [ TorXakis.PrettyPrint.TorXakis.toText (prettyPrintSortContext o fc)
+                        , T.pack "\n"
+                        , T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o fc) (elemsFunc fc))
+                        ])
+
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

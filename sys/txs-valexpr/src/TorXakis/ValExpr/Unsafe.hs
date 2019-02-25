@@ -147,13 +147,16 @@ unsafeITE b (Right tb) (Right fb) | tb == falseValExpr && fb == trueValExpr = un
 -- Not implemented to enable conditional evaluation
 unsafeITE (Right b) (Right tb) (Right fb)                                   = Right $ ValExpression (Vite b tb fb)
 
-unsafePredefNonSolvable :: SortContext c => c -> FuncSignature -> [Either Error ValExpression] -> Either Error ValExpression
-unsafePredefNonSolvable ctx fs vs = case partitionEithers vs of
+unsafePredefNonSolvable :: SortContext c => c -> RefByFuncSignature -> [Either Error ValExpression] -> Either Error ValExpression
+unsafePredefNonSolvable ctx r vs = case partitionEithers vs of
                                          ([], xs)   -> case toMaybeValues xs of
                                                             Just values -> evalPredefNonSolvable values
-                                                            Nothing     -> Right $ ValExpression (Vpredef fs xs)
+                                                            Nothing     -> Right $ ValExpression (Vpredef r xs)
                                          (es, _)    -> Left $ Error ("PredefNonSolvable Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))
     where
+        fs :: FuncSignature
+        fs = toFuncSignature r
+
         evalPredefNonSolvable :: [Value] -> Either Error ValExpression
         evalPredefNonSolvable values =
             case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, values) of

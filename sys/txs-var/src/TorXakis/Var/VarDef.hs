@@ -20,7 +20,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies          #-}
 module TorXakis.Var.VarDef
 ( VarDef
 , name
@@ -35,12 +34,14 @@ where
 import           Control.DeepSeq      (NFData)
 import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hashWithSalt))
+import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 
-import TorXakis.Error
-import TorXakis.Name
-import TorXakis.Sort (Sort, HasSort(getSort))
-import TorXakis.SortContext
+import           TorXakis.Error
+import           TorXakis.Name
+import           TorXakis.PrettyPrint.TorXakis
+import           TorXakis.Sort (Sort, HasSort(getSort))
+import           TorXakis.SortContext
 
 -- | Data for a variable definition.
 -- TODO: should VarDef have additional type to separated different variables (e.g. user defined, channel variables, etc.)
@@ -64,3 +65,9 @@ instance HasName VarDef where
 
 instance HasSort a VarDef where
     getSort _ = sort            -- we decided not to check that sort is defined.
+
+instance PrettyPrint a VarDef where
+    prettyPrint o c v = TxsString (T.concat [ TorXakis.Name.toText (name v)
+                                            , T.pack " :: "
+                                            , TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o c (sort v))
+                                            ])

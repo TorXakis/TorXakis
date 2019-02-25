@@ -47,12 +47,3 @@ class SortContext a => VarContext a where
     -- Note: added variables might hide previously defined variables.
     -- Note: the order of the variables is not relevant.
     addVars :: [VarDef] -> a -> Either Error a
-    -- | Replace variables of variable context.
-    --   A variable context is returned when the following constraints are satisfied:
-    --
-    --   * The references of the variables are distinct
-    --
-    --   * All sorts are known
-    --
-    --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    replaceVars :: [VarDef] -> a -> Either Error a

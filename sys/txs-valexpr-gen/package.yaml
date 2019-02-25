@@ -31,6 +31,8 @@ library:
     - txs-sort-gen
     - txs-value-gen
     - txs-var
+    - txs-var-gen
+    - txs-funcsignature-gen
 
 tests:
     txs-valexpr-gen-test:

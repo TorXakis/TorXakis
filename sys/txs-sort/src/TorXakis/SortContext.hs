@@ -67,6 +67,6 @@ class SortContext a where
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addADTs :: [ADTDef] -> a -> Either Error a
 
--- | Generic Pretty Printer for all instance of 'TorXakis.SortReadContext'.
+-- | Generic Pretty Printer for all instance of 'TorXakis.SortContext'.
 prettyPrintSortContext :: SortContext a => Options -> a -> TxsString
 prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o sc) (elemsADT sc)))

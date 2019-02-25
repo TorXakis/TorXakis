@@ -18,6 +18,9 @@ See LICENSE at root directory of this repository.
 module TorXakis.ValExprContext
 ( -- * Context
   ValExprContext
+    -- dependencies, yet part of interface
+, module TorXakis.FuncContext
+, module TorXakis.ValExprConstructionContext
 )
 where
 import           TorXakis.FuncContext                   ( FuncContext )

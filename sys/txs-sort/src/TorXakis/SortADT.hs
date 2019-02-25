@@ -23,7 +23,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies          #-}
 module TorXakis.SortADT
 ( -- * Sort
   Sort (..)
@@ -37,6 +36,7 @@ module TorXakis.SortADT
 , constructorName
 , memberField
 , lookupField
+, positionField
 , elemsField
 , mkConstructorDef
   -- ** Abstract Data Type Definition
@@ -52,7 +52,7 @@ where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           Data.Hashable       (Hashable(hashWithSalt))
-import           Data.List           (find)
+import           Data.List           (elemIndex, find)
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
@@ -127,6 +127,10 @@ mkConstructorDef n fs
 -- | Refers the provided name to a FieldDef in the given ConstructorDef?
 memberField :: Name -> ConstructorDef -> Bool
 memberField n c = n `elem` map fieldName (fields c)
+
+-- | position Field
+positionField :: Name -> ConstructorDef -> Maybe Int
+positionField n c = n `elemIndex` map fieldName (fields c)
 
 -- | lookup Field
 lookupField :: Name -> ConstructorDef -> Maybe FieldDef

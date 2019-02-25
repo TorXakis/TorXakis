@@ -78,8 +78,3 @@ instance VarContext ContextVar where
         | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
         | not $ null (undefinedSorts vs ctx) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts vs ctx))
         | otherwise                          = Right $ ctx {varDefs = toNameMap vs `union` varDefs ctx}
-
-    replaceVars vs ctx
-        | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
-        | not $ null (undefinedSorts vs ctx) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts vs ctx))
-        | otherwise                          = Right $ ctx {varDefs = toNameMap vs}
