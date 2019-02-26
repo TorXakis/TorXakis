@@ -33,6 +33,7 @@ import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.SortContext
 
+import           TorXakis.ContextTestSort
 import           TorXakis.NameGen
 import           TorXakis.TestSortContext
 

@@ -24,7 +24,9 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
+  - TorXakis.ContextTestVar
   - TorXakis.TestVarContext
+  - TorXakis.TestVarData
   - TorXakis.VarsDeclGen
   dependencies:
     - containers

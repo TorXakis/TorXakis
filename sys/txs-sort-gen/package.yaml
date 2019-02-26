@@ -22,10 +22,12 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
+  - TorXakis.ContextTestSort
   - TorXakis.GenCollection
   - TorXakis.SortGen
   - TorXakis.SortGenContext
   - TorXakis.TestSortContext
+  - TorXakis.TestSortData
   dependencies:
     - containers
     - multimap

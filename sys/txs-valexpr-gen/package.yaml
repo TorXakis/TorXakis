@@ -23,7 +23,8 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.TestValExprContext
+  - TorXakis.ContextTestValExprConstruction
+  - TorXakis.TestValExprConstructionContext
   dependencies:
     - hashmap
     - text

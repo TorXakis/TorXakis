@@ -20,7 +20,6 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.ContextFuncSignature
-  - TorXakis.ContextFuncSignatureExposed
   - TorXakis.FuncSignature
   - TorXakis.FuncSignatureContext
   dependencies:

@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- Module      :  TestSortContextSpec
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
@@ -20,7 +20,6 @@ module TorXakis.TestSortContextSpec
 )
 where
 import           Debug.Trace
-import qualified Data.HashMap        as Map
 import qualified Data.Text           as T
 import           Test.Hspec
 
@@ -50,7 +49,7 @@ prop_ADTDefs_nonConstructable =
     let aName = unsafeName "aName"
         aRef :: RefByName ADTDef
         aRef = RefByName aName
-        aDef = unsafeADTDef aName 
+        aDef = unsafeADTDef aName
                               [ unsafeConstructorDef (unsafeName "cstrName")
                                                      [ FieldDef (unsafeName "fieldName") (SortADT aRef) ]
                               ]
@@ -65,7 +64,7 @@ prop_ADTDefs_unknownReference =
     let unknownName = unsafeName "unknown"
         unknownRef :: RefByName ADTDef
         unknownRef = RefByName unknownName
-        adtdef = unsafeADTDef (unsafeName "aName") 
+        adtdef = unsafeADTDef (unsafeName "aName")
                               [ unsafeConstructorDef (unsafeName "cstrName")
                                                      [ FieldDef (unsafeName "fieldName") (SortADT unknownRef) ]
                               ]
@@ -77,7 +76,7 @@ prop_ADTDefs_unknownReference =
 -- | A context cannot contain ADTDefs with the same name
 prop_ADTDefs_unique :: Bool
 prop_ADTDefs_unique =
-    let adtdef = unsafeADTDef (unsafeName "aName") 
+    let adtdef = unsafeADTDef (unsafeName "aName")
                               [ unsafeConstructorDef (unsafeName "cstrName") [] ]
       in
         case addADTs [adtdef, adtdef] (empty::ContextTestSort) of
@@ -139,18 +138,26 @@ prop_ADTDefs_Dependent =
         case addADTs [cDef, bDef, aDef] (empty::ContextTestSort) of
             Left  _      -> False
             Right newCtx ->     elemsADT newCtx == [ aDef, bDef, cDef ]
-                            &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT aRef, complexityA)
-                                                                               ,(SortADT bRef, complexityB)
-                                                                               ,(SortADT cRef, complexityC)] -- also primitive Sorts are contained
-                            &&  mapAdtMapConstructorSize newCtx == Map.fromList [ (aRef, Map.fromList [(depRef, complexityDep), (cstrRef, complexityA)])
-                                                                                , (bRef, Map.fromList [(depRef, complexityDep), (cstrRef, complexityB)])
-                                                                                , (cRef, Map.fromList [(depRef, complexityDep), (cstrRef, complexityC)])
-                                                                                ]
+                            &&  (adtSize aRef newCtx == complexityA)
+                            &&  (adtSize bRef newCtx == complexityB)
+                            &&  (adtSize cRef newCtx == complexityC)
+                            &&  (constructorSize aRef depRef newCtx == complexityDep)
+                            &&  (constructorSize aRef cstrRef newCtx == complexityA)
+                            &&  (constructorSize bRef depRef newCtx == complexityDep)
+                            &&  (constructorSize bRef cstrRef newCtx == complexityB)
+                            &&  (constructorSize cRef depRef newCtx == complexityDep)
+                            &&  (constructorSize cRef cstrRef newCtx == complexityC)
 
 prop_initial :: Bool
 prop_initial =
-       all ( (0==) . snd ) (Map.toList (mapSortSize (empty :: ContextTestSort)))
-    && Map.null (mapAdtMapConstructorSize (empty :: ContextTestSort))
+    let ctx = empty :: ContextTestSort in
+          all (\s -> sortSize s ctx == 0)
+              [ SortBool
+              , SortInt
+              , SortChar
+              , SortString
+              , SortRegex
+              ]
 
 -- | a sort context can be incrementally extended - which should be the same as creating it in one step.
 prop_increment :: Bool

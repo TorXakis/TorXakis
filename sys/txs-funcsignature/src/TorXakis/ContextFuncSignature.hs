@@ -20,11 +20,13 @@ See LICENSE at root directory of this repository.
 module TorXakis.ContextFuncSignature
 ( -- * Context FuncSignature instance
   ContextFuncSignature
+, TorXakis.ContextFuncSignature.empty
 , fromSortContext
 )
 where
 import qualified Data.Set    as Set
 
+import           TorXakis.ContextSort
 import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
@@ -35,6 +37,11 @@ data ContextFuncSignature = forall a . SortContext a =>
                                                    -- defined funcSignatures
                                                  , localFuncSignatures :: Set.Set FuncSignature
                                                  }
+
+-- | empty
+empty :: ContextFuncSignature
+empty = fromSortContext TorXakis.ContextSort.empty
+
 -- | Constructor from SortContext
 fromSortContext :: SortContext b => b -> ContextFuncSignature
 fromSortContext ctx = ContextFuncSignature ctx Set.empty

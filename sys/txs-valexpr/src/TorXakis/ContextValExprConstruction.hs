@@ -21,6 +21,7 @@ module TorXakis.ContextValExprConstruction
 ( -- * Context
   -- ** instance of ValExpr Context for construction
   ContextValExprConstruction
+, TorXakis.ContextValExprConstruction.empty
 , fromVarContext
 , fromFuncSignatureContext
 )
@@ -40,6 +41,10 @@ data ContextValExprConstruction = forall a . VarContext a =>
                                                                      -- funcSignatures
                                                                    , localFuncSignatures :: Set.Set FuncSignature
                                                                    }
+
+-- | empty constructor
+empty :: ContextValExprConstruction
+empty = fromVarContext TorXakis.ContextVar.empty
 
 -- | Constructor from VarContext
 fromVarContext :: VarContext b => b -> ContextValExprConstruction

@@ -26,7 +26,6 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.ContextVar
-  - TorXakis.ContextVarExposed
   - TorXakis.Var
   - TorXakis.VarContext
 

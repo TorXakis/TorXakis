@@ -19,9 +19,11 @@ See LICENSE at root directory of this repository.
 module TorXakis.ContextVar
 ( -- * Context Variable instance
   ContextVar
+, TorXakis.ContextVar.empty
 , fromSortContext
 )
 where
+import           TorXakis.ContextSort
 import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.NameMap
@@ -36,9 +38,13 @@ data ContextVar = forall a . SortContext a =>
                                        , varDefs :: NameMap VarDef
                                        }
 
+-- | empty
+empty :: ContextVar
+empty = fromSortContext TorXakis.ContextSort.empty
+
 -- | Constructor from SortContext
 fromSortContext :: SortContext b => b -> ContextVar
-fromSortContext ctx = ContextVar ctx empty
+fromSortContext ctx = ContextVar ctx TorXakis.NameMap.empty
 
 instance SortContext ContextVar where
     -- Can't use
