@@ -75,4 +75,5 @@ instance FuncSignatureModifyContext ContextTestFuncSignature ContextTestFuncSign
                                     Left e       -> Left e
                                     Right basis' -> Right $ ctx {basis = basis'}
 
-instance TestFuncSignatureContext ContextTestFuncSignature
+instance TestFuncSignatureContext ContextTestFuncSignature where
+    funcSize r ctx = TorXakis.TestFuncSignatureData.funcSize r (basis ctx) (tfd ctx)

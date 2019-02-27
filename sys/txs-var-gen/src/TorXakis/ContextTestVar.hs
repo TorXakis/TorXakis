@@ -75,4 +75,5 @@ instance VarContext ContextTestVar where
                           Left e     -> Left e
                           Right basis' -> Right $ ctx {basis = basis'}
 
-instance TestVarContext ContextTestVar
+instance TestVarContext ContextTestVar where
+    varSize r ctx = TorXakis.TestVarData.varSize r (basis ctx) (tvd ctx)

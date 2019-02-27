@@ -24,6 +24,7 @@ library:
   - TorXakis.ContextTestFuncSignature
   - TorXakis.FuncSignatureGen
   - TorXakis.TestFuncSignatureContext
+  - TorXakis.TestFuncSignatureData
   dependencies:
     - txs-sort-gen
     - txs-name-gen

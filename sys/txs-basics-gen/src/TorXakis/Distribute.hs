@@ -38,6 +38,8 @@ import Test.QuickCheck
 distribute :: Int -- ^ number of identical objects (>= 0)
            -> Int -- ^ number of distinct bins (>= 0)
            -> Gen [Int]
+distribute m _ | m < 0 = error ("distribute called with negative number of identical objects " ++ show m)
+distribute _ n | n < 0 = error ("distribute called with negative number of bins " ++ show n)
 distribute _ 0 = return []
 distribute 0 m = return $ replicate m 0      -- Nothing to distribute           -- TODO: does this really spead up?
 distribute n m =

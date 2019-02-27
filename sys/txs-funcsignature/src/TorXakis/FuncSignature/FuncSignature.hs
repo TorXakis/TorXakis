@@ -34,6 +34,10 @@ module TorXakis.FuncSignature.FuncSignature
 -- ** Repeated Function Signatures functions
 , repeatedByFuncSignature
 , repeatedByFuncSignatureIncremental
+  -- dependencies, yet part of interface
+, Error
+, Name
+, Sort
 ) where
 
 import           Control.DeepSeq      (NFData)

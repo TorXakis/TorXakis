@@ -35,9 +35,4 @@ class (TestSortContext a, FuncSignatureContext a) => TestFuncSignatureContext a 
     --   The size of the provided funcSignature as specified by the references to 'TorXakis.FuncSignature' is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.FuncSignature' and any related 'TorXakis.Sort' references.
-    funcSize :: a -> RefByFuncSignature -> Int
-    funcSize ctx r = let f = toFuncSignature r in
-                        sum (useSize (returnSort f): map useSize (args f))
-        where
-            useSize :: Sort -> Int
-            useSize s = 1 + TorXakis.TestSortContext.sortSize s ctx
+    funcSize :: RefByFuncSignature -> a -> Int

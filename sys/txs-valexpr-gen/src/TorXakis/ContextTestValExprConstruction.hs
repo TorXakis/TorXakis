@@ -41,6 +41,7 @@ import           TorXakis.SortGen
 import           TorXakis.TestValExprConstructionContext
 import           TorXakis.TestValExprConstructionData
 import           TorXakis.ValExpr
+import           TorXakis.ValExprConstructionContext
 import           TorXakis.Value
 import           TorXakis.ValueGen
 import           TorXakis.VarContext
@@ -53,27 +54,28 @@ import           TorXakis.Var
 data ContextTestValExprConstruction = 
         ContextTestValExprConstruction 
             { basis :: ContextValExprConstruction
-            , tvecd :: TestValExprConstructionData
+            , tvecd :: TestValExprConstructionData ContextTestValExprConstruction
             }
 
 -- | empty constructor
 empty :: ContextTestValExprConstruction
-empty = ContextTestValExprConstruction TorXakis.ContextValExprConstruction.empty TorXakis.TestValExprConstructionData.empty
+empty = let ctx = TorXakis.ContextValExprConstruction.empty in
+            ContextTestValExprConstruction ctx (TorXakis.TestValExprConstructionData.empty ctx)
 
 -- | Constructor from ValExprConstructionContext
 fromValExprConstructionContext :: ValExprConstructionContext b => b -> ContextTestValExprConstruction
 fromValExprConstructionContext ctx = ContextTestValExprConstruction newContext newData
         where
             newContext :: ContextValExprConstruction
-            newContext = case TorXakis.ValExprConstructionContext.addADTs (elemsADT ctx) ContextValExprConstruction.empty >>=
-                              TorXakis.ValExprConstructionContext.addVars (elemsVar ctx) >>=
-                              TorXakis.ValExprConstructionContext.addFuncSignatures (elemsFuncSignature ctx) of
+            newContext = case TorXakis.TestValExprConstructionContext.addADTs (elemsADT ctx) TorXakis.ContextValExprConstruction.empty >>=
+                              TorXakis.TestValExprConstructionContext.addVars (elemsVar ctx) >>=
+                              TorXakis.TestValExprConstructionContext.addFuncSignatures (funcSignatures ctx) of
                            Left e -> error ("Context should adhere to all constraint and thusmust be copyable, yet " ++ show e)
                            Right x -> x
-            newData :: TestValExprConstructionData
-            newData =   TorXakis.ValExprConstructionData.addFuncSignatures (elemsFuncSignature ctx) $
-                        TorXakis.ValExprConstructionData.addVars (elemsVar ctx) $
-                        TorXakis.ValExprConstructionData.addADTs (elemsADT ctx) TorXakis.ValExprConstructionData.empty
+            newData :: TestValExprConstructionData ContextTestValExprConstruction
+            newData =   TorXakis.TestValExprConstructionData.afterAddFuncSignatures (funcSignatures ctx) $
+                        TorXakis.TestValExprConstructionData.afterAddVars (elemsVar ctx) $
+                        TorXakis.TestValExprConstructionData.afterAddADTs (elemsADT ctx) TorXakis.TestValExprConstructionData.empty
 
 
 instance SortContext ContextTestValExprConstruction where
@@ -87,15 +89,15 @@ instance SortContext ContextTestValExprConstruction where
 
     addADTs as ctx = case addADTs as (basis ctx) of
                           Left e       -> Left e
-                          Right basis' -> Right $ ContextTestValExprConstruction basis' (addADTs as (tvecd ctx))
+                          Right basis' -> Right $ ContextTestValExprConstruction basis' (TorXakis.TestValExprConstructionData.afterAddADTs basis' as (tvecd ctx))
 
 instance TestSortContext ContextTestValExprConstruction where
-    sortSize r = sortSize r . tvecd
-    adtSize a = adtSize a . tvecd
-    constructorSize a c = constructorSize a c . tvecd
+    sortSize r = TorXakis.TestValExprConstructionData.sortSize r . tvecd
+    adtSize a = TorXakis.TestValExprConstructionData.adtSize a . tvecd
+    constructorSize a c = TorXakis.TestValExprConstructionData.constructorSize a c . tvecd
 
 instance VarContext ContextTestValExprConstruction where
-    memberVar v = member v . basis
+    memberVar v = memberVar v . basis
 
     lookupVar v = TorXakis.NameMap.lookup v basis
 
@@ -115,15 +117,12 @@ instance FuncContext ContextTestValExprConstruction where
 
 instance ValExprConstructionContext ContextTestValExprConstruction
 
-instance ValExprConstructionContext ContextTestValExprConstruction
-
 instance TestValExprConstructionContext ContextTestValExprConstruction where
     arbitraryValExprOfSort ctx s = do
         n <- getSize
-        case TorXakis.GenCollection.get (_genMap ctx) s n of
+        case TorXakis.GenCollection.get (genMap (tvecd ctx)) s n of                 -- TODO: hide map like sortSize?
             [] -> error ("No Generators for " ++ show s ++ " at " ++ show n)
             xs -> do
                     generator <- elements xs
                     generator ctx
-
 

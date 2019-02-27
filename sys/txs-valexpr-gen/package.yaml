@@ -29,10 +29,12 @@ library:
     - hashmap
     - text
     - txs-basics
+    - txs-basics-gen
     - txs-sort-gen
     - txs-value-gen
     - txs-var
     - txs-var-gen
+    - txs-funcsignature
     - txs-funcsignature-gen
 
 tests:
