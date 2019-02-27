@@ -23,9 +23,9 @@ import           Debug.Trace
 import qualified Data.Text           as T
 import           Test.Hspec
 
+import           TorXakis.ContextTestSort
 import           TorXakis.Name
 import           TorXakis.Sort
-import           TorXakis.SortContext
 import           TorXakis.TestSortContext
 
 unsafeName :: String -> Name

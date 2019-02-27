@@ -25,10 +25,8 @@ library:
   exposed-modules:
   - TorXakis.ContextTestValExprConstruction
   - TorXakis.TestValExprConstructionContext
+  - TorXakis.TestValExprConstructionData
   dependencies:
-    - hashmap
-    - text
-    - txs-basics
     - txs-basics-gen
     - txs-sort-gen
     - txs-value-gen

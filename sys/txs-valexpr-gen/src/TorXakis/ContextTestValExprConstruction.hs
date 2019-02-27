@@ -22,30 +22,20 @@ See LICENSE at root directory of this repository.
 module TorXakis.ContextTestValExprConstruction
 (-- * Context Test ValExpression
   ContextTestValExprConstruction(..)
+, TorXakis.ContextTestValExprConstruction.empty
+, fromValExprConstructionContext
 )
 where
 --import           Debug.Trace
 
-import qualified Data.List           as List
-import qualified Data.Text           as T
 import           Test.QuickCheck
 
 import           TorXakis.ContextValExprConstruction
-import           TorXakis.Error
 import           TorXakis.FuncContext
 import qualified TorXakis.GenCollection
-import           TorXakis.Name
-import           TorXakis.NameMap
-import           TorXakis.Sort
 import           TorXakis.SortGen
 import           TorXakis.TestValExprConstructionContext
 import           TorXakis.TestValExprConstructionData
-import           TorXakis.ValExpr
-import           TorXakis.ValExprConstructionContext
-import           TorXakis.Value
-import           TorXakis.ValueGen
-import           TorXakis.VarContext
-import           TorXakis.Var
 
 -------------------------------------------------------------------------------------------------------------
 -- Test Func Context
@@ -73,9 +63,9 @@ fromValExprConstructionContext ctx = ContextTestValExprConstruction newContext n
                            Left e -> error ("Context should adhere to all constraint and thusmust be copyable, yet " ++ show e)
                            Right x -> x
             newData :: TestValExprConstructionData ContextTestValExprConstruction
-            newData =   TorXakis.TestValExprConstructionData.afterAddFuncSignatures (funcSignatures ctx) $
-                        TorXakis.TestValExprConstructionData.afterAddVars (elemsVar ctx) $
-                        TorXakis.TestValExprConstructionData.afterAddADTs (elemsADT ctx) TorXakis.TestValExprConstructionData.empty
+            newData =   TorXakis.TestValExprConstructionData.afterAddFuncSignatures ctx (funcSignatures ctx) $
+                        TorXakis.TestValExprConstructionData.afterAddVars ctx (elemsVar ctx) $
+                        TorXakis.TestValExprConstructionData.afterAddADTs ctx (elemsADT ctx) (TorXakis.TestValExprConstructionData.empty ctx)
 
 
 instance SortContext ContextTestValExprConstruction where
@@ -99,21 +89,24 @@ instance TestSortContext ContextTestValExprConstruction where
 instance VarContext ContextTestValExprConstruction where
     memberVar v = memberVar v . basis
 
-    lookupVar v = TorXakis.NameMap.lookup v basis
+    lookupVar v = lookupVar v . basis
 
     elemsVar = elemsVar . basis
 
     addVars vs ctx = case addVars vs (basis ctx) of
                           Left e       -> Left e
-                          Right basis' -> Right $ ContextTestValExprConstruction basis' (addVars vs (tvecd ctx))
+                          Right basis' -> Right $ ContextTestValExprConstruction basis' (TorXakis.TestValExprConstructionData.afterAddVars basis' vs (tvecd ctx))
 
-instance TestVarContext ContextTestValExprConstruction
+instance TestVarContext ContextTestValExprConstruction where
+    varSize r ctx = TorXakis.TestValExprConstructionData.varSize r (basis ctx) (tvecd ctx)
 
 instance FuncSignatureContext ContextTestValExprConstruction where
+    memberFunc r = memberFunc r . basis
 
-instance TestFuncSignatureContext ContextTestValExprConstruction
+    funcSignatures = funcSignatures . basis
 
-instance FuncContext ContextTestValExprConstruction where
+instance TestFuncSignatureContext ContextTestValExprConstruction where
+    funcSize r ctx = TorXakis.TestValExprConstructionData.funcSize r (basis ctx) (tvecd ctx)
 
 instance ValExprConstructionContext ContextTestValExprConstruction
 

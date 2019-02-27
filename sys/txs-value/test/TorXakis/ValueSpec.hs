@@ -24,8 +24,8 @@ import           Data.Char (chr)
 import qualified Data.Text as T
 import           Test.Hspec
 
+import           TorXakis.ContextTestSort
 import           TorXakis.Sort
-import           TorXakis.TestSortContext
 import           TorXakis.Value
 
 -- | ConversionText for String is Identity

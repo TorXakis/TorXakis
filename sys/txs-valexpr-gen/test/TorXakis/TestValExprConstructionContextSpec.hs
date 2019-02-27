@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TestValExprContextSpec
+-- Module      :  TestValExprConstructionContextSpec
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -15,40 +15,38 @@ See LICENSE at root directory of this repository.
 --
 -- Test specifications for 'ValExprGen'.
 -----------------------------------------------------------------------------
-module TorXakis.TestValExprContextSpec
+module TorXakis.TestValExprConstructionContextSpec
 (spec
 )
 where
 import           Debug.Trace
 
-import           Data.Either
 import qualified Data.Text              as T
 import           Test.Hspec
 import           Test.QuickCheck
 
+import           TorXakis.ContextTestValExprConstruction
 import           TorXakis.Name
 import           TorXakis.Sort
-import           TorXakis.TestValExprContext
+import           TorXakis.TestValExprConstructionContext
 import           TorXakis.ValExpr
 import           TorXakis.Value
-import           TorXakis.VarContext
-import           TorXakis.VarDef
+import           TorXakis.Var
 
-propertyInContext  :: (MinimalTestValExprContext -> Gen Bool) -> Gen Bool
+propertyInContext  :: (ContextTestValExprConstruction -> Gen Bool) -> Gen Bool
 propertyInContext prop =
     -- TODO: add to context, to generate more value expressions of a given type
-    let ctx = empty :: MinimalTestValExprContext in
+    let ctx = empty :: ContextTestValExprConstruction in
         case mkName (T.pack "i") of
-            Left e   -> error ("can't make name "++ show e)
-            Right ni -> case partitionEithers [ mkVarDef ctx ni SortInt
-                                              ] of
-                             ([], vs) -> case addVars ctx vs of
+            Left e   -> error ("can't make name " ++ show e)
+            Right ni -> case mkVarDef ctx ni SortInt of
+                            Left e -> error ("can't make VarDef " ++ show e)
+                            Right v -> case addVars [v] ctx of
                                             Right nctx  -> prop nctx
                                             Left  e     -> error ("can't add vardefs "++ show e)
-                             (es, _)  -> error ("can't make vardefs "++ show es)
 
 -- | min (min x) == x
-prop_MkUnaryMinus_id :: MinimalTestValExprContext -> Gen Bool
+prop_MkUnaryMinus_id :: TestValExprConstructionContext a => a -> Gen Bool
 prop_MkUnaryMinus_id ctx = do
         ve <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         trace   ("ValExpr " ++ show ve) $
@@ -59,7 +57,7 @@ prop_MkUnaryMinus_id ctx = do
                                                 Right mmve -> ve == mmve
 
 -- | a \/ not a <==> True
-prop_AOrNotA :: MinimalTestValExprContext -> Gen Bool
+prop_AOrNotA :: TestValExprConstructionContext a => a -> Gen Bool
 prop_AOrNotA ctx = do
         a <- arbitraryValExprOfSort ctx SortBool :: Gen ValExpression
         return $ case mkNot ctx a of
@@ -71,7 +69,7 @@ prop_AOrNotA ctx = do
                                                         x                   -> trace ("\nWrong value = " ++ show x) False
 
 -- | not a => a <==> a
-prop_NotAImpliesAEqualsA :: MinimalTestValExprContext -> Gen Bool
+prop_NotAImpliesAEqualsA :: TestValExprConstructionContext a => a -> Gen Bool
 prop_NotAImpliesAEqualsA ctx = do
         a <- arbitraryValExprOfSort ctx SortBool :: Gen ValExpression
         return $ case mkNot ctx a of
@@ -81,7 +79,7 @@ prop_NotAImpliesAEqualsA ctx = do
                                         Right v -> a == v
 
 -- | a => not a <==> not a
-prop_AImpliesNotAEqualsNotA :: MinimalTestValExprContext -> Gen Bool
+prop_AImpliesNotAEqualsNotA :: TestValExprConstructionContext a => a -> Gen Bool
 prop_AImpliesNotAEqualsNotA ctx = do
         a <- arbitraryValExprOfSort ctx SortBool :: Gen ValExpression
         return $ case mkNot ctx a of
@@ -91,21 +89,21 @@ prop_AImpliesNotAEqualsNotA ctx = do
                                         Right v -> na == v
 
 -- | a >= b <==> b <= a
-prop_GELE :: MinimalTestValExprContext -> Gen Bool
+prop_GELE :: TestValExprConstructionContext a => a -> Gen Bool
 prop_GELE ctx = do
         a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         return $ mkGE ctx a b == mkLE ctx b a
 
 -- | a > b <==> b < a
-prop_GTLT :: MinimalTestValExprContext -> Gen Bool
+prop_GTLT :: TestValExprConstructionContext a => a -> Gen Bool
 prop_GTLT ctx = do
         a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         return $ mkGT ctx a b == mkLT ctx b a
 
 -- | a > b <==> not (a <= b)
-prop_GTNotLE :: MinimalTestValExprContext -> Gen Bool
+prop_GTNotLE :: TestValExprConstructionContext a => a -> Gen Bool
 prop_GTNotLE ctx = do
         a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
@@ -114,7 +112,7 @@ prop_GTNotLE ctx = do
                     Right le -> mkGT ctx a b == mkNot ctx le
 
 -- | a < b <==> not (a >= b)
-prop_LTNotGE :: MinimalTestValExprContext -> Gen Bool
+prop_LTNotGE :: TestValExprConstructionContext a => a -> Gen Bool
 prop_LTNotGE ctx = do
         a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
@@ -128,11 +126,11 @@ spec = do
                 it "mkUnaryMinus mkUnaryMinus == id" $ property (propertyInContext prop_MkUnaryMinus_id)
             describe "Or" $
                 it "a \\/ not a == True" $ property (propertyInContext prop_AOrNotA)
-            describe "Implies" $
-                    it "not a => a <==> a"     $ property (propertyInContext prop_NotAImpliesAEqualsA)
-                    it "a => not a <==> not a" $ property (propertyInContext prop_AImpliesNotAEqualsNotA)
-            describe "Comparisons" $ 
-                    it "a >= b <==> b <= a"      $ property (propertyInContext prop_GELE)
-                    it "a > b <==> b < a"        $ property (propertyInContext prop_GTLT)
-                    it "a > b <==> not (a <= b)" $ property (propertyInContext prop_GTNotLE)
-                    it "a < b <==> not (a >= b)" $ property (propertyInContext prop_LTNotGE)
+            describe "Implies" $ do
+                it "not a => a <==> a"     $ property (propertyInContext prop_NotAImpliesAEqualsA)
+                it "a => not a <==> not a" $ property (propertyInContext prop_AImpliesNotAEqualsNotA)
+            describe "Comparisons" $ do
+                it "a >= b <==> b <= a"      $ property (propertyInContext prop_GELE)
+                it "a > b <==> b < a"        $ property (propertyInContext prop_GTLT)
+                it "a > b <==> not (a <= b)" $ property (propertyInContext prop_GTNotLE)
+                it "a < b <==> not (a >= b)" $ property (propertyInContext prop_LTNotGE)

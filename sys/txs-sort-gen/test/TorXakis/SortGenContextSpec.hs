@@ -23,9 +23,8 @@ import           Debug.Trace
 import           Test.Hspec
 import           Test.QuickCheck
 
-import           TorXakis.SortContext
+import           TorXakis.ContextTestSort
 import           TorXakis.SortGenContext
-import           TorXakis.TestSortContext
 
 -- | Increments can be combined
 prop_Increments :: Gen Bool

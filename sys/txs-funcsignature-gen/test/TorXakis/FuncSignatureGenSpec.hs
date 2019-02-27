@@ -24,7 +24,6 @@ import           Test.QuickCheck
 
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureGen
-import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext

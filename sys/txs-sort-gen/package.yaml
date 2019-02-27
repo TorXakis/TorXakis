@@ -14,7 +14,6 @@ extra-source-files:
 
 dependencies:
 - base >= 4.7 && < 5
-- hashmap
 - QuickCheck
 - txs-name
 - txs-sort
@@ -30,6 +29,7 @@ library:
   - TorXakis.TestSortData
   dependencies:
     - containers
+    - hashmap
     - multimap
     - txs-basics
     - txs-name-gen

@@ -24,6 +24,8 @@ module TorXakis.TestValExprConstructionData
 , TorXakis.TestValExprConstructionData.sortSize
 , TorXakis.TestValExprConstructionData.adtSize
 , TorXakis.TestValExprConstructionData.constructorSize
+, TorXakis.TestValExprConstructionData.varSize
+, TorXakis.TestValExprConstructionData.funcSize
 , TorXakis.TestValExprConstructionData.afterAddADTs
 , afterAddVars
 , afterAddFuncSignatures
@@ -112,7 +114,7 @@ funcSize r ctx = TorXakis.TestFuncSignatureData.funcSize r ctx . tsd
 
 -- | Constructor of empty Test Val Expr Construction Data
 empty :: (SortContext a, TestValExprConstructionContext d) => a -> TestValExprConstructionData d
-empty ctx = TestValExprConstructionData (TorXakis.TestSortData.empty) initialGenMap
+empty ctx = TestValExprConstructionData TorXakis.TestSortData.empty initialGenMap
     where
         initialGenMap :: TestValExprConstructionContext d => TorXakis.GenCollection.GenCollection d ValExpression
         initialGenMap =   addSuccess SortBool   0 (genValExprValueOfSort SortBool)
@@ -202,7 +204,7 @@ genValExprFunc r@(RefByFuncSignature f) ctx = do
         nrOfArgs = length (args f)
       in do
         additionalComplexity <- distribute availableSize nrOfArgs
-        let sizeArgs = map (flip TorXakis.TestValExprConstructionContext.sortSize ctx) (args f)
+        let sizeArgs = map (`TorXakis.TestValExprConstructionContext.sortSize` ctx) (args f)
             paramComplexity = zipWith (+) sizeArgs additionalComplexity
           in do
             vs <- mapM (\(c,s) -> resize c (arbitraryValExprOfSort ctx s)) $ zip paramComplexity (args f)
