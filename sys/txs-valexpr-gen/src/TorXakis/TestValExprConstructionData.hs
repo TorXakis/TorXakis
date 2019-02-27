@@ -136,6 +136,8 @@ empty ctx = TestValExprConstructionData TorXakis.TestSortData.empty initialGenMa
                                            Left e -> error ("empty - successful add expected, yet " ++ show e)
                                            Right c' -> c'
 
+-- | Update TestValExprConstructionData to remain consistent after
+-- a successful addition of ADTs to the context.
 afterAddADTs :: (SortContext a, TestValExprConstructionContext d) => a -> [ADTDef] -> TestValExprConstructionData d -> TestValExprConstructionData d
 afterAddADTs ctx as tvecd = TestValExprConstructionData (TorXakis.TestSortData.afterAddADTs ctx as (tsd tvecd))
                                                         (addValueGens (genMap tvecd) as)
@@ -157,6 +159,8 @@ afterAddADTs ctx as tvecd = TestValExprConstructionData (TorXakis.TestSortData.a
                                             Left e -> error ("addADTs - successful add expected, yet " ++ show e)
                                             Right c -> c
 
+-- | Update TestValExprConstructionData to remain consistent after
+-- a successful addition of Vars to the context.
 afterAddVars :: (VarContext a, TestValExprConstructionContext d) => a -> [VarDef] -> TestValExprConstructionData d -> TestValExprConstructionData d
 afterAddVars ctx vs tvecd = TestValExprConstructionData (tsd tvecd)
                                                         (foldl addVarGen (genMap tvecd) vs)
@@ -173,6 +177,8 @@ afterAddVars ctx vs tvecd = TestValExprConstructionData (tsd tvecd)
                 n = TorXakis.Var.name v
                 vSize = TorXakis.TestValExprConstructionData.varSize (RefByName n) ctx tvecd -- seems inefficient: throw away sort, yet localize function in one spot! TODO can it be smarter?
 
+-- | Update TestValExprConstructionData to remain consistent after
+-- a successful addition of FuncSignatures to the context.
 afterAddFuncSignatures :: (FuncSignatureContext a, TestValExprConstructionContext d) => a -> [FuncSignature] -> TestValExprConstructionData d -> TestValExprConstructionData d
 afterAddFuncSignatures ctx fs tvecd = TestValExprConstructionData (tsd tvecd)
                                                                   (foldl addFuncGen (genMap tvecd) fs)

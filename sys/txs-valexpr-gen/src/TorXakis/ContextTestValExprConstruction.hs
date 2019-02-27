@@ -40,7 +40,7 @@ import           TorXakis.TestValExprConstructionData
 -------------------------------------------------------------------------------------------------------------
 -- Test Func Context
 -------------------------------------------------------------------------------------------------------------
-
+-- | data for ContextTestValExprConstruction
 data ContextTestValExprConstruction = 
         ContextTestValExprConstruction 
             { basis :: ContextValExprConstruction

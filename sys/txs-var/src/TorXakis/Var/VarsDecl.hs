@@ -45,6 +45,13 @@ newtype VarsDecl = VarsDecl { -- | toList
                         }
          deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+-- | smart constructor for VarsDecl
+-- Error is returned when 
+--
+-- * Any Sort of the variables is not defined within context.
+--
+-- * Variable Names are not unique.
+--
 mkVarsDecl :: SortContext a => a -> [VarDef] -> Either Error VarsDecl
 mkVarsDecl ctx l | not $ null nuVars            = Left $ Error ("Non unique names: " ++ show nuVars)
                  | not $ null undefinedSorts    = Left $ Error ("List of variables with undefined sorts: " ++ show undefinedSorts)

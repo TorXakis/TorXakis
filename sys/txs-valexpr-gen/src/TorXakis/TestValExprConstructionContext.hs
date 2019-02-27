@@ -36,7 +36,7 @@ import           TorXakis.TestFuncSignatureContext
 import           TorXakis.ValExpr
 import           TorXakis.ValExprConstructionContext
 
-
+-- | Class for TestValExprConstructionContext
 class (ValExprConstructionContext a, TestVarContext a, TestFuncSignatureContext a) => TestValExprConstructionContext a where
     arbitraryValExpr :: a -> Gen ValExpression
     arbitraryValExpr ctx = do

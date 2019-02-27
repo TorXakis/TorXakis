@@ -52,6 +52,8 @@ data VarDef = VarDef {   -- | Name
                      }
          deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+-- | smart constructor for VarDef
+-- Error is returned when Sort is not defined within context.
 mkVarDef :: SortContext a => a -> Name -> Sort -> Either Error VarDef
 mkVarDef ctx n s | memberSort s ctx = Right $ VarDef n s
                  | otherwise        = Left $ Error ("Sort not defined in context " ++ show s)

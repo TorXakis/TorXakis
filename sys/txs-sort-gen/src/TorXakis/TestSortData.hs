@@ -80,6 +80,8 @@ empty = TestSortData primitiveSortSize Map.empty
                                                ]
                                                (repeat 0)
 
+-- | Update TestSortData to remain consistent after
+-- a successful addition of ADTs to the context.
 afterAddADTs :: a -> [ADTDef] -> TestSortData -> TestSortData
 afterAddADTs _ as tsd =
     let
