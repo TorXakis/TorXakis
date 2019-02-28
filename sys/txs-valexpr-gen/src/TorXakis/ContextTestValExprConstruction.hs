@@ -28,7 +28,7 @@ module TorXakis.ContextTestValExprConstruction
 )
 where
 --import           Debug.Trace
---import qualified Data.Set           as Set
+import qualified Data.Set           as Set
 import           Test.QuickCheck
 
 import           TorXakis.ContextValExprConstruction
@@ -142,9 +142,9 @@ arbitraryContextTestValExprConstruction =
                                     Left e     -> error ("arbitraryContextTestValExprConstruction: Invalid generator - addVars " ++ show e)
                                     Right ctx3 -> do
                                                     fs <- listOf (arbitraryFuncSignature ctx3)
-                                                    -- let ufs = Set.toList (Set.fromList fs) in  -- how quickly find QuickCheck this?
-                                                    case addFuncSignatures fs ctx3 of
-                                                             Left e     -> error ("arbitraryContextTestValExprConstruction: Invalid generator - addFuncSignatures " ++ show e)
-                                                             Right ctx4 -> return ctx4
+                                                    let ufs = Set.toList (Set.fromList fs) in
+                                                        case addFuncSignatures ufs ctx3 of
+                                                                 Left e     -> error ("arbitraryContextTestValExprConstruction: Invalid generator - addFuncSignatures " ++ show e)
+                                                                 Right ctx4 -> return ctx4
                                     
                                 

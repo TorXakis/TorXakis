@@ -31,6 +31,14 @@ import           TorXakis.TestValExprConstructionContext
 import           TorXakis.ValExpr
 import           TorXakis.Value
 
+-- How to use generated context more efficiently
+-- how to check same property multiple times within generated context?
+-- replicating the property causes QuickCheck to give up 
+-- code:
+--    value <- mapM prop (replicate 20 ctx)
+--    return (and value)
+-- since:
+-- divide and modulo discard zero when it is generated for the divisor -> too many discard cause qive up!
 propertyInContext  :: (ContextTestValExprConstruction -> Gen Bool) -> Gen Bool
 propertyInContext prop = do
     ctx <- arbitraryContextTestValExprConstruction
@@ -45,7 +53,10 @@ prop_MkUnaryMinus_id ctx = do
                                 Left e    -> trace ("\nUnexpected error in generator 1 " ++ show e) False
                                 Right mve -> case mkUnaryMinus ctx mve of
                                                 Left e     -> trace ("\nUnexpected error in generator 2 " ++ show e) False
-                                                Right mmve -> ve == mmve
+                                                Right mmve -> if ve == mmve
+                                                                    then True
+                                                                    else trace ("\nValue =\n" ++ show (prettyPrint (Options True True) ctx ve) ++
+                                                                                "\nleads to wrong value =\n" ++ show (prettyPrint (Options True True) ctx mmve)) False
 
 -- | a \/ not a <==> True
 prop_AOrNotA :: TestValExprConstructionContext a => a -> Gen Bool

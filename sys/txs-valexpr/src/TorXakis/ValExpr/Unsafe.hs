@@ -143,8 +143,11 @@ unsafeITE _         _         (Left ef) = Left $ Error ("ITE Error 1" ++        
 unsafeITE b (Right tb) (Right fb) | tb == trueValExpr && fb == falseValExpr = b
 -- Simplification: if c then False else True <==> not c
 unsafeITE b (Right tb) (Right fb) | tb == falseValExpr && fb == trueValExpr = unsafeNot b
--- Simplification: if q then p else False fi <==> q /\ p : Note: p is boolean expression (otherwise different sorts in branches) 
--- Not implemented to enable conditional evaluation
+-- Simplification: if c then not (tb) else not (fb) <==>  not (if c then tb else fb)
+unsafeITE b (Right (TorXakis.ValExpr.ValExpr.view -> Vnot tb)) (Right (TorXakis.ValExpr.ValExpr.view -> Vnot fb)) 
+                                                                            = unsafeNot (unsafeITE b (Right tb) (Right fb))
+-- Due to conditional evaluation is the following NOT a simplification:
+-- if q then p else False fi <==> q /\ p : where p is boolean expression (otherwise different sorts in branches)
 unsafeITE (Right b) (Right tb) (Right fb)                                   = Right $ ValExpression (Vite b tb fb)
 
 unsafePredefNonSolvable :: SortContext c => c -> RefByFuncSignature -> [Either Error ValExpression] -> Either Error ValExpression
@@ -187,12 +190,6 @@ unsafeNot' b | b == trueValExpr                              = Right falseValExp
 unsafeNot' b | b == falseValExpr                             = Right trueValExpr
 -- Simplification: not (not x) <==> x
 unsafeNot' (TorXakis.ValExpr.ValExpr.view -> Vnot ve)          = Right ve
--- Simplification: not (if cs then tb else fb) <==> if cs then not (tb) else not (fb)
--- also needs if a then x else y /\ if a then u else w <==> if a then x /\ u else y /\ w
--- otherwise TorXakis can't maintain (a \/ not a) <==> True
--- unsafeNot' (TorXakis.ValExpr.ValExpr.view -> Vite cs tb fb)  = case (unsafeNot' tb, unsafeNot' fb) of
---                                                                     (Right nt, Right nf) -> Right $ ValExpression (Vite cs nt nf)
---                                                                     _                    -> error "Unexpected error in NOT with ITE"
 unsafeNot' ve                                                = Right $ ValExpression (Vnot ve)
 
 -- TODO? More laziness?

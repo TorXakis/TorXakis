@@ -57,11 +57,11 @@ import           TorXakis.Var
                                     -- 3. If THEN Else etc.
                                     -- 4. generators for variables (based on variables defined in context)
                                     -- 5. generators for funcInstantiation (based on funcSignatures defined in context)
-                                    
+
 
 -- | Test FuncSignature Data
 data TestValExprConstructionData a where
-        TestValExprConstructionData :: TestValExprConstructionContext a 
+        TestValExprConstructionData :: TestValExprConstructionContext a
                                     => TestSortData
                                     -> TorXakis.GenCollection.GenCollection a ValExpression
                                     -> TestValExprConstructionData a
@@ -99,8 +99,8 @@ constructorSize r c = TorXakis.TestSortData.constructorSize r c . tsd
 --   The size of the provided var as specified by its name is returned.
 --   The size is a measurement of complexity and is indicated by an 'Int'.
 --   Note that the function should crash when the context does not contain the 'TorXakis.Var' and any related 'TorXakis.Sort' references.
-varSize :: VarContext a 
-        => RefByName VarDef 
+varSize :: VarContext a
+        => RefByName VarDef
         -> a
         -> TestValExprConstructionData d
         -> Int
@@ -118,23 +118,42 @@ empty :: (SortContext a, TestValExprConstructionContext d) => a -> TestValExprCo
 empty ctx = TestValExprConstructionData TorXakis.TestSortData.empty initialGenMap
     where
         initialGenMap :: TestValExprConstructionContext d => TorXakis.GenCollection.GenCollection d ValExpression
-        initialGenMap =   addSuccess SortBool   0 (genValExprValueOfSort SortBool)
+        initialGenMap = -- Bool
+                          addSuccess SortBool   0 (genValExprValueOfSort SortBool)
                         $ addSuccess SortBool   1 genValExprNot
+                        $ addSuccess SortBool   1 genValExprGEZ
+                        -- Bool -- Equal
+                        $ addSuccess SortBool   2 (genValExprEqual SortBool)
+                        $ addSuccess SortBool   2 (genValExprEqual SortInt)
+                        $ addSuccess SortBool   2 (genValExprEqual SortChar)
+                        $ addSuccess SortBool   2 (genValExprEqual SortString)
+                        
                         $ addSuccess SortBool   2 genValExprAnd
                         $ addSuccess SortBool   3 (genValExprITE SortBool)
-                        
+
+                        -- Int
                         $ addSuccess SortInt    0 (genValExprValueOfSort SortInt)
+                        $ addSuccess SortInt    1 genValExprUnaryMinus
+                        $ addSuccess SortInt    1 genValExprLength
                         $ addSuccess SortInt    2 genValExprModulo
                         $ addSuccess SortInt    2 genValExprDivide
+                        $ addSuccess SortInt    2 genValExprSum
+                        $ addSuccess SortInt    2 genValExprProduct
                         $ addSuccess SortInt    3 (genValExprITE SortInt)
-                        
+
+                        -- Char
                         $ addSuccess SortChar   0 (genValExprValueOfSort SortChar)
                         $ addSuccess SortChar   3 (genValExprITE SortChar)
-                        
+
+                        -- String
                         $ addSuccess SortString 0 (genValExprValueOfSort SortString)
+                        $ addSuccess SortString 2 genValExprConcat
+                        $ addSuccess SortString 2 genValExprAt
                         $ addSuccess SortString 3 (genValExprITE SortString)
-                        
-                        $ addSuccess SortRegex  0 (genValExprValueOfSort SortRegex)
+
+                        -- Regex
+                        $ addSuccess SortRegex  0 (genValExprValueOfSort SortRegex) -- TODO: generate a VALID regex string
+                        -- TODO: add StrInRe  <- needs valid REGEX strings
                           TorXakis.GenCollection.empty
             where
                  addSuccess :: Sort
@@ -149,10 +168,15 @@ empty ctx = TestValExprConstructionData TorXakis.TestSortData.empty initialGenMa
 -- | Update TestValExprConstructionData to remain consistent after
 -- a successful addition of ADTs to the context.
 afterAddADTs :: (SortContext a, TestValExprConstructionContext d) => a -> [ADTDef] -> TestValExprConstructionData d -> TestValExprConstructionData d
-afterAddADTs ctx as tvecd = TestValExprConstructionData (TorXakis.TestSortData.afterAddADTs ctx as (tsd tvecd))
-                                                        (addValueGens (genMap tvecd) as)
-                                                      -- TODO: add constructors and accessors
+afterAddADTs ctx as tvecd = TestValExprConstructionData newTsd
+                                                        (addConstructorsGens
+                                                         (addValueGens (genMap tvecd) as)
+                                                         as
+                                                        )
+                                                        -- TODO: add IsConstructors and accessors functions
     where
+            newTsd = TorXakis.TestSortData.afterAddADTs ctx as (tsd tvecd)
+            -- TODO: should we merge ???
             addValueGens :: TestValExprConstructionContext d
                          => TorXakis.GenCollection.GenCollection d ValExpression
                          -> [ADTDef]
@@ -166,16 +190,38 @@ afterAddADTs ctx as tvecd = TestValExprConstructionData (TorXakis.TestSortData.a
                     addValueGen m a = let srt = SortADT ((RefByName . adtName) a)
                                         in
                                           case TorXakis.GenCollection.add ctx srt 0 (genValExprValueOfSort srt) m of
-                                            Left e -> error ("addADTs - successful add expected, yet " ++ show e)
-                                            Right c -> c
+                                            Left e -> error ("addADTs - addValueGens - successful add expected, yet " ++ show e)
+                                            Right m' -> m'
 
+            addConstructorsGens :: TestValExprConstructionContext d
+                                => TorXakis.GenCollection.GenCollection d ValExpression
+                                -> [ADTDef]
+                                -> TorXakis.GenCollection.GenCollection d ValExpression
+            addConstructorsGens = foldl addConstructorsGen
+                where
+                    addConstructorsGen :: TestValExprConstructionContext d
+                                       => TorXakis.GenCollection.GenCollection d ValExpression
+                                       -> ADTDef
+                                       -> TorXakis.GenCollection.GenCollection d ValExpression
+                    addConstructorsGen m a = foldl addConstructorGen m (elemsConstructor a)
+                        where 
+                            srt = SortADT ((RefByName . adtName) a)
+                            addConstructorGen :: TestValExprConstructionContext d
+                                              => TorXakis.GenCollection.GenCollection d ValExpression
+                                              -> ConstructorDef
+                                              -> TorXakis.GenCollection.GenCollection d ValExpression
+                            addConstructorGen m' c = case TorXakis.GenCollection.add ctx srt (TorXakis.TestSortData.constructorSize (RefByName (adtName a)) (RefByName (constructorName c)) newTsd) (genValExprConstructor a c) m' of
+                                                            Left e -> error ("addADTs - addConstructorGen - successful add expected, yet " ++ show e)
+                                                            Right m'' -> m''
+
+                            
 -- | Update TestValExprConstructionData to remain consistent after
 -- a successful addition of Vars to the context.
 afterAddVars :: (VarContext a, TestValExprConstructionContext d) => a -> [VarDef] -> TestValExprConstructionData d -> TestValExprConstructionData d
 afterAddVars ctx vs tvecd = TestValExprConstructionData (tsd tvecd)
                                                         (foldl addVarGen (genMap tvecd) vs)
     where
-        addVarGen :: TestValExprConstructionContext a 
+        addVarGen :: TestValExprConstructionContext a
                   => TorXakis.GenCollection.GenCollection a ValExpression
                   -> VarDef
                   -> TorXakis.GenCollection.GenCollection a ValExpression
@@ -193,7 +239,7 @@ afterAddFuncSignatures :: (FuncSignatureContext a, TestValExprConstructionContex
 afterAddFuncSignatures ctx fs tvecd = TestValExprConstructionData (tsd tvecd)
                                                                   (foldl addFuncGen (genMap tvecd) fs)
     where
-        addFuncGen :: TestValExprConstructionContext a 
+        addFuncGen :: TestValExprConstructionContext a
                   => TorXakis.GenCollection.GenCollection a ValExpression
                   -> FuncSignature
                   -> TorXakis.GenCollection.GenCollection a ValExpression
@@ -212,6 +258,19 @@ genValExprVar v ctx =
     case mkVar ctx v of
         Left e  -> error ("genValExprVar constructor with " ++ show v ++ " fails " ++ show e)
         Right x -> return x
+
+genValExprEqual :: TestValExprConstructionContext a => Sort -> a -> Gen ValExpression
+genValExprEqual s ctx = do
+    n <- getSize
+    let available = n - 2
+        sizeSort = TorXakis.TestValExprConstructionContext.sortSize s ctx
+      in do
+        t <- choose (sizeSort, available-sizeSort)
+        left  <- resize t             (arbitraryValExprOfSort ctx s)
+        right <- resize (available-t) (arbitraryValExprOfSort ctx s)
+        case mkEqual ctx left right of
+            Left e  -> error ("genValExprEqual constructor with sort " ++ show s ++ " fails " ++ show e)
+            Right x -> return x
 
 genValExprITE :: TestValExprConstructionContext a => Sort -> a -> Gen ValExpression
 genValExprITE s ctx = do
@@ -250,6 +309,16 @@ genValExprValueOfSort s ctx = do
     case mkConst ctx v of
         Left e  -> error ("genValExprValueOfSort constructor with value " ++ show v ++ " of sort " ++ show s ++ " fails " ++ show e)
         Right x -> return x
+
+serie :: TestValExprConstructionContext a => Sort -> a -> Gen [ValExpression]
+serie s ctx = do
+    n <- getSize
+    let available = n - 1 in do
+        size <- choose (0, available)
+        let remaining = available - size in do
+            additionalComplexity <- distribute remaining size
+            mapM (\c -> resize c (arbitraryValExprOfSort ctx s)) additionalComplexity
+
 -------------------------------------------------------------------------------
 -- Boolean Generators
 -------------------------------------------------------------------------------
@@ -261,32 +330,51 @@ genValExprNot ctx = do
          Left e  -> error ("genValExprNot constructor fails " ++ show e)
          Right x -> return x
 
+genValExprGEZ :: TestValExprConstructionContext a => a -> Gen ValExpression
+genValExprGEZ ctx = do
+    n <- getSize
+    arg <- resize (n-1) (arbitraryValExprOfSort ctx SortInt)
+    case mkGEZ ctx arg of
+         Left e  -> error ("genValExprGEZ constructor fails " ++ show e)
+         Right x -> return x
+
 -- | large And arrays have high likelihood of containing False
 -- do we want this reduction to False?
 genValExprAnd :: TestValExprConstructionContext a => a -> Gen ValExpression
 genValExprAnd ctx = do
-    n <- getSize
-    let available = n - 1 in do
-        size <- choose (0, available)
-        let remaining = available - size in do
-            additionalComplexity <- distribute remaining size
-            ps <- mapM (\c -> resize c (arbitraryValExprOfSort ctx SortBool)) additionalComplexity
-            case mkAnd ctx ps of
-                 Left e  -> error ("genValExprAnd constructor fails " ++ show e)
-                 Right x -> return x
+    ps <- serie SortBool ctx
+    case mkAnd ctx ps of
+         Left e  -> error ("genValExprAnd constructor fails " ++ show e)
+         Right x -> return x
 
 -------------------------------------------------------------------------------
 -- Integer Generators
 -------------------------------------------------------------------------------
+genValExprUnaryMinus :: TestValExprConstructionContext a => a -> Gen ValExpression
+genValExprUnaryMinus ctx = do
+    n <- getSize
+    arg <- resize (n-1) (arbitraryValExprOfSort ctx SortInt)
+    case mkUnaryMinus ctx arg of
+         Left e  -> error ("genValExprUnaryMinus constructor fails " ++ show e)
+         Right x -> return x
+
+genValExprLength :: TestValExprConstructionContext a => a -> Gen ValExpression
+genValExprLength ctx = do
+    n <- getSize
+    arg <- resize (n-1) (arbitraryValExprOfSort ctx SortString)
+    case mkLength ctx arg of
+         Left e  -> error ("genValExprLength constructor fails " ++ show e)
+         Right x -> return x
+
 zero :: ValExpression
 zero = case mkConst TorXakis.ContextSort.empty (Cint 0) of
             Left e -> error ("Unable to make zero " ++ show e)
             Right x -> x
-            
+
 nonZero :: TestValExprConstructionContext a => a -> Gen ValExpression
 nonZero ctx = do
     n <- arbitraryValExprOfSort ctx SortInt
-    if n == zero 
+    if n == zero
         then discard
         else return n
 
@@ -320,3 +408,62 @@ genValExprDivide ctx = do
                     Right f -> case mkITE ctx c teller f of
                                     Left e  -> error ("genValExprDivide mkITE fails " ++ show e)
                                     Right x -> return x
+
+genValExprSum :: TestValExprConstructionContext a => a -> Gen ValExpression
+genValExprSum ctx = do
+    ps <- serie SortInt ctx
+    case mkSum ctx ps of
+         Left e  -> error ("genValExprSum constructor fails " ++ show e)
+         Right x -> return x
+
+genValExprProduct :: TestValExprConstructionContext a => a -> Gen ValExpression
+genValExprProduct ctx = do
+    ps <- serie SortInt ctx
+    case mkProduct ctx ps of
+         Left e  -> error ("genValExprProduct constructor fails " ++ show e)
+         Right x -> return x
+
+-------------------------------------------------------------------------------
+-- String Generators
+-------------------------------------------------------------------------------
+genValExprAt :: TestValExprConstructionContext a => a -> Gen ValExpression
+genValExprAt ctx = do
+    n <- getSize
+    let available = n - 2
+      in do
+        t <- choose (0, available)
+        str <- resize t             (arbitraryValExprOfSort ctx SortString)
+        pos <- resize (available-t) (arbitraryValExprOfSort ctx SortInt)
+        case mkAt ctx str pos of
+            Left e  -> error ("genValExprAt constructor fails " ++ show e)
+            Right x -> return x
+
+genValExprConcat :: TestValExprConstructionContext a => a -> Gen ValExpression
+genValExprConcat ctx = do
+    ps <- serie SortString ctx
+    case mkConcat ctx ps of
+         Left e  -> error ("genValExprConcat constructor fails " ++ show e)
+         Right x -> return x
+
+-----------------------------------------------
+-- ADT generators
+------------------------------------------------
+genValExprConstructor :: TestValExprConstructionContext a => ADTDef -> ConstructorDef -> a -> Gen ValExpression
+genValExprConstructor a c ctx = 
+    let aRef :: RefByName ADTDef
+        aRef = RefByName (adtName a)
+        cRef :: RefByName ConstructorDef
+        cRef = RefByName (constructorName c)
+        fields = elemsField c
+        fieldSorts = map TorXakis.Sort.sort fields
+     in do
+        n <- getSize
+        let availableSize = n - TorXakis.TestValExprConstructionContext.constructorSize aRef cRef ctx in do
+            additionalComplexity <- distribute availableSize (length fields)
+            let sizeFields = map (`TorXakis.TestValExprConstructionContext.sortSize` ctx) fieldSorts
+                fieldComplexity = zipWith (+) sizeFields additionalComplexity
+              in do
+                fs <- mapM (\(size,srt) -> resize size (arbitraryValExprOfSort ctx srt)) $ zip fieldComplexity fieldSorts
+                case mkCstr ctx aRef cRef fs of
+                    Left e  -> error ("genValExprConstructor constructor fails " ++ show e)
+                    Right x -> return x
