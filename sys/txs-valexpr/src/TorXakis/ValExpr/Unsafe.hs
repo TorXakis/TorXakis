@@ -188,9 +188,11 @@ unsafeNot' b | b == falseValExpr                             = Right trueValExpr
 -- Simplification: not (not x) <==> x
 unsafeNot' (TorXakis.ValExpr.ValExpr.view -> Vnot ve)          = Right ve
 -- Simplification: not (if cs then tb else fb) <==> if cs then not (tb) else not (fb)
-unsafeNot' (TorXakis.ValExpr.ValExpr.view -> Vite cs tb fb)  = case (unsafeNot' tb, unsafeNot' fb) of
-                                                                    (Right nt, Right nf) -> Right $ ValExpression (Vite cs nt nf)
-                                                                    _                    -> error "Unexpected error in NOT with ITE"
+-- also needs if a then x else y /\ if a then u else w <==> if a then x /\ u else y /\ w
+-- otherwise TorXakis can't maintain (a \/ not a) <==> True
+-- unsafeNot' (TorXakis.ValExpr.ValExpr.view -> Vite cs tb fb)  = case (unsafeNot' tb, unsafeNot' fb) of
+--                                                                     (Right nt, Right nf) -> Right $ ValExpression (Vite cs nt nf)
+--                                                                     _                    -> error "Unexpected error in NOT with ITE"
 unsafeNot' ve                                                = Right $ ValExpression (Vnot ve)
 
 -- TODO? More laziness?

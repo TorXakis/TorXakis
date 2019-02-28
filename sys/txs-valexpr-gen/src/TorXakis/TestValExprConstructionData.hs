@@ -34,6 +34,7 @@ module TorXakis.TestValExprConstructionData
 where
 import           Test.QuickCheck
 
+import           TorXakis.ContextSort
 import           TorXakis.Distribute
 import           TorXakis.FuncContext
 import           TorXakis.FuncSignature
@@ -119,11 +120,20 @@ empty ctx = TestValExprConstructionData TorXakis.TestSortData.empty initialGenMa
         initialGenMap :: TestValExprConstructionContext d => TorXakis.GenCollection.GenCollection d ValExpression
         initialGenMap =   addSuccess SortBool   0 (genValExprValueOfSort SortBool)
                         $ addSuccess SortBool   1 genValExprNot
+                        $ addSuccess SortBool   2 genValExprAnd
+                        $ addSuccess SortBool   3 (genValExprITE SortBool)
+                        
                         $ addSuccess SortInt    0 (genValExprValueOfSort SortInt)
                         $ addSuccess SortInt    2 genValExprModulo
                         $ addSuccess SortInt    2 genValExprDivide
+                        $ addSuccess SortInt    3 (genValExprITE SortInt)
+                        
                         $ addSuccess SortChar   0 (genValExprValueOfSort SortChar)
+                        $ addSuccess SortChar   3 (genValExprITE SortChar)
+                        
                         $ addSuccess SortString 0 (genValExprValueOfSort SortString)
+                        $ addSuccess SortString 3 (genValExprITE SortString)
+                        
                         $ addSuccess SortRegex  0 (genValExprValueOfSort SortRegex)
                           TorXakis.GenCollection.empty
             where
@@ -203,6 +213,22 @@ genValExprVar v ctx =
         Left e  -> error ("genValExprVar constructor with " ++ show v ++ " fails " ++ show e)
         Right x -> return x
 
+genValExprITE :: TestValExprConstructionContext a => Sort -> a -> Gen ValExpression
+genValExprITE s ctx = do
+    n <- getSize
+    let available = n - 3
+        sizeBool = TorXakis.TestValExprConstructionContext.sortSize SortBool ctx
+        sizeBranch = TorXakis.TestValExprConstructionContext.sortSize s ctx
+        availableSize = available - sizeBool - 2 * sizeBranch
+      in do
+        [addBool, addTrue, addFalse] <- distribute availableSize 3
+        c <- resize (sizeBool + addBool) (arbitraryValExprOfSort ctx SortBool)
+        t <- resize (sizeBranch + addTrue) (arbitraryValExprOfSort ctx s)
+        f <- resize (sizeBranch + addFalse) (arbitraryValExprOfSort ctx s)
+        case mkITE ctx c t f of
+            Left e  -> error ("genValExprITE constructor with sort " ++ show s ++ " fails " ++ show e)
+            Right x -> return x
+
 genValExprFunc :: TestValExprConstructionContext a => RefByFuncSignature -> a -> Gen ValExpression
 genValExprFunc r@(RefByFuncSignature f) ctx = do
     n <- getSize
@@ -234,15 +260,35 @@ genValExprNot ctx = do
     case mkNot ctx arg of
          Left e  -> error ("genValExprNot constructor fails " ++ show e)
          Right x -> return x
+
+-- | large And arrays have high likelihood of containing False
+-- do we want this reduction to False?
+genValExprAnd :: TestValExprConstructionContext a => a -> Gen ValExpression
+genValExprAnd ctx = do
+    n <- getSize
+    let available = n - 1 in do
+        size <- choose (0, available)
+        let remaining = available - size in do
+            additionalComplexity <- distribute remaining size
+            ps <- mapM (\c -> resize c (arbitraryValExprOfSort ctx SortBool)) additionalComplexity
+            case mkAnd ctx ps of
+                 Left e  -> error ("genValExprAnd constructor fails " ++ show e)
+                 Right x -> return x
+
 -------------------------------------------------------------------------------
 -- Integer Generators
 -------------------------------------------------------------------------------
+zero :: ValExpression
+zero = case mkConst TorXakis.ContextSort.empty (Cint 0) of
+            Left e -> error ("Unable to make zero " ++ show e)
+            Right x -> x
+            
 nonZero :: TestValExprConstructionContext a => a -> Gen ValExpression
 nonZero ctx = do
     n <- arbitraryValExprOfSort ctx SortInt
-    case view n of
-        Vconst (Cint 0) -> nonZero ctx
-        _               -> return n
+    if n == zero 
+        then discard
+        else return n
 
 division :: TestValExprConstructionContext a => a -> Gen (ValExpression, ValExpression)
 division ctx = do
@@ -253,18 +299,24 @@ division ctx = do
         noemer <- resize (available-t) (nonZero ctx)
         return (teller, noemer)
 
--- TODO: make safe for substitution by using IF n == 0 then t else t % n FI
 genValExprModulo :: TestValExprConstructionContext a => a -> Gen ValExpression
 genValExprModulo ctx = do
     (teller, noemer) <- division ctx
-    case mkModulo ctx teller noemer of
-         Left e  -> error ("genValExprModulo constructor fails " ++ show e)
-         Right x -> return x
+    case mkEqual ctx noemer zero of
+        Left e -> error ("genValExprModulo mkEqual fails " ++ show e)
+        Right c -> case mkModulo ctx teller noemer of
+                    Left e  -> error ("genValExprModulo mkModulo fails " ++ show e)
+                    Right f -> case mkITE ctx c teller f of
+                                    Left e  -> error ("genValExprModulo mkITE fails " ++ show e)
+                                    Right x -> return x
 
--- TODO: make safe for substitution by using IF n == 0 then t else t / n FI
 genValExprDivide :: TestValExprConstructionContext a => a -> Gen ValExpression
 genValExprDivide ctx = do
     (teller, noemer) <- division ctx
-    case mkDivide ctx teller noemer of
-         Left e  -> error ("genValExprDivide constructor fails " ++ show e)
-         Right x -> return x
+    case mkEqual ctx noemer zero of
+        Left e -> error ("genValExprDivide mkEqual fails " ++ show e)
+        Right c -> case mkDivide ctx teller noemer of
+                    Left e  -> error ("genValExprDivide mkDivide fails " ++ show e)
+                    Right f -> case mkITE ctx c teller f of
+                                    Left e  -> error ("genValExprDivide mkITE fails " ++ show e)
+                                    Right x -> return x

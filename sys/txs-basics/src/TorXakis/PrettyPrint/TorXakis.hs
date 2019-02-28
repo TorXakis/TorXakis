@@ -51,7 +51,10 @@ class PrettyPrint c a where
 
 -- | The data type that represents the output for pretty printing in TorXakis format.
 newtype TxsString = TxsString { toText :: T.Text }
-    deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
+    deriving (Eq, Ord, Read, Generic, NFData, Data)
+
+instance Show TxsString where
+    show (TxsString x) = T.unpack x
 
 -- | indentation
 indent :: T.Text -> T.Text -> T.Text

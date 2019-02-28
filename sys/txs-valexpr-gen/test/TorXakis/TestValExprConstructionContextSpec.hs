@@ -21,35 +21,26 @@ module TorXakis.TestValExprConstructionContextSpec
 where
 import           Debug.Trace
 
-import qualified Data.Text              as T
 import           Test.Hspec
 import           Test.QuickCheck
 
 import           TorXakis.ContextTestValExprConstruction
-import           TorXakis.Name
+import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort
 import           TorXakis.TestValExprConstructionContext
 import           TorXakis.ValExpr
 import           TorXakis.Value
-import           TorXakis.Var
 
 propertyInContext  :: (ContextTestValExprConstruction -> Gen Bool) -> Gen Bool
-propertyInContext prop =
-    -- TODO: add to context, to generate more value expressions of a given type
-    let ctx = empty :: ContextTestValExprConstruction in
-        case mkName (T.pack "i") of
-            Left e   -> error ("can't make name " ++ show e)
-            Right ni -> case mkVarDef ctx ni SortInt of
-                            Left e -> error ("can't make VarDef " ++ show e)
-                            Right v -> case addVars [v] ctx of
-                                            Right nctx  -> prop nctx
-                                            Left  e     -> error ("can't add vardefs "++ show e)
+propertyInContext prop = do
+    ctx <- arbitraryContextTestValExprConstruction
+    prop ctx
 
 -- | min (min x) == x
 prop_MkUnaryMinus_id :: TestValExprConstructionContext a => a -> Gen Bool
 prop_MkUnaryMinus_id ctx = do
         ve <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
-        trace   ("ValExpr " ++ show ve) $
+        trace   ("\nValExpr:\n" ++ show (prettyPrint (Options True True) ctx ve)) $
                 return $ case mkUnaryMinus ctx ve of
                                 Left e    -> trace ("\nUnexpected error in generator 1 " ++ show e) False
                                 Right mve -> case mkUnaryMinus ctx mve of
@@ -66,7 +57,8 @@ prop_AOrNotA ctx = do
                                         Left e  -> trace ("\nUnexpected error with mkOr " ++ show e) False
                                         Right v -> case view v of 
                                                         Vconst (Cbool True) -> True
-                                                        x                   -> trace ("\nWrong value = " ++ show x) False
+                                                        x                   -> trace ("\nValue =\n" ++ show (prettyPrint (Options True True) ctx a) ++
+                                                                                      "\nleads to wrong value =\n" ++ show (prettyPrint (Options True True) ctx x)) False
 
 -- | not a => a <==> a
 prop_NotAImpliesAEqualsA :: TestValExprConstructionContext a => a -> Gen Bool

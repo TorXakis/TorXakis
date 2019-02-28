@@ -19,6 +19,7 @@ dependencies:
 - txs-sort
 - txs-valexpr
 - txs-value
+- txs-var
 
 library:
   source-dirs: src
@@ -27,10 +28,10 @@ library:
   - TorXakis.TestValExprConstructionContext
   - TorXakis.TestValExprConstructionData
   dependencies:
+    - containers
     - txs-basics-gen
     - txs-sort-gen
     - txs-value-gen
-    - txs-var
     - txs-var-gen
     - txs-funcsignature
     - txs-funcsignature-gen
@@ -46,7 +47,7 @@ tests:
         dependencies:
         - hspec
         - text
-        - txs-var
+        - txs-basics
         - txs-valexpr-gen
 
 ghc-options:

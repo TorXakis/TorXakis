@@ -181,8 +181,8 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                                               , separator o
                                                               , T.pack "FI"
                                                               ])
-  prettyPrint o ctx (Vfunc r vs)       = funcInst o ctx ((TorXakis.Name.toText . funcName . toFuncSignature) r) vs
-  prettyPrint o ctx (Vpredef r vs)     = funcInst o ctx ((TorXakis.Name.toText . funcName . toFuncSignature) r) vs
+  prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx ((TorXakis.Name.toText . funcName . toFuncSignature) r) vs
+  prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx ((TorXakis.Name.toText . funcName . toFuncSignature) r) vs
   prettyPrint o ctx (Vnot x)            = funcInst o ctx (T.pack "not") [x]
   prettyPrint o ctx (Vand s)            = infixOperator o ctx (T.pack "/\\") (Set.toList s)
   prettyPrint o ctx (Vdivide t n)       = infixOperator o ctx (T.pack "/") [t,n]

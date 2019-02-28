@@ -24,18 +24,22 @@ module TorXakis.ContextTestValExprConstruction
   ContextTestValExprConstruction(..)
 , TorXakis.ContextTestValExprConstruction.empty
 , fromValExprConstructionContext
+, arbitraryContextTestValExprConstruction
 )
 where
 --import           Debug.Trace
-
+--import qualified Data.Set           as Set
 import           Test.QuickCheck
 
 import           TorXakis.ContextValExprConstruction
 import           TorXakis.FuncContext
+import           TorXakis.FuncSignatureGen
 import qualified TorXakis.GenCollection
 import           TorXakis.SortGen
 import           TorXakis.TestValExprConstructionContext
 import           TorXakis.TestValExprConstructionData
+import           TorXakis.Var
+import           TorXakis.VarsDeclGen
 
 -------------------------------------------------------------------------------------------------------------
 -- Test Func Context
@@ -105,6 +109,11 @@ instance FuncSignatureContext ContextTestValExprConstruction where
 
     funcSignatures = funcSignatures . basis
 
+instance FuncSignatureModifyContext ContextTestValExprConstruction ContextTestValExprConstruction where
+    addFuncSignatures fs ctx = case addFuncSignatures fs (basis ctx) of
+                                    Left e       -> Left e
+                                    Right basis' -> Right $ ContextTestValExprConstruction basis' (TorXakis.TestValExprConstructionData.afterAddFuncSignatures basis' fs (tvecd ctx))
+
 instance TestFuncSignatureContext ContextTestValExprConstruction where
     funcSize r ctx = TorXakis.TestValExprConstructionData.funcSize r (basis ctx) (tvecd ctx)
 
@@ -119,3 +128,23 @@ instance TestValExprConstructionContext ContextTestValExprConstruction where
                     generator <- elements xs
                     generator ctx
 
+
+-- | generate an arbitrary Test Sort Context
+arbitraryContextTestValExprConstruction :: Gen ContextTestValExprConstruction
+arbitraryContextTestValExprConstruction =
+        let ctx1 = TorXakis.ContextTestValExprConstruction.empty in do
+            incr <- arbitraryADTDefs ctx1
+            case addADTs incr ctx1 of
+                Left e    -> error ("arbitraryContextTestValExprConstruction: Invalid generator - addADTs " ++ show e)
+                Right ctx2 -> do
+                                vs <- arbitraryVarsDecl ctx2
+                                case addVars (toList vs) ctx2 of
+                                    Left e     -> error ("arbitraryContextTestValExprConstruction: Invalid generator - addVars " ++ show e)
+                                    Right ctx3 -> do
+                                                    fs <- listOf (arbitraryFuncSignature ctx3)
+                                                    -- let ufs = Set.toList (Set.fromList fs) in  -- how quickly find QuickCheck this?
+                                                    case addFuncSignatures fs ctx3 of
+                                                             Left e     -> error ("arbitraryContextTestValExprConstruction: Invalid generator - addFuncSignatures " ++ show e)
+                                                             Right ctx4 -> return ctx4
+                                    
+                                

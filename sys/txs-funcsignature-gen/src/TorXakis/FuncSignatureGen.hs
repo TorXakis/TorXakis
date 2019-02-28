@@ -33,7 +33,7 @@ arbitrarySignature ctx =
         ps <- listOf (arbitrarySort ctx)
         r <- arbitrarySort ctx
         if isReservedFuncSignature ctx (unNameGen n) ps r
-            then arbitrarySignature ctx
+            then arbitrarySignature ctx -- or should we call QuickCheck's discard?
             else return (unNameGen n, ps, r)
 
 -- | generate a random function signature within a test sort context.

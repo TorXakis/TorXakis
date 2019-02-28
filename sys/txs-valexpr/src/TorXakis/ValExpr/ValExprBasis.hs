@@ -87,13 +87,13 @@ import           TorXakis.ValExprConstructionContext
 ------------------------------------------------------------------------------------------------------------------
 
 -- | Create a constant value as a value expression.
-mkConst :: ValExprConstructionContext c => c -> Value -> Either Error ValExpression
+mkConst :: SortContext c => c -> Value -> Either Error ValExpression
 mkConst ctx v = if memberSort (getSort ctx v) ctx
                     then unsafeConst v
                     else Left $  Error ("Sort " ++ show (getSort ctx v) ++ " not defined in context")
 
 -- | Create a variable as a value expression.
-mkVar :: ValExprConstructionContext c => c -> RefByName VarDef -> Either Error ValExpression
+mkVar :: VarContext c => c -> RefByName VarDef -> Either Error ValExpression
 mkVar ctx r = case lookupVar (toName r) ctx of
                 Nothing -> Left $ Error ("Variable " ++ show r ++ " not defined in context")
                 Just _  -> unsafeVar r
