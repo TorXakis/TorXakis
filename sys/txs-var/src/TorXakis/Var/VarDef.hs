@@ -44,7 +44,6 @@ import           TorXakis.Sort (Sort, HasSort(getSort))
 import           TorXakis.SortContext
 
 -- | Data for a variable definition.
--- TODO: should VarDef have additional type to separated different variables (e.g. user defined, channel variables, etc.)
 data VarDef = VarDef {   -- | Name
                          name :: Name
                          -- | Sort
@@ -54,21 +53,21 @@ data VarDef = VarDef {   -- | Name
 
 -- | smart constructor for VarDef
 -- Error is returned when Sort is not defined within context.
-mkVarDef :: SortContext a => a -> Name -> Sort -> Either Error VarDef
+mkVarDef :: SortContext c => c -> Name -> Sort -> Either Error VarDef
 mkVarDef ctx n s | memberSort s ctx = Right $ VarDef n s
                  | otherwise        = Left $ Error ("Sort not defined in context " ++ show s)
 
 instance Hashable VarDef where
-    hashWithSalt s (VarDef nm srt) = s `hashWithSalt` nm
-                                       `hashWithSalt` srt
+    s `hashWithSalt` (VarDef nm srt) = s `hashWithSalt` nm
+                                         `hashWithSalt` srt
 
 instance HasName VarDef where
     getName = name
 
-instance HasSort a VarDef where
-    getSort _ = sort            -- we decided not to check that sort is defined.
+instance HasSort c VarDef where
+    getSort _ = sort
 
-instance PrettyPrint a VarDef where
+instance PrettyPrint c VarDef where
     prettyPrint o c v = TxsString (T.concat [ TorXakis.Name.toText (name v)
                                             , T.pack " :: "
                                             , TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o c (sort v))

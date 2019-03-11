@@ -135,8 +135,8 @@ isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
     equalsAccessorFunc aDef =
         any (any (\f -> fieldName f == n && sort f == s) . elemsField) (elemsConstructor aDef) 
 
--- | Constructor of 'TorXakis.FuncSignature'.
--- An FuncSignature is returned when the following constraints are satisfied:
+-- | Smart constructor for 'TorXakis.FuncSignature.FuncSignature'.
+--   A FuncSignature is returned when the following constraints are satisfied:
 --
 --   * FuncSignature is not a reserved signature (both default and depending on sort).
 --

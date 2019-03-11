@@ -74,12 +74,12 @@ data Sort = SortBool
 -- If we want to make Sort package more flexible, we can use SortPrim "Int" & SortADT "WhatEver".
 
 instance Hashable Sort where
-    hashWithSalt s SortBool    = s `hashWithSalt` T.pack "Bool"
-    hashWithSalt s SortInt     = s `hashWithSalt` T.pack "Int"
-    hashWithSalt s SortChar    = s `hashWithSalt` T.pack "Char"
-    hashWithSalt s SortString  = s `hashWithSalt` T.pack "String"
-    hashWithSalt s SortRegex   = s `hashWithSalt` T.pack "Regex"
-    hashWithSalt s (SortADT r) = s `hashWithSalt` r  -- ADT name differs from predefined names
+    s `hashWithSalt` SortBool    = s `hashWithSalt` T.pack "Bool"
+    s `hashWithSalt` SortInt     = s `hashWithSalt` T.pack "Int"
+    s `hashWithSalt` SortChar    = s `hashWithSalt` T.pack "Char"
+    s `hashWithSalt` SortString  = s `hashWithSalt` T.pack "String"
+    s `hashWithSalt` SortRegex   = s `hashWithSalt` T.pack "Regex"
+    s `hashWithSalt` (SortADT r) = s `hashWithSalt` r  -- ADT name differs from predefined names
 
 -- | Enables 'Sort's of entities to be accessed in a common way.
 class HasSort c a where
@@ -97,7 +97,7 @@ data FieldDef = FieldDef
 instance HasName FieldDef where
     getName = fieldName
 
-instance HasSort a FieldDef where
+instance HasSort c FieldDef where
     getSort _ = sort
     
 -- | Constructor Definition.
@@ -115,7 +115,12 @@ data ConstructorDef = ConstructorDef
 instance HasName ConstructorDef where
     getName = constructorName
 
--- | Smart constructor for ConstructorDef
+-- | Smart constructor for 'TorXakis.SortADT.ConstructorDef'.
+--   A 'TorXakis.SortADT.ConstructorDef' is returned when the following constraint is satisfied:
+--
+--   * All field names are unique
+--
+--   Otherwise an error is returned. The error reflects the violations of the aforementioned constraint.
 mkConstructorDef :: Name -> [FieldDef] -> Either Error ConstructorDef
 mkConstructorDef n fs
     | null nuFieldNames     = Right $ ConstructorDef n fs
@@ -152,13 +157,14 @@ data ADTDef = ADTDef
 instance HasName ADTDef where
     getName = adtName
 
--- | An ADTDef is returned when the following constraints are satisfied:
+-- | Smart constructor for 'TorXakis.SortADT.ADTDef'.
+--   An 'TorXakis.SortADT.ADTDef' is returned when the following constraints are satisfied:
 --
---   * List of 'ConstructorDef's is non-empty.
+--   * List of 'TorXakis.SortADT.ConstructorDef's is non-empty.
 --
---   * Names of 'ConstructorDef's are unique
+--   * Names of 'TorXakis.SortADT.ConstructorDef's are unique
 --
---   * Names of 'FieldDef's are unique across all 'ConstructorDef's
+--   * Names of 'TorXakis.SortADT.FieldDef's are unique across all 'TorXakis.SortADT.ConstructorDef's
 --
 --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
 mkADTDef :: Name -> [ConstructorDef] -> Either Error ADTDef
@@ -198,13 +204,13 @@ instance PrettyPrint a Sort where
     prettyPrint _ _ SortRegex    = TxsString (T.pack "Regex")
     prettyPrint _ _ (SortADT a)  = (TxsString . TorXakis.Name.toText . toName) a
 
-instance PrettyPrint a FieldDef where
+instance PrettyPrint c FieldDef where
     prettyPrint o c fd = TxsString ( T.concat [ TorXakis.Name.toText (fieldName fd)
                                               , T.pack " :: "
                                               , TorXakis.PrettyPrint.TorXakis.toText ( prettyPrint o c (sort fd) )
                                               ] )
 
-instance PrettyPrint a ConstructorDef where
+instance PrettyPrint c ConstructorDef where
     prettyPrint o c cv = TxsString ( T.append (TorXakis.Name.toText (constructorName cv))
                                               (case (short o, fields cv) of
                                                   (True, [])   -> T.empty
@@ -243,7 +249,7 @@ instance PrettyPrint a ConstructorDef where
               addSort :: Sort -> T.Text
               addSort s = T.append (T.pack " :: ") ( TorXakis.PrettyPrint.TorXakis.toText ( prettyPrint o c s ) )
 
-instance PrettyPrint a ADTDef where
+instance PrettyPrint c ADTDef where
     prettyPrint o c av = TxsString ( T.concat [ T.pack "TYPEDEF "
                                               , TorXakis.Name.toText (adtName av)
                                               , T.pack " ::="

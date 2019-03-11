@@ -17,6 +17,10 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 module TorXakis.Var.FreeVars
 ( FreeVars (..)
+  -- dependencies, yet part of interface
+, Set.Set
+, VarDef
+, RefByName
 )
 where
 import qualified Data.Set               as Set

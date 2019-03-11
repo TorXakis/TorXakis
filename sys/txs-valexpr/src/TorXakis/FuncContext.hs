@@ -48,9 +48,10 @@ class FuncSignatureContext a => FuncContext a where
     addFuncs :: [FuncDef] -> a -> Either Error a
 
 -- | Generic Pretty Printer for all instance of 'TorXakis.FuncContext'.
+-- TODO: move to ContextFunc file
 prettyPrintFuncContext :: FuncContext a => Options -> a -> TxsString
 prettyPrintFuncContext o fc =
-    TxsString (T.concat [ TorXakis.PrettyPrint.TorXakis.toText (prettyPrintSortContext o fc)
+    TxsString (T.concat [ T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o fc) (elemsADT fc))
                         , T.pack "\n"
                         , T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o fc) (elemsFunc fc))
                         ])

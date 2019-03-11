@@ -27,11 +27,13 @@ where
 import           Data.Data           (Data)
 import qualified Data.List           as List
 import           Data.Maybe          (mapMaybe)
+import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error      ( Error ( Error ) )
 import           TorXakis.Name
 import           TorXakis.NameMap
+import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.SortADT    ( Sort ( SortADT )
                                      , ADTDef
                                      , adtName
@@ -136,3 +138,7 @@ instance SortContext ContextSort where
                         isSortConstructable :: [Name] -> Sort -> Bool
                         isSortConstructable ns (SortADT t) = toName t `elem` ns
                         isSortConstructable _  _           = True
+
+-- | Pretty Printer for 'TorXakis.ContextSort'.
+instance PrettyPrintContext ContextSort where
+    prettyPrintContext o s = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o s) (elemsADT s)))
