@@ -162,16 +162,18 @@ unsafePredefNonSolvable ctx r vs = case partitionEithers vs of
 
         evalPredefNonSolvable :: [Value] -> Either Error ValExpression
         evalPredefNonSolvable values =
-            case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, values) of
-                    ("toString",     SortString, [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
-                    ("fromString",   s,          [Cstring t])              -> valueFromText ctx s t >>= unsafeConst
-                    ("toXML",        SortString, [v])                      -> unsafeConst $ Cstring (valueToXML ctx v)
-                    ("fromXML",      s,          [Cstring t])              -> valueFromXML ctx s t >>= unsafeConst
-                    ("takeWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`elemT` v1) v2)
-                    ("takeWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`notElemT` v1) v2)
-                    ("dropWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`elemT` v1) v2)
-                    ("dropWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`notElemT` v1) v2)
-                    _                                                      -> error ("Unknown predefined function: " ++ show fs)
+            case TorXakis.FuncSignature.funcName fs of
+                NameOper n -> error ("Predefined are real functions NOT infix operators, yet " ++ show n)
+                NameFunc n -> case (T.unpack (TorXakis.Name.toText n), returnSort fs, values) of
+                                   ("toString",     SortString, [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
+                                   ("fromString",   s,          [Cstring t])              -> valueFromText ctx s t >>= unsafeConst
+                                   ("toXML",        SortString, [v])                      -> unsafeConst $ Cstring (valueToXML ctx v)
+                                   ("fromXML",      s,          [Cstring t])              -> valueFromXML ctx s t >>= unsafeConst
+                                   ("takeWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`elemT` v1) v2)
+                                   ("takeWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`notElemT` v1) v2)
+                                   ("dropWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`elemT` v1) v2)
+                                   ("dropWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`notElemT` v1) v2)
+                                   _                                                      -> error ("Unknown predefined function: " ++ show fs)
             where
                 elemT :: Char -> T.Text -> Bool
                 elemT c = isJust . T.find (== c)

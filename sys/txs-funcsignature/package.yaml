@@ -15,6 +15,7 @@ extra-source-files:
 dependencies:
 - base >= 4.7 && < 5
 - txs-sort
+- txs-name
 
 library:
   source-dirs: src
@@ -27,9 +28,23 @@ library:
   - deepseq
   - hashable
   - hashmap
+  - text
   - txs-basics
-  - txs-name
   - Unique
+
+tests:
+    txs-funcsignature-test:
+        main : Spec.hs
+        source-dirs: test
+        ghc-options:
+        - -threaded
+        - -rtsopts
+        - -with-rtsopts=-N
+        dependencies:
+        - hspec
+        - QuickCheck
+        - txs-name-gen
+        - txs-funcsignature
 
 ghc-options:
 - -Werror

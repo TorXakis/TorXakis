@@ -5,30 +5,28 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  XMLName
+-- Module      :  OperatorName
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
 -- Maintainer  :  Pierre van de Laar <pierre.vandelaar@tno.nl> (Embedded Systems Innovation)
---                Damian Nadales <damian.nadalesagut@tno.nl>
---                Kerem Ispirli <kerem.ispirli@tno.nl>
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- This module provides an name valid for usage with XML.
+-- This module provides an operator name.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-module TorXakis.XMLName
+module TorXakis.OperatorName
 ( 
--- * XMLName
+-- * OperatorName
 -- ** Name data type
-  XMLName
+  OperatorName
 -- ** Name conversion
 , toText
--- ** Smart constructor for XMLName
-, mkXMLName
+-- ** Smart constructor for Operator Name
+, mkOperatorName
 )
 where
 
@@ -41,42 +39,45 @@ import           GHC.Generics       (Generic)
 
 import           TorXakis.Error     (Error(Error))
 
--- | Definition of the XML name.
-newtype XMLName = XMLName
+-- | Definition of the Operator name.
+newtype OperatorName = OperatorName
     { -- | 'Data.Text.Text' representation of Name.
       toText :: Text
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance Hashable XMLName where
+instance Hashable OperatorName where
     hashWithSalt s = hashWithSalt s . toText
 
--- | Smart constructor for XMLName.
+-- | Smart constructor for OperatorName.
 --
---   A XMLName is returned when the following constraints are satisfied:
+--   A OperatorName is returned when the following constraints are satisfied:
 --
 --   * The provided 'Data.Text.Text' value is non-empty
 --
---   * The start character adheres to [A-Z] | \'_\' | [a-z]
---
---   * The remaining characters adhere to [A-Z] | \'_\' | [a-z] | \'-\' | [0-9]
+--   * All characters adheres to [=+-*/\^<>|@&%] 
+--   TODO: what about the characters !#$?
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
---
---   These constraints are enforced by XML.
---   See e.g. http://www.w3.org/TR/REC-XML/#NT-NameStartChar and http://www.w3.org/TR/REC-XML/#NT-NameChar
-mkXMLName :: Text -> Either Error XMLName
-mkXMLName s = case T.unpack s of
-            []     -> Left $ Error "Illegal input: Empty String"
-            (x:xs) -> if isNameStartChar x && all isNameChar xs 
-                        then Right $ XMLName s
+mkOperatorName :: Text -> Either Error OperatorName
+mkOperatorName s = case T.unpack s of
+            [] -> Left $ Error "Illegal input: Empty String"
+            xs -> if all isOperatorChar xs
+                        then Right $ OperatorName s
                         else Left $ Error ("String contains illegal characters: " ++ show s)
     where
-        isNameStartChar :: Char -> Bool
-        isNameStartChar c =      ('A' <= c && c <= 'Z')
-                              || ('_' == c)
-                              || ('a' <= c && c <= 'z')
-        isNameChar :: Char -> Bool
-        isNameChar c =     isNameStartChar c 
-                        || ('-' == c)
-                        || ('0' <= c && c <= '9')
+        isOperatorChar :: Char -> Bool
+        isOperatorChar '='  = True
+        isOperatorChar '+'  = True
+        isOperatorChar '-'  = True
+        isOperatorChar '*'  = True
+        isOperatorChar '/'  = True
+        isOperatorChar '\\' = True
+        isOperatorChar '^'  = True
+        isOperatorChar '<'  = True
+        isOperatorChar '>'  = True
+        isOperatorChar '|'  = True
+        isOperatorChar '@'  = True
+        isOperatorChar '&'  = True
+        isOperatorChar '%'  = True
+        isOperatorChar _    = False

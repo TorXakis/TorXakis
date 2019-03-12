@@ -22,6 +22,7 @@ library:
   - TorXakis.Name
   - TorXakis.NameMap
   - TorXakis.XMLName
+  - TorXakis.OperatorName
   dependencies:
   - containers
   - deepseq

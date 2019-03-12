@@ -15,11 +15,10 @@ extra-source-files:
 dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
-- txs-name
 - txs-sort
 - txs-valexpr
 - txs-value
-- txs-var
+
 
 library:
   source-dirs: src
@@ -30,8 +29,10 @@ library:
   dependencies:
     - containers
     - txs-basics-gen
+    - txs-name
     - txs-sort-gen
     - txs-value-gen
+    - txs-var
     - txs-var-gen
     - txs-funcsignature
     - txs-funcsignature-gen
@@ -46,7 +47,6 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
-        - text
         - txs-basics
         - txs-valexpr-gen
 
