@@ -80,7 +80,7 @@ toValExprConstructionContext ctx vs =
 mkFuncDef :: FuncSignatureContext a => a -> Name -> VarsDecl -> ValExpression -> Either Error FuncDef
 mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             = Left $ Error ("Undefined variables used in body " ++ show undefinedVars)
                      | not (null undefinedSorts)                                = Left $ Error ("Variables have undefined sorts " ++ show undefinedSorts)
-                     | not (isReservedFuncSignature ctx n argSorts retSort)     = Left $ Error ("Function has reserved signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
+                     | not (isReservedPrefixFunctionSignature ctx n argSorts retSort)     = Left $ Error ("Function has reserved signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
                      | not (isPredefinedNonSolvableFuncSignature signature)     = Left $ Error ("Function has predefined signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
                      | otherwise                                                = Right $ FuncDef n ps b
     where
@@ -100,7 +100,7 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             
         retSort = getSort (toValExprConstructionContext ctx vs) b
 
         signature :: FuncSignature
-        signature = case mkFuncSignature ctx n argSorts retSort of
+        signature = case mkPrefixFuncSignature ctx n argSorts retSort of
                         Left e  -> error ("mkFuncDef is unable to create FuncSignature" ++ show e)
                         Right f -> f
 
@@ -108,7 +108,7 @@ instance forall a . FuncSignatureContext a => HasFuncSignature a FuncDef
     where
         getFuncSignature ctx (FuncDef fn ps bd) =
             let vs = toList ps in
-                case mkFuncSignature ctx fn (map (getSort ctx) vs) (getSort (toValExprConstructionContext ctx vs) bd) of
+                case mkPrefixFuncSignature ctx fn (map (getSort ctx) vs) (getSort (toValExprConstructionContext ctx vs) bd) of
                      Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
                      Right x -> x
 

@@ -55,7 +55,7 @@ instance Hashable OperatorName where
 --
 --   * The provided 'Data.Text.Text' value is non-empty
 --
---   * All characters adheres to [=+-*/\^<>|@&%] 
+--   * All characters adheres to [=+-*/\\^<>|@&%] 
 --   TODO: what about the characters !#$?
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.

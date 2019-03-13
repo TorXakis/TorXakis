@@ -183,11 +183,11 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                                               , T.pack "FI"
                                                               ])
   prettyPrint o ctx (Vfunc r vs)        = case funcName (toFuncSignature r) of
-                                            NameFunc n -> funcInst o ctx (TorXakis.Name.toText n) vs
-                                            NameOper n -> infixOperator o ctx (TorXakis.OperatorName.toText n) vs
+                                            NamePrefix n -> funcInst o ctx (TorXakis.Name.toText n) vs
+                                            NameInfix  n -> infixOperator o ctx (TorXakis.OperatorName.toText n) vs
   prettyPrint o ctx (Vpredef r vs)      = case funcName (toFuncSignature r) of
-                                            NameFunc n -> funcInst o ctx (TorXakis.Name.toText n) vs
-                                            NameOper n -> error ("Predefined are real functions NOT infix operators, yet " ++ show n)
+                                            NamePrefix n -> funcInst o ctx (TorXakis.Name.toText n) vs
+                                            NameInfix  n -> error ("Predefined are real functions NOT infix operators, yet " ++ show n)
   prettyPrint o ctx (Vnot x)            = funcInst o ctx (T.pack "not") [x]
   prettyPrint o ctx (Vand s)            = infixOperator o ctx (T.pack "/\\") (Set.toList s)
   prettyPrint o ctx (Vdivide t n)       = infixOperator o ctx (T.pack "/") [t,n]

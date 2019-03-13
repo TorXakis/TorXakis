@@ -32,7 +32,7 @@ arbitrarySignature ctx =
         n <- arbitrary :: Gen NameGen
         ps <- listOf (arbitrarySort ctx)
         r <- arbitrarySort ctx
-        if isReservedFuncSignature ctx (unNameGen n) ps r
+        if isReservedPrefixFunctionSignature ctx (unNameGen n) ps r
             then arbitrarySignature ctx -- or should we call QuickCheck's discard?
             else return (unNameGen n, ps, r)
 
@@ -42,7 +42,7 @@ arbitraryFuncSignature :: TestSortContext a => a -> Gen FuncSignature
 arbitraryFuncSignature ctx = 
     do
         (n, ps, r) <- arbitrarySignature ctx
-        case mkFuncSignature ctx n ps r of
+        case mkPrefixFuncSignature ctx n ps r of
             Left e  -> error ("arbitraryFuncSignature  - constructor failed\n" ++ show e)
             Right x -> return x
 

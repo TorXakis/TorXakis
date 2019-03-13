@@ -27,11 +27,11 @@ module TorXakis.FuncSignature.FuncSignature
 , toText
   -- * Function Signature
 , FuncSignature (funcName, args, returnSort)
-, mkFuncSignature
+, mkPrefixFuncSignature
 , isPredefinedNonSolvableFuncSignature
-, isReservedFuncSignature
-, mkOperatorSignature
-, isReservedOperatorSignature
+, isReservedPrefixFunctionSignature
+, mkInfixFuncSignature
+, isReservedInfixFunctionSignature
   -- * Has Function Signature class
 , HasFuncSignature (..)
   -- ** Conversion List to Map By Function Signature
@@ -45,7 +45,6 @@ module TorXakis.FuncSignature.FuncSignature
 , TorXakis.OperatorName.OperatorName
 , Sort
 ) where
-
 import           Control.DeepSeq      (NFData)
 import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hashWithSalt))
@@ -61,18 +60,18 @@ import           TorXakis.Sort
 import           TorXakis.SortContext
 
 -- | Function Name is either a 'TorXakis.Name' or an 'TorXakis.OperatorName'.
-data FuncName = NameFunc TorXakis.Name.Name
-              | NameOper TorXakis.OperatorName.OperatorName
+data FuncName = NamePrefix TorXakis.Name.Name
+              | NameInfix  TorXakis.OperatorName.OperatorName
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
 instance Hashable FuncName where
-    s `hashWithSalt` (NameFunc n) = s `hashWithSalt` n
-    s `hashWithSalt` (NameOper n) = s `hashWithSalt` n
+    s `hashWithSalt` (NamePrefix n) = s `hashWithSalt` n
+    s `hashWithSalt` (NameInfix  n) = s `hashWithSalt` n
 
 -- | toText
 toText :: FuncName -> T.Text
-toText (NameFunc n) = TorXakis.Name.toText n
-toText (NameOper n) = TorXakis.OperatorName.toText n
+toText (NamePrefix n) = TorXakis.Name.toText n
+toText (NameInfix  n) = TorXakis.OperatorName.toText n
 
 -- | A generalized, type-safe reference.
 data FuncSignature = FuncSignature { -- | The 'Name' of the function/operator.
@@ -108,13 +107,13 @@ isConstructorFuncName c = case TorXakis.Name.mkName (T.append (T.pack "is") (Tor
                                 Left e -> error ("isConstructorFuncName failed on constructor " ++ show c ++ " with " ++ show e)
                                 Right n -> n
 
--- | isReservedOperatorSignature
+-- | isReservedInfixFunctionSignature
 -- Includes 
 -- * TorXakis Operator Signatures that are mapped onto special constructors
 --
 -- * Operator Signatures that are implicitly defined by defining Sorts / ADTDefs
-isReservedOperatorSignature :: c -> TorXakis.OperatorName.OperatorName -> [Sort] -> Sort -> Bool
-isReservedOperatorSignature _ n ss s =    isMappedOperatorSignature
+isReservedInfixFunctionSignature :: c -> TorXakis.OperatorName.OperatorName -> [Sort] -> Sort -> Bool
+isReservedInfixFunctionSignature _ n ss s =    isMappedOperatorSignature
   where
     isMappedOperatorSignature :: Bool
     isMappedOperatorSignature =
@@ -140,13 +139,13 @@ isReservedOperatorSignature _ n ss s =    isMappedOperatorSignature
                  ("++",          [SortString, SortString],   SortString ) -> True
                  _                                                        -> False
 
--- | isReservedFuncSignature
+-- | isReservedPrefixFunctionSignature
 -- Includes 
 -- * TorXakis FuncSignatures that are mapped onto special constructors
 --
 -- * FuncSignatures that are implicitly defined by defining Sorts / ADTDefs
-isReservedFuncSignature :: SortContext c => c -> TorXakis.Name.Name -> [Sort] -> Sort -> Bool
-isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
+isReservedPrefixFunctionSignature :: SortContext c => c -> TorXakis.Name.Name -> [Sort] -> Sort -> Bool
+isReservedPrefixFunctionSignature ctx n ss s =    isMappedFuncSignature
                                      || isSortFuncSignature
   where
     isMappedFuncSignature :: Bool
@@ -164,7 +163,7 @@ isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
     isSortFuncSignature =
         case ss of
              [SortADT a] -> case lookupADT (TorXakis.Name.toName a) ctx of
-                                Nothing   -> error ("isReservedFuncSignature -- ADTDef " ++ show a ++ " not defined in context ")
+                                Nothing   -> error ("isReservedPrefixFunctionSignature -- ADTDef " ++ show a ++ " not defined in context ")
                                 Just aDef -> equalsIsConstructorFunc aDef || equalsAccessorFunc aDef
              _           -> False
 
@@ -187,11 +186,11 @@ isReservedFuncSignature ctx n ss s =    isMappedFuncSignature
 --   * Sorts of arguments and return value are defined.
 --
 --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-mkFuncSignature :: SortContext a => a -> TorXakis.Name.Name -> [Sort] -> Sort -> Either Error FuncSignature
-mkFuncSignature ctx n as s | not $ null undefinedSorts          = Left $ Error ("mkFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
-                           | isReservedFuncSignature ctx n as s = Left $ Error ("mkFuncSignature: Reserved function signature " ++ show n ++ " " ++ show as ++ " " ++ show s)
-                           | memberSort s ctx                   = Right $ FuncSignature (NameFunc n) as s
-                           | otherwise                          = Left $ Error ("mkFuncSignature: Return sort has undefined sort " ++ show s)
+mkPrefixFuncSignature :: SortContext a => a -> TorXakis.Name.Name -> [Sort] -> Sort -> Either Error FuncSignature
+mkPrefixFuncSignature ctx n as s | not $ null undefinedSorts                    = Left $ Error ("mkPrefixFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
+                                 | isReservedPrefixFunctionSignature ctx n as s = Left $ Error ("mkPrefixFuncSignature: Reserved function signature " ++ show n ++ " " ++ show as ++ " " ++ show s)
+                                 | memberSort s ctx                             = Right $ FuncSignature (NamePrefix n) as s
+                                 | otherwise                                    = Left $ Error ("mkPrefixFuncSignature: Return sort has undefined sort " ++ show s)
     where
         undefinedSorts :: [Sort]
         undefinedSorts = filter (not . flip memberSort ctx) as
@@ -206,14 +205,14 @@ mkFuncSignature ctx n as s | not $ null undefinedSorts          = Left $ Error (
 --   * Operator has one or two arguments.
 --
 --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-mkOperatorSignature :: SortContext a => a -> TorXakis.OperatorName.OperatorName -> [Sort] -> Sort -> Either Error FuncSignature
-mkOperatorSignature ctx n as s | not $ null undefinedSorts              = Left $ Error ("mkOperatorSignature: Arguments have undefined sorts " ++ show undefinedSorts)
-                               | isReservedOperatorSignature ctx n as s = Left $ Error ("mkOperatorSignature: Reserved function signature " ++ show n ++ " " ++ show as ++ " " ++ show s)
-                               | not $ memberSort s ctx                 = Left $ Error ("mkOperatorSignature: Return sort has undefined sort " ++ show s)
-                               | otherwise                              = case as of
-                                                                               [_]      -> Right $ FuncSignature (NameOper n) as s
-                                                                               [_, _]   -> Right $ FuncSignature (NameOper n) as s
-                                                                               _        -> Left $ Error ("mkOperatorSignature: Operator has one or two arguments not " ++ show (length as))
+mkInfixFuncSignature :: SortContext a => a -> TorXakis.OperatorName.OperatorName -> [Sort] -> Sort -> Either Error FuncSignature
+mkInfixFuncSignature ctx n as s | not $ null undefinedSorts                   = Left $ Error ("mkInfixFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
+                                | isReservedInfixFunctionSignature ctx n as s = Left $ Error ("mkInfixFuncSignature: Reserved function signature " ++ show n ++ " " ++ show as ++ " " ++ show s)
+                                | not $ memberSort s ctx                      = Left $ Error ("mkInfixFuncSignature: Return sort has undefined sort " ++ show s)
+                                | otherwise                                   = case as of
+                                                                                     [_]      -> Right $ FuncSignature (NameInfix  n) as s
+                                                                                     [_, _]   -> Right $ FuncSignature (NameInfix  n) as s
+                                                                                     _        -> Left $ Error ("mkInfixFuncSignature: Operator has one or two arguments not " ++ show (length as))
 
     where
         undefinedSorts :: [Sort]

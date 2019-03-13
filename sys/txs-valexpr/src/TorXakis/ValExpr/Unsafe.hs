@@ -163,8 +163,8 @@ unsafePredefNonSolvable ctx r vs = case partitionEithers vs of
         evalPredefNonSolvable :: [Value] -> Either Error ValExpression
         evalPredefNonSolvable values =
             case TorXakis.FuncSignature.funcName fs of
-                NameOper n -> error ("Predefined are real functions NOT infix operators, yet " ++ show n)
-                NameFunc n -> case (T.unpack (TorXakis.Name.toText n), returnSort fs, values) of
+                NameInfix  n -> error ("Predefined are real functions NOT infix operators, yet " ++ show n)
+                NamePrefix n -> case (T.unpack (TorXakis.Name.toText n), returnSort fs, values) of
                                    ("toString",     SortString, [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
                                    ("fromString",   s,          [Cstring t])              -> valueFromText ctx s t >>= unsafeConst
                                    ("toXML",        SortString, [v])                      -> unsafeConst $ Cstring (valueToXML ctx v)
