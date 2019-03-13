@@ -108,7 +108,8 @@ isConstructorFuncName c = case TorXakis.Name.mkName (T.append (T.pack "is") (Tor
                                 Right n -> n
 
 -- | isReservedInfixFunctionSignature
--- Includes 
+-- Includes
+--
 -- * TorXakis Operator Signatures that are mapped onto special constructors
 --
 -- * Operator Signatures that are implicitly defined by defining Sorts / ADTDefs
@@ -140,7 +141,8 @@ isReservedInfixFunctionSignature _ n ss s =    isMappedOperatorSignature
                  _                                                        -> False
 
 -- | isReservedPrefixFunctionSignature
--- Includes 
+-- Includes
+--
 -- * TorXakis FuncSignatures that are mapped onto special constructors
 --
 -- * FuncSignatures that are implicitly defined by defining Sorts / ADTDefs
