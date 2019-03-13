@@ -40,6 +40,7 @@ import           TorXakis.ContextValExprConstruction
 import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
+import           TorXakis.FunctionName
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Name
 import           TorXakis.Sort
@@ -52,19 +53,13 @@ import           TorXakis.ValExpr.ValExpr
 -- * A list of variables
 -- * A body (possibly using the variables)
 data FuncDef = FuncDef { -- | The name of the function (of type 'TorXakis.Name')
-                         funcName :: Name
+                         funcName :: FunctionName
                          -- | The function parameter definitions
                        , paramDefs :: VarsDecl
                          -- | The body of the function
                        , body :: ValExpression
                        }
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
-
-{- TODO: How to make a Reference of a funcdef without a context?
-instance Referable FuncDef where
-    Ref FuncDef = FuncSignature
-    toRef = 
--}
 
 toValExprConstructionContext :: FuncSignatureContext a => a -> [VarDef] -> ContextValExprConstruction
 toValExprConstructionContext ctx vs =
@@ -77,10 +72,10 @@ toValExprConstructionContext ctx vs =
 --       * also checkbody?
 --       * FreeVars of body are subset of VarsDecl?
 --       * Don't check sort (is already done to construct VarsDecl)?
-mkFuncDef :: FuncSignatureContext a => a -> Name -> VarsDecl -> ValExpression -> Either Error FuncDef
+mkFuncDef :: FuncSignatureContext a => a -> FunctionName -> VarsDecl -> ValExpression -> Either Error FuncDef
 mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             = Left $ Error ("Undefined variables used in body " ++ show undefinedVars)
                      | not (null undefinedSorts)                                = Left $ Error ("Variables have undefined sorts " ++ show undefinedSorts)
-                     | not (isReservedPrefixFunctionSignature ctx n argSorts retSort)     = Left $ Error ("Function has reserved signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
+                     | not (isReservedFunctionSignature ctx n argSorts retSort) = Left $ Error ("Function has reserved signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
                      | not (isPredefinedNonSolvableFuncSignature signature)     = Left $ Error ("Function has predefined signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
                      | otherwise                                                = Right $ FuncDef n ps b
     where
@@ -100,7 +95,7 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             
         retSort = getSort (toValExprConstructionContext ctx vs) b
 
         signature :: FuncSignature
-        signature = case mkPrefixFuncSignature ctx n argSorts retSort of
+        signature = case mkFuncSignature ctx n argSorts retSort of
                         Left e  -> error ("mkFuncDef is unable to create FuncSignature" ++ show e)
                         Right f -> f
 
@@ -108,7 +103,7 @@ instance forall a . FuncSignatureContext a => HasFuncSignature a FuncDef
     where
         getFuncSignature ctx (FuncDef fn ps bd) =
             let vs = toList ps in
-                case mkPrefixFuncSignature ctx fn (map (getSort ctx) vs) (getSort (toValExprConstructionContext ctx vs) bd) of
+                case mkFuncSignature ctx fn (map (getSort ctx) vs) (getSort (toValExprConstructionContext ctx vs) bd) of
                      Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
                      Right x -> x
 
@@ -116,7 +111,7 @@ instance FuncSignatureContext a => PrettyPrint a FuncDef where
     prettyPrint o c fd = 
         let vctx = toValExprConstructionContext c (toList (paramDefs fd)) in
             TxsString ( T.concat [ T.pack "FUNCDEF "
-                                 , TorXakis.Name.toText (TorXakis.FuncDef.funcName fd)
+                                 , TorXakis.FunctionName.toText (TorXakis.FuncDef.funcName fd)
                                  , separator o
                                  , indent (T.pack "   ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o c (paramDefs fd)))
                                  , T.pack " :: "

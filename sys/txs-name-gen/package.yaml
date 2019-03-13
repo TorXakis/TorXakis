@@ -21,8 +21,8 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
+  - TorXakis.FunctionNameGen
   - TorXakis.NameGen
-  - TorXakis.OperatorNameGen
   - TorXakis.XMLNameGen
   dependencies:
   - base >= 4.7 && < 5

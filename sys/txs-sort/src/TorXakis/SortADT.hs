@@ -8,14 +8,14 @@ See LICENSE at root directory of this repository.
 -- Module      :  SortADT
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
 --
 -- Definitions for 'Sort' and Abstract Data Types.
 --
--- We have to put 'Sort' and Abstract Data Types into one file 
+-- We have to put 'Sort' and Abstract Data Types into one file
 -- because of the circular dependency caused by the 'Sort.SortADT' constructor.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass        #-}
@@ -46,6 +46,8 @@ module TorXakis.SortADT
 , lookupConstructor
 , elemsConstructor
 , mkADTDef
+  -- ** Round Tripping Functionality
+, functionNameIsConstructor
 )
 where
 
@@ -57,6 +59,7 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
+import           TorXakis.FunctionName
 import           TorXakis.Name
 import           TorXakis.NameMap
 import           TorXakis.PrettyPrint.TorXakis
@@ -87,7 +90,7 @@ class HasSort c a where
 
 -- | Data structure for a field definition.
 data FieldDef = FieldDef
-    { -- | Name of the field 
+    { -- | Name of the field
       fieldName :: Name
       -- | Sort of the field
     , sort      :: Sort
@@ -99,7 +102,7 @@ instance HasName FieldDef where
 
 instance HasSort c FieldDef where
     getSort _ = sort
-    
+
 -- | Constructor Definition.
 data ConstructorDef = ConstructorDef
                         { -- | Name of the constructor
@@ -123,11 +126,11 @@ instance HasName ConstructorDef where
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraint.
 mkConstructorDef :: Name -> [FieldDef] -> Either Error ConstructorDef
 mkConstructorDef n fs
-    | null nuFieldNames     = Right $ ConstructorDef n fs
-    | otherwise             = Left $ Error ("Non unique field names: " ++ show nuFieldNames)
+    | null nuFields     = Right $ ConstructorDef n fs
+    | otherwise             = Left $ Error ("Non unique field names: " ++ show nuFields)
     where
-        nuFieldNames :: [FieldDef]
-        nuFieldNames = repeatedByName fs
+        nuFields :: [FieldDef]
+        nuFields = repeatedByName fs
 
 -- | Refers the provided name to a FieldDef in the given ConstructorDef?
 memberField :: Name -> ConstructorDef -> Bool
@@ -157,6 +160,13 @@ data ADTDef = ADTDef
 instance HasName ADTDef where
     getName = adtName
 
+-- | Function Name of is-made-by-constructor.
+-- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
+functionNameIsConstructor :: ConstructorDef -> FunctionName
+functionNameIsConstructor c = case mkFunctionName (T.append (T.pack "is") (TorXakis.Name.toText (constructorName c))) of
+                                Left e -> error ("functionNameIsConstructor failed on constructor " ++ show c ++ " with " ++ show e)
+                                Right n -> n
+
 -- | Smart constructor for 'TorXakis.SortADT.ADTDef'.
 --   An 'TorXakis.SortADT.ADTDef' is returned when the following constraints are satisfied:
 --
@@ -166,22 +176,45 @@ instance HasName ADTDef where
 --
 --   * Names of 'TorXakis.SortADT.FieldDef's are unique across all 'TorXakis.SortADT.ConstructorDef's
 --
+--   * Round tripping is possible. 
+--     In other words, implicit functions (e.g. for field access and is-made-by-constructor) have distinct function signatures.
+--
 --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
 mkADTDef :: Name -> [ConstructorDef] -> Either Error ADTDef
 mkADTDef _ [] = Left $ Error "Empty Constructor List"
 mkADTDef m cs
-    | not $ null nuCstrDefs   = Left $ Error ("Non-unique constructor definitions" ++ show nuCstrDefs)
-    | not $ null nuFieldNames = Left $ Error ("Non-unique field definitions" ++ show nuFieldNames)
-      -- TODO: for roundtripping - for each constructor TorXakis adds isCstr :: X -> Bool function which should not conflict with 
-      --                                        the accessor function field :: X -> SortField 
-      -- hence check that fields of type Bool don't have a name equal to "is" ++ constructor Name!
-    | otherwise               = Right $ ADTDef m (toNameMap cs)
+    | not $ null nuCstrDefs                 = Left $ Error ("Non-unique constructor definitions: " ++ show nuCstrDefs)
+    | not $ null nuFields                   = Left $ Error ("Non-unique field definitions: " ++ show nuFields)
+    | not $ null conflictFieldIsConstructor = Left $ Error ("Conflicts between Field and implicit isConstructor function: " ++ show conflictFieldIsConstructor)
+    | otherwise                             = Right $ ADTDef m (toNameMap cs)
     where
         nuCstrDefs :: [ConstructorDef]
         nuCstrDefs   = repeatedByName cs
-        
-        nuFieldNames :: [FieldDef]
-        nuFieldNames = repeatedByName (concatMap fields cs)
+
+        allFields :: [FieldDef]
+        allFields = concatMap fields cs
+
+        nuFields :: [FieldDef]
+        nuFields = repeatedByName allFields
+
+        -- for each constructor TorXakis adds isCstr :: X -> Bool      function which should not conflict with
+        --              the accessor function field  :: X -> SortField
+        -- hence for round tripping we need to check that fields of type Bool don't have a name equal to any functionNameIsConstructor
+        conflictFieldIsConstructor :: [FieldDef]
+        conflictFieldIsConstructor = filter sameTextRepresentation allBoolFields
+            where
+                allBoolFields :: [FieldDef]
+                allBoolFields = filter boolField allFields
+
+                boolField :: FieldDef -> Bool
+                boolField f = sort f == SortBool
+
+                sameTextRepresentation :: FieldDef -> Bool
+                sameTextRepresentation fd = TorXakis.Name.toText (fieldName fd) `elem` isConstructorNames
+
+                isConstructorNames :: [Text]
+                isConstructorNames = map (TorXakis.FunctionName.toText . functionNameIsConstructor) cs
+
 
 -- | Refers the provided ConstructorDef name to a ConstrucotrDef in the given ADTDef?
 memberConstructor :: Name -> ADTDef -> Bool
@@ -195,7 +228,7 @@ lookupConstructor r a = TorXakis.NameMap.lookup r (constructors a)
 elemsConstructor :: ADTDef -> [ConstructorDef]
 elemsConstructor = elems . constructors
 
--- Pretty Print 
+-- Pretty Print
 instance PrettyPrint a Sort where
     prettyPrint _ _ SortBool     = TxsString (T.pack "Bool")
     prettyPrint _ _ SortInt      = TxsString (T.pack "Int")

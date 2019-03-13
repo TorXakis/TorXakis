@@ -22,19 +22,19 @@ where
 import           Test.QuickCheck
 
 import           TorXakis.FuncSignature
-import           TorXakis.NameGen
+import           TorXakis.FunctionNameGen
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
 
-arbitrarySignature :: TestSortContext a => a -> Gen (Name, [Sort], Sort)
+arbitrarySignature :: TestSortContext a => a -> Gen (FunctionName, [Sort], Sort)
 arbitrarySignature ctx =
     do
-        n <- arbitrary :: Gen NameGen
+        FunctionNameGen n <- arbitrary :: Gen FunctionNameGen
         ps <- listOf (arbitrarySort ctx)
         r <- arbitrarySort ctx
-        if isReservedPrefixFunctionSignature ctx (unNameGen n) ps r
+        if isReservedFunctionSignature ctx n ps r
             then arbitrarySignature ctx -- or should we call QuickCheck's discard?
-            else return (unNameGen n, ps, r)
+            else return (n, ps, r)
 
 -- | generate a random function signature within a test sort context.
 -- test sort context is needed to link complexity/size to function signature for termination
@@ -42,7 +42,7 @@ arbitraryFuncSignature :: TestSortContext a => a -> Gen FuncSignature
 arbitraryFuncSignature ctx = 
     do
         (n, ps, r) <- arbitrarySignature ctx
-        case mkPrefixFuncSignature ctx n ps r of
+        case mkFuncSignature ctx n ps r of
             Left e  -> error ("arbitraryFuncSignature  - constructor failed\n" ++ show e)
             Right x -> return x
 

@@ -37,8 +37,8 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
 import           TorXakis.FuncSignature
+import           TorXakis.FunctionName
 import           TorXakis.Name
-import           TorXakis.OperatorName
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.RefByIndex
 import           TorXakis.Sort
@@ -182,12 +182,8 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                                               , separator o
                                                               , T.pack "FI"
                                                               ])
-  prettyPrint o ctx (Vfunc r vs)        = case funcName (toFuncSignature r) of
-                                            NamePrefix n -> funcInst o ctx (TorXakis.Name.toText n) vs
-                                            NameInfix  n -> infixOperator o ctx (TorXakis.OperatorName.toText n) vs
-  prettyPrint o ctx (Vpredef r vs)      = case funcName (toFuncSignature r) of
-                                            NamePrefix n -> funcInst o ctx (TorXakis.Name.toText n) vs
-                                            NameInfix  n -> error ("Predefined are real functions NOT infix operators, yet " ++ show n)
+  prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx (TorXakis.FunctionName.toText (funcName (toFuncSignature r))) vs
+  prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx (TorXakis.FunctionName.toText (funcName (toFuncSignature r))) vs
   prettyPrint o ctx (Vnot x)            = funcInst o ctx (T.pack "not") [x]
   prettyPrint o ctx (Vand s)            = infixOperator o ctx (T.pack "/\\") (Set.toList s)
   prettyPrint o ctx (Vdivide t n)       = infixOperator o ctx (T.pack "/") [t,n]
@@ -208,7 +204,7 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
                                             Just aDef   -> case lookupConstructor (toName c) aDef of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
-                                                                Just cDef   -> funcInst o ctx (T.append (T.pack "is") (TorXakis.Name.toText (constructorName cDef))) [v]
+                                                                Just cDef   -> funcInst o ctx (TorXakis.FunctionName.toText (functionNameIsConstructor cDef)) [v]
   prettyPrint o ctx (Vaccess a c p v)   = case lookupADT (toName a) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
                                             Just aDef   -> case lookupConstructor (toName c) aDef of

@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  OperatorNameGenSpec
+-- Module      :  FunctionNameGenSpec
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -13,9 +13,9 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Test specifications for 'OperatorNameGen'.
+-- Test specifications for 'FunctionNameGen'.
 -----------------------------------------------------------------------------
-module TorXakis.OperatorNameGenSpec
+module TorXakis.FunctionNameGenSpec
 (spec
 )
 where
@@ -25,32 +25,32 @@ import           Test.QuickCheck
 import           Text.Regex.TDFA
 
 import           TorXakis.Cover
-import           TorXakis.OperatorName
-import           TorXakis.OperatorNameGen
+import           TorXakis.FunctionName
+import           TorXakis.FunctionNameGen
 
 -- | Eq check
-prop_Eq :: OperatorNameGen -> Bool 
-prop_Eq (OperatorNameGen a) = coverEq a
+prop_Eq :: FunctionNameGen -> Bool 
+prop_Eq (FunctionNameGen a) = coverEq a
 
 -- | Ord check
-prop_Ord :: OperatorNameGen -> Bool 
-prop_Ord (OperatorNameGen a) = coverOrd a
+prop_Ord :: FunctionNameGen -> Bool 
+prop_Ord (FunctionNameGen a) = coverOrd a
 
 -- Read Show check
-prop_ReadShow :: OperatorNameGen -> Bool
-prop_ReadShow (OperatorNameGen val) = coverReadShow val
+prop_ReadShow :: FunctionNameGen -> Bool
+prop_ReadShow (FunctionNameGen val) = coverReadShow val
 
-prop_notNull :: OperatorNameGen -> Bool
-prop_notNull (OperatorNameGen nm) =
+prop_notNull :: FunctionNameGen -> Bool
+prop_notNull (FunctionNameGen nm) =
     ( not . T.null . toText ) nm
 
-prop_Regex :: OperatorNameGen -> Bool
-prop_Regex (OperatorNameGen nm) =
-    T.unpack (toText nm) =~ "[-=+*/\\^<>|@&%]+"
+prop_Regex :: FunctionNameGen -> Bool
+prop_Regex (FunctionNameGen nm) =
+    T.unpack (toText nm) =~ "[-=+*/\\^<>|@&%]+|[A-Za-z_][A-Za-z_0-9-]*"
 
 spec :: Spec
 spec =
-  describe "A Generated OperatorName" $ do
+  describe "A Generated FunctionName" $ do
     it "does not contain the empty string" $ property prop_notNull
     it "does adhere to regex pattern" $ property prop_Regex
     it "is an instance of Eq" $ property prop_Eq
