@@ -105,10 +105,10 @@ evalView (Vconst v) = Right v
 evalView x          = Left $ Error ("Value Expression is not a constant value " ++ show x)
 
 -- | SortOf instance
-instance ValExprConstructionContext a => HasSort a ValExpression where
+instance ValExprConstructionContext c => HasSort c ValExpression where
   getSort c = getSort c . TorXakis.ValExpr.ValExpr.view
 
-instance ValExprConstructionContext a => HasSort a ValExpressionView where
+instance ValExprConstructionContext c => HasSort c ValExpressionView where
     getSort ctx (Vconst val)              = getSort ctx val
     getSort ctx (Vvar r)                  = case lookupVar (toName r) ctx of
                                                Nothing -> error ("getSort: VarDef not found in context " ++ show r)

@@ -57,16 +57,20 @@ import qualified Data.Text as T
 -- https://www.haskell.org/happy/doc/html/sec-sequences.html 
 -- The only reason we used left recursion is that Happy is more efficient at parsing left-recursive rules; 
 
-            
+Arguments :: { [ParseValue] }
+            : 
+                { [] }
+            | "(" ")"
+                { [] }
+            | "(" Values ")"
+                { $2 }
+
 Values :: { [ParseValue] }
-          : 
-              { [] }
-          | Value
+          : Value
               { [$1] }
           | Values "," Value 
               { $1 ++ [ $3 ] }
 
-                
 Value :: { ParseValue }
          : bool
              { Pbool $1 }
@@ -78,8 +82,8 @@ Value :: { ParseValue }
              { Pstring ( (init . tail) $1 ) }
          | regex
              { Pregex ( (init . tail) $1 ) }
-         | name "(" Values ")"
-             { Pcstr (T.pack $1) $3 }
+         | name Arguments
+             { Pcstr (T.pack $1) $2 }
 
 -- ----------------------------------------------------------------------------------------- --
 -- uninterpreted haskell postamble

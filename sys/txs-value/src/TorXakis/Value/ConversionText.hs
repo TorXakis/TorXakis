@@ -89,7 +89,7 @@ valueToText _   (Cint i)       = T.pack (show i)
 valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar '\'' c ++ "'")
 valueToText _   (Cstring s)    = T.pack ("\"" ++ encodeString '"' (T.unpack s) ++ "\"")
 valueToText _   (Cregex r)     = T.pack ("`" ++ encodeString '`' (T.unpack r) ++ "`")
--- valueToText _   (Ccstr _ c []) = TorXakis.Name.toText (toName c)  -- TODO: desired? - parser need to be changed as well!
+valueToText _   (Ccstr _ c []) = TorXakis.Name.toText (toName c)
 valueToText ctx (Ccstr _ c as) =
         let cNode = (TorXakis.Name.toText . toName) c
           in

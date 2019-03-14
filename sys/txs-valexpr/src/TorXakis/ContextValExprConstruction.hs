@@ -33,8 +33,6 @@ import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.ValExprConstructionContext
 
--- TODO: how is this context used? If always add Variables to a funcSignatureContext then the implementation should be swapped!
-
 -- | An instance of 'TorXakis.ValExprConstructionContext'.
 data ContextValExprConstruction = forall a . VarContext a => 
                                         ContextValExprConstruction { _varContext :: a -- not used due to compiler

@@ -50,10 +50,12 @@ data Value = -- | Constructor of Boolean value.
              -- | Constructor of constructor value (value of ADT).
            | Ccstr (RefByName ADTDef) (RefByName ConstructorDef) [Value]
              -- | Constructor of ANY value - temporary hack : don't use.
-           | Cany Sort -- TODO: replace by generic - Maybe
+             -- ANY will be replaced by Maybe Sort when polymorphic types are supported.
+             -- See https://en.wikipedia.org/wiki/Parametric_polymorphism for more info.
+           | Cany Sort
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
   
-instance HasSort a Value where
+instance HasSort c Value where
     getSort _ Cbool{}         = SortBool
     getSort _ Cint{}          = SortInt
     getSort _ Cchar{}         = SortChar

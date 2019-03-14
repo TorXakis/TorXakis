@@ -64,7 +64,7 @@ instance Hashable FunctionName where
 --   * The provided 'Data.Text.Text' value is not a reserved name.
 --
 --   * The provided 'Data.Text.Text' value is an XmlName, i.e. [A-Za-z_][A-Za-z_0-9-]*, or an OperatorName, i.e. [-+*^=<>%/\\|@&]+.
---     TODO: what about the characters !~#$?
+--     TODO: what about the characters ~#$!? (! and ? have meaning in TorXakis)
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 mkFunctionName :: Text -> Either Error FunctionName
