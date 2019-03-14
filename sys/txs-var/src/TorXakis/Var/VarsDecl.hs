@@ -52,7 +52,7 @@ newtype VarsDecl = VarsDecl { -- | toList
 --
 -- * Variable Names are not unique.
 --
-mkVarsDecl :: SortContext a => a -> [VarDef] -> Either Error VarsDecl
+mkVarsDecl :: SortContext c => c -> [VarDef] -> Either Error VarsDecl
 mkVarsDecl ctx l | not $ null nuVars            = Left $ Error ("Non unique names: " ++ show nuVars)
                  | not $ null undefinedSorts    = Left $ Error ("List of variables with undefined sorts: " ++ show undefinedSorts)
                  | otherwise                    = Right $ VarsDecl l
@@ -63,7 +63,7 @@ mkVarsDecl ctx l | not $ null nuVars            = Left $ Error ("Non unique name
         undefinedSorts :: [VarDef]
         undefinedSorts = filter (not . flip memberSort ctx . sort) l
 
-instance PrettyPrint a VarsDecl where
+instance PrettyPrint c VarsDecl where
     prettyPrint o c vs = TxsString (T.concat [ T.pack "( "
                                              , T.intercalate sepParam (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o c) (toList vs))
                                              , close

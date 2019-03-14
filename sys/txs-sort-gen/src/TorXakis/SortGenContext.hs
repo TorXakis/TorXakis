@@ -38,7 +38,7 @@ import           TorXakis.NameGen
 import           TorXakis.TestSortContext
 
 -- | Select an arbitrary Sort from the given context
-arbitrarySort :: TestSortContext a => a -> Gen Sort
+arbitrarySort :: TestSortContext c => c -> Gen Sort
 arbitrarySort ctx =
     do
         n <- getSize
@@ -86,7 +86,7 @@ arbitraryConstructors defined add =
                                 Right x -> x : tl
 
 -- | Generate ADTDefs that extend this context
-arbitraryADTDefs :: TestSortContext a => a -> Gen [ADTDef]
+arbitraryADTDefs :: TestSortContext c => c -> Gen [ADTDef]
 arbitraryADTDefs ctx =
     do
         nameGens <- arbitrary :: Gen (Set.Set NameGen)

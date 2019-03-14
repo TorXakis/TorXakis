@@ -32,8 +32,8 @@ import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
 
 -- | An instance of 'TorXakis.FuncSignatureContext'.
-data ContextFuncSignature = forall a . SortContext a => 
-                            ContextFuncSignature { _sortContext :: a -- not used due to compiler
+data ContextFuncSignature = forall c . SortContext c => 
+                            ContextFuncSignature { _sortContext :: c -- not used due to compiler
                                                    -- defined funcSignatures
                                                  , localFuncSignatures :: Set.Set FuncSignature
                                                  }
@@ -43,7 +43,7 @@ empty :: ContextFuncSignature
 empty = fromSortContext TorXakis.ContextSort.empty
 
 -- | Constructor from SortContext
-fromSortContext :: SortContext b => b -> ContextFuncSignature
+fromSortContext :: SortContext c => c -> ContextFuncSignature
 fromSortContext ctx = ContextFuncSignature ctx Set.empty
 
 instance SortContext ContextFuncSignature where

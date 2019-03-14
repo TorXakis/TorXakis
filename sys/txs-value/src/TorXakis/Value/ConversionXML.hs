@@ -77,7 +77,7 @@ encodeString :: Text -> Text
 encodeString = T.concatMap encodeChar
 
 -- | 'TorXakis.Value.Value' to XML conversion.
-valueToXML :: SortContext a => a -> Value -> Text
+valueToXML :: SortContext c => c -> Value -> Text
 valueToXML ctx = pairToXML rootNodeName
     where
         pairToXML :: Text -> Value -> Text
@@ -113,7 +113,7 @@ stringFromList = T.concat . go
 
 -- | 'TorXakis.Value.Value' from XML conversion.
 -- Expected 'TorXakis.Sort' of 'TorXakis.Value.Value' must be provided.
-valueFromXML :: SortContext a => a -> Sort -> Text -> Either Error Value
+valueFromXML :: SortContext c => c -> Sort -> Text -> Either Error Value
 valueFromXML ctx s t =
     case parse' defaultParseOptions{ overrideEncoding = Just ISO88591 } (pack $ map c2w (T.unpack t)) of
         Left e     -> Left $ Error ("Parse error " ++ show e)

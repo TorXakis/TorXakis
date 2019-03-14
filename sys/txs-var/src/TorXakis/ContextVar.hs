@@ -32,9 +32,8 @@ import           TorXakis.VarContext
 import           TorXakis.Var
 
 -- | An instance of 'TorXakis.VarContext'.
-data ContextVar = forall a . SortContext a => 
-        -- TODO: is this still needed/wanted? we only have one data type that implements interface SortContext: ContextSort....
-                            ContextVar { _sortContext :: a -- not used due to compiler
+data ContextVar = forall c . SortContext c => 
+                            ContextVar { _sortContext :: c -- not used due to compiler
                                          -- variable definitions
                                        , varDefs :: NameMap VarDef
                                        }
@@ -71,7 +70,7 @@ nuVarDefs :: [VarDef] -> [VarDef]
 nuVarDefs = repeatedByName
 
 -- | undefined Sorts of Variable Definitions.
-undefinedSorts :: SortContext a => [VarDef] -> a -> [VarDef]
+undefinedSorts :: SortContext c => [VarDef] -> c -> [VarDef]
 undefinedSorts vs ctx = filter (not . flip memberSort ctx . sort) vs
 
 instance VarContext ContextVar where

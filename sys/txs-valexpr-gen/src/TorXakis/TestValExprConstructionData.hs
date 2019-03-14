@@ -60,11 +60,11 @@ import           TorXakis.Var
 
 
 -- | Test FuncSignature Data
-data TestValExprConstructionData a where
-        TestValExprConstructionData :: TestValExprConstructionContext a
+data TestValExprConstructionData c where
+        TestValExprConstructionData :: TestValExprConstructionContext c
                                     => TestSortData
-                                    -> TorXakis.GenCollection.GenCollection a ValExpression
-                                    -> TestValExprConstructionData a
+                                    -> TorXakis.GenCollection.GenCollection c ValExpression
+                                    -> TestValExprConstructionData c
 
 -- | TestSortData accessor
 tsd :: TestValExprConstructionData a -> TestSortData
@@ -99,9 +99,9 @@ constructorSize r c = TorXakis.TestSortData.constructorSize r c . tsd
 --   The size of the provided var as specified by its name is returned.
 --   The size is a measurement of complexity and is indicated by an 'Int'.
 --   Note that the function should crash when the context does not contain the 'TorXakis.Var' and any related 'TorXakis.Sort' references.
-varSize :: VarContext a
+varSize :: VarContext c
         => RefByName VarDef
-        -> a
+        -> c
         -> TestValExprConstructionData d
         -> Int
 varSize r ctx = TorXakis.TestVarData.varSize r ctx . tsd
@@ -110,11 +110,11 @@ varSize r ctx = TorXakis.TestVarData.varSize r ctx . tsd
 --   The size of the provided funcSignature as specified by the references to 'TorXakis.FuncSignature' is returned.
 --   The size is a measurement of complexity and is indicated by an 'Int'.
 --   Note that the function should crash when the context does not contain the 'TorXakis.FuncSignature' and any related 'TorXakis.Sort' references.
-funcSize :: RefByFuncSignature -> a -> TestValExprConstructionData d -> Int
+funcSize :: RefByFuncSignature -> c -> TestValExprConstructionData d -> Int
 funcSize r ctx = TorXakis.TestFuncSignatureData.funcSize r ctx . tsd
 
 -- | Constructor of empty Test Val Expr Construction Data
-empty :: (SortContext a, TestValExprConstructionContext d) => a -> TestValExprConstructionData d
+empty :: (SortContext c, TestValExprConstructionContext d) => c -> TestValExprConstructionData d
 empty ctx = TestValExprConstructionData TorXakis.TestSortData.empty initialGenMap
     where
         initialGenMap :: TestValExprConstructionContext d => TorXakis.GenCollection.GenCollection d ValExpression
@@ -167,7 +167,7 @@ empty ctx = TestValExprConstructionData TorXakis.TestSortData.empty initialGenMa
 
 -- | Update TestValExprConstructionData to remain consistent after
 -- a successful addition of ADTs to the context.
-afterAddADTs :: (SortContext a, TestValExprConstructionContext d) => a -> [ADTDef] -> TestValExprConstructionData d -> TestValExprConstructionData d
+afterAddADTs :: (SortContext c, TestValExprConstructionContext d) => c -> [ADTDef] -> TestValExprConstructionData d -> TestValExprConstructionData d
 afterAddADTs ctx as tvecd = TestValExprConstructionData newTsd
                                                         (addConstructorsGens
                                                          (addValueGens (genMap tvecd) as)

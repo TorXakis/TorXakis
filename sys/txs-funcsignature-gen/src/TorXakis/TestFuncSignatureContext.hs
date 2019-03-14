@@ -30,9 +30,9 @@ import           TorXakis.FuncSignatureContext
 import           TorXakis.TestSortContext
 
 -- | A TestFuncSignatureContext instance contains all definitions to work with funcSignatures and reference thereof for test purposes
-class (TestSortContext a, FuncSignatureContext a) => TestFuncSignatureContext a where
+class (TestSortContext c, FuncSignatureContext c) => TestFuncSignatureContext c where
     -- | FuncSignature Size
     --   The size of the provided funcSignature as specified by the references to 'TorXakis.FuncSignature' is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.FuncSignature' and any related 'TorXakis.Sort' references.
-    funcSize :: RefByFuncSignature -> a -> Int
+    funcSize :: RefByFuncSignature -> c -> Int

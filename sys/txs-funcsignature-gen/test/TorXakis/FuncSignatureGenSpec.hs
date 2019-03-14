@@ -34,7 +34,7 @@ propertyInContext prop = do
     prop ctx
 
 -- | Sorts are defined within context
-prop_DefinedSorts :: TestSortContext a => a -> Gen Bool
+prop_DefinedSorts :: TestSortContext c => c -> Gen Bool
 prop_DefinedSorts ctx = check <$> arbitraryFuncSignature ctx
     where check :: FuncSignature -> Bool
           check f = let l :: [Sort]

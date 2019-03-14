@@ -30,9 +30,9 @@ import           TorXakis.VarContext
 import           TorXakis.TestSortContext
 
 -- | A TestVarContext instance contains all definitions to work with vars and reference thereof for test purposes
-class (TestSortContext a, VarContext a) => TestVarContext a where
+class (TestSortContext c, VarContext c) => TestVarContext c where
     -- | Var Size
     --   The size of the provided var as specified by its name is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.Var' and any related 'TorXakis.Sort' references.
-    varSize :: RefByName VarDef -> a -> Int
+    varSize :: RefByName VarDef -> c -> Int

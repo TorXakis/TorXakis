@@ -32,11 +32,11 @@ import           TorXakis.SortADT               (Sort(..), ADTDef(adtName))
 
 -- | A Sort Context instance 
 -- contains all definitions to work with sorts and references thereof.
-class SortContext a where
+class SortContext c where
     -- | Is the provided sort a member of the context?
-    memberSort :: Sort -> a -> Bool
+    memberSort :: Sort -> c -> Bool
     -- | All Sort elements in the context
-    elemsSort :: a -> [Sort]
+    elemsSort :: c -> [Sort]
     elemsSort ctx =   SortBool
                     : SortInt
                     : SortChar
@@ -45,11 +45,11 @@ class SortContext a where
                     : map (SortADT . RefByName . adtName) (elemsADT ctx)
 
     -- | Points the provided name to an ADTDef in the context?
-    memberADT :: Name -> a -> Bool
+    memberADT :: Name -> c -> Bool
     -- | lookup ADTDef using the provided name
-    lookupADT :: Name -> a -> Maybe ADTDef
+    lookupADT :: Name -> c -> Maybe ADTDef
     -- | All ADTDef elements in the context
-    elemsADT :: a -> [ADTDef]
+    elemsADT :: c -> [ADTDef]
     -- | Add adt definitions to sort context.
     --   A sort context is returned when the following constraints are satisfied:
     --
@@ -60,6 +60,6 @@ class SortContext a where
     --   * All ADTs are constructable
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addADTs :: [ADTDef] -> a -> Either Error a
+    addADTs :: [ADTDef] -> c -> Either Error c
 
 

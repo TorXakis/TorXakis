@@ -26,6 +26,8 @@ module TorXakis.ValExpr.ValExpr
 , ValExpression (..)
   -- * Evaluate
 , eval
+  -- dependencies, yet part of interface
+, FreeVars (..)
 )
 where
 import           Control.DeepSeq     (NFData)
@@ -99,10 +101,10 @@ newtype ValExpression = ValExpression { -- | View on value expression.
 -- Either the Right Constant Value is returned or a (Left) error message.
 eval :: ValExpression -> Either Error Value
 eval = evalView . view
-
-evalView :: ValExpressionView -> Either Error Value
-evalView (Vconst v) = Right v
-evalView x          = Left $ Error ("Value Expression is not a constant value " ++ show x)
+  where
+    evalView :: ValExpressionView -> Either Error Value
+    evalView (Vconst v) = Right v
+    evalView x          = Left $ Error ("Value Expression is not a constant value " ++ show x)
 
 -- | SortOf instance
 instance ValExprConstructionContext c => HasSort c ValExpression where

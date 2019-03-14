@@ -28,21 +28,21 @@ import           TorXakis.Sort
 import           TorXakis.SortContext
 
 -- | A TestSortContext instance contains all definitions to work with sort and reference thereof for test purposes
-class SortContext a => TestSortContext a where
+class SortContext c => TestSortContext c where
     -- | Sort Size
     --   The size of the provided 'TorXakis.Sort' is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.Sort' reference.
-    sortSize :: Sort -> a -> Int
+    sortSize :: Sort -> c -> Int
 
     -- |  adt Size
     --   The size of the provided reference to 'TorXakis.ADTDef' is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.ADTDef' and any related 'TorXakis.Sort' references.
-    adtSize :: RefByName ADTDef -> a -> Int
+    adtSize :: RefByName ADTDef -> c -> Int
 
     -- |  constructor Size
     --   The size of the provided constructor as specified by the references to 'TorXakis.ADTDef' and 'TorXakis.ConstructorDef' is returned.
     --   The size is a measurement of complexity and is indicated by an 'Int'.
     --   Note that the function should crash when the context does not contain the 'TorXakis.ADTDef', 'TorXakis.ConstructorDef' and any related 'TorXakis.Sort' references.
-    constructorSize :: RefByName ADTDef -> RefByName ConstructorDef -> a -> Int
+    constructorSize :: RefByName ADTDef -> RefByName ConstructorDef -> c -> Int

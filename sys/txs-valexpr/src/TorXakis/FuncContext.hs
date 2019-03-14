@@ -32,11 +32,11 @@ import           TorXakis.FuncSignatureContext
 import           TorXakis.PrettyPrint.TorXakis
 
 -- | A FuncContext Context instance contains all definitions to work with 'TorXakis.FuncDef'.
-class FuncSignatureContext a => FuncContext a where
+class FuncSignatureContext c => FuncContext c where
     -- | lookup FuncDef
-    lookupFunc :: FuncSignature -> a -> Maybe FuncDef
+    lookupFunc :: FuncSignature -> c -> Maybe FuncDef
     -- | All FuncDef elements in the context
-    elemsFunc :: a -> [FuncDef]
+    elemsFunc :: c -> [FuncDef]
     -- | Add FuncDefs to func context.
     --   A func context is returned when the following constraints are satisfied:
     --
@@ -45,11 +45,11 @@ class FuncSignatureContext a => FuncContext a where
     --   * All references are known (sort, variables, func signatures)
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addFuncs :: [FuncDef] -> a -> Either Error a
+    addFuncs :: [FuncDef] -> c -> Either Error c
 
 -- | Generic Pretty Printer for all instance of 'TorXakis.FuncContext'.
 -- TODO: move to ContextFunc file
-prettyPrintFuncContext :: FuncContext a => Options -> a -> TxsString
+prettyPrintFuncContext :: FuncContext c => Options -> c -> TxsString
 prettyPrintFuncContext o fc =
     TxsString (T.concat [ T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o fc) (elemsADT fc))
                         , T.pack "\n"

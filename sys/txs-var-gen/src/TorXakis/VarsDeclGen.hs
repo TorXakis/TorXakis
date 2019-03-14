@@ -35,7 +35,7 @@ import           TorXakis.TestSortContext
 import           TorXakis.Var
 
 -- | Generate VarsDecl within this context
-arbitraryVarsDecl :: TestSortContext a => a -> Gen VarsDecl
+arbitraryVarsDecl :: TestSortContext c => c -> Gen VarsDecl
 arbitraryVarsDecl ctx = do
     nameGens <- arbitrary :: Gen (Set.Set NameGen)
     let names = Set.toList (Set.map unNameGen nameGens)

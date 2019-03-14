@@ -34,8 +34,8 @@ import           TorXakis.FuncSignature
 import           TorXakis.ValExprConstructionContext
 
 -- | An instance of 'TorXakis.ValExprConstructionContext'.
-data ContextValExprConstruction = forall a . VarContext a => 
-                                        ContextValExprConstruction { _varContext :: a -- not used due to compiler
+data ContextValExprConstruction = forall c . VarContext c => 
+                                        ContextValExprConstruction { _varContext :: c -- not used due to compiler
                                                                      -- funcSignatures
                                                                    , localFuncSignatures :: Set.Set FuncSignature
                                                                    }
@@ -45,11 +45,11 @@ empty :: ContextValExprConstruction
 empty = fromVarContext TorXakis.ContextVar.empty
 
 -- | Constructor from VarContext
-fromVarContext :: VarContext b => b -> ContextValExprConstruction
+fromVarContext :: VarContext c => c -> ContextValExprConstruction
 fromVarContext ctx = ContextValExprConstruction ctx Set.empty
 
 -- | Constructor from FuncSignatureContext
-fromFuncSignatureContext :: FuncSignatureContext b => b -> ContextValExprConstruction
+fromFuncSignatureContext :: FuncSignatureContext c => c -> ContextValExprConstruction
 fromFuncSignatureContext ctx = ContextValExprConstruction (fromSortContext ctx) (Set.fromList (funcSignatures ctx))
 
 instance SortContext ContextValExprConstruction where

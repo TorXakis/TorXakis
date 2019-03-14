@@ -61,7 +61,7 @@ data FuncDef = FuncDef { -- | The name of the function (of type 'TorXakis.Name')
                        }
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
-toValExprConstructionContext :: FuncSignatureContext a => a -> [VarDef] -> ContextValExprConstruction
+toValExprConstructionContext :: FuncSignatureContext c => c -> [VarDef] -> ContextValExprConstruction
 toValExprConstructionContext ctx vs =
     case addVars vs (fromFuncSignatureContext ctx) of
         Left e      -> error ("toValExprConstructionContext is unable to make new context" ++ show e)
@@ -72,7 +72,7 @@ toValExprConstructionContext ctx vs =
 --       * also checkbody?
 --       * FreeVars of body are subset of VarsDecl?
 --       * Don't check sort (is already done to construct VarsDecl)?
-mkFuncDef :: FuncSignatureContext a => a -> FunctionName -> VarsDecl -> ValExpression -> Either Error FuncDef
+mkFuncDef :: FuncSignatureContext c => c -> FunctionName -> VarsDecl -> ValExpression -> Either Error FuncDef
 mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             = Left $ Error ("Undefined variables used in body " ++ show undefinedVars)
                      | not (null undefinedSorts)                                = Left $ Error ("Variables have undefined sorts " ++ show undefinedSorts)
                      | not (isReservedFunctionSignature ctx n argSorts retSort) = Left $ Error ("Function has reserved signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
@@ -99,7 +99,7 @@ mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             
                         Left e  -> error ("mkFuncDef is unable to create FuncSignature" ++ show e)
                         Right f -> f
 
-instance forall a . FuncSignatureContext a => HasFuncSignature a FuncDef
+instance FuncSignatureContext c => HasFuncSignature c FuncDef
     where
         getFuncSignature ctx (FuncDef fn ps bd) =
             let vs = toList ps in
@@ -107,7 +107,7 @@ instance forall a . FuncSignatureContext a => HasFuncSignature a FuncDef
                      Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
                      Right x -> x
 
-instance FuncSignatureContext a => PrettyPrint a FuncDef where
+instance FuncSignatureContext c => PrettyPrint c FuncDef where
     prettyPrint o c fd = 
         let vctx = toValExprConstructionContext c (toList (paramDefs fd)) in
             TxsString ( T.concat [ T.pack "FUNCDEF "

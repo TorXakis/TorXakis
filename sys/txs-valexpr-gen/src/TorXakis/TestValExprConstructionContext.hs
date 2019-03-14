@@ -37,9 +37,9 @@ import           TorXakis.ValExpr
 import           TorXakis.ValExprConstructionContext
 
 -- | Class for TestValExprConstructionContext
-class (ValExprConstructionContext a, TestVarContext a, TestFuncSignatureContext a) => TestValExprConstructionContext a where
-    arbitraryValExpr :: a -> Gen ValExpression
+class (ValExprConstructionContext c, TestVarContext c, TestFuncSignatureContext c) => TestValExprConstructionContext c where
+    arbitraryValExpr :: c -> Gen ValExpression
     arbitraryValExpr ctx = do
         s <- arbitrarySort ctx
         arbitraryValExprOfSort ctx s
-    arbitraryValExprOfSort :: a -> Sort -> Gen ValExpression
+    arbitraryValExprOfSort :: c -> Sort -> Gen ValExpression

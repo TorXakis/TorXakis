@@ -26,7 +26,7 @@ import           TorXakis.FunctionNameGen
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
 
-arbitrarySignature :: TestSortContext a => a -> Gen (FunctionName, [Sort], Sort)
+arbitrarySignature :: TestSortContext c => c -> Gen (FunctionName, [Sort], Sort)
 arbitrarySignature ctx =
     do
         FunctionNameGen n <- arbitrary :: Gen FunctionNameGen
@@ -38,7 +38,7 @@ arbitrarySignature ctx =
 
 -- | generate a random function signature within a test sort context.
 -- test sort context is needed to link complexity/size to function signature for termination
-arbitraryFuncSignature :: TestSortContext a => a -> Gen FuncSignature
+arbitraryFuncSignature :: TestSortContext c => c -> Gen FuncSignature
 arbitraryFuncSignature ctx = 
     do
         (n, ps, r) <- arbitrarySignature ctx

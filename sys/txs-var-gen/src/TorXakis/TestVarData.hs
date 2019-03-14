@@ -36,9 +36,9 @@ type TestVarData = TestSortData
 --   The size of the provided var as specified by its name is returned.
 --   The size is a measurement of complexity and is indicated by an 'Int'.
 --   Note that the function should crash when the context does not contain the 'TorXakis.Var' and any related 'TorXakis.Sort' references.
-varSize :: VarContext a 
+varSize :: VarContext c
         => RefByName VarDef 
-        -> a
+        -> c
         -> TestVarData
         -> Int
 varSize r ctx tvd = case lookupVar (toName r) ctx of 

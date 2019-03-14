@@ -31,9 +31,9 @@ import           TorXakis.FuncSignature
 import           TorXakis.SortContext
 
 -- | A FuncSignatureContext Context instance contains all definitions to work with 'TorXakis.FuncSignature'.
-class SortContext a => FuncSignatureContext a where
+class SortContext c => FuncSignatureContext c where
     -- | Is the provided FuncSignature a member of the context?
-    memberFunc :: FuncSignature -> a -> Bool
+    memberFunc :: FuncSignature -> c -> Bool
     -- | All funcSignatures in the context.
     -- 
     -- Since all funcSignatures are distinct the following properties hold:
@@ -41,7 +41,7 @@ class SortContext a => FuncSignatureContext a where
     -- prop> List.nub (funcSignatures x) == funcSignatures x
     -- 
     -- prop> Set.toList (Set.fromList (funcSignatures x)) == funcSignatures x
-    funcSignatures :: a -> [FuncSignature]
+    funcSignatures :: c -> [FuncSignature]
 
 -- | A FuncSignatureModifyContext instance contains all operations that provide as output a modified context of 'TorXakis.FuncSignature'.
 class (FuncSignatureContext a, FuncSignatureContext b) => FuncSignatureModifyContext a b where

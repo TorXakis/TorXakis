@@ -45,7 +45,7 @@ arbitraryChar = chr <$> choose (0, 255)
 
 
 -- | generate a random value within a context.
-arbitraryValue :: TestSortContext a => a -> Gen Value
+arbitraryValue :: TestSortContext c => c -> Gen Value
 arbitraryValue ctx = 
     do
         s <- arbitrarySort ctx
@@ -53,7 +53,7 @@ arbitraryValue ctx =
 
 -- | generate a random value of the given sort within a context.
 -- ANY is excluded
-arbitraryValueOfSort :: TestSortContext a => a -> Sort -> Gen Value
+arbitraryValueOfSort :: TestSortContext c => c -> Sort -> Gen Value
 arbitraryValueOfSort _   SortBool   = Cbool <$> arbitrary
 arbitraryValueOfSort _   SortInt    = Cint <$> arbitrary
 arbitraryValueOfSort _   SortChar   = Cchar <$> arbitraryChar

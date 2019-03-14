@@ -56,18 +56,18 @@ import           TorXakis.ValExpr.ValExprBasis
 import           TorXakis.Var
 
 -- | An instance of 'TorXakis.ValExprConstructionContext'.
-data ContextValExpr = forall a . VarContext a => 
-                            ContextValExpr { _varContext :: a
+data ContextValExpr = forall c . VarContext c => 
+                            ContextValExpr { _varContext :: c
                                              -- funcSignatures
                                            , funcDefs :: HashMap.Map FuncSignature FuncDef
                                            }
 
 -- | Create ContextValExpr from FuncSignatureContext
-fromFuncContext :: FuncContext a => a -> ContextValExpr
+fromFuncContext :: FuncContext c => c -> ContextValExpr
 fromFuncContext fc = ContextValExpr (fromSortContext fc) (toMapByFuncSignature fc (elemsFunc fc))
 
 -- | Create ContextValExpr from VarContext
-fromVarContext :: VarContext a => a -> ContextValExpr
+fromVarContext :: VarContext c => c -> ContextValExpr
 fromVarContext vc = ContextValExpr vc HashMap.empty
 
 instance SortContext ContextValExpr where
@@ -225,7 +225,7 @@ instance ValExprConstructionContext ContextValExpr
 
 instance ValExprContext ContextValExpr
 
-unsafeSubst :: ValExprContext a => a -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
+unsafeSubst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 unsafeSubst ctx  mp = unsafeSubstView . view
   where
     unsafeSubstView :: ValExpressionView -> Either Error ValExpression

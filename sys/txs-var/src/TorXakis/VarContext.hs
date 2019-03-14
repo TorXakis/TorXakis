@@ -29,13 +29,13 @@ import           TorXakis.Var
 
 -- | A Variable Context instance contains all definitions to work with sorts and variables
     -- TODO? addVarsDecl function -> don't need to check uniqueness of added variables (still need to check for undefined sorts).
-class SortContext a => VarContext a where
+class SortContext c => VarContext c where
     -- | Refers the provided VarDef name to a VarDef in the context?
-    memberVar :: Name -> a -> Bool
+    memberVar :: Name -> c -> Bool
     -- | lookup VarDef
-    lookupVar :: Name -> a -> Maybe VarDef
+    lookupVar :: Name -> c -> Maybe VarDef
     -- | All VarDef elements in the context
-    elemsVar :: a -> [VarDef]
+    elemsVar :: c -> [VarDef]
     -- | Add variables to variable context.
     --   A variable context is returned when the following constraints are satisfied:
     --
@@ -46,4 +46,4 @@ class SortContext a => VarContext a where
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     -- Note: added variables might hide previously defined variables.
     -- Note: the order of the variables is not relevant.
-    addVars :: [VarDef] -> a -> Either Error a
+    addVars :: [VarDef] -> c -> Either Error c

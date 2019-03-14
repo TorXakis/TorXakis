@@ -38,7 +38,7 @@ propertyInContext prop = do
     prop ctx
 
 -- | Names in VarsDecl are unqiue
-prop_UniqueNames :: TestSortContext a => a -> Gen Bool
+prop_UniqueNames :: TestSortContext c => c -> Gen Bool
 prop_UniqueNames ctx = check <$> arbitraryVarsDecl ctx
     where check :: VarsDecl -> Bool
           check v = let l :: [VarDef]
@@ -49,7 +49,7 @@ prop_UniqueNames ctx = check <$> arbitraryVarsDecl ctx
                         ns == nub ns
 
 -- | Sorts are defined within context
-prop_DefinedSorts :: TestSortContext a => a -> Gen Bool
+prop_DefinedSorts :: TestSortContext c => c -> Gen Bool
 prop_DefinedSorts ctx = check <$> arbitraryVarsDecl ctx
     where check :: VarsDecl -> Bool
           check v = let l :: [VarDef]
@@ -60,7 +60,7 @@ prop_DefinedSorts ctx = check <$> arbitraryVarsDecl ctx
                         all (`memberSort` ctx) ss
 
 -- | toMultiMap clusters the elements
-prop_SameElements :: TestSortContext a => a -> Gen Bool
+prop_SameElements :: TestSortContext c => c -> Gen Bool
 prop_SameElements ctx = check <$> arbitraryVarsDecl ctx
     where check :: VarsDecl -> Bool
           check v = length (toList v) == MultiMap.size (toMultiMap v)

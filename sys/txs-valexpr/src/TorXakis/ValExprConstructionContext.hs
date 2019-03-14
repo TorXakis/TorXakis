@@ -29,4 +29,4 @@ import           TorXakis.FuncSignatureContext
 import           TorXakis.VarContext
 
 -- | A ValExprConstructionContext Context instance contains all definitions to work with 'TorXakis.ValExpression'.
-class (FuncSignatureContext a, VarContext a) => ValExprConstructionContext a
+class (FuncSignatureContext c, VarContext c) => ValExprConstructionContext c

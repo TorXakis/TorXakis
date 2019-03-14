@@ -35,7 +35,7 @@ propertyInContext prop = do
     prop ctx
 
 -- | ConversionText is Identity
-prop_ConversionText_id :: TestSortContext a => a -> Gen Bool
+prop_ConversionText_id :: TestSortContext c => c -> Gen Bool
 prop_ConversionText_id ctx = all check <$> listOf1 (arbitraryValue ctx)
     where check :: Value -> Bool
           check v = 
@@ -47,7 +47,7 @@ prop_ConversionText_id ctx = all check <$> listOf1 (arbitraryValue ctx)
                             Right v' -> v == v'
 
 -- | ConversionXML is Identity
-prop_ConversionXML_id :: TestSortContext a => a -> Gen Bool
+prop_ConversionXML_id :: TestSortContext c => c -> Gen Bool
 prop_ConversionXML_id ctx = all check <$> listOf1 (arbitraryValue ctx)
     where check :: Value -> Bool
           check v = 

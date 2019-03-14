@@ -82,7 +82,7 @@ decodeString s = replaceMatches (getAllMatches (s =~ "&#[0-9]{1,3};")) escapedCh
         escapedCharToString = (: []) . chr . read . init . drop 2
 
 -- | 'TorXakis.Value.Value' to 'Data.Text.Text' conversion.
-valueToText :: SortContext a => a -> Value -> Text       -- Usage of SortContext is prevented since reference by Name is exploited
+valueToText :: SortContext c => c -> Value -> Text       -- Usage of SortContext is prevented since reference by Name is exploited
 valueToText _   (Cbool True)   = T.pack "True"
 valueToText _   (Cbool False)  = T.pack "False"
 valueToText _   (Cint i)       = T.pack (show i)
@@ -101,7 +101,7 @@ valueToText _   (Cany _)       = error "ANY not supported"
 
 -- | 'TorXakis.Value.Value' from 'Data.Text.Text' conversion.
 -- Expected 'TorXakis.Sort' of 'TorXakis.Value.Value' must be provided.
-valueFromText :: SortContext a => a -> Sort -> Text -> Either Error Value
+valueFromText :: SortContext c => c -> Sort -> Text -> Either Error Value
 valueFromText ctx s t = 
     let p :: ParseValue
         p = (valueParser . valueLexer . T.unpack) t

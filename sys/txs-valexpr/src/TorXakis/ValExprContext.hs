@@ -27,4 +27,4 @@ import           TorXakis.FuncContext                   ( FuncContext )
 import           TorXakis.ValExprConstructionContext    ( ValExprConstructionContext )
 
 -- | A ValExprContext instance contains all definitions to work with value expressions and references thereof
-class (ValExprConstructionContext a, FuncContext a) => ValExprContext a
+class (ValExprConstructionContext c, FuncContext c) => ValExprContext c

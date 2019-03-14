@@ -158,7 +158,7 @@ isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
 --   * Sorts of arguments and return value are defined.
 --
 --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-mkFuncSignature :: SortContext a => a -> FunctionName -> [Sort] -> Sort -> Either Error FuncSignature
+mkFuncSignature :: SortContext c => c -> FunctionName -> [Sort] -> Sort -> Either Error FuncSignature
 mkFuncSignature ctx n as s | not $ null undefinedSorts              = Left $ Error ("mkPrefixFuncSignature: Arguments have undefined sorts " ++ show undefinedSorts)
                            | isReservedFunctionSignature ctx n as s = Left $ Error ("mkPrefixFuncSignature: Reserved function signature " ++ show n ++ " " ++ show as ++ " " ++ show s)
                            | memberSort s ctx                       = Right $ FuncSignature n as s
