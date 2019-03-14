@@ -280,13 +280,16 @@ genValExprITE s ctx = do
         sizeBranch = TorXakis.TestValExprConstructionContext.sortSize s ctx
         availableSize = available - sizeBool - 2 * sizeBranch
       in do
-        [addBool, addTrue, addFalse] <- distribute availableSize 3
-        c <- resize (sizeBool + addBool) (arbitraryValExprOfSort ctx SortBool)
-        t <- resize (sizeBranch + addTrue) (arbitraryValExprOfSort ctx s)
-        f <- resize (sizeBranch + addFalse) (arbitraryValExprOfSort ctx s)
-        case mkITE ctx c t f of
-            Left e  -> error ("genValExprITE constructor with sort " ++ show s ++ " fails " ++ show e)
-            Right x -> return x
+        adds <- distribute availableSize 3
+        case adds of 
+            [addBool, addTrue, addFalse] -> do
+                                                c <- resize (sizeBool + addBool) (arbitraryValExprOfSort ctx SortBool)
+                                                t <- resize (sizeBranch + addTrue) (arbitraryValExprOfSort ctx s)
+                                                f <- resize (sizeBranch + addFalse) (arbitraryValExprOfSort ctx s)
+                                                case mkITE ctx c t f of
+                                                    Left e  -> error ("genValExprITE constructor with sort " ++ show s ++ " fails " ++ show e)
+                                                    Right x -> return x
+            _                            -> error ("distribute with 3 returned list with length <> 3: " ++ show adds)
 
 genValExprFunc :: TestValExprConstructionContext a => RefByFuncSignature -> a -> Gen ValExpression
 genValExprFunc r@(RefByFuncSignature f) ctx = do

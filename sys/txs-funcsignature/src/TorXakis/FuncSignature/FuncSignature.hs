@@ -47,8 +47,9 @@ import           Data.List.Unique     (repeated)
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
-import           TorXakis.Name        (toName, toText)
-import           TorXakis.FunctionName(FunctionName, mkFunctionName, toString)
+import           TorXakis.Name        (toName)
+import           TorXakis.FunctionName
+import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort
 import           TorXakis.SortContext
 
@@ -87,6 +88,9 @@ isReservedFunctionSignature :: SortContext c => c -> FunctionName -> [Sort] -> S
 isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
                                          || isSortFuncSignature
   where
+    txsFuncName :: TxsString
+    txsFuncName = TxsString (TorXakis.FunctionName.toText n)
+
     isMappedFuncSignature :: Bool
     isMappedFuncSignature =
         case (toString n,    ss,                         s          ) of
@@ -116,29 +120,35 @@ isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
              _                                                        -> False
 
     isSortFuncSignature :: Bool
-    isSortFuncSignature =
-        case ss of
-             [SortADT a] -> case lookupADT (toName a) ctx of
-                                Nothing   -> error ("isReservedFunctionSignature -- ADTDef " ++ show a ++ " not defined in context ")
-                                Just aDef -> equalsIsConstructorFunc aDef || equalsAccessorFunc aDef
-             _           -> False
+    isSortFuncSignature = equalsConstructor || equalsIsConstructor || equalsFieldAccess
 
-    -- | exists constructor : funcName == isCstrName
-    equalsIsConstructorFunc :: ADTDef -> Bool
-    equalsIsConstructorFunc aDef =
-           s == SortBool 
-        && any (\c -> n == functionNameIsConstructor c) (elemsConstructor aDef)
+    -- | exists constructor : funcName == cstrName && same arguments && same returnSort (an ADT)
+    equalsConstructor :: Bool
+    equalsConstructor =
+        case s of
+            SortADT a -> case lookupADT (toName a) ctx of
+                              Nothing   -> error ("equalsConstructor -- ADTDef " ++ show a ++ " not defined in context ")
+                              Just aDef -> any (\c -> txsFuncName == txsFunctionNameConstructor c && ss == map sort (elemsField c)) (elemsConstructor aDef)
+            _         -> False
+
+    -- | exists constructor : returnSort func == Bool && funcName == isCstrName
+    equalsIsConstructor :: Bool
+    equalsIsConstructor =
+        (s == SortBool) && case ss of
+                             [SortADT a] -> case lookupADT (toName a) ctx of
+                                                Nothing   -> error ("equalsIsConstructor -- ADTDef " ++ show a ++ " not defined in context ")
+                                                Just aDef -> any (\c -> txsFuncName == txsFunctionNameIsConstructor c) (elemsConstructor aDef)
+                             _           -> False
 
     -- | exists field : funcName == fieldName && funcReturnSort == fieldSort
-    equalsAccessorFunc :: ADTDef -> Bool
-    equalsAccessorFunc aDef =
-        any (any (\f -> functionNameField f == n && sort f == s) . elemsField) (elemsConstructor aDef) 
-      where
-        functionNameField :: FieldDef -> FunctionName
-        functionNameField f =
-            case mkFunctionName (toText (fieldName f)) of
-                Left e   -> error ("functionNameField failed on field " ++ show f ++ " with " ++ show e)
-                Right fn -> fn
+    equalsFieldAccess :: Bool
+    equalsFieldAccess =
+        case ss of
+            [SortADT a] -> case lookupADT (toName a) ctx of
+                            Nothing   -> error ("equalsFieldAccess -- ADTDef " ++ show a ++ " not defined in context ")
+                            Just aDef -> any (any (\f -> txsFuncName == txsFunctionNameFieldAccess f && s == sort f) . elemsField) (elemsConstructor aDef) 
+            _           -> False
+
 
 -- | Smart constructor for 'TorXakis.FuncSignature.FuncSignature'.
 --   A FuncSignature is returned when the following constraints are satisfied:

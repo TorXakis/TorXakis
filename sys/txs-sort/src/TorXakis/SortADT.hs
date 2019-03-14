@@ -47,7 +47,11 @@ module TorXakis.SortADT
 , elemsConstructor
 , mkADTDef
   -- ** Round Tripping Functionality
-, functionNameIsConstructor
+, txsFunctionNameConstructor
+, txsFunctionNameIsConstructor
+, txsFunctionNameFieldAccess
+  -- dependencies, yet part of interface
+, TxsString
 )
 where
 
@@ -59,7 +63,6 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
-import           TorXakis.FunctionName
 import           TorXakis.Name
 import           TorXakis.NameMap
 import           TorXakis.PrettyPrint.TorXakis
@@ -160,12 +163,6 @@ data ADTDef = ADTDef
 instance HasName ADTDef where
     getName = adtName
 
--- | Function Name of is-made-by-constructor.
--- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
-functionNameIsConstructor :: ConstructorDef -> FunctionName
-functionNameIsConstructor c = case mkFunctionName (T.append (T.pack "is") (TorXakis.Name.toText (constructorName c))) of
-                                Left e -> error ("functionNameIsConstructor failed on constructor " ++ show c ++ " with " ++ show e)
-                                Right n -> n
 
 -- | Smart constructor for 'TorXakis.SortADT.ADTDef'.
 --   An 'TorXakis.SortADT.ADTDef' is returned when the following constraints are satisfied:
@@ -197,11 +194,11 @@ mkADTDef m cs
         nuFields :: [FieldDef]
         nuFields = repeatedByName allFields
 
-        -- for each constructor TorXakis adds isCstr :: X -> Bool      function which should not conflict with
-        --              the accessor function field  :: X -> SortField
-        -- hence for round tripping we need to check that fields of type Bool don't have a name equal to any functionNameIsConstructor
+        -- for each constructor TorXakis adds 'isCstr' :: X -> Bool      function which should not conflict with
+        --              the accessor function 'field'  :: X -> SortField
+        -- hence for round tripping we need to check that fields of type Bool don't have a name equal to any isCstr.
         conflictFieldIsConstructor :: [FieldDef]
-        conflictFieldIsConstructor = filter sameTextRepresentation allBoolFields
+        conflictFieldIsConstructor = filter sameTxsRepresentation allBoolFields
             where
                 allBoolFields :: [FieldDef]
                 allBoolFields = filter boolField allFields
@@ -209,11 +206,11 @@ mkADTDef m cs
                 boolField :: FieldDef -> Bool
                 boolField f = sort f == SortBool
 
-                sameTextRepresentation :: FieldDef -> Bool
-                sameTextRepresentation fd = TorXakis.Name.toText (fieldName fd) `elem` isConstructorNames
+                sameTxsRepresentation :: FieldDef -> Bool
+                sameTxsRepresentation fd = txsFunctionNameFieldAccess fd `elem` isConstructorNames
 
-                isConstructorNames :: [Text]
-                isConstructorNames = map (TorXakis.FunctionName.toText . functionNameIsConstructor) cs
+                isConstructorNames :: [TxsString]
+                isConstructorNames = map txsFunctionNameIsConstructor cs
 
 
 -- | Refers the provided ConstructorDef name to a ConstrucotrDef in the given ADTDef?
@@ -227,6 +224,21 @@ lookupConstructor r a = TorXakis.NameMap.lookup r (constructors a)
 -- | All ConstructorDefs of given ADTDef
 elemsConstructor :: ADTDef -> [ConstructorDef]
 elemsConstructor = elems . constructors
+
+-- | Function Name of constructor
+-- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
+txsFunctionNameConstructor :: ConstructorDef -> TxsString
+txsFunctionNameConstructor c = TxsString (TorXakis.Name.toText (constructorName c))
+
+-- | Function Name of is-made-by-constructor.
+-- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
+txsFunctionNameIsConstructor :: ConstructorDef -> TxsString
+txsFunctionNameIsConstructor c = TxsString (T.append (T.pack "is") (TorXakis.Name.toText (constructorName c)))
+
+-- | Function Name of field access
+-- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
+txsFunctionNameFieldAccess :: FieldDef -> TxsString
+txsFunctionNameFieldAccess f = TxsString (TorXakis.Name.toText (fieldName f))
 
 -- Pretty Print
 instance PrettyPrint a Sort where
