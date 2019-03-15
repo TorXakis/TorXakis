@@ -33,7 +33,6 @@ import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
 
 import           TorXakis.ContextSort
-import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.TestSortContext

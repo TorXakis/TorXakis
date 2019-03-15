@@ -27,6 +27,7 @@ library:
   dependencies:
   - array
   - bytestring
+  - containers
   - deepseq
   - hexpat
   - regex-tdfa

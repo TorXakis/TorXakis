@@ -36,7 +36,7 @@ import qualified Data.Set             as Set
 import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 
-import           TorXakis.ContextValExprConstruction
+import           TorXakis.ContextVar
 import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.FuncSignatureContext
@@ -61,55 +61,54 @@ data FuncDef = FuncDef { -- | The name of the function (of type 'TorXakis.Name')
                        }
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
-toValExprConstructionContext :: FuncSignatureContext c => c -> [VarDef] -> ContextValExprConstruction
-toValExprConstructionContext ctx vs =
-    case addVars vs (fromFuncSignatureContext ctx) of
-        Left e      -> error ("toValExprConstructionContext is unable to make new context" ++ show e)
+toVarContext :: SortContext c => c -> [VarDef] -> ContextVar
+toVarContext ctx vs =
+    case addVars vs (fromSortContext ctx) of
+        Left e      -> error ("toVarContext is unable to make new context" ++ show e)
         Right vctx  -> vctx
 
 -- | constructor for FuncDef
--- TODO: what should be checked here?
---       * also checkbody?
---       * FreeVars of body are subset of VarsDecl?
---       * Don't check sort (is already done to construct VarsDecl)?
-mkFuncDef :: FuncSignatureContext c => c -> FunctionName -> VarsDecl -> ValExpression -> Either Error FuncDef
-mkFuncDef ctx n ps b | not (Set.null undefinedVars)                             = Left $ Error ("Undefined variables used in body " ++ show undefinedVars)
-                     | not (null undefinedSorts)                                = Left $ Error ("Variables have undefined sorts " ++ show undefinedSorts)
+mkFuncDef :: SortContext c => c -> FunctionName -> VarsDecl -> ValExpression -> Either Error FuncDef
+mkFuncDef ctx n ps b | not (null undefinedSorts)                                = Left $ Error ("Variables have undefined sorts " ++ show undefinedSorts)
+                     | not (Set.null undefinedVars)                             = Left $ Error ("Undefined variables used in body " ++ show undefinedVars)
                      | not (isReservedFunctionSignature ctx n argSorts retSort) = Left $ Error ("Function has reserved signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
                      | not (isPredefinedNonSolvableFuncSignature signature)     = Left $ Error ("Function has predefined signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
                      | otherwise                                                = Right $ FuncDef n ps b
     where
         vs :: [VarDef]
         vs = toList ps
-        
-        undefinedVars :: Set.Set (RefByName VarDef)
-        undefinedVars = Set.difference (freeVars b) (Set.fromList (map (RefByName . name) vs))
 
-        undefinedSorts :: [VarDef]
-        undefinedSorts = filter (not . flip memberSort ctx . TorXakis.Var.sort) vs
+        varContext :: ContextVar
+        varContext = toVarContext ctx vs
+        
+        undefinedSorts :: Set.Set Sort
+        undefinedSorts = Set.unions [usedSorts ctx ps, usedSorts varContext b] `Set.difference` Set.fromList (elemsSort ctx)
+
+        undefinedVars :: Set.Set (RefByName VarDef)
+        undefinedVars = freeVars b `Set.difference` Set.fromList (map (RefByName . name) vs)
 
         argSorts :: [Sort]
         argSorts = map (getSort ctx) vs
 
         retSort :: Sort
-        retSort = getSort (toValExprConstructionContext ctx vs) b
+        retSort = getSort varContext b
 
         signature :: FuncSignature
         signature = case mkFuncSignature ctx n argSorts retSort of
                         Left e  -> error ("mkFuncDef is unable to create FuncSignature" ++ show e)
                         Right f -> f
 
-instance FuncSignatureContext c => HasFuncSignature c FuncDef
+instance SortContext c => HasFuncSignature c FuncDef
     where
         getFuncSignature ctx (FuncDef fn ps bd) =
             let vs = toList ps in
-                case mkFuncSignature ctx fn (map (getSort ctx) vs) (getSort (toValExprConstructionContext ctx vs) bd) of
+                case mkFuncSignature ctx fn (map (getSort ctx) vs) (getSort (toVarContext ctx vs) bd) of
                      Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
                      Right x -> x
 
-instance FuncSignatureContext c => PrettyPrint c FuncDef where
+instance SortContext c => PrettyPrint c FuncDef where
     prettyPrint o c fd = 
-        let vctx = toValExprConstructionContext c (toList (paramDefs fd)) in
+        let vctx = toVarContext c (toList (paramDefs fd)) in
             TxsString ( T.concat [ T.pack "FUNCDEF "
                                  , TorXakis.FunctionName.toText (TorXakis.FuncDef.funcName fd)
                                  , separator o

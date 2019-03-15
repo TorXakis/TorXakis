@@ -56,7 +56,7 @@ import           TorXakis.ValExpr.ValExprBasis
 import           TorXakis.Var
 
 -- | An instance of 'TorXakis.ValExprConstructionContext'.
-data ContextValExpr = forall c . VarContext c => 
+data ContextValExpr = forall c . VarContext c =>
                             ContextValExpr { _varContext :: c
                                              -- funcSignatures
                                            , funcDefs :: HashMap.Map FuncSignature FuncDef
@@ -130,48 +130,61 @@ instance FuncContext ContextValExpr where
         | otherwise                          = Right $ newCtx ctx (toMapByFuncSignature ctx fds)
       where
         nuFuncDefs :: [FuncDef]
-        nuFuncDefs = repeatedByFuncSignatureIncremental ctx (HashMap.elems (funcDefs ctx)) fds
+        nuFuncDefs = repeatedByFuncSignatureIncremental ctx (elemsFunc ctx) fds
+
+        definedSorts :: Set.Set Sort
+        definedSorts = Set.fromList (elemsSort ctx)
 
         undefinedSorts :: [(FuncSignature, Set.Set Sort)]
-        undefinedSorts = mapMaybe undefinedSort fds
+        undefinedSorts = mapMaybe maybeUndefinedSorts fds
 
-        undefinedSort :: FuncDef -> Maybe (FuncSignature, Set.Set Sort)
-        undefinedSort fd = let fs = getFuncSignature ctx fd
-                               as = args fs
-                               rs = returnSort fs
-                             in
-                                case filter (not . flip memberSort ctx) (rs:as) of
-                                    [] -> Nothing
-                                    xs -> Just (fs, Set.fromList xs)
+        maybeUndefinedSorts :: FuncDef -> Maybe (FuncSignature, Set.Set Sort)
+        maybeUndefinedSorts fd = let vctx = toValExprContext (paramDefs fd)
+                                     usedS = Set.unions [usedSorts ctx (paramDefs fd), usedSorts vctx (body fd)]
+                                     undefinedS = usedS `Set.difference` definedSorts
+                                  in
+                                     if Set.null undefinedS
+                                        then Nothing
+                                        else Just (getFuncSignature ctx fd, undefinedS)
+
+        toValExprContext :: VarsDecl -> ContextValExpr
+        toValExprContext vs = case addVars (toList vs) (fromFuncContext ctx) of
+                                   Left e      -> error ("toValExprContext is unable to make new context" ++ show e)
+                                   Right vctx  -> vctx
 
         undefinedVariables :: [(FuncSignature, Set.Set (RefByName VarDef))]
-        undefinedVariables = mapMaybe undefinedVariable fds
+        undefinedVariables = mapMaybe maybeUndefinedVariables fds
 
-        undefinedVariable :: FuncDef -> Maybe (FuncSignature, Set.Set (RefByName VarDef))
-        undefinedVariable fd = let definedVars   :: Set.Set (RefByName VarDef)
-                                   definedVars   = Set.fromList (map (RefByName . name) (toList (paramDefs fd)))
-                                   usedVars      = freeVars (body fd)
-                                   undefinedVars = Set.difference usedVars definedVars
-                                in
-                                    if Set.null undefinedVars
-                                        then Nothing
-                                        else Just (getFuncSignature ctx fd, undefinedVars)
+        maybeUndefinedVariables :: FuncDef -> Maybe (FuncSignature, Set.Set (RefByName VarDef))
+        maybeUndefinedVariables fd = let definedVars :: Set.Set (RefByName VarDef)
+                                         definedVars = Set.fromList (map (RefByName . name) (toList (paramDefs fd)))
+                                         usedVars = freeVars (body fd)
+                                         undefinedVars = usedVars `Set.difference` definedVars
+                                      in
+                                         if Set.null undefinedVars
+                                            then Nothing
+                                            else Just (getFuncSignature ctx fd, undefinedVars)
+
+        definedFuncSignatures :: Set.Set FuncSignature
+        definedFuncSignatures = Set.fromList (funcSignatures ctx ++ map (getFuncSignature ctx) fds)
 
         undefinedFuncSignatures :: [(FuncSignature, Set.Set FuncSignature)]
-        undefinedFuncSignatures = mapMaybe undefinedFuncSignature fds
+        undefinedFuncSignatures = mapMaybe maybeUndefinedFuncSignatures fds
 
-        undefinedFuncSignature :: FuncDef -> Maybe (FuncSignature, Set.Set FuncSignature)
-        undefinedFuncSignature fd = let definedFuncSignatures = HashMap.union (toMapByFuncSignature ctx fds) (funcDefs ctx) in
-                                        case findUndefinedFuncSignature definedFuncSignatures (body fd) of
-                                            [] -> Nothing
-                                            xs -> Just (getFuncSignature ctx fd, Set.fromList xs)
+        maybeUndefinedFuncSignatures :: FuncDef -> Maybe (FuncSignature, Set.Set FuncSignature)
+        maybeUndefinedFuncSignatures fd = let usedFS = usedFuncSignatures (body fd)
+                                              undefinedFS = usedFS `Set.difference` definedFuncSignatures
+                                            in
+                                               if Set.null undefinedFS
+                                                  then Nothing
+                                                  else Just (getFuncSignature ctx fd, undefinedFS)
 
         newCtx :: ContextValExpr -> HashMap.Map FuncSignature FuncDef -> ContextValExpr
         newCtx ctx' mfs = let updateCtx = ctx'{ funcDefs = HashMap.union (funcDefs ctx') mfs }
                               (lm, rm)  = HashMap.mapEither (newFuncDef updateCtx) mfs in
-                                if HashMap.null lm 
+                                if HashMap.null lm
                                     then let (lc, rc) = HashMap.partition isConstBody rm in
-                                            if HashMap.null lc 
+                                            if HashMap.null lc
                                                 then ctx'{ funcDefs = HashMap.union (funcDefs ctx') rc }
                                                 else newCtx (ctx'{ funcDefs = HashMap.union (funcDefs ctx') lc }) rc
                                     else error ("All check passed, yet errors occurred\n" ++ show (HashMap.elems lm))
@@ -181,45 +194,12 @@ instance FuncContext ContextValExpr where
                                       ps = paramDefs fd
                                       bd = body fd in
                                         unsafeSubst updateCtx HashMap.empty bd >>= mkFuncDef ctx nm ps
-        
+
         isConstBody :: FuncDef -> Bool
         isConstBody fd = case view (body fd) of
                                 Vconst {} -> True
                                 _         -> False
 
--- | Find Undefined Function Signatures in given Value Expression (given the defined Function Signatures)
-findUndefinedFuncSignature :: HashMap.Map FuncSignature FuncDef -> ValExpression -> [FuncSignature]
-findUndefinedFuncSignature definedFuncSignatures = findUndefinedFuncSignature'
-    where
-        findUndefinedFuncSignature' :: ValExpression -> [FuncSignature]
-        findUndefinedFuncSignature' = findUndefinedFuncSignatureView . view
-        
-        findUndefinedFuncSignatureView :: ValExpressionView -> [FuncSignature]
-        findUndefinedFuncSignatureView Vconst{}                            = []
-        findUndefinedFuncSignatureView Vvar{}                              = []
-        findUndefinedFuncSignatureView (Vequal v1 v2)                      = findUndefinedFuncSignature' v1 ++ findUndefinedFuncSignature' v2
-        findUndefinedFuncSignatureView (Vite c t f)                        = findUndefinedFuncSignature' c ++ findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' f
-        findUndefinedFuncSignatureView (Vfunc r as)                        = let fs = toFuncSignature r in
-                                                                              (  if HashMap.member fs definedFuncSignatures
-                                                                                    then []
-                                                                                    else [fs]
-                                                                              )
-                                                                              ++ concatMap findUndefinedFuncSignature' as
-        findUndefinedFuncSignatureView (Vpredef _ as)                      = concatMap findUndefinedFuncSignature' as
-        findUndefinedFuncSignatureView (Vnot v)                            = findUndefinedFuncSignature' v
-        findUndefinedFuncSignatureView (Vand vs)                           = concatMap findUndefinedFuncSignature' (Set.toList vs)
-        findUndefinedFuncSignatureView (Vdivide t n)                       = findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' n
-        findUndefinedFuncSignatureView (Vmodulo t n)                       = findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' n
-        findUndefinedFuncSignatureView (Vsum mp)                           = concatMap findUndefinedFuncSignature' (Map.keys mp)
-        findUndefinedFuncSignatureView (Vproduct mp)                       = concatMap findUndefinedFuncSignature' (Map.keys mp)
-        findUndefinedFuncSignatureView (Vgez v)                            = findUndefinedFuncSignature' v
-        findUndefinedFuncSignatureView (Vlength v)                         = findUndefinedFuncSignature' v
-        findUndefinedFuncSignatureView (Vat s p)                           = findUndefinedFuncSignature' s ++ findUndefinedFuncSignature' p
-        findUndefinedFuncSignatureView (Vconcat vs)                        = concatMap findUndefinedFuncSignature' vs
-        findUndefinedFuncSignatureView (Vstrinre s r)                      = findUndefinedFuncSignature' s ++ findUndefinedFuncSignature' r
-        findUndefinedFuncSignatureView (Vcstr _ _ as)                      = concatMap findUndefinedFuncSignature' as
-        findUndefinedFuncSignatureView (Viscstr _ _ v)                     = findUndefinedFuncSignature' v
-        findUndefinedFuncSignatureView (Vaccess _ _ _ v)                   = findUndefinedFuncSignature' v
 
 instance ValExprConstructionContext ContextValExpr
 
@@ -266,7 +246,7 @@ mismatchesSort ctx = HashMap.filterWithKey mismatch
                             Just v  -> TorXakis.Var.sort v /= getSort ctx e
 
 -- | Substitution: Substitute some variables by value expressions in a value expression.
--- The Either is needed since substitution can cause an invalid ValExpr. 
+-- The Either is needed since substitution can cause an invalid ValExpr.
 -- For example, substitution of a variable by zero can cause a division by zero error
 -- TODO: should we check the replacing val expressions? And the valExpression we get to work on?
 -- TODO: should we support context shrinking, since by replacing the variable a by 10, the variable a might no longer be relevant in the context (and thus be removed)?

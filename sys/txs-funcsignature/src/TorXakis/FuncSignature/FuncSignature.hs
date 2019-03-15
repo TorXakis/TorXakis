@@ -44,6 +44,7 @@ import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hashWithSalt))
 import           Data.HashMap         (Map, fromList)
 import           Data.List.Unique     (repeated)
+import qualified Data.Set             as Set
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
@@ -174,6 +175,9 @@ class HasFuncSignature c e where
 
 instance HasFuncSignature a FuncSignature where
     getFuncSignature _ = id
+
+instance UsedSorts c FuncSignature where
+    usedSorts _ fs = Set.fromList (returnSort fs : args fs)
 
 instance Hashable FuncSignature where
     s `hashWithSalt` (FuncSignature n as r) = s `hashWithSalt`

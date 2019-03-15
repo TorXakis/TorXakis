@@ -107,16 +107,18 @@ eval = evalView . view
     evalView x          = Left $ Error ("Value Expression is not a constant value " ++ show x)
 
 -- | SortOf instance
-instance ValExprConstructionContext c => HasSort c ValExpression where
+instance VarContext c => HasSort c ValExpression where
   getSort c = getSort c . TorXakis.ValExpr.ValExpr.view
 
-instance ValExprConstructionContext c => HasSort c ValExpressionView where
+instance VarContext c => HasSort c ValExpressionView where
     getSort ctx (Vconst val)              = getSort ctx val
     getSort ctx (Vvar r)                  = case lookupVar (toName r) ctx of
                                                Nothing -> error ("getSort: VarDef not found in context " ++ show r)
                                                Just v  -> getSort ctx v
     getSort _    Vequal { }               = SortBool
     getSort ctx (Vite _cond vexp1 _vexp2) = getSort ctx vexp1
+    getSort _   (Vfunc r _vexps)          = returnSort (toFuncSignature r)
+    getSort _   (Vpredef r _vexps)        = returnSort (toFuncSignature r)
     getSort _    Vnot { }                 = SortBool
     getSort _    Vand { }                 = SortBool
     getSort _    Vdivide { }              = SortInt
@@ -135,8 +137,34 @@ instance ValExprConstructionContext c => HasSort c ValExpressionView where
                                                Just aDef -> case lookupConstructor (toName c) aDef of
                                                                Nothing   -> error ("getSort: Constructor not found in ADTDef " ++ show c)
                                                                Just cDef -> getSort ctx ( elemsField cDef !! toIndex p )
-    getSort _   (Vfunc r _vexps)         = returnSort (toFuncSignature r)
-    getSort _   (Vpredef r _vexps)       = returnSort (toFuncSignature r)
+
+instance VarContext c => UsedSorts c ValExpression where
+    usedSorts ctx = usedSorts ctx . view
+
+instance VarContext c => UsedSorts c ValExpressionView where
+    -- we add return types that are not necessarily in the arguments
+    usedSorts ctx (Vconst c)          = usedSorts ctx c
+    usedSorts ctx (Vvar r)            = case lookupVar (toName r) ctx of
+                                               Nothing -> error ("usedSorts: VarDef not found in context " ++ show r)
+                                               Just v  -> usedSorts ctx v
+    usedSorts ctx (Vequal v1 v2)      = Set.insert SortBool $ Set.unions (map (usedSorts ctx) [v1, v2])
+    usedSorts ctx (Vite c t f)        = Set.unions $ map (usedSorts ctx) [c, t, f]
+    usedSorts ctx (Vfunc fs as)       = Set.unions (usedSorts ctx (toFuncSignature fs) : map (usedSorts ctx) as)
+    usedSorts ctx (Vpredef fs as)     = Set.unions (usedSorts ctx (toFuncSignature fs) : map (usedSorts ctx) as)
+    usedSorts ctx (Vnot v)            = usedSorts ctx v
+    usedSorts ctx (Vand s)            = Set.unions $ map (usedSorts ctx) (Set.toList s)
+    usedSorts ctx (Vdivide t n)       = Set.unions $ map (usedSorts ctx) [t, n]
+    usedSorts ctx (Vmodulo t n)       = Set.unions $ map (usedSorts ctx) [t, n]
+    usedSorts ctx (Vsum m)            = Set.unions $ map (usedSorts ctx) (Map.keys m)
+    usedSorts ctx (Vproduct m)        = Set.unions $ map (usedSorts ctx) (Map.keys m)
+    usedSorts ctx (Vgez v)            = Set.insert SortBool $ usedSorts ctx v
+    usedSorts ctx (Vlength v)         = Set.insert SortInt $ usedSorts ctx v
+    usedSorts ctx (Vat s p)           = Set.unions $ map (usedSorts ctx) [s, p]
+    usedSorts ctx (Vconcat vs)        = Set.unions $ map (usedSorts ctx) vs
+    usedSorts ctx (Vstrinre s r)      = Set.insert SortBool $ Set.unions (map (usedSorts ctx) [s, r])
+    usedSorts ctx (Vcstr a _ vs)      = Set.insert (SortADT a) $ Set.unions (map (usedSorts ctx) vs)
+    usedSorts ctx (Viscstr _ _ v)     = Set.insert SortBool $ usedSorts ctx v
+    usedSorts ctx a@(Vaccess _ _ _ v) = Set.insert (getSort ctx a) $ usedSorts ctx v
 
 instance FreeVars ValExpression where
     freeVars = freeVars . view
@@ -162,6 +190,31 @@ instance FreeVars ValExpressionView where
     freeVars (Vcstr _ _ vs)    = Set.unions $ map freeVars vs
     freeVars (Viscstr _ _ v)   = freeVars v
     freeVars (Vaccess _ _ _ v) = freeVars v
+
+instance UsedFuncSignatures ValExpression where
+    usedFuncSignatures = usedFuncSignatures . view
+
+instance UsedFuncSignatures ValExpressionView where
+    usedFuncSignatures  Vconst{}         = Set.empty
+    usedFuncSignatures  Vvar{}           = Set.empty
+    usedFuncSignatures (Vequal v1 v2)    = Set.unions $ map usedFuncSignatures [v1, v2]
+    usedFuncSignatures (Vite c t f)      = Set.unions $ map usedFuncSignatures [c, t, f]
+    usedFuncSignatures (Vfunc fs as)     = Set.insert (toFuncSignature fs) $ Set.unions (map usedFuncSignatures as)
+    usedFuncSignatures (Vpredef fs as)   = Set.insert (toFuncSignature fs) $ Set.unions (map usedFuncSignatures as)
+    usedFuncSignatures (Vnot v)          = usedFuncSignatures v
+    usedFuncSignatures (Vand s)          = Set.unions $ map usedFuncSignatures (Set.toList s)
+    usedFuncSignatures (Vdivide t n)     = Set.unions $ map usedFuncSignatures [t, n]
+    usedFuncSignatures (Vmodulo t n)     = Set.unions $ map usedFuncSignatures [t, n]
+    usedFuncSignatures (Vsum m)          = Set.unions $ map usedFuncSignatures (Map.keys m)
+    usedFuncSignatures (Vproduct m)      = Set.unions $ map usedFuncSignatures (Map.keys m)
+    usedFuncSignatures (Vgez v)          = usedFuncSignatures v
+    usedFuncSignatures (Vlength v)       = usedFuncSignatures v
+    usedFuncSignatures (Vat s p)         = Set.unions $ map usedFuncSignatures [s, p]
+    usedFuncSignatures (Vconcat vs)      = Set.unions $ map usedFuncSignatures vs
+    usedFuncSignatures (Vstrinre s r)    = Set.unions $ map usedFuncSignatures [s, r]
+    usedFuncSignatures (Vcstr _ _ vs)    = Set.unions $ map usedFuncSignatures vs
+    usedFuncSignatures (Viscstr _ _ v)   = usedFuncSignatures v
+    usedFuncSignatures (Vaccess _ _ _ v) = usedFuncSignatures v
 
 -- Pretty Print 
 instance VarContext c => PrettyPrint c ValExpression where
@@ -283,4 +336,4 @@ occuranceOperator o ctx txsOp1 txsOp2 occuranceList =
         
         tupleToText :: (ValExpression, Integer) -> T.Text
         tupleToText (v,  1) = TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o ctx v)
-        tupleToText (v,  p) = indent offset2 (TorXakis.PrettyPrint.TorXakis.toText (infixOperator o ctx txsOp2 [v, ValExpression (Vconst (Cint p))]))
+        tupleToText (v,  p) = TorXakis.PrettyPrint.TorXakis.toText (infixOperator o ctx txsOp2 [v, ValExpression (Vconst (Cint p))])

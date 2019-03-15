@@ -24,24 +24,26 @@ module TorXakis.ContextSort
 , TorXakis.ContextSort.empty
 )
 where
-import           Data.Data           (Data)
-import qualified Data.List           as List
-import           Data.Maybe          (mapMaybe)
-import qualified Data.Text           as T
-import           GHC.Generics        (Generic)
+import           Data.Data            (Data)
+import qualified Data.List            as List
+import           Data.Maybe           (mapMaybe)
+import qualified Data.Set             as Set
+import qualified Data.Text            as T
+import           GHC.Generics         (Generic)
 
-import           TorXakis.Error      ( Error ( Error ) )
+import           TorXakis.Error       ( Error ( Error ) )
 import           TorXakis.Name
 import           TorXakis.NameMap
 import           TorXakis.PrettyPrint.TorXakis
-import           TorXakis.SortADT    ( Sort ( SortADT )
-                                     , ADTDef
-                                     , adtName
-                                     , elemsConstructor
-                                     , ConstructorDef
-                                     , elemsField
-                                     , sort
-                                     )
+import           TorXakis.Sort        ( Sort ( SortADT )
+                                      , ADTDef
+                                      , adtName
+                                      , elemsConstructor
+                                      , ConstructorDef
+                                      , elemsField
+                                      , sort
+                                      , usedSorts
+                                      )
 import           TorXakis.SortContext
 
 -- | An instance of 'SortContext'.
@@ -77,7 +79,7 @@ instance SortContext ContextSort where
             violationsAddAdtDefs :: Maybe Error
             violationsAddAdtDefs
                 | not $ null nonUniqueReferences  = Just $ Error ("Non unique references : " ++ show nonUniqueReferences)
-                | not $ null unknownReferences    = Just $ Error ("Unknown references : " ++ show unknownReferences)
+                | not $ null unknownSorts         = Just $ Error ("Unknown sorts : " ++ show unknownSorts)
                 | not $ null nonConstructableADTs = Just $ Error ("Non constructable ADTs : " ++ show nonConstructableADTs)
                 | otherwise                       = Nothing
                 where
@@ -87,22 +89,16 @@ instance SortContext ContextSort where
                     nonUniqueReferences :: [ADTDef]
                     nonUniqueReferences = repeatedByNameIncremental definedADTs as
 
-                    definedReferences :: [Name]
-                    definedReferences = map adtName (definedADTs ++ as)
-                    
-                    hasUnknownReferences :: ADTDef -> Maybe (ADTDef, [Sort])
-                    hasUnknownReferences adtdef = 
-                        let xs = filter (not . isDefined) (concatMap ( map sort . elemsField ) (elemsConstructor adtdef) ) in
-                            if null xs 
+                    hasUndefinedSorts :: Set.Set Sort -> ADTDef -> Maybe (ADTDef, Set.Set Sort)
+                    hasUndefinedSorts definedSorts adtdef =
+                        let undefinedSorts = usedSorts ctx adtdef `Set.difference` definedSorts in
+                            if null undefinedSorts
                                 then Nothing
-                                else Just (adtdef,xs)
+                                else Just (adtdef,undefinedSorts)
 
-                    isDefined :: Sort -> Bool
-                    isDefined (SortADT t) = toName t `elem` definedReferences
-                    isDefined _           = True
-
-                    unknownReferences :: [(ADTDef, [Sort])]
-                    unknownReferences = mapMaybe hasUnknownReferences as
+                    unknownSorts :: [(ADTDef, Set.Set Sort)]
+                    unknownSorts = let definedSorts = Set.fromList (elemsSort ctx ++ map (SortADT . RefByName . adtName) as) in
+                                       mapMaybe (hasUndefinedSorts definedSorts) as
                     
                     nonConstructableADTs :: [ADTDef]
                     nonConstructableADTs =  verifyConstructibleADTs (map adtName definedADTs) as

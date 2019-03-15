@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  SortADT
+-- Module      :  Sort
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -23,7 +23,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module TorXakis.SortADT
+module TorXakis.Sort.Sort
 ( -- * Sort
   Sort (..)
   -- ** Has Sort
@@ -46,11 +46,14 @@ module TorXakis.SortADT
 , lookupConstructor
 , elemsConstructor
 , mkADTDef
-  -- ** Round Tripping Functionality
+  -- * Used Sorts in element
+, UsedSorts (..)
+  -- ** TorXakis representations for Round Tripping Functionality
 , txsFunctionNameConstructor
 , txsFunctionNameIsConstructor
 , txsFunctionNameFieldAccess
   -- dependencies, yet part of interface
+, Set.Set
 , TxsString
 )
 where
@@ -59,6 +62,7 @@ import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           Data.Hashable       (Hashable(hashWithSalt))
 import           Data.List           (elemIndex, find)
+import qualified Data.Set            as Set
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
@@ -225,6 +229,8 @@ lookupConstructor r a = TorXakis.NameMap.lookup r (constructors a)
 elemsConstructor :: ADTDef -> [ConstructorDef]
 elemsConstructor = elems . constructors
 
+-- Representations in TorXakis
+
 -- | Function Name of constructor
 -- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
 txsFunctionNameConstructor :: ConstructorDef -> TxsString
@@ -239,6 +245,20 @@ txsFunctionNameIsConstructor c = TxsString (T.append (T.pack "is") (TorXakis.Nam
 -- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
 txsFunctionNameFieldAccess :: FieldDef -> TxsString
 txsFunctionNameFieldAccess f = TxsString (TorXakis.Name.toText (fieldName f))
+
+-- | Class for Used Sorts
+class UsedSorts c a where
+    -- | Determine the used sorts
+    usedSorts :: c -> a -> Set.Set Sort
+
+instance UsedSorts c FieldDef where
+    usedSorts _ = Set.singleton . sort
+
+instance UsedSorts c ConstructorDef where
+    usedSorts ctx c = Set.unions (map (usedSorts ctx) (elemsField c))
+
+instance UsedSorts c ADTDef where
+    usedSorts ctx a = Set.unions (map (usedSorts ctx) (elemsConstructor a))
 
 -- Pretty Print
 instance PrettyPrint a Sort where

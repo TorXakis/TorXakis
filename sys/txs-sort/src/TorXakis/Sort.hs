@@ -16,8 +16,8 @@ See LICENSE at root directory of this repository.
 -- Interface for Sort package
 -----------------------------------------------------------------------------
 module TorXakis.Sort
-( module TorXakis.SortADT
+( module TorXakis.Sort.Sort
 )
 where
 
-import TorXakis.SortADT
+import TorXakis.Sort.Sort

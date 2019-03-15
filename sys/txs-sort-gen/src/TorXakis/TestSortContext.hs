@@ -22,8 +22,10 @@ module TorXakis.TestSortContext
   -- dependencies, yet part of interface
 , module TorXakis.SortContext
 , ConstructorDef
+, RefByName
 )
 where
+import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.SortContext
 

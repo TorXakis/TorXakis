@@ -22,13 +22,12 @@ module TorXakis.SortContext
   -- dependencies, yet part of interface
 , Error
 , Sort
-, RefByName
 , ADTDef
 )
 where
 import           TorXakis.Error                 (Error)
 import           TorXakis.Name
-import           TorXakis.SortADT               (Sort(..), ADTDef(adtName))
+import           TorXakis.Sort                  (Sort(..), ADTDef(adtName))
 
 -- | A Sort Context instance 
 -- contains all definitions to work with sorts and references thereof.

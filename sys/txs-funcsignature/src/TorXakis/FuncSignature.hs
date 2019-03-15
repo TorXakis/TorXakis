@@ -20,8 +20,10 @@ See LICENSE at root directory of this repository.
 module TorXakis.FuncSignature
 ( module TorXakis.FuncSignature.FuncSignature
 , module TorXakis.FuncSignature.RefByFuncSignature
+, module TorXakis.FuncSignature.UsedFuncSignatures
 )
 where
 
 import TorXakis.FuncSignature.FuncSignature
 import TorXakis.FuncSignature.RefByFuncSignature
+import TorXakis.FuncSignature.UsedFuncSignatures

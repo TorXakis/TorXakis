@@ -24,6 +24,7 @@ library:
   - TorXakis.SortContext
   - TorXakis.ContextSort
   dependencies:
+  - containers
   - deepseq
   - hashable
   - txs-basics

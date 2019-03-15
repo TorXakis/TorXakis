@@ -29,10 +29,12 @@ where
 
 import           Control.DeepSeq (NFData)
 import           Data.Data       (Data)
+import qualified Data.Set        as Set
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
 import           TorXakis.Sort
+import           TorXakis.SortContext
 import           TorXakis.Name
 
 -- | Union of Boolean, Integer, Char, String, and AlgebraicDataType value values.
@@ -63,3 +65,12 @@ instance HasSort c Value where
     getSort _ Cregex{}        = SortRegex
     getSort _ (Ccstr a _ _)   = SortADT a
     getSort _ (Cany s)        = s
+
+instance SortContext c => UsedSorts c Value where
+    usedSorts _   Cbool{}         = Set.singleton SortBool
+    usedSorts _   Cint{}          = Set.singleton SortInt
+    usedSorts _   Cchar{}         = Set.singleton SortChar
+    usedSorts _   Cstring{}       = Set.singleton SortString
+    usedSorts _   Cregex{}        = Set.singleton SortRegex
+    usedSorts ctx (Ccstr a _ vs)  = Set.insert (SortADT a) $ Set.unions (map (usedSorts ctx) vs)
+    usedSorts _   (Cany s)        = Set.singleton s

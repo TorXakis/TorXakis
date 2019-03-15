@@ -121,8 +121,8 @@ instance ValExprContext a => BExprContext (MinimalBExprContext a) where
         undefinedVariable :: ProcDef -> Maybe (ProcSignature, Set.Set (RefByName VarDef))
         undefinedVariable pd = let definedVars :: Set.Set (RefByName VarDef)
                                    definedVars   = Set.fromList (map toRefByName (toList (paramDefs pd)))
-                                   usedVars      = freeVars (body pd)
-                                   undefinedVars = Set.difference usedVars definedVars
+                                   freeVars      = freeVars (body pd)
+                                   undefinedVars = Set.difference freeVars definedVars
                                 in
                                     if Set.null undefinedVars
                                         then Nothing

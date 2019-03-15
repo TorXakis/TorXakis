@@ -20,7 +20,7 @@ module TorXakis.TestValExprConstructionContextSpec
 )
 where
 import           Debug.Trace
-
+import qualified Data.Set               as Set
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -121,6 +121,11 @@ prop_LTNotGE ctx = do
                     Left e   -> trace ("\nUnexpected error with mkGE " ++ show e) False
                     Right ge -> mkLT ctx a b == mkNot ctx ge
 
+prop_ASortUsed :: TestValExprConstructionContext a => a -> Gen Bool
+prop_ASortUsed ctx = do
+    e <- arbitraryValExpr ctx :: Gen ValExpression
+    return $ not (Set.null (usedSorts ctx e))
+
 spec :: Spec
 spec = do
             describe "mkUnaryMinus" $
@@ -135,3 +140,5 @@ spec = do
                 it "a > b <==> b < a"        $ property (propertyInContext prop_GTLT)
                 it "a > b <==> not (a <= b)" $ property (propertyInContext prop_GTNotLE)
                 it "a < b <==> not (a >= b)" $ property (propertyInContext prop_LTNotGE)
+            describe "Sort" $
+                it "uses at least one sort" $ property (propertyInContext prop_ASortUsed)

@@ -52,10 +52,10 @@ import           TorXakis.Error
 import           TorXakis.Sort
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.ValExpr.ValExprBasis
-import           TorXakis.ValExprConstructionContext
+import           TorXakis.VarContext
 
 -- | Apply operator Or (\\/) on the provided list of value expressions.
-mkOr :: ValExprConstructionContext c => c -> [ValExpression] -> Either Error ValExpression
+mkOr :: VarContext c => c -> [ValExpression] -> Either Error ValExpression
 -- a \/ b <==> not (not a /\ not b)
 mkOr ctx s | all (\e -> SortBool == getSort ctx e) s = case partitionEithers (fmap (mkNot ctx) s) of
                                                            ([] , ns) -> mkAnd ctx ns >>= mkNot ctx
@@ -63,7 +63,7 @@ mkOr ctx s | all (\e -> SortBool == getSort ctx e) s = case partitionEithers (fm
 mkOr _ _                                             = Left $ Error "Not all value expressions in set are of expected sort Bool"
 
 -- | Apply operator Xor (\\|/) on the provided set of value expressions.
-mkXor :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkXor :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkXor ctx a _ | SortBool /= getSort ctx a = Left $ Error ("First argument of Xor is not of expected sort Bool but " ++ show (getSort ctx a))
 mkXor ctx _ b | SortBool /= getSort ctx b = Left $ Error ("Second argument of Xor is not of expected sort Bool but " ++ show (getSort ctx b))
 -- a xor b <==> (a /\ not b) \/ (not a /\ b)
@@ -74,67 +74,67 @@ mkXor ctx a b                           = mkNot ctx a >>= (\na ->
                                                         mkOr ctx [a1,a2] )) ))
 
 -- | Apply operator Implies (=>) on the provided value expressions.
-mkImplies :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkImplies :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkImplies ctx a _ | SortBool /= getSort ctx a = Left $ Error ("First argument of Implies is not of expected sort Bool but " ++ show (getSort ctx a))
 mkImplies ctx _ b | SortBool /= getSort ctx b = Left $ Error ("Second argument of Implies is not of expected sort Bool but " ++ show (getSort ctx b))
 -- a => b <==> not a \/ b <==> not (a /\ not b)
 mkImplies ctx a b                         = mkNot ctx b >>= (\nb -> mkAnd ctx [a,nb] >>= mkNot ctx)
 
 -- | Apply unary operator Plus on the provided value expression.
-mkUnaryPlus :: ValExprConstructionContext c => c -> ValExpression -> Either Error ValExpression
+mkUnaryPlus :: VarContext c => c -> ValExpression -> Either Error ValExpression
 mkUnaryPlus ctx v | getSort ctx v == SortInt = Right v
 mkUnaryPlus ctx v                            = Left $ Error ("Unary Plus argument not of expected Sort Int but " ++ show (getSort ctx v))
 
 -- | Apply operator Plus on the provided value expressions.
 -- Plus is the 'mkSum' of two Value Expressions.
-mkPlus :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkPlus :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkPlus ctx a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of Plus is not of expected sort Int but " ++ show (getSort ctx a))
 mkPlus ctx _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of Plus is not of expected sort Int but " ++ show (getSort ctx b))
 mkPlus ctx a b                            = mkSum ctx [a,b]
 
 -- | Apply operator Minus on the provided value expressions.
 -- Minus is the difference of two Value Expressions.
-mkMinus :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkMinus :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkMinus ctx a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of Minus is not of expected sort Int but " ++ show (getSort ctx a))
 mkMinus ctx _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of Minus is not of expected sort Int but " ++ show (getSort ctx b))
 mkMinus ctx a b                            = mkUnaryMinus ctx b >>= (\nb -> mkSum ctx [a,nb])
 
 -- | Apply operator Times on the provided value expressions.
 -- Times is the 'mkProduct' of two Value Expressions.
-mkTimes :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkTimes :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkTimes ctx a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of Times is not of expected sort Int but " ++ show (getSort ctx a))
 mkTimes ctx _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of Times is not of expected sort Int but " ++ show (getSort ctx b))
 mkTimes ctx a b                            = mkProduct ctx [a,b]
 
 -- | Apply operator Abs on the provided value expression.
-mkAbs :: ValExprConstructionContext c => c -> ValExpression -> Either Error ValExpression
+mkAbs :: VarContext c => c -> ValExpression -> Either Error ValExpression
 mkAbs ctx a | SortInt /= getSort ctx a = Left $ Error ("Argument of Abs is not of expected sort Int but " ++ show (getSort ctx a))
 -- abs (x) <==> IF (x >=0) THEN x ELSE -x
 mkAbs ctx a                            = mkUnaryMinus ctx a >>= (\na -> mkGEZ ctx a >>= (\c -> mkITE ctx c a na))
 
 -- | Apply operator Less Then (<) on the provided value expressions.
-mkLT :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkLT :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkLT ctx a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of LT is not of expected sort Int but " ++ show (getSort ctx a))
 mkLT ctx _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of LT is not of expected sort Int but " ++ show (getSort ctx b))
 -- a < b <==> a - b < 0 <==> Not ( a - b >= 0 )
 mkLT ctx a b                            = mkMinus ctx a b >>= mkGEZ ctx >>= mkNot ctx
 
 -- | Apply operator Greater Then (>) on the provided value expressions.
-mkGT :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkGT :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkGT ctx a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of GT is not of expected sort Int but " ++ show (getSort ctx a))
 mkGT ctx _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of GT is not of expected sort Int but " ++ show (getSort ctx b))
 -- a > b <==> 0 > b - a <==> Not ( 0 <= b - a )
 mkGT ctx a b                            = mkMinus ctx b a >>= mkGEZ ctx >>= mkNot ctx
 
 -- | Apply operator Less Equal (<=) on the provided value expressions.
-mkLE :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkLE :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkLE ctx   a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of LE is not of expected sort Int but " ++ show (getSort ctx a))
 mkLE ctx   _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of LE is not of expected sort Int but " ++ show (getSort ctx b))
 -- a <= b <==> 0 <= b - a
 mkLE ctx a b                        = mkMinus ctx b a >>= mkGEZ ctx
 
 -- | Apply operator Less Equal (>=) on the provided value expressions.
-mkGE :: ValExprConstructionContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkGE :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkGE ctx   a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of GE is not of expected sort Int but " ++ show (getSort ctx a))
 mkGE ctx   _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of GE is not of expected sort Int but " ++ show (getSort ctx b))
 -- a >= b <==> a - b >= 0
