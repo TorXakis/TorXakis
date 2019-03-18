@@ -36,6 +36,7 @@ packages:
 - location: sys/txs-basics
 - location: sys/txs-basics-gen
 #- location: sys/txs-chan
+- location: sys/txs-compiler
 - location: sys/txs-funcsignature
 - location: sys/txs-funcsignature-gen
 - location: sys/txs-name

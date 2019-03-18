@@ -46,9 +46,9 @@ tests:
         - txs-var-gen
 
 ghc-options:
+- -O
 - -Werror
 - -Wall
-- -O
 - -Widentities
 - -Wincomplete-uni-patterns
 - -Wincomplete-record-updates

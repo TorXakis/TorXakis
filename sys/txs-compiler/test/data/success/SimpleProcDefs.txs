@@ -1,0 +1,673 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+PROCDEF stopper[X :: Int; A]() ::=
+    STOP
+ENDDEF
+
+PROCDEF foo[X, Y :: Int; Z :: String; A, B, C](x :: Int; b, c :: Bool) ::=
+    STOP
+ENDDEF
+
+PROCDEF funcLike[Uh](x :: Int; b, c :: Bool) ::=
+    STOP
+ENDDEF
+
+PROCDEF boring[Boh]() ::=
+    STOP
+ENDDEF
+
+PROCDEF stopper2[X :: Int # Int]() ::=
+    STOP
+ENDDEF
+
+PROCDEF stopper3[X, Y :: Int # Int; Z :: String; A, B](x:: String) ::=
+    STOP
+ENDDEF
+
+PROCDEF simple[X :: Int]() ::=
+    X ! 1
+ENDDEF
+
+PROCDEF exiter[X :: Int]() EXIT Int # Int ::=
+    EXIT ! 0 ! 1
+ENDDEF
+
+PROCDEF ap0[X, Y :: Int](x :: Int) ::=
+    Y ? v | X ! 1
+    >-> X ! x * v
+ENDDEF
+
+PROCDEF ap1[M :: String; N :: String; A :: String](exp :: String) ::=
+    M ? exp | N ? rn [[ exp == rn ]] >-> A ! "Success!"
+ENDDEF
+
+PROCDEF ap2[In :: Int; Out :: String # String]() ::=
+        In ? v
+    >-> Out ! "Boom" ! "Bang" [[v == 0]]
+    >-> In ? w
+    >-> Out ! "Uh?" ! "Ah!" [[v == 1]]
+ENDDEF
+
+PROCDEF ap2[In :: Int; Out :: String # String](e :: String) HIT ::=
+        In ? v
+    >-> Out ! "Boom" ? z [[z == e]]
+    >-> HIT
+    >-> In ? w
+    >-> Out ! "Uh?" ! "Ah!" [[v == 1]]
+ENDDEF
+
+PROCDEF ap2[In :: Int; Out :: String # String]() HIT ::=
+        In ? v
+    >-> ISTEP        
+    >-> Out ! "Boom" ! "Bang" [[v == 0]]
+    >-> MISS
+    >-> In ? w
+    >-> QSTEP
+    >-> Out ! "Uh?" ! "Ah!" [[v == 1]]
+ENDDEF
+
+CHANDEF WhyDoYouHaveANameAtAll ::=
+    Ping;
+    Pong :: Int # Int;    
+    Peng, Pung :: String # Bool
+ENDDEF
+
+MODELDEF Stopper2 ::=
+    CHAN IN Pong
+    CHAN OUT
+    BEHAVIOUR
+    Pong ! 2 ! 2
+ENDDEF
+
+MODELDEF Pinger ::=
+    CHAN IN Ping
+    CHAN OUT
+    BEHAVIOUR Ping >-> STOP
+ENDDEF
+
+FUNCDEF inc(x :: Int) :: Int ::=
+    x + 1
+ENDDEF
+
+CONSTDEF
+    one :: Int ::= 1;
+    two :: String ::= "two"
+ENDDEF
+
+PROCDEF shadower[In, Out :: Int](x::Int) ::=
+        In ? x >-> Out ! x + 1
+    >-> In ? x >-> Out ! inc(x)
+    >-> In ? x >-> Out ! x + one
+ENDDEF
+
+CHANDEF Blah ::=
+    In, Out :: Int
+ENDDEF
+
+PROCDEF letter[In, Out :: Int]() ::=
+    LET y = 20 IN In ? x >-> Out ! x * y NI
+ENDDEF
+
+PROCDEF letter2[In, Out :: Int]() ::=
+   In ? x >-> LET y = x + 1 IN Out ! y NI ||| Out ! 2
+ENDDEF
+
+PROCDEF letter3[In, Out :: Int](x :: Int) ::=
+   In ? x :: Int >-> LET y = x + 1 IN Out ! y NI ||| Out ! 2
+ENDDEF
+
+PROCDEF overloaded[X :: String; Out :: String]() ::=
+    Out ! "X ~ String"
+ENDDEF
+
+
+PROCDEF overloaded[X :: Int; Out :: String]() ::=
+    Out ! "X ~ Int"
+ENDDEF
+
+CHANDEF X ::=
+    S :: String;
+    I, J, K :: Int;
+    OutS :: String
+ENDDEF    
+
+MODELDEF Overloader ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        overloaded[S, OutS]()
+ENDDEF
+
+MODELDEF Overloader1 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        overloaded[I, OutS]()
+ENDDEF
+
+MODELDEF Overloader2 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        S ! "Here I go!" >-> overloaded[I, OutS]()
+ENDDEF
+
+PROCDEF overloaded1[OutS :: String](x :: String) ::=
+    OutS ! "X ~ String"
+ENDDEF
+
+PROCDEF overloaded1[OutS :: String](x :: Int) ::=
+    OutS ! "X ~ Int"
+ENDDEF
+
+PROCDEF overloadedFoo[OutS :: String]() ::=
+        overloaded1[OutS](LET x = "foo" IN x NI)
+ENDDEF
+
+MODELDEF Overloader11 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        overloaded1[OutS](33)
+ENDDEF
+
+MODELDEF Overloader12 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+       overloaded1[OutS](LET x = "foo" IN x NI)
+ENDDEF
+
+PROCDEF outlet[O :: String]() ::=
+    O ! LET x = "foo" IN x NI
+ENDDEF
+
+MODELDEF Outlet0 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        outlet[OutS]()
+ENDDEF
+
+MODELDEF Outlet1 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+           OutS ! LET x = "foo" IN x NI 
+       >-> S ? x :: String
+       >-> overloaded1[OutS](x)
+ENDDEF
+
+MODELDEF Outlet100 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+          OutS ! LET x = "foo" IN x NI 
+       >->
+       S ? x :: String
+      >-> overloaded1[OutS](x)
+ENDDEF
+
+PROCDEF outlet100[I :: Int; S, OutS :: String]() ::=
+OutS ! LET x = "foo" IN x NI 
+       >->
+       S ? x :: String
+      >-> overloaded1[OutS](x)
+ENDDEF
+
+MODELDEF Syncer20 ::=
+    CHAN IN S, I
+    CHAN OUT OutS    
+    BEHAVIOUR
+        I ! 10 | S ? v :: String
+ENDDEF
+
+MODELDEF Syncer21 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    SYNC {S | I}, {OutS}
+    BEHAVIOUR
+        S ! "10" | I ? v >-> I ? x
+ENDDEF
+
+MODELDEF Syncer22 ::=
+    CHAN IN S, I
+    CHAN OUT OutS    
+    BEHAVIOUR
+        I ! 10 | S ? v
+ENDDEF
+
+MODELDEF Syncer ::=
+    CHAN IN I
+    CHAN OUT
+    BEHAVIOUR
+        I ! 10 |[ I ]| I ? x
+ENDDEF
+
+MODELDEF Syncer1 ::=
+    CHAN IN I, J
+    CHAN OUT
+    -- SYNC
+    BEHAVIOUR
+        I ! 10 >-> J ? x |[ I ]| I ? x >-> J ! 33
+ENDDEF
+
+MODELDEF Syncer2 ::=
+    CHAN IN I, J
+    CHAN OUT
+    -- SYNC
+    BEHAVIOUR
+        I ! 10 >-> J ? x |[ I ]| I ? x >-> J ? y |[ J ]| J ! 33
+ENDDEF
+
+MODELDEF Syncer3 ::=
+    CHAN IN I, J
+    CHAN OUT
+    -- SYNC
+    BEHAVIOUR
+        I ! 10 >-> J ? x |[ I ]| (I ? x >-> J ? y |[ J ]| J ! 33)
+ENDDEF
+
+MODELDEF Syncer4 ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        J ? y >-> I ! 10 |[]| J ! 1 >-> I ? a
+ENDDEF
+
+MODELDEF Syncer5 ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        I ! 10 || J ! 1 |[ I, J ]| I ! 22
+ENDDEF
+
+MODELDEF Syncer6 ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        I ? x ||| J ? y >-> I ! 10 || J ! 1 >-> I ? a |[ I ]| I ! 22
+ENDDEF
+
+PROCDEF syncer[X :: Int](y :: Int) ::=
+    X ? v :: Int >-> X ! y + v
+ENDDEF
+
+PROCDEF syncer2[X, Y :: Int]() ::=
+    X ? v |[ Y, X ]| Y ? z
+ENDDEF
+
+
+MODELDEF Syncer7 ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        I ? x
+    ||| J ? y >-> I ! 10
+    ||  J ! 1 >-> I ? a
+    |[ I ]| I ! 22
+    ||| I ? v >-> syncer[J](v)
+    ||| syncer2[I, J]()
+ENDDEF
+
+
+PROCDEF preEnabler[X :: Int]() ::=
+    X ? a :: Int
+ENDDEF
+
+PROCDEF enabler2[X :: Int]() ::=
+    X ? v >-> EXIT ! 10 >>> ACCEPT ? x IN X ! x NI
+ENDDEF
+
+PROCDEF enabler3[X :: Int]() ::=
+    X ? v >-> EXIT >>> X ! 22
+ENDDEF
+
+PROCDEF multipleExiters[X :: String]() ::=
+    X ? v >-> X ? v >-> EXIT >>> EXIT ! "bang" >>> ACCEPT ? str :: String IN X ! str NI
+ENDDEF
+
+PROCDEF enabler[X :: Int]() ::=
+    X ? v >-> EXIT ! 10 ? z :: Int >>> ACCEPT ? a ? b IN X ! a + b NI
+ENDDEF
+
+PROCDEF enabler4[X :: Int]() ::=
+    X ? v >-> EXIT ! 10 ? z :: Int >-> X ? v >-> EXIT ! 10 ? z :: Int >>> ACCEPT ? a ? b IN X ! a + b NI
+ENDDEF
+
+MODELDEF Enabler ::=
+    CHAN IN I
+    CHAN OUT J
+    BEHAVIOUR
+        enabler[I]()
+ENDDEF
+
+PROCDEF exiterMultipleExits[ ](x :: Int) EXIT Int ::=
+    EXIT ! "Hello" >>> ACCEPT ? what IN EXIT ! 10 NI
+ENDDEF
+
+PROCDEF exiterOverloaded[ ](x :: Int) EXIT Int ::=
+    EXIT ! 1
+ENDDEF
+
+PROCDEF exiterOverloaded[ ](s :: String) EXIT String # String ::=
+    EXIT ! "Foo" ? bar :: String
+ENDDEF
+
+CHANDEF X ::=
+        ST :: String # String
+ENDDEF
+
+MODELDEF ExiterOverloader ::=
+    CHAN IN ST
+    CHAN OUT
+    BEHAVIOUR
+        exiterOverloaded[ ]("foo") >>> ACCEPT ? v :: String ? w :: String IN  ST ! v ! w NI
+ENDDEF
+
+
+PROCDEF enabler200[I, J, K :: Int]() ::=
+    I ? x >-> EXIT ! x >>> ACCEPT ? z IN K ! 10 NI
+ENDDEF
+
+PROCDEF enabler2[I, J, K :: Int]() ::=
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    |||
+        J ? y :: Int >-> EXIT ? x :: Int ! y
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+MODELDEF Enabler2 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    |||
+        J ? y :: Int >-> EXIT ? x :: Int ! y
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+PROCDEF enabler5[X :: Int; Z]() ::=
+    (X ? v >-> EXIT ||| X ! 22 >-> EXIT) >>> X ! 10
+ENDDEF
+
+PROCDEF noop [ ] (  ) ::=
+    STOP
+ENDDEF
+
+PROCDEF noop [ ] ( id :: Int ) ::=
+        noop [ ] (10)
+ENDDEF
+
+PROCDEF produceLoop [ In_Material           :: Int
+                    ; In_Correction         :: String
+                    ; Out_Material          :: Int
+                    ; Out_ProduceReport     :: String
+                    ] ( id :: Int ) ::=
+    (       
+            Out_Material ! id 
+       >-> In_Material ? nextId
+       >-> EXIT ! nextId
+    )
+    |[ Out_Material ]|
+    (
+        (
+                ( Out_Material ! id >-> EXIT )
+          |||
+              ( Out_ProduceReport ? pr [[ 44 == id ]] >-> EXIT )
+        ) >>>
+           ( In_Correction ? correction [[ 22 == id ]] >-> EXIT ? nextId :: Int )
+    )
+    >>> ACCEPT ? nextId :: Int IN
+        produceLoop [In_Material, In_Correction, Out_Material, Out_ProduceReport] (nextId)
+    NI
+ENDDEF
+
+MODELDEF Disabler ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        I ! 10 >-> K ! 22 [>> J ? k
+ENDDEF
+
+MODELDEF Disabler2 ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        (I ! 10 ||| K ! 22) [>> J ? k
+ENDDEF
+
+MODELDEF Disabler3 ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        (I ! 10 ||| K ! 22) [>> (J ? k |[ J ]| J ? z [[ z > 20 ]])
+ENDDEF
+
+
+MODELDEF Disabler4 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    [>>
+        J ? y :: Int >-> EXIT ? x :: Int ! y
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+PROCDEF disabler5[I, J, K :: Int]() ::=           -- 
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    [>>
+        J ? y :: Int >-> EXIT ? x :: Int ! y
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+MODELDEF Disabler5 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+        disabler5[K, I, J]()
+ENDDEF
+
+
+MODELDEF Interruptr ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        I ! 10 >-> K ! 22 [>< J ? k >-> EXIT
+ENDDEF
+
+MODELDEF Interruptr2 ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        (I ! 10 ||| K ! 22) [>< J ? k >-> EXIT
+ENDDEF
+
+MODELDEF Interruptr3 ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        (I ! 10 ||| K ! 22) [>< (J ? k  >-> EXIT |[ J ]| J ? z >-> EXIT [[ z > 20 ]] >-> EXIT)
+ENDDEF
+
+MODELDEF Interruptr4 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    [><
+        J ? y :: Int >-> EXIT
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+PROCDEF interruptr5[I, J, K :: Int]() ::=           -- 
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    [><
+        J ? y :: Int >-> EXIT
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+MODELDEF Interruptr5 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+        interruptr5[K, I, J]()
+ENDDEF
+
+PROCDEF stringer[ ]() EXIT String ::=
+    EXIT ! "Foo"
+ENDDEF
+
+PROCDEF integerer[ ]() EXIT Int ::=
+    EXIT ! 33
+ENDDEF
+
+CHANDEF X ::=
+    OutStr :: String;
+    OutInt :: Int
+ENDDEF
+
+MODELDEF Overloader200 ::=
+    CHAN IN 
+    CHAN OUT OutStr, OutInt
+    BEHAVIOUR
+        (stringer[ ]() >>> ACCEPT ? v IN OutStr ! v NI)
+        ##
+        (integerer[ ]() >>> ACCEPT ? v IN OutInt ! v NI)
+ENDDEF
+
+MODELDEF Choicer ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        I ? x
+    ## J ? y >-> I ! 10
+    ||  J ! 1 >-> I ? a
+    |[ I ]| I ! 22
+    ||| I ? v >-> syncer[J](v)
+    ## syncer2[I, J]()
+ENDDEF
+
+PROCDEF guardian[X :: String](n :: Int) ::=
+    [[ n == 0 ]] =>> X ! "Bye"
+    |||
+    [[ 0 <  n ]] =>> X ! "Hello" >-> guardian[X](n - 1)    
+ENDDEF
+
+PROCDEF guardian2[X :: String](n :: Int) ::=
+    [[ n == 0 ]] =>> X ! "Bye"
+    ##
+    [[ 0 <  n ]] =>> X ! "Hello" >-> guardian[X](n - 1)    
+ENDDEF
+
+
+FUNCDEF isSomething(s :: String) :: Bool ::=
+    (s == "Something") \/ (s == "something") \/ (s == "SOMETHING")
+ENDDEF
+
+FUNCDEF sex(s :: String) :: String ::=
+    IF s == "Moon"
+    THEN "Female"
+    ELSE "Unknown"
+    FI
+ENDDEF    
+
+PROCDEF luckyPeople [ In :: String; Out :: String ] ( last :: String; n :: Int ) ::=
+        In ? p :: String [[ isSomething(p) ]] 
+    >-> Out ! "Is lucky!"
+    >->(
+                ( [[ sex(p) == last ]] =>> luckyPeople[In,Out] ( sex(p), n+1 ) )
+            ##
+                ( [[ sex(p) <> last ]] =>> luckyPeople[In,Out] ( sex(p), 1 ) )
+        )
+ENDDEF
+
+CHANDEF X ::=        
+        Channel, A, B, C, D
+ENDDEF
+
+
+MODELDEF Hidder ::=
+    CHAN IN Channel, A, B, C, D
+    CHAN OUT
+    BEHAVIOUR
+    HIDE [ Channel ] IN
+        A >-> Channel >-> C
+    |[ Channel ]|
+        B >-> Channel >-> D
+    NI
+ENDDEF    
+
+PROCDEF hidder[Channel, A, B, C, D]() ::=
+    HIDE [ Channel ] IN
+        A >-> Channel >-> C
+    |[ Channel ]|
+        B >-> Channel >-> D
+    NI
+ENDDEF    
+
+
+MODELDEF Hidder2 ::=
+    CHAN IN I, J, K
+    CHAN OUT
+    BEHAVIOUR
+    HIDE [ T :: Int ] IN
+           I ? x >-> K ? y >-> T ! x+y >-> EXIT ! "hello" ! 2 * x  + y
+         |[ T ]|
+           K ? s >-> T ? sum >-> EXIT  ? s :: String ! sum + s
+    NI
+    >>>
+    ACCEPT ? str ? v
+    IN
+        I ! v
+    NI
+ENDDEF    
+
+PROCDEF hidder2[I, J, K :: Int]() ::=
+    HIDE [ T :: Int ] IN
+           I ? x >-> K ? y >-> T ! x + y >-> EXIT ! "hello" ! 2 * x  + y
+         |[ T ]|
+           K ? s >-> T ? sum >-> EXIT  ? s :: String ! sum + s
+    NI
+    >>>
+    ACCEPT ? str ? v
+    IN
+        I ! v
+    NI
+ENDDEF    
+
+-- | Test support for implicit variables introduced in (question mark) actions.
+--
+-- See https://github.com/TorXakis/TorXakis/issues/769#issuecomment-413872550
+PROCDEF varActionBinding[S, R :: Int]() ::=
+   S ? x [[ LET y = x IN True NI ]]
+ENDDEF

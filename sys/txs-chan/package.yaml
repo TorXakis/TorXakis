@@ -33,9 +33,9 @@ library:
   - txs-name
 
 ghc-options:
+- -O
 - -Werror
 - -Wall
-- -O
 - -Widentities
 - -Wincomplete-record-updates
 - -Wmissing-home-modules

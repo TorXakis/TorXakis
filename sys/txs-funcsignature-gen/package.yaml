@@ -43,9 +43,9 @@ tests:
         - txs-funcsignature-gen
 
 ghc-options:
+- -O
 - -Werror
 - -Wall
-- -O
 - -Widentities
 - -Wincomplete-uni-patterns
 - -Wincomplete-record-updates

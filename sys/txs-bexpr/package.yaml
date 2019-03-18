@@ -37,9 +37,9 @@ library:
   - Unique
 
 ghc-options:
+- -O
 - -Werror
 - -Wall
-- -O
 - -Widentities
 - -Wincomplete-record-updates
 - -Wincomplete-uni-patterns

@@ -30,9 +30,9 @@ library:
   - TorXakis.VarContext
 
 ghc-options:
+- -O
 - -Werror
 - -Wall
-- -O
 - -Widentities
 - -Wincomplete-record-updates
 - -Wmissing-home-modules

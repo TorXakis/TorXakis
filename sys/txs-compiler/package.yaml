@@ -1,0 +1,87 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+name:                txs-compiler
+version:             0.1.0.0
+github:              "TorXakis/TorXakis"
+license:             BSD3
+author:              "Damian Nadales"
+maintainer:          "damian.nadales@gmail.com"
+copyright:           "Copyright: (c) 2017 Damian Nadales"
+
+dependencies:
+- base >= 4.7 && < 5
+- lens
+
+flags:
+  develop:
+    manual: True
+    default: False
+
+when:
+- condition: (!flag(develop))
+  ghc-options:
+  - -Werror
+
+ghc-options:
+- -O
+- -fconstraint-solver-iterations=10
+- -Wall
+- -Widentities
+- -Wcompat
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmissing-home-modules
+#- -Wmissing-local-signatures
+#- -Wmonomorphism-restriction
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - TorXakis.Compiler
+  - TorXakis.Compiler.Error
+  - TorXakis.Parser
+  - TorXakis.Compiler.MapsTo
+  dependencies:
+  - text
+  - parsec
+  - mtl
+  - containers
+  - transformers
+  - MissingH
+  - ilist
+  - Unique
+  # TorXakis dependencies
+  - txs-valexpr
+  - txs-value
+  - txs-sort
+
+tests:
+  txs-compiler-test:
+    main: Spec.hs
+    source-dirs:
+    - test
+
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -O
+    dependencies:
+    - hspec
+    - hspec-core
+    - filemanip
+    - filepath
+    - containers
+    - raw-strings-qq
+
+    # Local dependencies
+    - txs-compiler
+
+extra-source-files:
+- test/data/success/*.txs
+- test/data/examps/*.txs
+- test/data/parser/success/*.txs
+- test/data/regression/*.txs
+- README.md

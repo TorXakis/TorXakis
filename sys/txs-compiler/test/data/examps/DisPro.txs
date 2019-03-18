@@ -1,0 +1,92 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+TYPEDEF  JobData  ::=  JobData  {  jobId          :: Int
+                                ;  jobDescription :: String
+                                ;  x, y           :: Int
+                                }
+ENDDEF
+
+
+FUNCDEF  isValidJobId ( jobId :: Int )  :: Bool ::=
+    ( jobId > 0 ) 
+ -- /\ ( ( jobId % 2 ) == 0 )
+ENDDEF
+
+FUNCDEF  isValidJob ( jobdata :: JobData )  :: Bool ::=
+    isValidJobId ( jobId ( jobdata ) )
+ /\ strinre ( jobDescription(jobdata), REGEX('[A-Z][0-9]{2}[a-z]+') )
+ /\ ( x(jobdata) > 0 )
+ /\ ( y(jobdata) > 0 )
+       /\  ( IF (x(jobdata) < y(jobdata)) THEN
+                ( abs(x(jobdata) - y(jobdata)) < (100 * x(jobdata) ))
+            ELSE
+                ( abs(x(jobdata) - y(jobdata)) < (100 * y(jobdata) ))
+            FI )
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+-- Job Output
+
+TYPEDEF  JobOut  ::=  JobOut  {  jobId     :: Int
+                              ;  processor :: Int
+                              ;  gcd       :: Int
+                              }
+                    | Error   {  reason :: String }
+ENDDEF
+
+TYPEDEF IntSet ::=   Empty
+                   | IntSet { hd :: Int
+                            ; tl :: IntSet
+                            } 
+ENDDEF
+
+FUNCDEF  isValidIntSet ( set :: IntSet )  :: Bool ::=
+    IF isEmpty(set)
+        THEN True
+        ELSE not ( contains ( hd ( set ) , tl ( set ) ) )
+             /\ isValidIntSet ( tl ( set ) )
+    FI
+ENDDEF
+
+FUNCDEF  contains ( elem :: Int ; set :: IntSet )  :: Bool ::=
+    IF isEmpty(set) 
+        THEN False
+        ELSE IF (hd(set) == elem) 
+                THEN True
+                ELSE contains (elem, tl(set))
+             FI
+    FI
+ENDDEF
+
+FUNCDEF add ( elem :: Int ; set :: IntSet )  :: IntSet ::=
+    IF isEmpty(set) 
+        THEN IntSet( elem, Empty )
+        ELSE IF (hd(set) == elem) 
+                THEN set
+                ELSE IntSet( hd(set), add(elem, tl(set)) )
+             FI
+    FI
+ENDDEF
+
+FUNCDEF remove ( elem :: Int ; set :: IntSet )  :: IntSet ::=
+    IF isEmpty(set) 
+        THEN Empty
+        ELSE IF (hd(set) == elem) 
+                THEN tl(set)
+                ELSE IntSet( hd(set), remove(elem, tl(set)) )
+             FI
+    FI
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+-- Greatest Common Divisor
+-- https://en.wikipedia.org/wiki/Euclidean_algorithm
+FUNCDEF  gcd ( a, b :: Int ) :: Int ::=
+    IF b == 0 THEN  a
+              ELSE  gcd (b, a % b)
+    FI
+ENDDEF
