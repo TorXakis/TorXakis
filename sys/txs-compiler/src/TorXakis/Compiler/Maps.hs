@@ -34,70 +34,55 @@ module TorXakis.Compiler.Maps
     , findFuncDecl
     , determineF
     , getUniqueElement
-    , lookupChId
-    , chRefsToIds
-    , findSortId
-    , findFuncSortIds
-    , findSortIdM
-    , determineSH
+    , findSort
+    , findFuncReturnSorts
+    , findSortM
     , findRight
-    , usedChIdMap
-    , findVarIdM
     , idefsNames
-    , usedChIds
       -- * Map manipulation
     , join
-    , dropHandler
     )
 where
 
 import           Control.Arrow            (left, (|||))
 import           Control.Lens             ((.~))
 import           Control.Monad.Except     (catchError, liftEither, throwError)
-import           Data.List                (nub, sortBy)
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
 import           Data.Maybe               (catMaybes, maybe)
 import           Data.Monoid              ((<>))
-import           Data.Set                 (Set)
-import qualified Data.Set                 as Set
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Data.Typeable            (Typeable)
 import           Prelude                  hiding (lookup)
 
-import           ChanId                   (ChanId, unid)
-import           FuncId                   (FuncId)
-import           FuncTable                (Handler, Signature, sortArgs,
-                                           sortRet)
-import           SortId                   (SortId)
-import           VarId                    (VarId)
+import           TorXakis.FuncSignature   (FuncSignature(args, returnSort))
+import           TorXakis.Sort            (Sort)
 
 import           TorXakis.Compiler.Data   (CompilerM)
-import           TorXakis.Compiler.Error  (Entity (Entity, Function, Variable),
+import           TorXakis.Compiler.Error  (Entity (Entity, Function),
                                            Error (Error), ErrorLoc (NoErrorLoc),
                                            ErrorType (MultipleDefinitions, Undefined),
                                            HasErrorLoc, errorLoc, errorMsg,
                                            getErrorLoc, _errorLoc, _errorMsg,
                                            _errorType)
 import           TorXakis.Compiler.MapsTo (MapsTo, innerMap, lookup, lookupM)
-import           TorXakis.Parser.Data     (ChanDeclE, ChanRef, ChanRefE,
-                                           FuncDeclE,
+import           TorXakis.Parser.Data     (FuncDeclE,
                                            Loc (ExtraAut, Loc, PredefLoc),
-                                           VarDeclE, VarRefE, getLoc)
+                                           VarDeclE, VarRefE)
 
--- | Lookup the @SortId@ associated to the given name, using the location for
+-- | Lookup the @Sort@ associated to the given name, using the location for
 -- error reporting.
-findSortId :: MapsTo Text SortId mm
-           => mm -> (Text, Loc t) -> Either Error SortId
-findSortId mm (t, l) = left (errorMsg .~ msg) $ lookup t mm <!> l
+findSort :: MapsTo Text Sort mm
+           => mm -> (Text, Loc t) -> Either Error Sort
+findSort mm (t, l) = left (errorMsg .~ msg) $ lookup t mm <!> l
     where
       msg = "Could not find sort " <> t
 
--- | Monadic version of @findSortIdM@
-findSortIdM :: MapsTo Text SortId mm
-           => mm -> (Text, Loc t) -> CompilerM SortId
-findSortIdM mm (t, l) = liftEither $ findSortId mm (t, l)
+-- | Monadic version of @findSortM@
+findSortM :: MapsTo Text Sort mm
+           => mm -> (Text, Loc t) -> CompilerM Sort
+findSortM mm (t, l) = liftEither $ findSort mm (t, l)
 
 -- | Get the function definition if the given list is a singleton, return an
 -- error otherwise.
@@ -116,11 +101,11 @@ getUniqueElement xs = Left Error
 
 -- | Select the function definitions that matches the given arguments and return
 -- types.
-determineF :: MapsTo (Loc FuncDeclE) Signature mm
+determineF :: MapsTo (Loc FuncDeclE) FuncSignature mm
            => mm
            -> [Loc FuncDeclE]
-           -> [SortId]        -- ^ Arguments SortId.
-           -> Maybe SortId    -- ^ Return Sort, if known.
+           -> [Sort]        -- ^ Arguments Sort.
+           -> Maybe Sort    -- ^ Return Sort, if known.
            -> [Loc FuncDeclE]
 determineF mm ls aSids mRSid =
     filter funcMatches ls
@@ -128,30 +113,9 @@ determineF mm ls aSids mRSid =
       funcMatches :: Loc FuncDeclE -> Bool
       funcMatches l = const False ||| id $ do
           sig <- lookup l mm
-          return $ sortArgs sig == aSids &&
-                   maybe True (sortRet sig ==) mRSid
+          return $ args sig == aSids &&
+                   maybe True (returnSort sig ==) mRSid
 
--- | Determine the signature and the handler based on the sort arguments and
--- the expected return type (if any).
-determineSH :: [(Signature, Handler VarId)]
-             -> [SortId]     -- ^ @SortId@s of the arguments.
-             -> Maybe SortId -- ^ Expected return @SortId@ (if known).
-             -> Either Error (Signature, Handler VarId)
-determineSH shs sargs msret =
-    case filter (sigMatches . fst) shs of
-        [(sig, h)] -> return (sig, h)
-        [] -> Left Error
-            { _errorType = Undefined Function
-            , _errorLoc = NoErrorLoc
-            , _errorMsg = "Could not determine the function based on the given signature "
-            }
-        _ -> Left Error
-            { _errorType = MultipleDefinitions Function
-            , _errorLoc = NoErrorLoc
-            , _errorMsg = "Found multiple functions that can be applied."
-            }
-    where
-      sigMatches sig = (sortArgs sig == sargs) && maybe True (sortRet sig ==) msret
 
 -- | Get the name of the implicit function declaration, if any.
 fdiName :: Loc FuncDeclE -> Maybe Text
@@ -188,43 +152,16 @@ findRight vdefs l = Left ||| cErr ||| Right $ lookup l vdefs
             , _errorMsg  = "Could not function declaration."
             }
 
--- | Find the variable declaration that corresponds to a variable reference.
-findVarDecl ::  MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-            => mm -> Loc VarRefE -> Either Error (Loc VarDeclE)
-findVarDecl mm l = Left ||| Right ||| cErr $ lookup l mm
-    where
-      cErr :: [Loc FuncDeclE] -> Either Error a
-      cErr _ = Left err
-      err = Error
-            { _errorType = Undefined Variable
-            , _errorLoc  = getErrorLoc l
-            , _errorMsg  = "Could not variable declaration."
-            }
-
--- | Find the variable id that corresponds to a given variable reference.
-findVarId :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-             , MapsTo (Loc VarDeclE) VarId mm )
-          => mm -> Loc VarRefE -> Either Error VarId
-findVarId mm vr = do
-    vD  <- findVarDecl mm vr
-    lookup vD mm
-
--- | Monadic version of @findVarId@.
-findVarIdM :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-             , MapsTo (Loc VarDeclE) VarId mm )
-          => mm -> Loc VarRefE -> CompilerM VarId
-findVarIdM mm vr = liftEither $ findVarId mm vr
-
--- | Find all the return @SortId@'s of the given function declarations.
-findFuncSortIds :: MapsTo (Loc FuncDeclE) Signature mm
-                => mm -> [Loc FuncDeclE] -> Either Error [SortId]
-findFuncSortIds mm fdis = fmap sortRet <$> traverse (`lookup` mm) fdis
+-- | Find all the return @Sort@'s of the given function declarations.
+findFuncReturnSorts :: MapsTo (Loc FuncDeclE) FuncSignature mm
+                => mm -> [Loc FuncDeclE] -> Either Error [Sort]
+findFuncReturnSorts mm fdis = fmap returnSort <$> traverse (`lookup` mm) fdis
 
 -- | Extract the names of the implicit function declarations in the map.
-idefsNames :: MapsTo (Loc FuncDeclE) FuncId mm => mm -> [Text]
+idefsNames :: MapsTo (Loc FuncDeclE) FuncSignature mm => mm -> [Text]
 idefsNames mm = catMaybes $ fdiName <$> Map.keys fm
     where
-      fm :: Map (Loc FuncDeclE) FuncId
+      fm :: Map (Loc FuncDeclE) FuncSignature
       fm = innerMap mm
 
 -- | Set the error location.
@@ -247,26 +184,12 @@ mm .@ k = lookup k mm <!> k
      => mm -> k -> CompilerM v
 mm .@@ k = lookupM k mm <!!> k
 
--- | Lookup the @ChanId@ associated to the given location.
-lookupChId :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-              , MapsTo (Loc ChanDeclE) ChanId mm )
-           => mm -> Loc ChanRefE -> CompilerM ChanId
-lookupChId mm cr = do
-    cd <- mm .@@ cr :: CompilerM (Loc ChanDeclE)
-    mm .@@ cd
 
 -- | Lookup the given key, and use the given location for error reporting.
 (.@!!) :: ( HasErrorLoc l, MapsTo k v mm, Ord k, Show k
           , Typeable k, Typeable v )
      => mm -> (k, l) -> CompilerM v
 mm .@!! (k, l) = lookupM k mm <!!> l
-
--- | Given a list of channel references and a composite map, get the @ChanId@'s
--- associated to those references.
-chRefsToIds :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-               , MapsTo (Loc ChanDeclE) ChanId mm )
-            => mm -> [ChanRef] -> CompilerM [ChanId]
-chRefsToIds mm chs = traverse (lookupChId mm) (getLoc <$> chs)
 
 -- | Join two maps 'm0' and 'm1'. A pair '(k, w)' is in the resulting map if
 -- and only if there is a key 'v' such that '(k, v)' is in 'm0' and '(v, w)' is
@@ -276,25 +199,3 @@ join m0 m1 = foldl maybeAddPair Map.empty (Map.toList m0)
     where
       maybeAddPair acc (k, v) =
           maybe acc (\w -> Map.insert k w acc) (Map.lookup v m1)
-
--- | Channels referred in the model
-usedChIdMap :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-               , MapsTo (Loc ChanDeclE) ChanId mm )
-            => mm -> Map (Loc ChanRefE) ChanId
-usedChIdMap mm =  join (innerMap mm :: Map (Loc ChanRefE) (Loc ChanDeclE)) (innerMap mm)
-
--- | Drop the handler from the map.
-dropHandler :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-            -> Map (Loc FuncDeclE) Signature
-dropHandler = fmap fst
-
--- | Get the list of channel ids used in an expression (model, purpose, etc).
-usedChIds :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-             , MapsTo (Loc ChanDeclE) ChanId mm )
-          => mm -> [Set ChanId]
-usedChIds mm = fmap Set.singleton (sortByUnid . nub . Map.elems $ usedChIdMap mm)
-    where
-      sortByUnid :: [ChanId] -> [ChanId]
-      sortByUnid = sortBy cmpChUnid
-          where
-            cmpChUnid c0 c1 = unid c0 `compare` unid c1

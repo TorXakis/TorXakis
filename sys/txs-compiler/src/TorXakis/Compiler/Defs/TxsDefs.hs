@@ -22,10 +22,10 @@ See LICENSE at root directory of this repository.
 --------------------------------------------------------------------------------
 module TorXakis.Compiler.Defs.TxsDefs
     ( adtsToTxsDefs
-    , cnectDeclsToTxsDefs
-    , mapperDeclsToTxsDefs
-    , modelDeclsToTxsDefs
-    , purpDeclsToTxsDefs
+--    , cnectDeclsToTxsDefs
+--    , mapperDeclsToTxsDefs
+--    , modelDeclsToTxsDefs
+--    , purpDeclsToTxsDefs
     )
 where
 
@@ -41,48 +41,21 @@ import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 
-import           BehExprDefs                        (ChanOffer (Exclam, Quest),
-                                                     Offer (Offer), chanIdHit,
-                                                     chanIdMiss, chanIdQstep)
-import           ChanId                             (ChanId)
-import           CnectId                            (CnectId (CnectId))
-import           CstrId                             (CstrId)
-import           FuncTable                          (Handler, Signature)
-import           Id                                 (Id (Id))
-import           ProcId                             (ExitSort (NoExit), ProcId)
-import           PurpId                             (PurpId (PurpId))
-import           SortDef                            (SortDef (SortDef))
-import           SortId                             (SortId, sortIdString)
-import           TxsDefs                            (CnectDef (CnectDef), ConnDef (ConnDfroW, ConnDtoW),
-                                                     GoalId (GoalId),
-                                                     MapperDef (MapperDef),
-                                                     MapperId (MapperId),
-                                                     ModelDef,
-                                                     ModelId (ModelId), ProcDef,
-                                                     PurpDef (PurpDef), TxsDefs,
-                                                     VExpr, cstrDefs, empty,
-                                                     sortDefs)
-import qualified TxsDefs
-import           VarId                              (VarId)
+-- For now, only Sorts
+import           TorXakis.ContextSort               (ContextSort)
 
-import           TorXakis.Compiler.Data             (CompilerM, getNextId)
-import           TorXakis.Compiler.Defs.BehExprDefs (toBExpr, toOffer)
-import           TorXakis.Compiler.Defs.ModelDef    (chRefsToChIdSet,
-                                                     modelDeclToModelDef)
+import           TorXakis.Compiler.Data             (CompilerM)
 import           TorXakis.Compiler.Error            (Error (Error), ErrorType (InvalidExpression, TypeMismatch),
                                                      getErrorLoc, _errorLoc,
                                                      _errorMsg, _errorType)
-import           TorXakis.Compiler.Maps             (dropHandler, lookupChId,
-                                                     usedChIds, (.@@))
 import           TorXakis.Compiler.Maps.DefinesAMap (getMap)
-import           TorXakis.Compiler.Maps.VarRef      (varDefsFromExp)
 import           TorXakis.Compiler.MapsTo           ((:&) ((:&)), Contents, In,
                                                      MapsTo, innerMap, keys,
                                                      values, (<.+>))
 import           TorXakis.Compiler.ValExpr.CstrDef  (compileToCstrDefs)
-import           TorXakis.Compiler.ValExpr.SortId   (exitSort, inferVarTypes)
-import           TorXakis.Compiler.ValExpr.ValExpr  (expDeclToValExpr)
-import           TorXakis.Compiler.ValExpr.VarId    (mkVarIds)
+--import           TorXakis.Compiler.ValExpr.SortId   (exitSort, inferVarTypes)
+--import           TorXakis.Compiler.ValExpr.ValExpr  (expDeclToValExpr)
+--import           TorXakis.Compiler.ValExpr.VarId    (mkVarIds)
 import           TorXakis.Parser.Data               (ADTDecl, ChanDeclE, ChanOfferDecl (ExclD, QuestD),
                                                      ChanRefE, CnectDecl,
                                                      CnectItem,
@@ -112,7 +85,7 @@ import           TorXakis.Parser.Data               (ADTDecl, ChanDeclE, ChanOff
                                                      testGoalDeclName)
 
 -- | Compile a list of ADT declarations into @TxsDefs@.
-adtsToTxsDefs :: ( MapsTo Text SortId mm
+adtsToTxsDefs :: ( MapsTo Text Sort mm
                  , MapsTo (Loc CstrE) CstrId mm)
               => mm -> [ADTDecl] -> CompilerM TxsDefs
 adtsToTxsDefs mm ds = do
@@ -122,12 +95,7 @@ adtsToTxsDefs mm ds = do
         , cstrDefs = lCstrDefs
         }
 
--- | Extract the @SortDef@'s from the composite map.
-envToSortDefs :: ( MapsTo Text SortId mm )
-              => mm -> Map SortId SortDef
-envToSortDefs mm = Map.fromList $
-    zip (values @Text mm) (repeat SortDef)
-
+{-
 -- | Compile a list of model declarations into a map from model id's to model
 -- definitions.
 modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
@@ -427,3 +395,4 @@ mapperDeclsToTxsDefs mm mds =
 -- | Create a model id from a model declaration.
 modelDeclToModelId :: ModelDecl -> CompilerM ModelId
 modelDeclToModelId md = ModelId (modelName md) . Id <$>  getNextId
+-}

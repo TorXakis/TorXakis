@@ -13,29 +13,6 @@ dependencies:
 - base >= 4.7 && < 5
 - lens
 
-flags:
-  develop:
-    manual: True
-    default: False
-
-when:
-- condition: (!flag(develop))
-  ghc-options:
-  - -Werror
-
-ghc-options:
-- -O
-- -fconstraint-solver-iterations=10
-- -Wall
-- -Widentities
-- -Wcompat
-- -Wincomplete-uni-patterns
-- -Wincomplete-record-updates
-- -Wmissing-home-modules
-#- -Wmissing-local-signatures
-#- -Wmonomorphism-restriction
-- -Wredundant-constraints
-
 library:
   source-dirs: src
   exposed-modules:
@@ -53,6 +30,7 @@ library:
   - ilist
   - Unique
   # TorXakis dependencies
+  - txs-funcsignature
   - txs-valexpr
   - txs-value
   - txs-sort
@@ -78,6 +56,29 @@ tests:
 
     # Local dependencies
     - txs-compiler
+
+flags:
+  develop:
+    manual: True
+    default: False
+
+when:
+- condition: (!flag(develop))
+  ghc-options:
+  - -Werror
+
+ghc-options:
+- -O
+- -fconstraint-solver-iterations=10
+- -Wall
+- -Widentities
+- -Wcompat
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmissing-home-modules
+#- -Wmissing-local-signatures
+#- -Wmonomorphism-restriction
+- -Wredundant-constraints
 
 extra-source-files:
 - test/data/success/*.txs
