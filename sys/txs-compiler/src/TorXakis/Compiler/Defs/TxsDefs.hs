@@ -29,71 +29,32 @@ module TorXakis.Compiler.Defs.TxsDefs
     )
 where
 
-import           Control.Monad                      (unless, when)
-import           Control.Monad.Except               (liftEither, throwError)
-import           Data.List.Unique                   (repeated)
-import           Data.Map                           (Map)
-import qualified Data.Map                           as Map
-import           Data.Map.Merge.Strict              (mergeA, traverseMissing,
-                                                     zipWithAMatched)
-import           Data.Semigroup                     ((<>))
-import qualified Data.Set                           as Set
+import           Control.Monad.Except               (throwError)
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 
 -- For now, only Sorts
-import           TorXakis.ContextSort               (ContextSort)
-
+import           TorXakis.ContextSort               (ContextSort, empty)
+import           TorXakis.SortContext               (addADTs)
+import           TorXakis.Sort                      (Sort)
 import           TorXakis.Compiler.Data             (CompilerM)
-import           TorXakis.Compiler.Error            (Error (Error), ErrorType (InvalidExpression, TypeMismatch),
-                                                     getErrorLoc, _errorLoc,
-                                                     _errorMsg, _errorType)
-import           TorXakis.Compiler.Maps.DefinesAMap (getMap)
-import           TorXakis.Compiler.MapsTo           ((:&) ((:&)), Contents, In,
-                                                     MapsTo, innerMap, keys,
-                                                     values, (<.+>))
-import           TorXakis.Compiler.ValExpr.CstrDef  (compileToCstrDefs)
+import           TorXakis.Compiler.Error            (Error (Error), ErrorType (InvalidExpression),
+                                                     ErrorLoc (NoErrorLoc) )
+import           TorXakis.Compiler.MapsTo           (MapsTo)
+import           TorXakis.Compiler.ValExpr.ADTDef   (compileToADTDefs)
 --import           TorXakis.Compiler.ValExpr.SortId   (exitSort, inferVarTypes)
 --import           TorXakis.Compiler.ValExpr.ValExpr  (expDeclToValExpr)
 --import           TorXakis.Compiler.ValExpr.VarId    (mkVarIds)
-import           TorXakis.Parser.Data               (ADTDecl, ChanDeclE, ChanOfferDecl (ExclD, QuestD),
-                                                     ChanRefE, CnectDecl,
-                                                     CnectItem,
-                                                     CnectItemType (ChanIn, ChanOut),
-                                                     CnectType (CTClient, CTServer),
-                                                     CodecItem (CodecItem),
-                                                     CodecType (Decode, Encode),
-                                                     CstrE, FuncDeclE, Loc,
-                                                     MapperDecl, ModelDecl,
-                                                     PurpDecl, VarDeclE,
-                                                     VarRefE, chanRefName,
-                                                     chanRefOfOfferDecl,
-                                                     cnectCh,
-                                                     cnectDeclCnectItems,
-                                                     cnectDeclCodecs,
-                                                     cnectDeclName,
-                                                     cnectDeclType, cnectType,
-                                                     codecOffer, codecType,
-                                                     getLoc, host, mapperBExp,
-                                                     mapperIns, mapperName,
-                                                     mapperOuts, mapperSyncs,
-                                                     modelName, port,
-                                                     purpDeclGoals, purpDeclIns,
-                                                     purpDeclName, purpDeclOuts,
-                                                     purpDeclSyncs,
-                                                     testGoalDeclBExp,
-                                                     testGoalDeclName)
+import           TorXakis.Parser.Data               (ADTDecl)
 
--- | Compile a list of ADT declarations into @TxsDefs@.
-adtsToTxsDefs :: ( MapsTo Text Sort mm
-                 , MapsTo (Loc CstrE) CstrId mm)
-              => mm -> [ADTDecl] -> CompilerM TxsDefs
+-- | Compile a list of ADT declarations into @TorXakis.ContextSort@.
+adtsToTxsDefs :: MapsTo Text Sort mm
+              => mm -> [ADTDecl] -> CompilerM ContextSort
 adtsToTxsDefs mm ds = do
-    lCstrDefs <- compileToCstrDefs mm ds
-    return $ empty
-        { sortDefs = envToSortDefs mm
-        , cstrDefs = lCstrDefs
-        }
+    adtDefs <- compileToADTDefs mm ds
+    case addADTs adtDefs empty of
+        Left e -> throwError $ Error InvalidExpression NoErrorLoc (T.pack ("Unable to add ADTDefs due to " ++ show e))
+        Right c -> return c
 
 {-
 -- | Compile a list of model declarations into a map from model id's to model

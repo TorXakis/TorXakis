@@ -31,6 +31,7 @@ library:
   - Unique
   # TorXakis dependencies
   - txs-funcsignature
+  - txs-name
   - txs-valexpr
   - txs-value
   - txs-sort

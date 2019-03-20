@@ -220,7 +220,7 @@ instance ( TypeError (      'Text "No map found: \""
     lookupPair          _ = undefined
     innerMapPair        _ = undefined
     addMapPair          _ = undefined
-    replaceInnerMapPair _ =  undefined
+    replaceInnerMapPair _ = undefined
 
 instance ( TypeError (     'Text "Map is not unique: \""
                       ':<>: 'ShowType (m0 :& m1)
@@ -236,4 +236,4 @@ instance ( TypeError (     'Text "Map is not unique: \""
     lookupPair          _ = undefined
     innerMapPair        _ = undefined
     addMapPair          _ = undefined
-    replaceInnerMapPair _ =  undefined
+    replaceInnerMapPair _ = undefined
