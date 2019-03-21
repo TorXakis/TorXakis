@@ -58,7 +58,7 @@ txsLangDef = LanguageDef
     , commentLine     = "--"
     , nestedComments  = True
     , identStart      = letter
-    , identLetter     = alphaNum <|> oneOf "_'"
+    , identLetter     = alphaNum <|> oneOf "_-"
     , opStart         = opLetter txsLangDef
     , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
     , reservedNames   = txsReservedNames

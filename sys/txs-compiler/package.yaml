@@ -12,6 +12,9 @@ copyright:           "Copyright: (c) 2017 Damian Nadales"
 dependencies:
 - base >= 4.7 && < 5
 - lens
+- text
+  # TorXakis dependencies
+- txs-sort
 
 library:
   source-dirs: src
@@ -21,7 +24,6 @@ library:
   - TorXakis.Parser
   - TorXakis.Compiler.MapsTo
   dependencies:
-  - text
   - parsec
   - mtl
   - containers
@@ -34,7 +36,6 @@ library:
   - txs-name
   - txs-valexpr
   - txs-value
-  - txs-sort
 
 tests:
   txs-compiler-test:
@@ -54,9 +55,12 @@ tests:
     - filepath
     - containers
     - raw-strings-qq
+    - QuickCheck
 
     # Local dependencies
     - txs-compiler
+    - txs-basics
+    - txs-sort-gen
 
 flags:
   develop:

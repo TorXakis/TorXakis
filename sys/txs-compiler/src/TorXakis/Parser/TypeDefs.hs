@@ -36,7 +36,7 @@ adtP = declP "TYPEDEF" $ \n l -> mkADTDecl n l <$> cstrP `sepBy` txsSymbol "|"
 cstrP :: TxsParser CstrDecl
 cstrP = do
     m  <- mkLoc
-    n  <- txsLexeme (ucIdentifier "Constructors")
+    n  <- txsLexeme identifier
     fs <- idOfSortsP "{" "}" mkFieldDecl
     return $ mkCstrDecl n m fs
 
@@ -44,7 +44,7 @@ cstrP = do
 sortP :: TxsParser OfSort
 sortP = do
     m <- mkLoc
-    n <- txsLexeme (ucIdentifier "Sorts")
+    n <- txsLexeme identifier
     return $ mkOfSort n m
 
 -- | Parser of a list of identifiers declarations, with an associated sort. The
@@ -70,7 +70,7 @@ idOfSortsP op cl f = nonEmptyIdOfSortsP <|> return []
 --
 idOfSortsListP :: (Text -> Loc t -> OfSort -> d) -> TxsParser [d]
 idOfSortsListP f =  do
-    fns <- txsLexeme lcIdentifier `sepBy` txsSymbol ","
+    fns <- txsLexeme identifier `sepBy` txsSymbol ","
     fs <- ofSortP
     traverse (mkIdWithSort fs) fns
     where

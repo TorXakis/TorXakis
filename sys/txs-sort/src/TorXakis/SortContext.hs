@@ -60,5 +60,3 @@ class SortContext c where
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addADTs :: [ADTDef] -> c -> Either Error c
-
-

@@ -21,7 +21,7 @@ See LICENSE at root directory of this repository.
 -- Compilation functions related to 'TorXakis' definitions.
 --------------------------------------------------------------------------------
 module TorXakis.Compiler.Defs.TxsDefs
-    ( adtsToTxsDefs
+    ( adtsToContext
 --    , cnectDeclsToTxsDefs
 --    , mapperDeclsToTxsDefs
 --    , modelDeclsToTxsDefs
@@ -33,9 +33,7 @@ import           Control.Monad.Except               (throwError)
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 
--- For now, only Sorts
-import           TorXakis.ContextSort               (ContextSort, empty)
-import           TorXakis.SortContext               (addADTs)
+import           TorXakis.SortContext               (SortContext, addADTs)
 import           TorXakis.Sort                      (Sort)
 import           TorXakis.Compiler.Data             (CompilerM)
 import           TorXakis.Compiler.Error            (Error (Error), ErrorType (InvalidExpression),
@@ -47,14 +45,15 @@ import           TorXakis.Compiler.ValExpr.ADTDef   (compileToADTDefs)
 --import           TorXakis.Compiler.ValExpr.VarId    (mkVarIds)
 import           TorXakis.Parser.Data               (ADTDecl)
 
--- | Compile a list of ADT declarations into @TorXakis.ContextSort@.
-adtsToTxsDefs :: MapsTo Text Sort mm
-              => mm -> [ADTDecl] -> CompilerM ContextSort
-adtsToTxsDefs mm ds = do
+-- | Compile a list of ADT declarations, and add to @TorXakis.SortContext@.
+adtsToContext :: ( MapsTo Text Sort mm
+                 , SortContext c)
+              => mm -> [ADTDecl] -> c -> CompilerM c
+adtsToContext mm ds ctx = do
     adtDefs <- compileToADTDefs mm ds
-    case addADTs adtDefs empty of
-        Left e -> throwError $ Error InvalidExpression NoErrorLoc (T.pack ("Unable to add ADTDefs due to " ++ show e))
-        Right c -> return c
+    case addADTs adtDefs ctx of
+        Left e     -> throwError $ Error InvalidExpression NoErrorLoc (T.pack ("Unable to add ADTDefs due to " ++ show e))
+        Right nctx -> return nctx
 
 {-
 -- | Compile a list of model declarations into a map from model id's to model

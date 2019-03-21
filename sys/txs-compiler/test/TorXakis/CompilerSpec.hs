@@ -21,19 +21,32 @@ module TorXakis.CompilerSpec
     (spec)
 where
 
-import           Control.Lens            ((^..))
-import           Data.Data.Lens          (biplate)
+--import           Control.Lens            ((^..))
+--import           Data.Data.Lens          (biplate)
 import           Data.Either             (isRight)
-import           Data.Foldable           (traverse_)
+import           Data.Text               (unpack)
+import           Debug.Trace
+--import           Data.Foldable           (traverse_)
 import           System.FilePath         ((</>))
-import           Test.Hspec              (Spec, describe, expectationFailure,
-                                          it, parallel, shouldBe,
+import           Test.Hspec              (Spec, describe, 
+                                          --expectationFailure,
+                                          it,
+                                          --parallel, 
+                                          --shouldBe,
                                           shouldSatisfy)
-import           Text.RawString.QQ       (r)
+import           Test.QuickCheck
+import           Test.QuickCheck.Monadic
+--import           Text.RawString.QQ       (r)
 
 import           Common                  (onAllFilesIn)
-import           TorXakis.Compiler       (compileFile, compileString)
-import           TorXakis.Compiler.Error
+import           TorXakis.Compiler       (compileFile, 
+                                          compileString
+                                          )
+import           TorXakis.PrettyPrint.TorXakis
+import           TorXakis.SortContext
+import           TorXakis.SortGenContext
+
+--import           TorXakis.Compiler.Error
 
 spec :: Spec
 spec = do
@@ -49,22 +62,39 @@ spec = do
     describe "Compiles the regression tests" $
       checkSuccess `onAllFilesIn` ("test" </> "data" </> "regression")
 
+    describe "Round tripping of" $
+        it "randomly generated data types" $ property roundTripping
     -- Failure test cases
-    describe "Reports the expected errors " $
-        parallel $ traverse_ checkFailure failureTestCases
+    -- describe "Reports the expected errors " $
+    --    parallel $ traverse_ checkFailure failureTestCases
 
     where
         checkSuccess fp = it (show fp) $ do
             res <- compileFile fp
             res `shouldSatisfy` isRight
-        checkFailure (testName, snippet, expectedErrs) = it testName $ do
-            res <- compileString snippet
-            case res of
-                Right _ -> expectationFailure $
-                    "Compilation succeeded instead of getting the expected errors "
-                    ++ show expectedErrs
-                Left err -> err ^.. biplate `shouldBe` expectedErrs
 
+        roundTripping :: Gen Property
+        roundTripping = do
+            ctx <- arbitraryTestSortContext
+            return $ monadicIO $ do
+                                    b <- run (checkCompile ctx)
+                                    assert b
+
+        checkCompile :: ContextTestSort -> IO Bool
+        checkCompile ctx = let s = prettyPrintContext (Options True True) ctx in do
+                                res <- compileString (unpack (toText s))
+                                case res of
+                                    Right c -> return $ elemsADT ctx == elemsADT c
+                                    Left e  -> trace ("Failure on context:\n" ++ show s ++ "\nerror: " ++ show e) (return False)
+        -- checkFailure (testName, snippet, expectedErrs) = it testName $ do
+            -- res <- compileString snippet
+            -- case res of
+                -- Right _ -> expectationFailure $
+                    -- "Compilation succeeded instead of getting the expected errors "
+                    -- ++ show expectedErrs
+                -- Left err -> err ^.. biplate `shouldBe` expectedErrs
+
+{-
 failureTestCases :: [(TestName, CodeSnippet, [ErrorType])]
 failureTestCases = [ duplicatedFuncParam1
                    , duplicatedFuncParam2
@@ -214,3 +244,4 @@ ENDDEF
 
 type TestName = String
 type CodeSnippet = String
+-}

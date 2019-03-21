@@ -17,14 +17,16 @@ See LICENSE at root directory of this repository.
 -- Compilation functions related to 'TorXakis' Adt definitions.
 --------------------------------------------------------------------------------
 module TorXakis.Compiler.ValExpr.ADTDef
-    (compileToADTDefs)
+    ( compileToADTDefs
+    , compileToSorts)
 where
 
 import           Control.Monad.Except              (throwError)
 import           Data.Text                         (Text, pack, concat)
+import qualified Data.Map                          as Map
 
 import           TorXakis.Name
-import           TorXakis.Sort                     (Sort,
+import           TorXakis.Sort                     (Sort (SortADT),
                                                     ADTDef, mkADTDef,
                                                     ConstructorDef, mkConstructorDef,
                                                     FieldDef (FieldDef))
@@ -37,6 +39,28 @@ import           TorXakis.Parser.Data              (ADTDecl, adtName,
                                                     constructors,
                                                     cstrFields)
 
+toAdtName :: ADTDecl -> CompilerM Name
+toAdtName a = case mkName (adtName a) of
+                   Left e -> throwError $ Error InvalidExpression
+                                                (getErrorLoc a)
+                                                ( Data.Text.concat [ pack "Unable to make adt name from "
+                                                                   , adtName a
+                                                                   , pack (" due to " ++ show e)
+                                                                   ] )
+                   Right n -> return n
+
+-- | Compile a map of Text to 'TorXakis.Sort' for the list of ADT declarations.
+compileToSorts :: [ADTDecl]
+                 -> CompilerM (Map.Map Text Sort)
+compileToSorts ds = do
+                    l <- mapM compileToSort ds
+                    return $ Map.fromList l
+    where
+        compileToSort :: ADTDecl -> CompilerM (Text, Sort)
+        compileToSort a = do
+            n <- toAdtName a
+            return (adtName a, SortADT (RefByName n))
+                            
 -- | Compile a list of ADT declarations into a list of 'TorXakis.ADTDef's.
 compileToADTDefs :: MapsTo Text Sort mm
                  => mm
@@ -50,20 +74,14 @@ adtToADTDef :: MapsTo Text Sort mm
             => mm
             -> ADTDecl
             -> CompilerM ADTDef
-adtToADTDef mm a = case mkName (adtName a) of
-                        Left e -> throwError $ Error InvalidExpression
-                                                     (getErrorLoc a)
-                                                     ( Data.Text.concat [ pack "Unable to make adt name from "
-                                                                        , adtName a
-                                                                        , pack (" due to " ++ show e)
-                                                                        ] )
-                        Right n -> do
-                                        cs <- traverse (cstrToADTDef mm) (constructors a)
-                                        case mkADTDef n cs of
-                                             Left e -> throwError $ Error InvalidExpression
-                                                                          (getErrorLoc a)
-                                                                          ( pack ("Unable to make adt due to " ++ show e ) )
-                                             Right aDef -> return aDef
+adtToADTDef mm a = do
+    n <- toAdtName a
+    cs <- traverse (cstrToADTDef mm) (constructors a)
+    case mkADTDef n cs of
+         Left e -> throwError $ Error InvalidExpression
+                                      (getErrorLoc a)
+                                      ( pack ("Unable to make adt due to " ++ show e ) )
+         Right aDef -> return aDef
 
 -- | Compile a constructor declaration into a 'TorXakis.ConstructorDef'.
 cstrToADTDef :: MapsTo Text        Sort mm
