@@ -30,11 +30,9 @@ module TorXakis.ContextTestSort
 )
 where
 import           Data.Data           (Data)
-import qualified Data.Text            as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.ContextSort
-import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.TestSortContext
@@ -69,7 +67,3 @@ instance TestSortContext ContextTestSort where
     adtSize r = TorXakis.TestSortData.adtSize r . tsd
 
     constructorSize r c = TorXakis.TestSortData.constructorSize r c . tsd
-
--- | Pretty Printer for 'TorXakis.ContextTestSort'.
-instance PrettyPrintContext ContextTestSort where
-    prettyPrintContext o s = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o s) (elemsADT s)))

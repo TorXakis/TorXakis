@@ -19,14 +19,18 @@ See LICENSE at root directory of this repository.
 module TorXakis.SortContext
 (-- * Sort Context
   SortContext (..)
+, prettyPrintSortContext
   -- dependencies, yet part of interface
 , Error
 , Sort
 , ADTDef
 )
 where
+import qualified Data.Text                      as T
+
 import           TorXakis.Error                 (Error)
 import           TorXakis.Name
+import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort                  (Sort(..), ADTDef(adtName))
 
 -- | A Sort Context instance 
@@ -60,3 +64,7 @@ class SortContext c where
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addADTs :: [ADTDef] -> c -> Either Error c
+
+-- | Pretty Printer for 'TorXakis.SortContext'.
+prettyPrintSortContext :: SortContext c => Options -> c -> TxsString
+prettyPrintSortContext o ctx = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o ctx) (elemsADT ctx)))

@@ -45,6 +45,7 @@ import           TorXakis.Compiler       (compileFile,
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.SortContext
 import           TorXakis.SortGenContext
+import           TorXakis.OptionsGen
 
 --import           TorXakis.Compiler.Error
 
@@ -75,17 +76,18 @@ spec = do
 
         roundTripping :: Gen Property
         roundTripping = do
+            OptionsGen o <- arbitrary
             ctx <- arbitraryTestSortContext
             return $ monadicIO $ do
-                                    b <- run (checkCompile ctx)
+                                    b <- run (checkCompile o ctx)
                                     assert b
 
-        checkCompile :: ContextTestSort -> IO Bool
-        checkCompile ctx = let s = prettyPrintContext (Options True True) ctx in do
-                                res <- compileString (unpack (toText s))
-                                case res of
-                                    Right c -> return $ elemsADT ctx == elemsADT c
-                                    Left e  -> trace ("Failure on context:\n" ++ show s ++ "\nerror: " ++ show e) (return False)
+        checkCompile :: Options -> ContextTestSort -> IO Bool
+        checkCompile o ctx = let s = prettyPrintSortContext o ctx in do
+                                 res <- compileString (unpack (toText s))
+                                 case res of
+                                      Right c -> return $ elemsADT ctx == elemsADT c
+                                      Left e  -> trace ("Failure on context:\n" ++ show s ++ "\nerror: " ++ show e) (return False)
         -- checkFailure (testName, snippet, expectedErrs) = it testName $ do
             -- res <- compileString snippet
             -- case res of

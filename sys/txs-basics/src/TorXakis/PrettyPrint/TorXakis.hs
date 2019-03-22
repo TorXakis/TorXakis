@@ -24,7 +24,6 @@ module TorXakis.PrettyPrint.TorXakis
   Options (..)
   -- * Pretty Print class for TorXakis
 , PrettyPrint (..)
-, PrettyPrintContext (..)
   -- * Pretty Print Output for TorXakis
 , TxsString (..)
   -- * Helper Functions
@@ -49,10 +48,6 @@ data Options = Options { -- | May a definition cover multiple lines?
 -- | Enables pretty printing in a common way.
 class PrettyPrint c a where
     prettyPrint :: Options -> c -> a -> TxsString
-
--- | Pretty printing all definitions in a context.
-class PrettyPrintContext c where
-    prettyPrintContext :: Options -> c -> TxsString
 
 -- | The data type that represents the output for pretty printing in TorXakis format.
 newtype TxsString = TxsString { toText :: T.Text }

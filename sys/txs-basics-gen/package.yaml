@@ -21,6 +21,11 @@ library:
   exposed-modules:
   - TorXakis.Cover
   - TorXakis.Distribute
+  - TorXakis.OptionsGen
+  dependencies:
+  - deepseq
+  - text
+  - txs-basics
 
 tests:
     txs-basics-gen-test:

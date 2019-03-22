@@ -60,6 +60,7 @@ tests:
     # Local dependencies
     - txs-compiler
     - txs-basics
+    - txs-basics-gen
     - txs-sort-gen
 
 flags:
