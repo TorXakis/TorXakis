@@ -86,7 +86,8 @@ spec = do
         checkCompile o ctx = let s = prettyPrintSortContext o ctx in do
                                  res <- compileString (unpack (toText s))
                                  case res of
-                                      Right c -> return $ elemsADT ctx == elemsADT c
+                                      Right c -> -- trace ("\nChecking context:\n" ++ show s) $ 
+                                                    return $ elemsADT ctx == elemsADT c
                                       Left e  -> trace ("Failure on context:\n" ++ show s ++ "\nerror: " ++ show e) (return False)
         -- checkFailure (testName, snippet, expectedErrs) = it testName $ do
             -- res <- compileString snippet
