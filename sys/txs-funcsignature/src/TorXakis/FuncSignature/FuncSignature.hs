@@ -48,9 +48,9 @@ import qualified Data.Set             as Set
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
-import           TorXakis.Name        (toName)
+import           TorXakis.Name                 (toName)
 import           TorXakis.FunctionName
-import           TorXakis.PrettyPrint.TorXakis
+import           TorXakis.PrettyPrint.TorXakis (TxsString(..))
 import           TorXakis.Sort
 import           TorXakis.SortContext
 

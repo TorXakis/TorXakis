@@ -103,7 +103,7 @@ arbitraryADTDefs ctx =
                     cs <- arbitraryConstructors s (map (SortADT . RefByName) uNames)
                     aDefs <- toADTDefs ns ( (SortADT . RefByName) n : s)
                     return $ case mkADTDef n cs of
-                        Left  _    -> error "error in generator: creating valid ADTDef"
+                        Left  e    -> error ("error in generator: creating valid ADTDef, yet " ++ show e)
                         Right aDef -> aDef : aDefs
           in
             toADTDefs uniqueNames (elemsSort ctx)

@@ -134,7 +134,7 @@ instance HasName ConstructorDef where
 mkConstructorDef :: Name -> [FieldDef] -> Either Error ConstructorDef
 mkConstructorDef n fs
     | null nuFields     = Right $ ConstructorDef n fs
-    | otherwise             = Left $ Error ("Non unique field names: " ++ show nuFields)
+    | otherwise         = Left $ Error ("Non unique field names: " ++ show nuFields)
     where
         nuFields :: [FieldDef]
         nuFields = repeatedByName fs

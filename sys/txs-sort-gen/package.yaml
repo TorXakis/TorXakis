@@ -16,6 +16,7 @@ dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
 - text
+- txs-basics
 - txs-name
 - txs-sort
 
@@ -32,7 +33,6 @@ library:
     - containers
     - hashmap
     - multimap
-    - txs-basics
     - txs-name-gen
 
 tests:

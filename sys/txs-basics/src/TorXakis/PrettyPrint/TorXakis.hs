@@ -26,6 +26,7 @@ module TorXakis.PrettyPrint.TorXakis
 , PrettyPrint (..)
   -- * Pretty Print Output for TorXakis
 , TxsString (..)
+, toString
   -- * Helper Functions
 , indent
 , separator
@@ -52,6 +53,10 @@ class PrettyPrint c a where
 -- | The data type that represents the output for pretty printing in TorXakis format.
 newtype TxsString = TxsString { toText :: T.Text }
     deriving (Eq, Ord, Read, Generic, NFData, Data)
+
+-- | To String conversion
+toString :: TxsString -> String
+toString = T.unpack . toText
 
 instance Show TxsString where
     show (TxsString x) = T.unpack x
