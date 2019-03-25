@@ -45,6 +45,6 @@ newtype OptionsGen = OptionsGen { -- | accessor to 'TorXakis.Options'
 instance Arbitrary OptionsGen
     where
         arbitrary = do
-            ml <- arbitrary
             sh <- arbitrary
+            ml <- arbitrary
             return $ OptionsGen (Options ml sh)

@@ -40,9 +40,10 @@ import qualified Data.Text              as T
 import           Text.Parsec            (ParsecT, getPosition, getState, many,
                                          putState, sourceColumn, sourceLine,
                                          try, (<?>), (<|>))
-import           Text.Parsec.Char       (alphaNum, letter, lower, oneOf, upper)
+import           Text.Parsec.Char       (lower, oneOf, upper, satisfy)
 import           Text.Parsec.Token      hiding (identifier)
 
+import           TorXakis.Language
 import           TorXakis.Parser.Data
 
 -- | Type of the parser intput stream.
@@ -53,61 +54,19 @@ type TxsParser = ParsecT ParserInput St Identity
 
 txsLangDef :: GenLanguageDef ParserInput St Identity
 txsLangDef = LanguageDef
-    { commentStart    = "{-"
-    , commentEnd      = "-}"
-    , commentLine     = "--"
-    , nestedComments  = True
-    , identStart      = letter
-    , identLetter     = alphaNum <|> oneOf "_-"
-    , opStart         = opLetter txsLangDef
+    { commentStart    = toString txsCommentStart
+    , commentEnd      = toString txsCommentEnd
+    , commentLine     = toString txsCommentLine
+    , nestedComments  = txsNestedComments
+    , identStart      = satisfy satisfyTxsIdentifierHead
+    , identLetter     = satisfy satisfyTxsIdentifierTail
+    , opStart         = opLetter txsLangDef             -- TODO: get clear what should be here?
     , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
-    , reservedNames   = txsReservedNames
+    , reservedNames   = map toString txsKeywords
     , reservedOpNames = []
     , caseSensitive   = True
     }
 
-txsReservedNames :: [String]
-txsReservedNames
-  = [ "TYPEDEF"
-    , "FUNCDEF"
-    , "PROCDEF"
-    , "ENDDEF"
-    , "CHANDEF"
-    , "MODELDEF"
-    , "MAPPERDEF"
-    , "CNECTDEF"
-    , "CHAN"
-    , "ENCODE"
-    , "DECODE"
-    , "IN"
-    , "OUT"
-    , "HOST"
-    , "PORT"
-    , "CLIENTSOCK"
-    , "SERVERSOCK"
-    , "BEHAVIOUR"
-    , "IF"
-    , "THEN"
-    , "ELSE"
-    , "FI"
-    , "LET"
-    , "PURPDEF"
-    , "HIT"
-    , "MISS"
-    , "GOAL"
-    , "HIDE"
-    , "NI"
-    , "SYNC"
-    , "EXIT"
-    , "ACCEPT"
-    , "STAUTDEF"
-    , "VAR"
-    , "STATE"
-    , "INIT"
-    , "TRANS"
-    , "ISTEP"
-    , "QSTEP"
-    , "CONSTDEF" ]
 
 txsTokenP :: GenTokenParser ParserInput St Identity
 txsTokenP = makeTokenParser txsLangDef

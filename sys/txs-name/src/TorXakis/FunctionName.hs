@@ -38,8 +38,8 @@ import           Data.Data          (Data)
 import           Data.Hashable      (Hashable(hashWithSalt))
 import           Data.Text          (Text, unpack)
 import           GHC.Generics       (Generic)
-import           Text.Regex.TDFA
 
+import           TorXakis.Language  (satisfyTxsFuncOperator)
 import           TorXakis.Name      (isReservedToken)
 import           TorXakis.Error     (Error(Error))
 
@@ -69,6 +69,6 @@ instance Hashable FunctionName where
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 mkFunctionName :: Text -> Either Error FunctionName
 mkFunctionName s | isReservedToken s = Left $ Error ("Provided name is a reserved token: " ++ show s)
-                 | otherwise        = if unpack s =~ "[A-Za-z_][A-Za-z_0-9-]*|[-+*^=<>%/\\|@&]+"
+                 | otherwise        = if satisfyTxsFuncOperator (unpack s)
                                         then Right $ FunctionName s
                                         else Left $ Error ("String violates regular expression requirement: " ++ show s)

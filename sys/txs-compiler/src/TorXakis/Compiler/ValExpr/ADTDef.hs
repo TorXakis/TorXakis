@@ -66,8 +66,8 @@ compileToADTDefs :: MapsTo Text Sort mm
                  => mm
                  -> [ADTDecl]
                  -> CompilerM [ADTDef]
-compileToADTDefs mm ds =
-    traverse (adtToADTDef mm) ds
+compileToADTDefs mm =
+    traverse (adtToADTDef mm)
 
 -- | Compile an ADT declaration into an 'TorXakis.ADTDef'.
 adtToADTDef :: MapsTo Text Sort mm

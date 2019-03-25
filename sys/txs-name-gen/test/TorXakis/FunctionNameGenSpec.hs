@@ -22,11 +22,11 @@ where
 import qualified Data.Text          as T
 import           Test.Hspec
 import           Test.QuickCheck
-import           Text.Regex.TDFA
 
 import           TorXakis.Cover
 import           TorXakis.FunctionName
 import           TorXakis.FunctionNameGen
+import           TorXakis.Language
 
 -- | Eq check
 prop_Eq :: FunctionNameGen -> Bool 
@@ -46,7 +46,7 @@ prop_notNull (FunctionNameGen nm) =
 
 prop_Regex :: FunctionNameGen -> Bool
 prop_Regex (FunctionNameGen nm) =
-    T.unpack (toText nm) =~ "[-=+*/\\^<>|@&%]+|[A-Za-z_][A-Za-z_0-9-]*"
+    satisfyTxsFuncOperator (T.unpack (toText nm))
 
 spec :: Spec
 spec =
