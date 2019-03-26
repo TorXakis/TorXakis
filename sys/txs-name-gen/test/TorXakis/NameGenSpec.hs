@@ -25,6 +25,7 @@ import           Test.Hspec
 import           Test.QuickCheck
 
 import           TorXakis.Cover
+import           TorXakis.Language (isTxsReserved)
 import           TorXakis.Name
 import           TorXakis.NameGen
 
@@ -46,7 +47,7 @@ prop_notNull (NameGen nm) =
 
 prop_notReservedName :: NameGen -> Bool
 prop_notReservedName (NameGen nm) =
-    ( not . isReservedToken . toText ) nm
+    ( not . isTxsReserved . toString ) nm
 
 prop_RepeatedByName_Set :: Set.Set NameGen -> Bool
 prop_RepeatedByName_Set s =

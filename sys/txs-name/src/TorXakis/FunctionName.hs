@@ -39,8 +39,7 @@ import           Data.Hashable      (Hashable(hashWithSalt))
 import           Data.Text          (Text, unpack)
 import           GHC.Generics       (Generic)
 
-import           TorXakis.Language  (satisfyTxsFuncOperator)
-import           TorXakis.Name      (isReservedToken)
+import           TorXakis.Language  (satisfyTxsFuncOperator, isTxsReserved)
 import           TorXakis.Error     (Error(Error))
 
 -- | Definition of the Operator name.
@@ -68,7 +67,7 @@ instance Hashable FunctionName where
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 mkFunctionName :: Text -> Either Error FunctionName
-mkFunctionName s | isReservedToken s = Left $ Error ("Provided name is a reserved token: " ++ show s)
-                 | otherwise        = if satisfyTxsFuncOperator (unpack s)
-                                        then Right $ FunctionName s
-                                        else Left $ Error ("String violates regular expression requirement: " ++ show s)
+mkFunctionName s | isTxsReserved (unpack s) = Left $ Error ("Provided name is a reserved token: " ++ show s)
+                 | otherwise                = if satisfyTxsFuncOperator (unpack s)
+                                                then Right $ FunctionName s
+                                                else Left $ Error ("String violates regular expression requirement: " ++ show s)

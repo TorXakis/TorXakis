@@ -16,6 +16,7 @@ dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
 - text
+- txs-language
 - txs-name
 
 library:

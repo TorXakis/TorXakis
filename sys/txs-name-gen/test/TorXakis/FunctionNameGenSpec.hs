@@ -42,11 +42,11 @@ prop_ReadShow (FunctionNameGen val) = coverReadShow val
 
 prop_notNull :: FunctionNameGen -> Bool
 prop_notNull (FunctionNameGen nm) =
-    ( not . T.null . toText ) nm
+    ( not . T.null . TorXakis.FunctionName.toText ) nm
 
 prop_Regex :: FunctionNameGen -> Bool
 prop_Regex (FunctionNameGen nm) =
-    satisfyTxsFuncOperator (T.unpack (toText nm))
+    satisfyTxsFuncOperator (TorXakis.FunctionName.toString nm)
 
 spec :: Spec
 spec =

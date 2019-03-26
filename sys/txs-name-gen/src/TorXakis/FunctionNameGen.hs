@@ -34,7 +34,7 @@ import qualified Data.Text as T
 import           GHC.Generics     (Generic)
 import           Test.QuickCheck
 
-import           TorXakis.Name
+import           TorXakis.Language
 import           TorXakis.FunctionName
 
 -- | Definition of the name generator.
@@ -48,27 +48,25 @@ nameStartChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 nameChars :: String
 nameChars = nameStartChars ++ "-0123456789"
 
-genTextName :: Gen T.Text
-genTextName = do
+genStringName :: Gen String
+genStringName = do
     c <- elements nameStartChars
     s <- listOf (elements nameChars)
-    return $ T.pack (c:s)
+    return (c:s)
 
 operatorChars :: String
 operatorChars = "=+-*/\\^<>|@&%"
 
-genTextOperator :: Gen T.Text
-genTextOperator = do
-    s <- listOf1 (elements operatorChars)
-    return $ T.pack s
+genStringOperator :: Gen String
+genStringOperator =
+    listOf1 (elements operatorChars)
 
 genText :: Gen T.Text
 genText = do
-    text <- oneof [genTextName, genTextOperator]
-    if isReservedToken text
+    str <- oneof [genStringName, genStringOperator]
+    if isTxsReserved str
         then discard
-        else return text
-
+        else return $ T.pack str
 
 instance Arbitrary FunctionNameGen
     where

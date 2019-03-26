@@ -15,7 +15,6 @@ extra-source-files:
 dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
-- text
 - txs-basics
 - txs-name
 - txs-sort
@@ -45,6 +44,7 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
+        - text
         - txs-sort-gen
 
 ghc-options:

@@ -18,6 +18,7 @@ library:
   - TorXakis.Language
   dependencies:
   - base >= 4.7 && < 5
+  - containers
   - deepseq
   - regex-tdfa
   - text

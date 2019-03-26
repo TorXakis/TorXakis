@@ -6,7 +6,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE TypeFamilies      #-}
 --------------------------------------------------------------------------------
 -- |

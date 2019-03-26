@@ -34,6 +34,7 @@ import qualified Data.Text as T
 import           GHC.Generics     (Generic)
 import           Test.QuickCheck
 
+import           TorXakis.Language
 import           TorXakis.Name
 
 -- | Definition of the name generator.
@@ -47,19 +48,32 @@ nameStartChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 nameChars :: String
 nameChars = nameStartChars ++ "-0123456789"
 
-genText :: Gen T.Text
-genText = do
+genString :: Gen String
+genString = do
     c <- elements nameStartChars
     s <- listOf (elements nameChars)
-    let text = T.pack (c:s) in
-        if isReservedToken text
+    return (c:s)
+
+genName :: Gen NameGen
+genName = do
+    str <- genString
+    if isTxsReserved str
         then discard
-        else return text
+        else case mkName (T.pack str) of
+                  Right n -> return (NameGen n)
+                  Left e  -> error $ "Error in NameGen: unexpected error " ++ show e
+
+genIsName :: Gen NameGen
+genIsName = do
+    str <- genString
+    let isStr = TorXakis.Language.toString (txsNameIsConstructor str) in
+        if isTxsReserved isStr
+            then discard
+            else case mkName (T.pack isStr) of
+                      Right n -> return (NameGen n)
+                      Left e  -> error $ "Error in NameGen: unexpected error " ++ show e
 
 instance Arbitrary NameGen
     where
-        arbitrary = do
-            text <- genText
-            case mkName text of
-                    Right n -> return (NameGen n)
-                    Left e  -> error $ "Error in NameGen: unexpected error " ++ show e
+        arbitrary = oneof [genName, genIsName]
+        

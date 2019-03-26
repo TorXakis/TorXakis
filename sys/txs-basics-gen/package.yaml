@@ -24,7 +24,6 @@ library:
   - TorXakis.OptionsGen
   dependencies:
   - deepseq
-  - text
   - txs-basics
 
 tests:

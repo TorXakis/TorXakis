@@ -199,7 +199,7 @@ checkSMTSolvers :: IO ()
 checkSMTSolvers = 
   traverse_ checkCommand txsSupportedSolvers
   where
-    txsSupportedSolvers = Prelude.map addExeSuffix ["z3","cvc4"]
+    txsSupportedSolvers = Prelude.map addExeSuffix ["z3", "cvc4"]
 
 -- | Check that the given command exists in the search path of the host system.
 checkCommand :: Text -> IO ()

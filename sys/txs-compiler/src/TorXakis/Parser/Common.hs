@@ -35,6 +35,7 @@ where
 
 import           Control.Monad          (void, when)
 import           Control.Monad.Identity (Identity)
+import qualified Data.Set               as Set
 import           Data.Text              (Text)
 import qualified Data.Text              as T
 import           Text.Parsec            (ParsecT, getPosition, getState, many,
@@ -62,7 +63,7 @@ txsLangDef = LanguageDef
     , identLetter     = satisfy satisfyTxsIdentifierTail
     , opStart         = opLetter txsLangDef             -- TODO: get clear what should be here?
     , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
-    , reservedNames   = map toString txsKeywords
+    , reservedNames   = map toString (Set.toList txsKeywords)
     , reservedOpNames = []
     , caseSensitive   = True
     }

@@ -30,9 +30,12 @@ module TorXakis.Language
 , txsCommentEnd
  -- ** Case Sensitivity
 , txsCaseSensitive
- -- ** Keywords
+ -- ** Predefined Keywords and Operators
 , txsPredefinedSorts
 , txsKeywords
+, isTxsKeyword
+, txsOperators
+, isTxsReserved
  -- ** Identifiers
 , regexTxsIdentifier
 , regexTxsIdentifierHead
@@ -52,6 +55,8 @@ module TorXakis.Language
 where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
+import           Data.List
+import qualified Data.Set            as Set
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 import           Text.Regex.TDFA
@@ -93,21 +98,74 @@ txsPredefinedSorts :: [TxsString]
 txsPredefinedSorts = map (TxsString . T.pack) [ "Int", "Bool", "Char", "String", "Regex" ]
 
 -- | TorXakis Keywords
-txsKeywords :: [TxsString]
-txsKeywords = txsPredefinedSorts ++
-              map (TxsString . T.pack) [ "TYPEDEF", "CONSTDEF", "FUNCDEF", "PROCDEF", "MODELDEF"
-                                       , "CHANDEF", "PURPDEF", "CNECTDEF", "STAUTDEF", "MAPPERDEF"
-                                       , "ENDDEF"                                           -- Definitions
-                                       , "LET", "IN", "NI"
-                                       , "IF", "THEN", "ELSE", "FI"                         -- ValExpr
-                                       , "ISTEP", "EXIT", "HIDE", "ACCEPT"                  -- PROCDEF terms
-                                       , "QSTEP"
-                                       , "GOAL", "HIT", "MISS"                              -- GOALDEF terms
-                                       , "CHAN", "OUT", "BEHAVIOUR", "SYNC"                 -- MODELDEF terms
-                                       , "CLIENTSOCK", "SERVERSOCK", "ENCODE", "DECODE"
-                                       , "HOST", "PORT"                                     -- CNECTDEF terms
-                                       , "STATE", "VAR", "INIT", "TRANS"                    -- STAUTDEF terms
-                                       ]
+txsKeywords :: Set.Set TxsString
+txsKeywords = Set.fromList $
+                  txsPredefinedSorts ++
+                  map (TxsString . T.pack) [ "TYPEDEF", "CONSTDEF", "FUNCDEF", "PROCDEF", "MODELDEF"
+                                           , "CHANDEF", "PURPDEF", "CNECTDEF", "STAUTDEF", "MAPPERDEF"
+                                           , "ENDDEF"                                           -- Definitions
+                                           , "LET", "IN", "NI"
+                                           , "IF", "THEN", "ELSE", "FI"                         -- ValExpr
+                                           , "STOP", "EXIT"
+                                           , "ISTEP", "HIDE", "ACCEPT"                          -- PROCDEF terms
+                                           , "QSTEP"
+                                           , "GOAL", "HIT", "MISS"                              -- GOALDEF terms
+                                           , "CHAN", "OUT", "BEHAVIOUR", "SYNC"                 -- MODELDEF terms
+                                           , "CLIENTSOCK", "SERVERSOCK", "ENCODE", "DECODE"
+                                           , "HOST", "PORT"                                     -- CNECTDEF terms
+                                           , "STATE", "VAR", "INIT", "TRANS"                    -- STAUTDEF terms
+                                           ]
+{- What about
+      "toString"
+    , "fromString"
+    , "toXML"
+    , "fromXML"
+    , "takeWhile"
+    , "takeWhileNot"
+    , "dropWhile"
+    , "dropWhileNot"
+  ? -}
+
+-- | Is string a torxakis keyword?
+isTxsKeyword :: String -> Bool
+isTxsKeyword s = TxsString (T.pack s) `Set.member` txsKeywords
+
+-- | Is string a reserved name/operator?
+isTxsReserved :: String -> Bool
+isTxsReserved s =      (toString txsCommentLine `isPrefixOf` s)
+                    || isTxsKeyword s
+
+-- | TorXakis predefined operators
+-- TODO: should we name each operator and document the operator (instead of the wiki?)
+--       and even explicitly distinguish some operators mapped onto same symbol (e.g. "|" and "->")
+-- TODO: most operators can be overloaded for other usages (e.g. a == b for a <> b can be defined),
+--       so the operator name is not reserved, only a particular signature is reserved!
+txsOperators :: [TxsString]
+txsOperators = map (TxsString . T.pack) [ "::="                     -- XDEF
+                                        , "[", "]", "(", ")"        -- Process Def, Process instantiation, function instantiation/call
+                                        , ",", ";", "#", "::"       -- Sort
+                                        , "|", "{", "}"             -- ADT
+                                        , ":="                      -- STAUTDEF assignment (TODO: why differs from LET assignment?)
+                                        
+                                        , "'", "\"", "`"            -- constant char, string and regex
+                                                            -- val expression
+                                        , "==", "<>", "/\\", "\\/", "\\|/", "=>"    -- boolean
+                                        , "+", "-", "*", "/", "%"                   -- integer (TODO: what about "^"?)
+                                        , "<", "<=", ">=", ">"                      -- comparison: integer -> bool
+                                        , "++"                                      -- concat string
+                                        , "="                                       -- Let assignment
+                                                            -- process
+                                        , "?", "!"                        -- Communication (TODO: what about "[[" and "]]"?) (also uses "|")
+                                        , ">->", ">>>"                    -- Sequence
+                                        , "[>>", "[><"                    -- Disable /Interrupt
+                                        , "##"                            -- Choice
+                                        , "||", "|||"                     -- Parallel (TODO: what about "|[" and "]|"?)
+                                        , "=>>"                           -- Guard
+                                                            -- cnectdef
+                                        , "<-", "->"                      -- CNECTDEF (note: STAUTDEF also uses "->" )
+                                        ]
+-- TODO: what about &#<digit>+;   ?
+--       to accept control characters in TorXakis (only defined inside ', " and ` context)
 
 -- | Regular expression to which a TorXakis identifier adheres
 -- includes text boundaries:
@@ -162,5 +220,7 @@ prefixIsConstructor :: TxsString
 prefixIsConstructor = TxsString (T.pack "is")
 
 -- | Implicit function Name of field access
+-- TODO: add additional parameters for ADT name and constructor name?
+--       with additional parameters, one could allow multiple fields with the same name in a single ADT....
 txsNameField :: String -> TxsString
 txsNameField nm = TxsString (T.pack nm)

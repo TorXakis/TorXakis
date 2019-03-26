@@ -30,8 +30,6 @@ module TorXakis.Name.Name
 , toString
 -- ** Smart constructor for Name
 , mkName
--- ** Is reserved name?
-, isReservedToken
 -- * HasName class
 , HasName (..)
 -- ** Repeated Names functions
@@ -45,11 +43,11 @@ import           Control.DeepSeq    (NFData)
 import           Data.Data          (Data)
 import           Data.Hashable      (Hashable(hashWithSalt))
 import           Data.List.Unique   (repeated)
-import           Data.Set           (Set, fromList, member)
-import           Data.Text          (Text, pack, unpack, isPrefixOf)
+import           Data.Text          (Text, unpack)
 import           GHC.Generics       (Generic)
 
 import           TorXakis.Error     (Error(Error))
+import           TorXakis.Language  (isTxsReserved)
 import qualified TorXakis.XMLName   as XMLName
 
 -- | Definition of the name of entities.
@@ -80,30 +78,6 @@ toText = XMLName.toText . toXMLName
 toString :: Name -> String
 toString = unpack . toText
 
--- | Is text a reserved name/operator?
-isReservedToken :: Text -> Bool
-isReservedToken txt =    (comment `isPrefixOf` txt)
-                      || (txt `member` torxakisKeywords)
-    where
-        comment :: Text
-        comment = pack "--"
-
-        torxakisKeywords :: Set Text
-        torxakisKeywords = fromList (map pack
-                                        [ "Int", "Bool", "Char", "String", "Regex"           -- Sorts
-                                        , "TYPEDEF", "CONSTDEF", "FUNCDEF", "PROCDEF", "MODELDEF"
-                                        , "CHANDEF", "PURPDEF", "CNECTDEF", "STAUTDEF"
-                                        , "ENDDEF"                                           -- Definitions
-                                        , "IF", "THEN", "ELSE", "FI"                         -- ValExpr
-                                        , "ISTEP", "EXIT"                                    -- PROCDEF terms
-                                        , "GOAL", "HIT", "MISS"                              -- GOALDEF terms
-                                        , "CHAN", "IN", "OUT", "BEHAVIOUR", "SYNC"           -- MODELDEF terms
-                                        , "CLIENTSOCK", "SERVERSOCK", "ENCODE", "DECODE"
-                                        , "HOST", "PORT"                                     -- CNECTDEF terms
-                                        , "STATE", "VAR", "INIT", "TRANS"                    -- STAUTDEF terms
-                                        ]
-                                   )
-
 -- | Smart constructor for Name.
 --
 --   A Name is returned when the following constraints are satisfied:
@@ -114,15 +88,15 @@ isReservedToken txt =    (comment `isPrefixOf` txt)
 --
 --   * The remaining characters adhere to [A-Z] | \'_\' | [a-z] | \'-\' | [0-9]
 --
---   * The provided 'Data.Text.Text' value is not a reserved token.
+--   * The provided 'Data.Text.Text' value is not reserved by torxakis.
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 --
 --   These constraints are enforced to be able to use Names as fields in XML.
 --   See e.g. http://www.w3.org/TR/REC-xml/#NT-NameStartChar and http://www.w3.org/TR/REC-xml/#NT-NameChar
 mkName :: Text -> Either Error Name
-mkName s | isReservedToken s   = Left $ Error ("Illegal input: Reserved Name " ++ show s)
-         | otherwise        = XMLName.mkXMLName s >>= Right . Name
+mkName s | isTxsReserved (unpack s) = Left $ Error ("Illegal input: Reserved Token " ++ show s)
+         | otherwise                = XMLName.mkXMLName s >>= Right . Name
 
 -- |  Return the elements with non-unique names that the second list contains in the combination of the first and second list.
 repeatedByNameIncremental :: (HasName a, HasName b) => [a] -> [b] -> [b]
