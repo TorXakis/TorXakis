@@ -67,7 +67,7 @@ instance Hashable FunctionName where
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 mkFunctionName :: Text -> Either Error FunctionName
-mkFunctionName s | isTxsReserved (unpack s) = Left $ Error ("Provided name is a reserved token: " ++ show s)
-                 | otherwise                = if satisfyTxsFuncOperator (unpack s)
-                                                then Right $ FunctionName s
-                                                else Left $ Error ("String violates regular expression requirement: " ++ show s)
+mkFunctionName s | isTxsReserved s = Left $ Error ("Provided name is a reserved token: " ++ show s)
+                 | otherwise       = if satisfyTxsFuncOperator s
+                                       then Right $ FunctionName s
+                                       else Left $ Error ("String violates regular expression requirement: " ++ show s)

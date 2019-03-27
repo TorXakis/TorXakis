@@ -42,6 +42,7 @@ newtype NameGen = NameGen { -- | accessor to 'TorXakis.Name'
                             unNameGen :: Name}
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+{-
 nameStartChars :: String
 nameStartChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 
@@ -53,23 +54,44 @@ genString = do
     c <- elements nameStartChars
     s <- listOf (elements nameChars)
     return (c:s)
+-}
 
+genString :: Gen String
+genString = elements [ "aap"
+                     , "noot"
+                     , "Mies"
+                     , "Wim"
+                     , "zus"
+                     , "Jet"
+                     , "Teun"
+                     , "vuur"
+                     , "Gijs"
+                     , "lam"
+                     , "Kees"
+                     , "bok"
+                     , "weide"
+                     , "does"
+                     , "hok"
+                     , "duif"
+                     , "schapen"
+                     ]
 genName :: Gen NameGen
 genName = do
     str <- genString
-    if isTxsReserved str
-        then discard
-        else case mkName (T.pack str) of
-                  Right n -> return (NameGen n)
-                  Left e  -> error $ "Error in NameGen: unexpected error " ++ show e
+    let txt = T.pack str in
+        if isTxsReserved txt
+            then discard
+            else case mkName txt of
+                      Right n -> return (NameGen n)
+                      Left e  -> error $ "Error in NameGen: unexpected error " ++ show e
 
 genIsName :: Gen NameGen
 genIsName = do
     str <- genString
-    let isStr = TorXakis.Language.toString (txsNameIsConstructor str) in
+    let isStr = TorXakis.Language.toText (txsNameIsConstructor (T.pack str)) in
         if isTxsReserved isStr
             then discard
-            else case mkName (T.pack isStr) of
+            else case mkName isStr of
                       Right n -> return (NameGen n)
                       Left e  -> error $ "Error in NameGen: unexpected error " ++ show e
 

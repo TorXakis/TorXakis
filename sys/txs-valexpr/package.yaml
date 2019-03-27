@@ -35,6 +35,7 @@ library:
   - txs-basics
   - txs-funcsignature
   - txs-lex-regex-xsd
+  - txs-language
   - txs-name
   - txs-sort
   - txs-value

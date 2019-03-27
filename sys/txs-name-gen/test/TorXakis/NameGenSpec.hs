@@ -47,7 +47,7 @@ prop_notNull (NameGen nm) =
 
 prop_notReservedName :: NameGen -> Bool
 prop_notReservedName (NameGen nm) =
-    ( not . isTxsReserved . toString ) nm
+    ( not . isTxsReserved . toText ) nm
 
 prop_RepeatedByName_Set :: Set.Set NameGen -> Bool
 prop_RepeatedByName_Set s =

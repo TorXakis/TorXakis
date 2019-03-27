@@ -28,6 +28,7 @@ library:
   - deepseq
   - hashable
   - txs-basics
+  - txs-language
 
 tests:
     txs-sort-test:

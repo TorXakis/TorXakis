@@ -95,8 +95,8 @@ toString = unpack . toText
 --   These constraints are enforced to be able to use Names as fields in XML.
 --   See e.g. http://www.w3.org/TR/REC-xml/#NT-NameStartChar and http://www.w3.org/TR/REC-xml/#NT-NameChar
 mkName :: Text -> Either Error Name
-mkName s | isTxsReserved (unpack s) = Left $ Error ("Illegal input: Reserved Token " ++ show s)
-         | otherwise                = XMLName.mkXMLName s >>= Right . Name
+mkName s | isTxsReserved s = Left $ Error ("Illegal input: Reserved Token " ++ show s)
+         | otherwise       = XMLName.mkXMLName s >>= Right . Name
 
 -- |  Return the elements with non-unique names that the second list contains in the combination of the first and second list.
 repeatedByNameIncremental :: (HasName a, HasName b) => [a] -> [b] -> [b]

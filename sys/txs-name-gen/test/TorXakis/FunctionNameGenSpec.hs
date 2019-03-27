@@ -46,7 +46,7 @@ prop_notNull (FunctionNameGen nm) =
 
 prop_Regex :: FunctionNameGen -> Bool
 prop_Regex (FunctionNameGen nm) =
-    satisfyTxsFuncOperator (TorXakis.FunctionName.toString nm)
+    satisfyTxsFuncOperator (TorXakis.FunctionName.toText nm)
 
 spec :: Spec
 spec =

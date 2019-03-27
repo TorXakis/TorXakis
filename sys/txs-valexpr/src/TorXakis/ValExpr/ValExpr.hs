@@ -40,6 +40,7 @@ import           GHC.Generics        (Generic)
 import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.FunctionName
+import qualified TorXakis.Language   as L
 import           TorXakis.Name
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.RefByIndex
@@ -227,13 +228,13 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                             Just vDef   -> TxsString (TorXakis.Name.toText (name vDef))
   prettyPrint o ctx (Vequal a b)        = infixOperator o ctx (TxsString (T.pack "==")) [a,b]
   prettyPrint o ctx (Vite c tb fb)      = TxsString (T.concat [ T.pack "IF "
-                                                              , indent (T.pack "   ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o ctx c))
+                                                              , indent (T.pack "   ") (L.toText (prettyPrint o ctx c))
                                                               , separator o
                                                               , T.pack "THEN "
-                                                              , indent (T.pack "     ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o ctx tb))
+                                                              , indent (T.pack "     ") (L.toText (prettyPrint o ctx tb))
                                                               , separator o
                                                               , T.pack "ELSE "
-                                                              , indent (T.pack "     ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o ctx fb))
+                                                              , indent (T.pack "     ") (L.toText (prettyPrint o ctx fb))
                                                               , separator o
                                                               , T.pack "FI"
                                                               ])
@@ -270,7 +271,7 @@ instance VarContext c => PrettyPrint c ValExpressionView where
 -- | Helper function since func and predef both are function Instantations in TorXakis
 funcInst :: VarContext c => Options -> c -> TxsString -> [ValExpression] -> TxsString
 funcInst o ctx txsName vs = 
-    let tName = TorXakis.PrettyPrint.TorXakis.toText txsName in
+    let tName = L.toText txsName in
         TxsString (T.concat [ tName
                             , T.pack " ( "
                             , T.intercalate (if multiline o 
@@ -279,7 +280,7 @@ funcInst o ctx txsName vs =
                                                               , T.pack ", "
                                                               ]
                                                 else T.pack ", ")
-                                            (map (indent ( T.replicate (T.length tName + 3) (T.singleton ' ') ) . TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o ctx) vs)
+                                            (map (indent ( T.replicate (T.length tName + 3) (T.singleton ' ') ) . L.toText . prettyPrint o ctx) vs)
                             , if multiline o 
                                  then T.append (T.singleton '\n') (T.replicate (T.length tName + 1) (T.singleton ' '))
                                  else T.singleton ' '
@@ -288,24 +289,27 @@ funcInst o ctx txsName vs =
 
 infixOperator :: VarContext c => Options -> c -> TxsString -> [ValExpression] -> TxsString
 infixOperator o ctx txsName vs = 
-        let tName = TorXakis.PrettyPrint.TorXakis.toText txsName
-            offset = if multiline o then T.replicate (T.length tName + 1) (T.singleton ' ')
-                                    else T.empty
+        -- TODO: assert length txsSpace == 1
+        let offset = if multiline o then L.replicate (L.length (L.append txsName L.txsSpace)) L.txsSpace
+                                    else L.empty
           in
-            TxsString (T.concat [ offset
-                                , T.pack "( "
-                                , T.intercalate (T.concat [ separator o
-                                                          , offset
-                                                          , T.singleton ')'
-                                                          , separator o
-                                                          , tName
-                                                          , T.pack " ( "
-                                                         ])
-                                                (map (indent (T.replicate (T.length tName + 3) (T.singleton ' ')) . TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o ctx) vs)
-                                , separator o
-                                , offset
-                                , T.singleton ')'
-                                ])
+            L.concat [ offset
+                     , L.txsOpenScopeValExpr
+                     , L.txsSpace
+                     , L.intercalate (L.concat [ separator o
+                                               , offset
+                                               , L.txsCloseScopeValExpr
+                                               , separator o
+                                               , txsName
+                                               , L.txsSpace
+                                               , L.txsOpenScopeValExpr
+                                               , L.txsSpace
+                                              ])
+                                     (map (L.indent (L.replicate (L.length (L.concat [ txsName, L.txsSpace, L.txsOpenScopeValExpr, L.txsSpace])) L.txsSpace) . prettyPrint o ctx) vs)
+                     , separator o
+                     , offset
+                     , L.txsCloseScopeValExpr
+                     ])
 
 occuranceOperator :: VarContext c => Options -> c -> TxsString -> TxsString -> [(ValExpression, Integer)] -> TxsString
 occuranceOperator o ctx txsOp1 txsOp2 occuranceList =
@@ -328,12 +332,12 @@ occuranceOperator o ctx txsOp1 txsOp2 occuranceList =
                                 ])
     where
         op1 :: T.Text
-        op1 = TorXakis.PrettyPrint.TorXakis.toText txsOp1
+        op1 = L.toText txsOp1
         
         -- offset1 + "( "
         offset2 :: T.Text
         offset2 = T.replicate (T.length op1 + 3) (T.singleton ' ')
         
         tupleToText :: (ValExpression, Integer) -> T.Text
-        tupleToText (v,  1) = TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o ctx v)
-        tupleToText (v,  p) = TorXakis.PrettyPrint.TorXakis.toText (infixOperator o ctx txsOp2 [v, ValExpression (Vconst (Cint p))])
+        tupleToText (v,  1) = L.toText (prettyPrint o ctx v)
+        tupleToText (v,  p) = L.toText (infixOperator o ctx txsOp2 [v, ValExpression (Vconst (Cint p))])

@@ -48,9 +48,9 @@ import qualified Data.Set             as Set
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
-import           TorXakis.Name                 (toName)
+import           TorXakis.Language
+import           TorXakis.Name                 (toName, toText)
 import           TorXakis.FunctionName
-import           TorXakis.PrettyPrint.TorXakis (TxsString(..))
 import           TorXakis.Sort
 import           TorXakis.SortContext
 
@@ -69,16 +69,16 @@ data FuncSignature = FuncSignature { -- | The 'Name' of the function/operator.
 -- However these funcSignature can't be added to a Func(Signature)Context.
 isPredefinedNonSolvableFuncSignature :: FuncSignature -> Bool
 isPredefinedNonSolvableFuncSignature f =
-    case (toString (funcName f), args f,                   returnSort f ) of
-         ("toString",            [_],                      SortString   ) -> True  -- toString with single argument is predefined for all Sorts
-         ("fromString",          [SortString],             _            ) -> True
-         ("toXML",               [_],                      SortString   ) -> True
-         ("fromXML",             [SortString],             _            ) -> True
-         ("takeWhile",           [SortString, SortString], SortString   ) -> True
-         ("takeWhileNot",        [SortString, SortString], SortString   ) -> True
-         ("dropWhile",           [SortString, SortString], SortString   ) -> True
-         ("dropWhileNot",        [SortString, SortString], SortString   ) -> True
-         _                                                                -> False
+    case (TorXakis.FunctionName.toString (funcName f), args f,                   returnSort f ) of
+         ("toString",                                  [_],                      SortString   ) -> True  -- toString with single argument is predefined for all Sorts
+         ("fromString",                                [SortString],             _            ) -> True
+         ("toXML",                                     [_],                      SortString   ) -> True
+         ("fromXML",                                   [SortString],             _            ) -> True
+         ("takeWhile",                                 [SortString, SortString], SortString   ) -> True
+         ("takeWhileNot",                              [SortString, SortString], SortString   ) -> True
+         ("dropWhile",                                 [SortString, SortString], SortString   ) -> True
+         ("dropWhileNot",                              [SortString, SortString], SortString   ) -> True
+         _                                                                                      -> False
 
 -- | isReservedFunctionSignature includes
 --
@@ -94,31 +94,31 @@ isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
 
     isMappedFuncSignature :: Bool
     isMappedFuncSignature =
-        case (toString n,    ss,                         s          ) of
-             ("==",          [a,b],                      SortBool   ) -> a == b   -- equality is defined for all types
-             ("<>",          [a,b],                      SortBool   ) -> a == b   -- not equality is defined for all types
-             ("not",         [SortBool],                 SortBool   ) -> True
-             ("/\\",         [SortBool, SortBool],       SortBool   ) -> True
-             ("\\/",         [SortBool, SortBool],       SortBool   ) -> True
-             ("\\|/",        [SortBool, SortBool],       SortBool   ) -> True
-             ("=>",          [SortBool, SortBool],       SortBool   ) -> True
-             ("abs",         [SortInt],                  SortInt    ) -> True
-             ("+",           [SortInt],                  SortInt    ) -> True
-             ("-",           [SortInt],                  SortInt    ) -> True
-             ("+",           [SortInt, SortInt],         SortInt    ) -> True
-             ("-",           [SortInt, SortInt],         SortInt    ) -> True
-             ("*",           [SortInt, SortInt],         SortInt    ) -> True
-             ("/",           [SortInt, SortInt],         SortInt    ) -> True
-             ("%",           [SortInt, SortInt],         SortInt    ) -> True
-             ("<",           [SortInt, SortInt],         SortBool   ) -> True
-             ("<=",          [SortInt, SortInt],         SortBool   ) -> True
-             (">=",          [SortInt, SortInt],         SortBool   ) -> True
-             (">",           [SortInt, SortInt],         SortBool   ) -> True
-             ("len",         [SortString],               SortInt    ) -> True
-             ("++",          [SortString, SortString],   SortString ) -> True
-             ("at",          [SortString, SortInt],      SortString ) -> True
-             ("strinre",     [SortString, SortRegex],    SortBool   ) -> True
-             _                                                        -> False
+        case (TorXakis.FunctionName.toString n,    ss,                         s          ) of
+             ("==",                                [a,b],                      SortBool   ) -> a == b   -- equality is defined for all types
+             ("<>",                                [a,b],                      SortBool   ) -> a == b   -- not equality is defined for all types
+             ("not",                               [SortBool],                 SortBool   ) -> True
+             ("/\\",                               [SortBool, SortBool],       SortBool   ) -> True
+             ("\\/",                               [SortBool, SortBool],       SortBool   ) -> True
+             ("\\|/",                              [SortBool, SortBool],       SortBool   ) -> True
+             ("=>",                                [SortBool, SortBool],       SortBool   ) -> True
+             ("abs",                               [SortInt],                  SortInt    ) -> True
+             ("+",                                 [SortInt],                  SortInt    ) -> True
+             ("-",                                 [SortInt],                  SortInt    ) -> True
+             ("+",                                 [SortInt, SortInt],         SortInt    ) -> True
+             ("-",                                 [SortInt, SortInt],         SortInt    ) -> True
+             ("*",                                 [SortInt, SortInt],         SortInt    ) -> True
+             ("/",                                 [SortInt, SortInt],         SortInt    ) -> True
+             ("%",                                 [SortInt, SortInt],         SortInt    ) -> True
+             ("<",                                 [SortInt, SortInt],         SortBool   ) -> True
+             ("<=",                                [SortInt, SortInt],         SortBool   ) -> True
+             (">=",                                [SortInt, SortInt],         SortBool   ) -> True
+             (">",                                 [SortInt, SortInt],         SortBool   ) -> True
+             ("len",                               [SortString],               SortInt    ) -> True
+             ("++",                                [SortString, SortString],   SortString ) -> True
+             ("at",                                [SortString, SortInt],      SortString ) -> True
+             ("strinre",                           [SortString, SortRegex],    SortBool   ) -> True
+             _                                                                              -> False
 
     isSortFuncSignature :: Bool
     isSortFuncSignature = equalsConstructor || equalsIsConstructor || equalsFieldAccess
@@ -129,7 +129,7 @@ isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
         case s of
             SortADT a -> case lookupADT (toName a) ctx of
                               Nothing   -> error ("equalsConstructor -- ADTDef " ++ show a ++ " not defined in context ")
-                              Just aDef -> any (\c -> txsFuncName == txsFunctionNameConstructor c && ss == map sort (elemsField c)) (elemsConstructor aDef)
+                              Just aDef -> any (\c -> txsFuncName == (txsNameConstructor . TorXakis.Name.toText . constructorName) c && ss == map sort (elemsField c)) (elemsConstructor aDef)
             _         -> False
 
     -- | exists constructor : returnSort func == Bool && funcName == isCstrName
@@ -138,7 +138,7 @@ isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
         (s == SortBool) && case ss of
                              [SortADT a] -> case lookupADT (toName a) ctx of
                                                 Nothing   -> error ("equalsIsConstructor -- ADTDef " ++ show a ++ " not defined in context ")
-                                                Just aDef -> any (\c -> txsFuncName == txsFunctionNameIsConstructor c) (elemsConstructor aDef)
+                                                Just aDef -> any (\c -> txsFuncName == (txsNameIsConstructor . TorXakis.Name.toText . constructorName) c) (elemsConstructor aDef)
                              _           -> False
 
     -- | exists field : funcName == fieldName && funcReturnSort == fieldSort
@@ -147,7 +147,7 @@ isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
         case ss of
             [SortADT a] -> case lookupADT (toName a) ctx of
                             Nothing   -> error ("equalsFieldAccess -- ADTDef " ++ show a ++ " not defined in context ")
-                            Just aDef -> any (any (\f -> txsFuncName == txsFunctionNameFieldAccess f && s == sort f) . elemsField) (elemsConstructor aDef) 
+                            Just aDef -> any (any (\f -> txsFuncName == (txsNameField . TorXakis.Name.toText . fieldName) f && s == sort f) . elemsField) (elemsConstructor aDef) 
             _           -> False
 
 

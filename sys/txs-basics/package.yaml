@@ -25,6 +25,7 @@ library:
   - deepseq
   - hashable
   - text
+  - txs-language
 
 tests:
     txs-basics-test:

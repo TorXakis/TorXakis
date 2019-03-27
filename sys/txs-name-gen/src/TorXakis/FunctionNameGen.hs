@@ -64,9 +64,10 @@ genStringOperator =
 genText :: Gen T.Text
 genText = do
     str <- oneof [genStringName, genStringOperator]
-    if isTxsReserved str
-        then discard
-        else return $ T.pack str
+    let txt = T.pack str in
+        if isTxsReserved txt
+            then discard
+            else return txt
 
 instance Arbitrary FunctionNameGen
     where

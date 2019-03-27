@@ -24,19 +24,17 @@ module TorXakis.PrettyPrint.TorXakis
   Options (..)
   -- * Pretty Print class for TorXakis
 , PrettyPrint (..)
-  -- * Pretty Print Output for TorXakis
-, TxsString (..)
-, toString
   -- * Helper Functions
-, indent
 , separator
+  -- dependencies, yet part of interface
+, TxsString
 )
 where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
-import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
+import           TorXakis.Language
 
 -- | The data type that represents the options for pretty printing.
 data Options = Options { -- | May a definition cover multiple lines?
@@ -50,22 +48,7 @@ data Options = Options { -- | May a definition cover multiple lines?
 class PrettyPrint c a where
     prettyPrint :: Options -> c -> a -> TxsString
 
--- | The data type that represents the output for pretty printing in TorXakis format.
-newtype TxsString = TxsString { toText :: T.Text }
-    deriving (Eq, Ord, Read, Generic, NFData, Data)
-
--- | To String conversion
-toString :: TxsString -> String
-toString = T.unpack . toText
-
-instance Show TxsString where
-    show (TxsString x) = T.unpack x
-
--- | indentation
-indent :: T.Text -> T.Text -> T.Text
-indent i t = T.intercalate (T.append (T.singleton '\n') i) (T.lines t)
-
 -- | separator based on option
-separator :: Options -> T.Text
-separator Options{multiline = m} = if m then T.singleton '\n'
-                                        else T.singleton ' '
+separator :: Options -> TxsString
+separator Options{multiline = m} = if m then txsNewLine
+                                        else txsSpace

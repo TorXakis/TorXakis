@@ -25,6 +25,7 @@ library:
   - hashable
   - hashmap
   - txs-basics
+  - txs-language
   - txs-sort
   - txs-name
   - Unique

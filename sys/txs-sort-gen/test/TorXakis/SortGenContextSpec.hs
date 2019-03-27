@@ -25,8 +25,8 @@ import           Test.Hspec
 import           Test.QuickCheck
 
 import           TorXakis.ContextTestSort
+import           TorXakis.Language
 import           TorXakis.Name
-import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort
 import           TorXakis.SortGenContext
 
@@ -45,7 +45,7 @@ prop_SignatureClashes :: Gen Bool
 prop_SignatureClashes =
     let cName = unsafeName "Cstr"
         cDef = unsafeConstructorDef cName []
-        isCstrName = unsafeName (TorXakis.PrettyPrint.TorXakis.toString (txsFunctionNameIsConstructor cDef)) 
+        isCstrName = unsafeName (TorXakis.Language.toString (txsNameIsConstructor (TorXakis.Name.toText cName))) 
       in do
         ctx <- arbitraryTestSortContext
         s <- arbitrarySort ctx
@@ -61,7 +61,7 @@ prop_SignatureClashes =
 -- | Increments can be combined
 prop_Increments :: Gen Bool
 prop_Increments = 
-    let c0 = empty :: ContextTestSort in do
+    let c0 = TorXakis.ContextTestSort.empty in do
         incr1 <- arbitraryADTDefs c0
         case addADTs incr1 c0 of
             Left e1  -> error ("Invalid generator 1 - " ++ show e1)

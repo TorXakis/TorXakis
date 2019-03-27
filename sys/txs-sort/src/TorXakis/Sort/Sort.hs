@@ -48,13 +48,8 @@ module TorXakis.Sort.Sort
 , mkADTDef
   -- * Used Sorts in element
 , UsedSorts (..)
-  -- ** TorXakis representations for Round Tripping Functionality
-, txsFunctionNameConstructor
-, txsFunctionNameIsConstructor
-, txsFunctionNameFieldAccess
   -- dependencies, yet part of interface
 , Set.Set
-, TxsString
 )
 where
 
@@ -67,6 +62,7 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
+import qualified TorXakis.Language   as L
 import           TorXakis.Name
 import           TorXakis.NameMap
 import           TorXakis.PrettyPrint.TorXakis
@@ -211,10 +207,10 @@ mkADTDef m cs
                 boolField f = sort f == SortBool
 
                 sameTxsRepresentation :: FieldDef -> Bool
-                sameTxsRepresentation fd = txsFunctionNameFieldAccess fd `elem` isConstructorNames
+                sameTxsRepresentation fd = (L.txsNameField . TorXakis.Name.toText . fieldName ) fd `elem` isConstructorNames
 
                 isConstructorNames :: [TxsString]
-                isConstructorNames = map txsFunctionNameIsConstructor cs
+                isConstructorNames = map (L.txsNameIsConstructor . TorXakis.Name.toText . constructorName) cs
 
 
 -- | Refers the provided ConstructorDef name to a ConstrucotrDef in the given ADTDef?
@@ -228,23 +224,6 @@ lookupConstructor r a = TorXakis.NameMap.lookup r (constructors a)
 -- | All ConstructorDefs of given ADTDef
 elemsConstructor :: ADTDef -> [ConstructorDef]
 elemsConstructor = elems . constructors
-
--- Representations in TorXakis
-
--- | Function Name of constructor
--- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
-txsFunctionNameConstructor :: ConstructorDef -> TxsString
-txsFunctionNameConstructor c = TxsString (TorXakis.Name.toText (constructorName c))
-
--- | Function Name of is-made-by-constructor.
--- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
-txsFunctionNameIsConstructor :: ConstructorDef -> TxsString
-txsFunctionNameIsConstructor c = TxsString (T.append (T.pack "is") (TorXakis.Name.toText (constructorName c)))
-
--- | Function Name of field access
--- This function is needed to enable round tripping: TorXakis maps this operator on an implicit function.
-txsFunctionNameFieldAccess :: FieldDef -> TxsString
-txsFunctionNameFieldAccess f = TxsString (TorXakis.Name.toText (fieldName f))
 
 -- | Class for Used Sorts
 class UsedSorts c a where
@@ -262,69 +241,85 @@ instance UsedSorts c ADTDef where
 
 -- Pretty Print
 instance PrettyPrint a Sort where
-    prettyPrint _ _ SortBool     = TxsString (T.pack "Bool")
-    prettyPrint _ _ SortInt      = TxsString (T.pack "Int")
-    prettyPrint _ _ SortChar     = TxsString (T.pack "Char")
-    prettyPrint _ _ SortString   = TxsString (T.pack "String")
-    prettyPrint _ _ SortRegex    = TxsString (T.pack "Regex")
-    prettyPrint _ _ (SortADT a)  = (TxsString . TorXakis.Name.toText . toName) a
+    prettyPrint _ _ SortBool     = L.txsBoolean
+    prettyPrint _ _ SortInt      = L.txsInteger
+    prettyPrint _ _ SortChar     = L.txsCharacter
+    prettyPrint _ _ SortString   = L.txsString
+    prettyPrint _ _ SortRegex    = L.txsRegularExpression
+    prettyPrint _ _ (SortADT a)  = (L.TxsString . TorXakis.Name.toText . toName) a
 
 instance PrettyPrint c FieldDef where
-    prettyPrint o c fd = TxsString ( T.concat [ TorXakis.Name.toText (fieldName fd)
-                                              , T.pack " :: "
-                                              , TorXakis.PrettyPrint.TorXakis.toText ( prettyPrint o c (sort fd) )
-                                              ] )
+    prettyPrint o c fd = L.concat [ L.TxsString (TorXakis.Name.toText (fieldName fd))
+                                  , L.txsSpace
+                                  , L.txsOperatorOfSort
+                                  , L.txsSpace
+                                  , prettyPrint o c (sort fd)
+                                  ]
 
 instance PrettyPrint c ConstructorDef where
-    prettyPrint o c cv = TxsString ( T.append (TorXakis.Name.toText (constructorName cv))
-                                              (case (short o, fields cv) of
-                                                  (True, [])   -> T.empty
-                                                  (True, x:xs) -> T.concat [ wsField
-                                                                           , T.pack "{ "
-                                                                           , TorXakis.Name.toText (fieldName x)
-                                                                           , shorten (sort x) xs
-                                                                           , wsField
-                                                                           , T.pack "}"
-                                                                           ]
-                                                  _            -> T.concat [ wsField
-                                                                           , T.pack "{ "
-                                                                           , T.intercalate (T.append wsField (T.pack "; ")) (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o c) (fields cv))
-                                                                           , wsField
-                                                                           , T.pack "}"
-                                                                           ]
-                                              )
-                                   )
-        where wsField :: T.Text
-              wsField = if multiline o then T.pack "\n        "
-                                       else T.singleton ' '
+    prettyPrint o c cv = L.append cName
+                                  (case (short o, fields cv) of
+                                      (True, [])   -> L.empty
+                                      (True, x:xs) -> L.concat [ L.txsOpenScopeConstructor
+                                                               , L.txsSpace
+                                                               , L.TxsString (TorXakis.Name.toText (fieldName x)) -- or txsNameField?
+                                                               , shorten (sort x) xs
+                                                               , wsField
+                                                               , L.txsCloseScopeConstructor
+                                                               ]
+                                      _            -> L.concat [ L.txsOpenScopeConstructor
+                                                               , L.txsSpace
+                                                               , L.intercalate (L.concat [wsField, L.txsSeparatorLists, L.txsSpace]) (map (prettyPrint o c) (fields cv))
+                                                               , wsField
+                                                               , L.txsCloseScopeConstructor
+                                                               ]
+                                  )
+        where cName :: TxsString
+              cName = L.TxsString (TorXakis.Name.toText (constructorName cv))
+              
+              wsField :: TxsString
+              wsField = if multiline o then L.append L.txsNewLine (L.replicate (L.length cName) L.txsSpace)
+                                       else L.txsSpace
 
-              shorten :: Sort -> [FieldDef] -> T.Text
+              shorten :: Sort -> [FieldDef] -> TxsString
               shorten s []                     = addSort s
-              shorten s (x:xs) | sort x == s   = T.concat [ T.pack ", "
-                                                          , TorXakis.Name.toText (fieldName x)
+              shorten s (x:xs) | sort x == s   = L.concat [ L.txsSeparatorElements
+                                                          , L.txsSpace
+                                                          , L.TxsString (TorXakis.Name.toText (fieldName x))
                                                           , shorten s xs
                                                           ]
-              shorten s (x:xs)                 = T.concat [ addSort s
+              shorten s (x:xs)                 = L.concat [ addSort s
                                                           , wsField
-                                                          , T.pack "; "
-                                                          , TorXakis.Name.toText (fieldName x)
+                                                          , L.txsSeparatorLists
+                                                          , L.txsSpace
+                                                          , L.TxsString (TorXakis.Name.toText (fieldName x))
                                                           , shorten (sort x) xs
                                                           ]
 
-              addSort :: Sort -> T.Text
-              addSort s = T.append (T.pack " :: ") ( TorXakis.PrettyPrint.TorXakis.toText ( prettyPrint o c s ) )
+              addSort :: Sort -> TxsString
+              addSort s = L.concat [ L.txsSpace
+                                   , L.txsOperatorOfSort
+                                   , L.txsSpace
+                                   , prettyPrint o c s
+                                   ]
 
 instance PrettyPrint c ADTDef where
-    prettyPrint o c av = TxsString ( T.concat [ T.pack "TYPEDEF "
-                                              , TorXakis.Name.toText (adtName av)
-                                              , T.pack " ::="
-                                              , wsConstructor
-                                              , offsetFirst
-                                              , T.intercalate (T.append wsConstructor (T.pack "| ")) (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o c) (elemsConstructor av))
-                                              , separator o
-                                              , T.pack "ENDDEF"
-                                              ] )
-        where wsConstructor = if multiline o then T.pack "\n    "
-                                             else T.singleton ' '
-              offsetFirst   = if multiline o then T.pack "  "      -- same length as constructors separator ("| ") to get nice layout with multilines
-                                             else T.empty
+    prettyPrint o c av = L.concat [ defLine
+                                  , offsetFirst
+                                  , L.intercalate (L.concat [ wsConstructor, L.txsSeparatorConstructors, L.txsSpace]) (map (prettyPrint o c) (elemsConstructor av))
+                                  , separator o
+                                  , L.txsCloseScopeDef
+                                  ]
+        where defLine :: TxsString
+              defLine = L.concat [ L.txsSortDef
+                                 , L.txsSpace
+                                 , L.TxsString (TorXakis.Name.toText (adtName av))
+                                 , L.txsSpace
+                                 , L.txsOperatorDef
+                                 ]
+              wsConstructor :: TxsString
+              wsConstructor = if multiline o then L.append L.txsNewLine (L.replicate (L.length defLine) L.txsSpace)
+                                             else L.txsSpace
+              offsetFirst :: TxsString
+              offsetFirst   = if multiline o then L.replicate (1+L.length L.txsSeparatorConstructors) L.txsSpace
+                                             else L.txsSpace

@@ -36,13 +36,10 @@ prop_empty =
         Right _ -> False
 
 -- | match regex
--- note ^ and $ are line boundaries, so "\na" and "a\n" matches "^[A-Z_a-z][A-Z_a-z0-9-]*$".
--- we need entire text boundaries!
--- see http://hackage.haskell.org/package/regex-tdfa-1.2.3.1/docs/Text-Regex-TDFA.html
 prop_regex :: String -> Bool
 prop_regex str =
-    let txt = T.pack str
-      in if satisfyTxsIdentifier str
+    let txt = T.pack str in
+        if satisfyTxsIdentifier txt
             then isRight $ mkName txt
             else isLeft $ mkName txt
 

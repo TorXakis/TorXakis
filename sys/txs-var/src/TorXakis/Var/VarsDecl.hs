@@ -35,6 +35,7 @@ import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
+import           TorXakis.Language
 import           TorXakis.Name
 import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort
@@ -79,7 +80,7 @@ instance UsedSorts c VarsDecl where
 
 instance PrettyPrint c VarsDecl where
     prettyPrint o c vs = TxsString (T.concat [ T.pack "( "
-                                             , T.intercalate sepParam (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o c) (toList vs))
+                                             , T.intercalate sepParam (map (TorXakis.Language.toText . prettyPrint o c) (toList vs))
                                              , close
                                              ])
         where sepParam = if multiline o then T.pack "\n, "

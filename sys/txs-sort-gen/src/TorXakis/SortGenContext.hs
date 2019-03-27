@@ -26,9 +26,11 @@ module TorXakis.SortGenContext
 , ContextTestSort
 )
 where
+import           Data.List
 import qualified Data.Set            as Set
 import           Test.QuickCheck
 
+import           TorXakis.Language
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.SortContext
@@ -49,11 +51,19 @@ arbitrarySort ctx =
                 [] -> error ("No Sort in context with complexity at most " ++ show n)
                 _  -> elements availableSort
 
-arbitraryFields :: [Sort] -> [Name] -> Gen [FieldDef]
-arbitraryFields ss ns =
-    do
-        sorts <- vectorOf (length ns) (elements ss)
-        return $ zipWith FieldDef ns sorts
+arbitraryField :: [TxsString] -> [Sort] -> Name -> Gen FieldDef
+arbitraryField isCstrs ss n = do
+        s <- elements availableSort
+        return $ FieldDef n s
+  where
+    -- | prevent signature clashes between field access (with sort Bool) and is-made-by-constructor functions.
+    availableSort :: [Sort]
+    availableSort = if TxsString (TorXakis.Name.toText n) `elem` isCstrs
+                        then Data.List.delete SortBool ss
+                        else ss
+
+arbitraryFields :: [TxsString] -> [Sort] -> [Name] -> Gen [FieldDef]
+arbitraryFields isCstrs ss = mapM (arbitraryField isCstrs ss)
 
 arbitraryConstructors :: [Sort] -> [Sort] -> Gen [ConstructorDef]
 arbitraryConstructors defined add =
@@ -68,19 +78,22 @@ arbitraryConstructors defined add =
         mkConstructorDefs cNames fNames
     where
         mkConstructorDefs :: [Name] -> [Name] -> Gen [ConstructorDef]
-        mkConstructorDefs []       _  = error "Non-empty list expected"
-        mkConstructorDefs [cn]     ns =
+        mkConstructorDefs cs =
+            mkConstructorDefs' (map (txsNameIsConstructor . TorXakis.Name.toText) cs) cs
+        mkConstructorDefs' :: [TxsString] -> [Name] -> [Name] -> Gen [ConstructorDef]
+        mkConstructorDefs' _       []       _  = error "Non-empty list expected"
+        mkConstructorDefs' isCstrs [cn]     ns =
             do
-                fs <- arbitraryFields defined ns
+                fs <- arbitraryFields isCstrs defined ns
                 return $ case mkConstructorDef cn fs of
                             Left  _ -> error "error in generator: creating valid ConstructorDef - singleton"
                             Right x -> [x]
-        mkConstructorDefs (cn:cns) ns =
+        mkConstructorDefs' isCstrs (cn:cns) ns =
             do
-                n <- choose (0, length ns)
+                n <- choose (0, Data.List.length ns)
                 let (hns,tns) = splitAt n ns in do
-                    tl <- mkConstructorDefs cns tns
-                    hfs <- arbitraryFields (defined ++ add) hns
+                    tl <- mkConstructorDefs' isCstrs cns tns
+                    hfs <- arbitraryFields isCstrs (defined ++ add) hns
                     return $ case mkConstructorDef cn hfs of
                                 Left  _ -> error "error in generator: creating valid ConstructorDef - list"
                                 Right x -> x : tl
@@ -111,7 +124,7 @@ arbitraryADTDefs ctx =
 -- | generate an arbitrary Test Sort Context
 arbitraryTestSortContext :: Gen ContextTestSort
 arbitraryTestSortContext =
-        let emp = empty :: ContextTestSort in do
+        let emp = TorXakis.ContextTestSort.empty in do
             incr <- arbitraryADTDefs emp
             case addADTs incr emp of
                 Left e    -> error ("arbitraryTestSortContext: Invalid generator - " ++ show e)
