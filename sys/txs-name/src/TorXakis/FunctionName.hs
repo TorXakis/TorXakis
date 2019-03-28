@@ -39,7 +39,6 @@ import           Data.Hashable      (Hashable(hashWithSalt))
 import           Data.Text          (Text, unpack)
 import           GHC.Generics       (Generic)
 
-import           TorXakis.Language  (satisfyTxsFuncOperator, isTxsReserved)
 import           TorXakis.Error     (Error(Error))
 
 -- | Definition of the Operator name.
@@ -60,14 +59,40 @@ instance Hashable FunctionName where
 --
 --   A FunctionName is returned when the following constraints are satisfied:
 --
---   * The provided 'Data.Text.Text' value is not a reserved name.
---
---   * The provided 'Data.Text.Text' value is an XmlName, i.e. [A-Za-z_][A-Za-z_0-9-]*, or an OperatorName, i.e. [-+*^=<>%/\\|@&]+.
---     TODO: what about the characters ~#$!? (! and ? have meaning in TorXakis)
+--   * The provided 'Data.Text.Text' value is an XmlName, i.e. [A-Za-z_][A-Za-z_0-9-]*, 
+--     or an OperatorName, i.e. [-+*^=<>%/\\|@&]+.
+--     TODO: what about the characters ~#$!?
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 mkFunctionName :: Text -> Either Error FunctionName
-mkFunctionName s | isTxsReserved s = Left $ Error ("Provided name is a reserved token: " ++ show s)
-                 | otherwise       = if satisfyTxsFuncOperator s
-                                       then Right $ FunctionName s
-                                       else Left $ Error ("String violates regular expression requirement: " ++ show s)
+mkFunctionName s = case unpack s of
+                        []     -> Left $ Error "Illegal input: Empty String"
+                        (x:xs) -> if    (isNameStartChar x && all isNameChar xs)
+                                     || all isOperatorChar (x:xs)
+                                    then Right $ FunctionName s
+                                    else Left $ Error ("String is not a function or operator name: " ++ show s)
+    where
+        isNameStartChar :: Char -> Bool
+        isNameStartChar c =      ('A' <= c && c <= 'Z')
+                              || ('_' == c)
+                              || ('a' <= c && c <= 'z')
+        isNameChar :: Char -> Bool
+        isNameChar c =     isNameStartChar c 
+                        || ('-' == c)
+                        || ('0' <= c && c <= '9')
+
+        isOperatorChar :: Char -> Bool
+        isOperatorChar '-'  = True
+        isOperatorChar '+'  = True
+        isOperatorChar '*'  = True
+        isOperatorChar '^'  = True
+        isOperatorChar '='  = True
+        isOperatorChar '<'  = True
+        isOperatorChar '>'  = True
+        isOperatorChar '%'  = True
+        isOperatorChar '/'  = True
+        isOperatorChar '\\' = True
+        isOperatorChar '|'  = True
+        isOperatorChar '@'  = True
+        isOperatorChar '&'  = True
+        isOperatorChar  _   = False

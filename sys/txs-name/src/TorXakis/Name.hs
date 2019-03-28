@@ -18,8 +18,10 @@ See LICENSE at root directory of this repository.
 module TorXakis.Name
 ( module TorXakis.Name.Name
 , module TorXakis.Name.RefByName
+, module TorXakis.Name.UsedNames
 )
 where
 
 import TorXakis.Name.Name
 import TorXakis.Name.RefByName
+import TorXakis.Name.UsedNames

@@ -88,7 +88,7 @@ genName = do
 genIsName :: Gen NameGen
 genIsName = do
     str <- genString
-    let isStr = TorXakis.Language.toText (txsNameIsConstructor (T.pack str)) in
+    let isStr = T.append (TorXakis.Language.toText prefixIsConstructor) (T.pack str) in
         if isTxsReserved isStr
             then discard
             else case mkName isStr of

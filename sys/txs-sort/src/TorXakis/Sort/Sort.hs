@@ -62,10 +62,8 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
-import qualified TorXakis.Language   as L
 import           TorXakis.Name
 import           TorXakis.NameMap
-import           TorXakis.PrettyPrint.TorXakis
 -----------------------------------------------------------------------------
 -- Sort
 -----------------------------------------------------------------------------
@@ -173,16 +171,12 @@ instance HasName ADTDef where
 --
 --   * Names of 'TorXakis.SortADT.FieldDef's are unique across all 'TorXakis.SortADT.ConstructorDef's
 --
---   * Round tripping is possible. 
---     In other words, implicit functions (e.g. for field access and is-made-by-constructor) have distinct function signatures.
---
 --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
 mkADTDef :: Name -> [ConstructorDef] -> Either Error ADTDef
 mkADTDef _ [] = Left $ Error "Empty Constructor List"
 mkADTDef m cs
     | not $ null nuCstrDefs                 = Left $ Error ("Non-unique constructor definitions: " ++ show nuCstrDefs)
     | not $ null nuFields                   = Left $ Error ("Non-unique field definitions: " ++ show nuFields)
-    | not $ null conflictFieldIsConstructor = Left $ Error ("Conflicts between Field and implicit isConstructor function: " ++ show conflictFieldIsConstructor)
     | otherwise                             = Right $ ADTDef m (toNameMap cs)
     where
         nuCstrDefs :: [ConstructorDef]
@@ -194,26 +188,7 @@ mkADTDef m cs
         nuFields :: [FieldDef]
         nuFields = repeatedByName allFields
 
-        -- for each constructor TorXakis adds 'isCstr' :: X -> Bool      function which should not conflict with
-        --              the accessor function 'field'  :: X -> SortField
-        -- hence for round tripping we need to check that fields of type Bool don't have a name equal to any isCstr.
-        conflictFieldIsConstructor :: [FieldDef]
-        conflictFieldIsConstructor = filter sameTxsRepresentation allBoolFields
-            where
-                allBoolFields :: [FieldDef]
-                allBoolFields = filter boolField allFields
-
-                boolField :: FieldDef -> Bool
-                boolField f = sort f == SortBool
-
-                sameTxsRepresentation :: FieldDef -> Bool
-                sameTxsRepresentation fd = (L.txsNameField . TorXakis.Name.toText . fieldName ) fd `elem` isConstructorNames
-
-                isConstructorNames :: [TxsString]
-                isConstructorNames = map (L.txsNameIsConstructor . TorXakis.Name.toText . constructorName) cs
-
-
--- | Refers the provided ConstructorDef name to a ConstrucotrDef in the given ADTDef?
+-- | Refers the provided ConstructorDef name to a ConstructorDef in the given ADTDef?
 memberConstructor :: Name -> ADTDef -> Bool
 memberConstructor r a = member r (constructors a)
 
@@ -239,87 +214,12 @@ instance UsedSorts c ConstructorDef where
 instance UsedSorts c ADTDef where
     usedSorts ctx a = Set.unions (map (usedSorts ctx) (elemsConstructor a))
 
--- Pretty Print
-instance PrettyPrint a Sort where
-    prettyPrint _ _ SortBool     = L.txsBoolean
-    prettyPrint _ _ SortInt      = L.txsInteger
-    prettyPrint _ _ SortChar     = L.txsCharacter
-    prettyPrint _ _ SortString   = L.txsString
-    prettyPrint _ _ SortRegex    = L.txsRegularExpression
-    prettyPrint _ _ (SortADT a)  = (L.TxsString . TorXakis.Name.toText . toName) a
+-- | Used Names instance
+instance UsedNames FieldDef where
+    usedNames = Set.singleton . fieldName
 
-instance PrettyPrint c FieldDef where
-    prettyPrint o c fd = L.concat [ L.TxsString (TorXakis.Name.toText (fieldName fd))
-                                  , L.txsSpace
-                                  , L.txsOperatorOfSort
-                                  , L.txsSpace
-                                  , prettyPrint o c (sort fd)
-                                  ]
+instance UsedNames ConstructorDef where
+    usedNames c = Set.unions (Set.singleton (constructorName c) : map usedNames (elemsField c))
 
-instance PrettyPrint c ConstructorDef where
-    prettyPrint o c cv = L.append cName
-                                  (case (short o, fields cv) of
-                                      (True, [])   -> L.empty
-                                      (True, x:xs) -> L.concat [ L.txsOpenScopeConstructor
-                                                               , L.txsSpace
-                                                               , L.TxsString (TorXakis.Name.toText (fieldName x)) -- or txsNameField?
-                                                               , shorten (sort x) xs
-                                                               , wsField
-                                                               , L.txsCloseScopeConstructor
-                                                               ]
-                                      _            -> L.concat [ L.txsOpenScopeConstructor
-                                                               , L.txsSpace
-                                                               , L.intercalate (L.concat [wsField, L.txsSeparatorLists, L.txsSpace]) (map (prettyPrint o c) (fields cv))
-                                                               , wsField
-                                                               , L.txsCloseScopeConstructor
-                                                               ]
-                                  )
-        where cName :: TxsString
-              cName = L.TxsString (TorXakis.Name.toText (constructorName cv))
-              
-              wsField :: TxsString
-              wsField = if multiline o then L.append L.txsNewLine (L.replicate (L.length cName) L.txsSpace)
-                                       else L.txsSpace
-
-              shorten :: Sort -> [FieldDef] -> TxsString
-              shorten s []                     = addSort s
-              shorten s (x:xs) | sort x == s   = L.concat [ L.txsSeparatorElements
-                                                          , L.txsSpace
-                                                          , L.TxsString (TorXakis.Name.toText (fieldName x))
-                                                          , shorten s xs
-                                                          ]
-              shorten s (x:xs)                 = L.concat [ addSort s
-                                                          , wsField
-                                                          , L.txsSeparatorLists
-                                                          , L.txsSpace
-                                                          , L.TxsString (TorXakis.Name.toText (fieldName x))
-                                                          , shorten (sort x) xs
-                                                          ]
-
-              addSort :: Sort -> TxsString
-              addSort s = L.concat [ L.txsSpace
-                                   , L.txsOperatorOfSort
-                                   , L.txsSpace
-                                   , prettyPrint o c s
-                                   ]
-
-instance PrettyPrint c ADTDef where
-    prettyPrint o c av = L.concat [ defLine
-                                  , offsetFirst
-                                  , L.intercalate (L.concat [ wsConstructor, L.txsSeparatorConstructors, L.txsSpace]) (map (prettyPrint o c) (elemsConstructor av))
-                                  , separator o
-                                  , L.txsCloseScopeDef
-                                  ]
-        where defLine :: TxsString
-              defLine = L.concat [ L.txsSortDef
-                                 , L.txsSpace
-                                 , L.TxsString (TorXakis.Name.toText (adtName av))
-                                 , L.txsSpace
-                                 , L.txsOperatorDef
-                                 ]
-              wsConstructor :: TxsString
-              wsConstructor = if multiline o then L.append L.txsNewLine (L.replicate (L.length defLine) L.txsSpace)
-                                             else L.txsSpace
-              offsetFirst :: TxsString
-              offsetFirst   = if multiline o then L.replicate (1+L.length L.txsSeparatorConstructors) L.txsSpace
-                                             else L.txsSpace
+instance UsedNames ADTDef where
+    usedNames a = Set.unions (Set.singleton (adtName a) : map usedNames (elemsConstructor a))

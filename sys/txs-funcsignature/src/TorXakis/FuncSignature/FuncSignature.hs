@@ -49,7 +49,7 @@ import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Language
-import           TorXakis.Name                 (toName, toText)
+import           TorXakis.Name                 (toName)
 import           TorXakis.FunctionName
 import           TorXakis.Sort
 import           TorXakis.SortContext
@@ -129,7 +129,7 @@ isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
         case s of
             SortADT a -> case lookupADT (toName a) ctx of
                               Nothing   -> error ("equalsConstructor -- ADTDef " ++ show a ++ " not defined in context ")
-                              Just aDef -> any (\c -> txsFuncName == (txsNameConstructor . TorXakis.Name.toText . constructorName) c && ss == map sort (elemsField c)) (elemsConstructor aDef)
+                              Just aDef -> any (\c -> txsFuncName == txsFuncNameConstructor c && ss == map sort (elemsField c)) (elemsConstructor aDef)
             _         -> False
 
     -- | exists constructor : returnSort func == Bool && funcName == isCstrName
@@ -138,7 +138,7 @@ isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
         (s == SortBool) && case ss of
                              [SortADT a] -> case lookupADT (toName a) ctx of
                                                 Nothing   -> error ("equalsIsConstructor -- ADTDef " ++ show a ++ " not defined in context ")
-                                                Just aDef -> any (\c -> txsFuncName == (txsNameIsConstructor . TorXakis.Name.toText . constructorName) c) (elemsConstructor aDef)
+                                                Just aDef -> any (\c -> txsFuncName == txsFuncNameIsConstructor c) (elemsConstructor aDef)
                              _           -> False
 
     -- | exists field : funcName == fieldName && funcReturnSort == fieldSort
@@ -147,7 +147,7 @@ isReservedFunctionSignature ctx n ss s =    isMappedFuncSignature
         case ss of
             [SortADT a] -> case lookupADT (toName a) ctx of
                             Nothing   -> error ("equalsFieldAccess -- ADTDef " ++ show a ++ " not defined in context ")
-                            Just aDef -> any (any (\f -> txsFuncName == (txsNameField . TorXakis.Name.toText . fieldName) f && s == sort f) . elemsField) (elemsConstructor aDef) 
+                            Just aDef -> any (any (\f -> txsFuncName == txsFuncNameField f && s == sort f) . elemsField) (elemsConstructor aDef) 
             _           -> False
 
 

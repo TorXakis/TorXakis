@@ -1,7 +1,7 @@
 # TorXakis - Model Based Testing
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
-name:                txs-basics
+name:                txs-defs
 version:             0.1.0.0
 github:              "TorXakis/TorXakis"
 license:             BSD3
@@ -12,30 +12,20 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 extra-source-files:
 - README.md
 
-dependencies:
-- base >= 4.7 && < 5
-
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.Error
-  - TorXakis.RefByIndex
+  - TorXakis.ContextTorXakis
   dependencies:
-  - deepseq
+  - base >= 4.7 && < 5
+  - containers
   - hashable
-
-tests:
-    txs-basics-test:
-        main : Spec.hs
-        source-dirs: test
-        ghc-options:
-        - -threaded
-        - -rtsopts
-        - -with-rtsopts=-N
-        dependencies:
-        - hspec
-        - QuickCheck
-        - txs-basics
+  - deepseq
+  - regex-tdfa
+  - text
+  - txs-language
+  - txs-sort
+  - txs-valexpr
 
 ghc-options:
 - -O

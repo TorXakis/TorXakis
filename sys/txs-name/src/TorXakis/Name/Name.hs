@@ -46,8 +46,7 @@ import           Data.List.Unique   (repeated)
 import           Data.Text          (Text, unpack)
 import           GHC.Generics       (Generic)
 
-import           TorXakis.Error     (Error(Error))
-import           TorXakis.Language  (isTxsReserved)
+import           TorXakis.Error     (Error)
 import qualified TorXakis.XMLName   as XMLName
 
 -- | Definition of the name of entities.
@@ -88,15 +87,12 @@ toString = unpack . toText
 --
 --   * The remaining characters adhere to [A-Z] | \'_\' | [a-z] | \'-\' | [0-9]
 --
---   * The provided 'Data.Text.Text' value is not reserved by torxakis.
---
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
 --
 --   These constraints are enforced to be able to use Names as fields in XML.
 --   See e.g. http://www.w3.org/TR/REC-xml/#NT-NameStartChar and http://www.w3.org/TR/REC-xml/#NT-NameChar
 mkName :: Text -> Either Error Name
-mkName s | isTxsReserved s = Left $ Error ("Illegal input: Reserved Token " ++ show s)
-         | otherwise       = XMLName.mkXMLName s >>= Right . Name
+mkName s = XMLName.mkXMLName s >>= Right . Name
 
 -- |  Return the elements with non-unique names that the second list contains in the combination of the first and second list.
 repeatedByNameIncremental :: (HasName a, HasName b) => [a] -> [b] -> [b]

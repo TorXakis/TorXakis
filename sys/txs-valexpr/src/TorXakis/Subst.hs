@@ -70,6 +70,10 @@ fromFuncContext fc = ContextValExpr (fromSortContext fc) (toMapByFuncSignature f
 fromVarContext :: VarContext c => c -> ContextValExpr
 fromVarContext vc = ContextValExpr vc HashMap.empty
 
+-- | empty
+empty :: ContextValExpr
+empty = fromVarContext ContextVar.empty
+
 instance SortContext ContextValExpr where
     -- Can't use
     -- memberSort   = memberSort . varContext

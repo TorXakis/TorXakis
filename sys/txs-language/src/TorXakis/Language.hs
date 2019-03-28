@@ -44,6 +44,20 @@ module TorXakis.Language
 , txsSpace
 , txsNewLine
 
+  -- ** Predefined keywords
+, txsKeywords
+
+, txsKeywordCloseScopeDef
+, txsKeywordSortDef
+
+, txsKeywordIf
+, txsKeywordThen
+, txsKeywordElse
+, txsKeywordFi
+
+, isTxsKeyword
+, isTxsReserved
+
   -- ** Predefined Sorts
 , txsPredefinedSorts
 
@@ -53,26 +67,28 @@ module TorXakis.Language
 , txsString
 , txsRegularExpression
 
+  -- ** Predefined Functions
+, txsFunctionNot
+, txsFunctionStringInRegex
   -- ** Predefined Operators
 , txsOperators
 
 , txsOperatorDef
-, txsCloseScopeDef
-, txsSortDef
 , txsOperatorOfSort
 , txsSeparatorElements
 , txsSeparatorLists
 , txsSeparatorConstructors
 , txsOpenScopeConstructor
 , txsCloseScopeConstructor
+, txsOpenScopeArguments
+, txsCloseScopeArguments
 
 , txsOpenScopeValExpr
 , txsCloseScopeValExpr
-
-  -- ** Predefined keywords
-, txsKeywords
-, isTxsKeyword
-, isTxsReserved
+, txsOperatorEqual
+, txsOperatorAnd
+, txsOperatorDivide
+, txsOperatorModulo
 
   -- ** Identifiers
 , regexTxsIdentifier
@@ -85,13 +101,11 @@ module TorXakis.Language
 , regexTxsFuncOperator
 , satisfyTxsFuncOperator
   -- * Implicit TorXakis Elements
-, txsNameConstructor
-, txsNameIsConstructor
 , prefixIsConstructor
-, txsNameField
 )
 where
 import           Control.DeepSeq     (NFData)
+import           Control.Exception   (assert)
 import           Data.Data           (Data)
 import           Data.Hashable       (Hashable(hashWithSalt))
 import qualified Data.Set            as Set
@@ -115,7 +129,7 @@ toString = T.unpack . toText
 
 -- | The empty 'TorXakis.TxsString'.
 empty :: TxsString
-empty = TxsString (T.empty)
+empty = TxsString T.empty
 
 -- | Returns the number of characters in a 'TorXakis.TxsString'. Subject to fusion.
 length :: TxsString -> Int
@@ -180,6 +194,14 @@ txsString = TxsString (T.pack "String")
 txsRegularExpression :: TxsString
 txsRegularExpression = TxsString (T.pack "Regex")
 
+-- | Function not in TorXakis
+txsFunctionNot :: TxsString
+txsFunctionNot = TxsString (T.pack "not")
+
+-- | Function String in Regular Expression in TorXakis
+txsFunctionStringInRegex :: TxsString
+txsFunctionStringInRegex = TxsString (T.pack "strinre")
+
 -- | Comment till end of Line
 txsCommentLine :: TxsString
 txsCommentLine = TxsString (T.pack "--")
@@ -200,21 +222,22 @@ txsCommentEnd = TxsString (T.pack "-}")
 txsCaseSensitive :: Bool
 txsCaseSensitive = True
 
--- | A space in TorXakis
+-- | A space in TorXakis. The length of a space is 1.
 txsSpace :: TxsString
-txsSpace = TxsString (T.singleton ' ')
+txsSpace = let space = TxsString (T.singleton ' ') in
+                assert (1 == TorXakis.Language.length space) space
 
 -- | A newline in TorXakis
 txsNewLine :: TxsString
 txsNewLine = TxsString (T.singleton '\n')
 
 -- | Close scope of definition
-txsCloseScopeDef :: TxsString
-txsCloseScopeDef = TxsString (T.pack "ENDDEF")
+txsKeywordCloseScopeDef :: TxsString
+txsKeywordCloseScopeDef = TxsString (T.pack "ENDDEF")
 
 -- | Definition of Sort in TorXakis.
-txsSortDef :: TxsString
-txsSortDef = TxsString (T.pack "TYPEDEF")
+txsKeywordSortDef :: TxsString
+txsKeywordSortDef = TxsString (T.pack "TYPEDEF")
 
 -- | operator define in TorXakis.
 txsOperatorDef :: TxsString
@@ -252,17 +275,61 @@ txsOpenScopeValExpr = TxsString (T.singleton '(')
 txsCloseScopeValExpr :: TxsString
 txsCloseScopeValExpr = TxsString (T.singleton ')')
 
+-- | Open scope of Arguments in TorXakis.
+txsOpenScopeArguments :: TxsString
+txsOpenScopeArguments = TxsString (T.singleton '(')
+
+-- | Close scope of Arguments in TorXakis.
+txsCloseScopeArguments :: TxsString
+txsCloseScopeArguments = TxsString (T.singleton ')')
+
+-- | operator equal in TorXakis.
+txsOperatorEqual :: TxsString
+txsOperatorEqual = TxsString (T.pack "==")
+
+-- | operator and in TorXakis.
+txsOperatorAnd :: TxsString
+txsOperatorAnd = TxsString (T.pack "/\\")
+
+-- | operator divide in TorXakis.
+txsOperatorDivide :: TxsString
+txsOperatorDivide = TxsString (T.singleton '/')
+
+-- | operator modulo in TorXakis.
+txsOperatorModulo :: TxsString
+txsOperatorModulo = TxsString (T.singleton '%')
+
+-- | keyword IF in TorXakis.
+txsKeywordIf :: TxsString
+txsKeywordIf = TxsString (T.pack "IF")
+
+-- | keyword THEN in TorXakis.
+txsKeywordThen :: TxsString
+txsKeywordThen = TxsString (T.pack "THEN")
+
+-- | keyword ELSE in TorXakis.
+txsKeywordElse :: TxsString
+txsKeywordElse = TxsString (T.pack "ELSE")
+
+-- | keyword FI in TorXakis, to close scope of IF THEN ELSE statement.
+txsKeywordFi :: TxsString
+txsKeywordFi = TxsString (T.pack "FI")
+
 -- | TorXakis Keywords
 txsKeywords :: Set.Set TxsString
 txsKeywords = Set.fromList $
                   txsPredefinedSorts ++
-                  [ txsCloseScopeDef
-                  , txsSortDef
+                  [ txsKeywordCloseScopeDef
+                  , txsKeywordSortDef
+                    -- ValExpression
+                  , txsKeywordIf
+                  , txsKeywordElse
+                  , txsKeywordThen
+                  , txsKeywordFi
                   ] ++
                   map (TxsString . T.pack) [ "CONSTDEF", "FUNCDEF", "PROCDEF", "MODELDEF"
                                            , "CHANDEF", "PURPDEF", "CNECTDEF", "STAUTDEF", "MAPPERDEF" -- Definitions
-                                           , "LET", "IN", "NI"
-                                           , "IF", "THEN", "ELSE", "FI"                         -- ValExpr
+                                           , "LET", "IN", "NI"      -- ValExpr
                                            , "STOP", "EXIT"
                                            , "ISTEP", "HIDE", "ACCEPT"                          -- PROCDEF terms
                                            , "QSTEP"
@@ -292,41 +359,52 @@ isTxsReserved :: T.Text -> Bool
 isTxsReserved t =      (toText txsCommentLine `T.isPrefixOf` t)
                     || isTxsKeyword t
 
--- | TorXakis predefined operators
+-- | TorXakis predefined operators.
+-- Note that some operators are mapped onto the same symbol.
+
 -- TODO: should we name each operator and document the operator (instead of the wiki?)
---       and even explicitly distinguish some operators mapped onto same symbol (e.g. "|" and "->")
 -- TODO: most operators can be overloaded for other usages (e.g. a == b for a <> b can be defined),
 --       so the operator name is not reserved, only a particular signature is reserved!
-txsOperators :: [TxsString]
-txsOperators = [ txsOperatorDef
-               , txsOperatorOfSort
-               , txsSeparatorElements
-               , txsSeparatorLists
-               , txsSeparatorConstructors
-               , txsOpenScopeConstructor
-               , txsCloseScopeConstructor
-               ]
-                ++ map (TxsString . T.pack) [ "[", "]", "(", ")"        -- Process Def, Process instantiation, function instantiation/call
-                                            , "#"                       -- Sort
-                                            , ":="                      -- STAUTDEF assignment (TODO: why differs from LET assignment?)
-    
-                                            , "'", "\"", "`"            -- constant char, string and regex
-                                                                -- val expression
-                                            , "==", "<>", "/\\", "\\/", "\\|/", "=>"    -- boolean
-                                            , "+", "-", "*", "/", "%"                   -- integer (TODO: what about "^"?)
-                                            , "<", "<=", ">=", ">"                      -- comparison: integer -> bool
-                                            , "++"                                      -- concat string
-                                            , "="                                       -- Let assignment
-                                                                -- process
-                                            , "?", "!"                        -- Communication (TODO: what about "[[" and "]]"?) (also uses "|")
-                                            , ">->", ">>>"                    -- Sequence
-                                            , "[>>", "[><"                    -- Disable /Interrupt
-                                            , "##"                            -- Choice
-                                            , "||", "|||"                     -- Parallel (TODO: what about "|[" and "]|"?)
-                                            , "=>>"                           -- Guard
-                                                                -- cnectdef
-                                            , "<-", "->"                      -- CNECTDEF (note: STAUTDEF also uses "->" )
-                                            ]
+txsOperators :: Set.Set TxsString
+txsOperators = Set.fromList ( [ txsOperatorDef
+                              , txsOperatorOfSort
+                              , txsSeparatorElements
+                              , txsSeparatorLists
+                              , txsSeparatorConstructors
+                              , txsOpenScopeConstructor
+                              , txsCloseScopeConstructor
+                                -- ValExpr
+                              , txsOpenScopeValExpr
+                              , txsCloseScopeValExpr
+                              , txsOpenScopeArguments
+                              , txsCloseScopeArguments
+                              , txsOperatorEqual
+                              , txsOperatorAnd
+                              , txsOperatorDivide
+                              , txsOperatorModulo
+                              ]
+                              ++ map (TxsString . T.pack) [ "[", "]", "(", ")"        -- Process Def, Process instantiation, function instantiation/call
+                                                          , "#"                       -- Sort
+                                                          , ":="                      -- STAUTDEF assignment (TODO: why differs from LET assignment?)
+                              
+                                                          , "'", "\"", "`"            -- constant char, string and regex
+                                                                              -- val expression
+                                                          , "<>", "\\/", "\\|/", "=>"    -- boolean
+                                                          , "+", "-", "*"                    -- integer (TODO: what about "^"?)
+                                                          , "<", "<=", ">=", ">"                      -- comparison: integer -> bool
+                                                          , "++"                                      -- concat string
+                                                          , "="                                       -- Let assignment
+                                                                              -- process
+                                                          , "?", "!"                        -- Communication (TODO: what about "[[" and "]]"?) (also uses "|")
+                                                          , ">->", ">>>"                    -- Sequence
+                                                          , "[>>", "[><"                    -- Disable /Interrupt
+                                                          , "##"                            -- Choice
+                                                          , "||", "|||"                     -- Parallel (TODO: what about "|[" and "]|"?)
+                                                          , "=>>"                           -- Guard
+                                                                              -- cnectdef
+                                                          , "<-", "->"                      -- CNECTDEF (note: STAUTDEF also uses "->" )
+                                                          ]
+                            )
 -- TODO: what about &#<digit>+;   ?
 --       to accept control characters in TorXakis (only defined inside ', " and ` context)
 
@@ -351,7 +429,7 @@ regexTxsIdentifierTail = "[A-Za-z_0-9-]"
 
 -- | Is 'Data.Text' a TorXakis identifier?
 satisfyTxsIdentifier :: T.Text -> Bool
-satisfyTxsIdentifier t = (T.unpack t) =~ regexTxsIdentifier
+satisfyTxsIdentifier t = T.unpack t =~ regexTxsIdentifier
 
 -- | Is character a first/head character of a TorXakis identifier?
 satisfyTxsIdentifierHead :: Char -> Bool
@@ -369,26 +447,12 @@ regexTxsFuncOperator = "\\`" ++ "[A-Za-z_][A-Za-z_0-9-]*|[-+*^=<>%/\\|@&]+" ++ "
 
 -- | Is 'Data.Text' a TorXakis function/operator name?
 satisfyTxsFuncOperator :: T.Text -> Bool
-satisfyTxsFuncOperator t = (T.unpack t) =~ regexTxsFuncOperator
+satisfyTxsFuncOperator t = T.unpack t =~ regexTxsFuncOperator
 
 -- TODO: What about operators like
 --      communication ?!
 --      others        :#$.~
 
--- | Implicit function name for constructor
-txsNameConstructor :: T.Text -> TxsString
-txsNameConstructor nm = TxsString nm
-
--- | Implicit function name for is-made-by-constructor
-txsNameIsConstructor :: T.Text -> TxsString
-txsNameIsConstructor nm = append prefixIsConstructor (TxsString nm)
-
 -- | Prefix of is-made-by-constructor
 prefixIsConstructor :: TxsString
 prefixIsConstructor = TxsString (T.pack "is")
-
--- | Implicit function Name of field access
--- TODO: add additional parameters for ADT name and constructor name?
---       with additional parameters, one could allow multiple fields with the same name in a single ADT....
-txsNameField :: T.Text -> TxsString
-txsNameField nm = TxsString nm

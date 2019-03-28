@@ -15,7 +15,6 @@ extra-source-files:
 dependencies:
 - base >= 4.7 && < 5
 - text
-- txs-language
 
 library:
   source-dirs: src
@@ -25,6 +24,7 @@ library:
   - TorXakis.NameMap
   - TorXakis.XMLName
   dependencies:
+  - containers
   - deepseq
   - hashable
   - hashmap
