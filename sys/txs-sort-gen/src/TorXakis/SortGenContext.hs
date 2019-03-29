@@ -51,7 +51,7 @@ arbitrarySort ctx =
                 [] -> error ("No Sort in context with complexity at most " ++ show n)
                 _  -> elements availableSort
 
-arbitraryField :: [TxsString] -> [Sort] -> Name -> Gen FieldDef
+arbitraryField :: [L.TxsString] -> [Sort] -> Name -> Gen FieldDef
 arbitraryField isCstrs ss n = do
         s <- elements availableSort
         return $ FieldDef n s
@@ -62,7 +62,7 @@ arbitraryField isCstrs ss n = do
                         then Data.List.delete SortBool ss
                         else ss
 
-arbitraryFields :: [TxsString] -> [Sort] -> [Name] -> Gen [FieldDef]
+arbitraryFields :: [L.TxsString] -> [Sort] -> [Name] -> Gen [FieldDef]
 arbitraryFields isCstrs ss = mapM (arbitraryField isCstrs ss)
 
 arbitraryConstructors :: [Sort] -> [Sort] -> Gen [ConstructorDef]
@@ -81,7 +81,7 @@ arbitraryConstructors defined add =
         mkConstructorDefs cs =
             mkConstructorDefs' (map (L.append L.prefixIsConstructor . L.TxsString . TorXakis.Name.toText) cs) cs
 
-        mkConstructorDefs' :: [TxsString] -> [Name] -> [Name] -> Gen [ConstructorDef]
+        mkConstructorDefs' :: [L.TxsString] -> [Name] -> [Name] -> Gen [ConstructorDef]
         mkConstructorDefs' _       []       _  = error "Non-empty list expected"
         mkConstructorDefs' isCstrs [cn]     ns =
             do

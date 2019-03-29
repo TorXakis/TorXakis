@@ -15,8 +15,6 @@ extra-source-files:
 dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
-- txs-language
-- txs-basics
 - txs-name
 - txs-sort
 
@@ -33,6 +31,8 @@ library:
     - containers
     - hashmap
     - multimap
+    - txs-basics
+    - txs-language
     - txs-name-gen
 
 tests:
