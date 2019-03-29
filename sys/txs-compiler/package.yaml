@@ -33,9 +33,9 @@ library:
   - Unique
   # TorXakis dependencies
   - txs-language
-  - txs-funcsignature
+  #- txs-funcsignature
   - txs-name
-  - txs-valexpr
+  #- txs-valexpr
   - txs-value
 
 tests:
@@ -62,6 +62,9 @@ tests:
     - txs-compiler
     - txs-basics
     - txs-basics-gen
+    - txs-language
+    - txs-prettyprint
+    - txs-prettyprint-gen
     - txs-sort-gen
 
 flags:

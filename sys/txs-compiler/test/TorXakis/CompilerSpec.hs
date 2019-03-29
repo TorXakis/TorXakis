@@ -41,7 +41,8 @@ import           Common                  (onAllFilesIn)
 import           TorXakis.Compiler       (compileFile, 
                                           compileString
                                           )
-import           TorXakis.PrettyPrint.TorXakis
+import           TorXakis.Language
+import           TorXakis.PrettyPrint
 import           TorXakis.SortContext
 import           TorXakis.SortGenContext
 import           TorXakis.OptionsGen

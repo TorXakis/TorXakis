@@ -56,7 +56,7 @@ import           TorXakis.SortContext
 import           TorXakis.ContextSort   -- for now
 
 -- | The TorXakis Context.
-newtype ContextTorXakis = ContextTorXakis { txsContext :: ContextSort
+newtype ContextTorXakis = ContextTorXakis { innerContext :: ContextSort
                                           } deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor of empty ContextTorXakis
@@ -64,13 +64,13 @@ empty :: ContextTorXakis
 empty = ContextTorXakis TorXakis.ContextSort.empty
 
 instance SortContext ContextTorXakis where
-    memberSort r = memberSort r . txsContext
+    memberSort r = memberSort r . innerContext
 
-    memberADT r = memberADT r . txsContext
+    memberADT r = memberADT r . innerContext
 
-    lookupADT r = lookupADT r . txsContext
+    lookupADT r = lookupADT r . innerContext
 
-    elemsADT = elemsADT . txsContext
+    elemsADT = elemsADT . innerContext
 
     -- Add additional checks to make round tripping possible.
     --

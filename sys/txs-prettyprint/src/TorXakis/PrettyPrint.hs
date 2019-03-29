@@ -107,7 +107,7 @@ instance PrettyPrint c ConstructorDef where
               cName = TxsString (TorXakis.Name.toText (constructorName cv))
               
               wsField :: TxsString
-              wsField = if multiline o then append txsNewLine (replicate (1+length cName) txsSpace)
+              wsField = if multiline o then append txsNewLine (replicate (2+ length cName + length txsOpenScopeConstructor) txsSpace)
                                        else txsSpace
 
               shorten :: Sort -> [FieldDef] -> TxsString
@@ -135,8 +135,9 @@ instance PrettyPrint c ConstructorDef where
 instance PrettyPrint c ADTDef where
     prettyPrint o c av = concat [ defLine
                                 , offsetFirst
-                                , intercalate (concat [wsConstructor, txsSeparatorConstructors, txsSpace])
-                                              (map (prettyPrint o c) (elemsConstructor av))
+                                , indent wsConstructor $
+                                         intercalate (concat [separator o, txsSeparatorConstructors, txsSpace])
+                                                     (map (prettyPrint o c) (elemsConstructor av))
                                 , separator o
                                 , txsKeywordCloseScopeDef
                                 ]
@@ -148,8 +149,8 @@ instance PrettyPrint c ADTDef where
                                , txsOperatorDef
                                ]
               wsConstructor :: TxsString
-              wsConstructor = if multiline o then append txsNewLine (replicate (length defLine) txsSpace)
-                                             else txsSpace
+              wsConstructor = if multiline o then replicate (length defLine) txsSpace
+                                             else empty
               offsetFirst :: TxsString
               offsetFirst   = if multiline o then replicate (1+length txsSeparatorConstructors) txsSpace
                                              else txsSpace

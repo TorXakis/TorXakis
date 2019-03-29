@@ -9,7 +9,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TupleSections         #-}
-{-# LANGUAGE TypeApplications      #-}
+--{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 {-# LANGUAGE UndecidableInstances  #-}
@@ -40,55 +40,67 @@ module TorXakis.Compiler.ValExpr.Sort
     -- * Type (Sort) inference.
     , inferVarTypes
     , HasTypedVars
-    , inferTypes
-    , inferExpTypes
+    --, inferTypes
+    --, inferExpTypes
     -- * Compilation
     --, compileToSort
     )
 where
 
-import           Control.Arrow            (left, (+++), (|||))
-import           Control.Monad            (foldM, when)
-import           Control.Monad.Except     (liftEither)
-import           Data.Either              (partitionEithers)
-import           Data.List                (intersect)
-import           Data.Map                 (Map)
-import qualified Data.Map                 as Map
+--import           Control.Arrow            (left, (+++), (|||))
+import           Control.Monad            (--foldM,
+                                           when)
+--import           Control.Monad.Except     (liftEither)
+--import           Data.Either              (partitionEithers)
+--import           Data.List                (intersect)
+--import           Data.Map                 (Map)
+--import qualified Data.Map                 as Map
 import           Data.Monoid              ((<>))
 import           Data.Text                (Text)
 import qualified Data.Text                as T
-import           Data.Traversable         (for)
-import           GHC.Exts                 (fromList, toList)
+--import           Data.Traversable         (for)
+--import           GHC.Exts                 (fromList, toList)
 import           Prelude                  hiding (lookup)
 
-import           TorXakis.FuncSignature   (FuncSignature (args, returnSort))
+--import           TorXakis.FuncSignature   (FuncSignature (args, returnSort))
 import           TorXakis.Sort            (Sort (SortBool, SortInt, SortRegex, SortString))
 
 import           TorXakis.Compiler.Data   (CompilerM)
-import           TorXakis.Compiler.Error  (Error (Error, Errors),
+import           TorXakis.Compiler.Error  (Error (Error--, Errors
+                                                 ),
                                            ErrorLoc (NoErrorLoc),
                                            ErrorType (TypeMismatch),
-                                           getErrorLoc, _errorLoc,
+--                                           getErrorLoc,
+                                           _errorLoc,
                                            _errorMsg, _errorType)
-import           TorXakis.Compiler.Maps   (findFuncDecl, findFuncReturnSorts, determineF,
-                                           findSort, getUniqueElement,
+import           TorXakis.Compiler.Maps   (--findFuncDecl
+                                           --, findFuncReturnSorts, determineF
+                                           --, findSort, getUniqueElement,
                                            (.@!!))
-import           TorXakis.Compiler.MapsTo (MapsTo, innerMap, lookup,
-                                           values, (<.++>), (<.+>))
+import           TorXakis.Compiler.MapsTo (MapsTo
+                                           --, innerMap, lookup,
+                                           --values, (<.++>), (<.+>)
+                                           )
 import           TorXakis.Parser.Data     (Const (AnyConst, BoolConst, IntConst, RegexConst, StringConst),
-                                           ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
-                                           ExpDecl, FuncDecl, FuncDeclE,
-                                           LetVarDecl, Loc, OfSort,
-                                           ParLetVarDecl,
+                                           --ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
+                                           --ExpDecl, FuncDecl, FuncDeclE,
+                                           --LetVarDecl, 
+                                           Loc, OfSort,
+                                           --ParLetVarDecl,
                                            VarDecl,
-                                           VarDeclE, VarRefE,
-                                           expChild, expLetVarDecls, funcBody,
-                                           funcParams, getLoc,
-                                           letVarDeclSortName,
+                                           VarDeclE, 
+                                           --VarRefE,
+                                           --expChild, 
+                                           --expLetVarDecls, 
+                                           --funcBody,
+                                           --funcParams, 
+                                           getLoc,
+                                           --letVarDeclSortName,
                                            sortRefName,
-                                           varDeclExp,
+                                           --varDeclExp,
                                            varDeclSort)
 
+                                           {-
 -- | Infer the types in a list of function declarations.
 inferTypes :: ( MapsTo Text Sort mm
               , MapsTo (Loc VarDeclE) Sort mm
@@ -108,7 +120,8 @@ inferTypes mm fs = liftEither $ do
           where
             fParamSorts :: Either Error [Sort]
             fParamSorts = traverse (findSort mm) (varDeclSort <$> funcParams fd)
-
+-}
+{-
 -- | Infer the types in a list of let-variable-declarations.
 letInferTypes :: ( MapsTo Text Sort mm
                  , MapsTo (Loc VarDeclE)  Sort mm
@@ -121,7 +134,8 @@ letInferTypes :: ( MapsTo Text Sort mm
 letInferTypes mm vdSId ls = do
     letVdSId <- accLetInferTypes (vdSId <.+> mm) ls
     return $ letVdSId `Map.union` vdSId
-
+-}
+{-
 -- | Generic version of @letInferTypes@ that accumulates the partial results in
 -- the composite map.
 accLetInferTypes :: ( MapsTo Text Sort mm
@@ -136,11 +150,15 @@ accLetInferTypes mm vs =
         ([], rs) -> Right $ fromList rs <> innerMap mm
         (ls, []) -> Left $ Errors (fst <$> ls)
         (ls, rs) -> accLetInferTypes (fromList rs <.+> mm) (snd <$> ls)
+-}
 
+{-
 -- | Get all the let variable declarations in a function.
 letVarDeclsInFunc :: FuncDecl -> [[LetVarDecl]]
 letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
+-}
 
+{-
 -- | Infer the type of a variable declaration.
 inferVarDeclType :: ( MapsTo Text Sort mm
                     , MapsTo (Loc VarDeclE) Sort mm
@@ -157,7 +175,9 @@ inferVarDeclType mm vd = left (,vd) $
         expSids <- inferExpTypes mm (varDeclExp vd)
         expSid <- getUniqueElement expSids
         return (getLoc vd, expSid)
+-}
 
+{-
 -- | Infer the type of an expression. Due to function overloading an expression
 -- could have multiple types, e.g.:
 --
@@ -221,7 +241,9 @@ inferExpTypes mm ex =
                                      <> T.pack (show ses)
                        })
                   return $ returnSort sig
+-}
 
+{-
 -- | Determine the types of variables in a let-expression.
 letVarTypes :: ( MapsTo Text Sort mm
                , MapsTo (Loc VarDeclE) Sort mm
@@ -238,6 +260,7 @@ letVarTypes mm vdSid vs = do
     let vdSid' = Map.fromList $ zip (getLoc <$> vs) vsSids
     -- 'Map.union' is left biased, so the new variables will shadow the previous ones.
     return $ vdSid' `Map.union` vdSid
+-}
 
 -- | @Sort@ of a constant.
 sortConst :: Const -> Maybe Sort
@@ -365,6 +388,7 @@ instance ( HasTypedVars mm e ) => HasTypedVars mm (Maybe e) where
 instance ( HasTypedVars mm e ) => HasTypedVars mm [e] where
     inferVarTypes mm es = concat <$> traverse (inferVarTypes mm) es
 
+    {-
 instance ( MapsTo Text Sort mm
          , MapsTo (Loc VarDeclE) Sort mm
          , MapsTo (Loc FuncDeclE) FuncSignature mm
@@ -407,6 +431,7 @@ inferLetVarTypes mm vdSId vs = do
     vdSId' <- liftEither $
         Map.toList <$> accLetInferTypes (vdSId <.++> mm) vs
     return $ vdSId' ++ vdSId
+-}
 
 {- chanId -- not yet needed
 instance ( MapsTo Text SortId mm

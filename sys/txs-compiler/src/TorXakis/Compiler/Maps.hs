@@ -32,13 +32,13 @@ module TorXakis.Compiler.Maps
     , (<!!>)
       -- * Specific lookups
     , findFuncDecl
-    , determineF
+    --, determineF
     , getUniqueElement
     , findSort
-    , findFuncReturnSorts
+    --, findFuncReturnSorts
     , findSortM
     , findRight
-    , idefsNames
+    --, idefsNames
       -- * Map manipulation
     , join
     )
@@ -49,14 +49,14 @@ import           Control.Lens             ((.~))
 import           Control.Monad.Except     (catchError, liftEither, throwError)
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
-import           Data.Maybe               (catMaybes, maybe)
+--import           Data.Maybe               (catMaybes, maybe)
 import           Data.Monoid              ((<>))
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Data.Typeable            (Typeable)
 import           Prelude                  hiding (lookup)
 
-import           TorXakis.FuncSignature   (FuncSignature(args, returnSort))
+--import           TorXakis.FuncSignature   (FuncSignature(args, returnSort))
 import           TorXakis.Sort            (Sort)
 
 import           TorXakis.Compiler.Data   (CompilerM)
@@ -66,10 +66,12 @@ import           TorXakis.Compiler.Error  (Entity (Entity, Function),
                                            HasErrorLoc, errorLoc, errorMsg,
                                            getErrorLoc, _errorLoc, _errorMsg,
                                            _errorType)
-import           TorXakis.Compiler.MapsTo (MapsTo, innerMap, lookup, lookupM)
+import           TorXakis.Compiler.MapsTo ( MapsTo
+                                          --, innerMap
+                                           , lookup, lookupM)
 import           TorXakis.Parser.Data     (FuncDeclE,
-                                           Loc (ExtraAut, Loc, PredefLoc),
-                                           VarDeclE, VarRefE)
+                                           Loc --(ExtraAut, Loc, PredefLoc)
+                                           , VarDeclE, VarRefE)
 
 -- | Lookup the @Sort@ associated to the given name, using the location for
 -- error reporting.
@@ -99,6 +101,7 @@ getUniqueElement xs = Left Error
     , _errorMsg  = "Found multiple elements: " <> T.pack (show xs)
     }
 
+    {-
 -- | Select the function definitions that matches the given arguments and return
 -- types.
 determineF :: MapsTo (Loc FuncDeclE) FuncSignature mm
@@ -115,13 +118,15 @@ determineF mm ls aSids mRSid =
           sig <- lookup l mm
           return $ args sig == aSids &&
                    maybe True (returnSort sig ==) mRSid
+-}
 
-
+{-
 -- | Get the name of the implicit function declaration, if any.
 fdiName :: Loc FuncDeclE -> Maybe Text
 fdiName Loc {}          = Nothing
 fdiName ExtraAut {}     = Nothing
 fdiName (PredefLoc n _) = Just n
+-}
 
 -- | Find the nullary function declaration that corresponds to a variable
 -- reference. A nullary function is a funciton without arguments.
@@ -152,18 +157,21 @@ findRight vdefs l = Left ||| cErr ||| Right $ lookup l vdefs
             , _errorMsg  = "Could not function declaration."
             }
 
+{-
 -- | Find all the return @Sort@'s of the given function declarations.
 findFuncReturnSorts :: MapsTo (Loc FuncDeclE) FuncSignature mm
                 => mm -> [Loc FuncDeclE] -> Either Error [Sort]
 findFuncReturnSorts mm fdis = fmap returnSort <$> traverse (`lookup` mm) fdis
+-}
 
+{-
 -- | Extract the names of the implicit function declarations in the map.
 idefsNames :: MapsTo (Loc FuncDeclE) FuncSignature mm => mm -> [Text]
 idefsNames mm = catMaybes $ fdiName <$> Map.keys fm
     where
       fm :: Map (Loc FuncDeclE) FuncSignature
       fm = innerMap mm
-
+-}
 -- | Set the error location.
 (<!>) :: HasErrorLoc l => Either Error a -> l -> Either Error a
 (<!>) ea l = left (errorLoc .~ getErrorLoc l) ea

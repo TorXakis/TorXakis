@@ -17,9 +17,7 @@ dependencies:
 - containers
 - deepseq
 - hashable
-- text
 - txs-basics
-- txs-language
 - txs-name
 - txs-sort
 
