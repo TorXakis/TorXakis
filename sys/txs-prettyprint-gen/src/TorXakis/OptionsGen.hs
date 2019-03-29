@@ -33,7 +33,7 @@ import           Data.Data (Data)
 import           GHC.Generics     (Generic)
 import           Test.QuickCheck
 
-import           TorXakis.PrettyPrint.TorXakis
+import           TorXakis.PrettyPrint
 
 -- | Definition of the name generator.
 newtype OptionsGen = OptionsGen { -- | accessor to 'TorXakis.Options'

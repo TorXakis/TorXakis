@@ -34,7 +34,7 @@ ghc-variant: integersimple
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - location: sys/txs-basics
-#- location: sys/txs-basics-gen
+- location: sys/txs-basics-gen
 #- location: sys/txs-chan
 #- location: sys/txs-compiler
 - location: sys/txs-defs
@@ -44,6 +44,7 @@ packages:
 - location: sys/txs-name
 #- location: sys/txs-name-gen
 - location: sys/txs-prettyprint
+- location: sys/txs-prettyprint-gen
 #- location: sys/txs-procsignature
 - location: sys/txs-sort
 #- location: sys/txs-sort-gen

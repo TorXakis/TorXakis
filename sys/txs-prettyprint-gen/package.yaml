@@ -1,7 +1,7 @@
 # TorXakis - Model Based Testing
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
-name:                txs-basics-gen
+name:                txs-prettyprint-gen
 version:             0.1.0.0
 github:              "TorXakis/TorXakis"
 license:             BSD3
@@ -19,21 +19,10 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.Cover
-  - TorXakis.Distribute
-
-
-tests:
-    txs-basics-gen-test:
-        main : Spec.hs
-        source-dirs: test
-        ghc-options:
-        - -threaded
-        - -rtsopts
-        - -with-rtsopts=-N
-        dependencies:
-        - hspec
-        - txs-basics-gen
+  - TorXakis.OptionsGen
+  dependencies:
+  - deepseq
+  - txs-prettyprint
 
 ghc-options:
 - -Werror
