@@ -18,14 +18,11 @@ library:
   - TorXakis.PrettyPrint
   dependencies:
   - base >= 4.7 && < 5
-  - containers
-  - hashable
   - deepseq
-  - regex-tdfa
-  - text
   - txs-language
+  - txs-name
   - txs-sort
-  - txs-valexpr
+  #- txs-valexpr
 
 ghc-options:
 - -O

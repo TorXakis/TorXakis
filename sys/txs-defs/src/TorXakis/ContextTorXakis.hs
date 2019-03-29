@@ -29,65 +29,44 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.ContextTorXakis
-( -- * Sort Context
-  ContextTorXakis(ContextTorXakis)
+( -- * Context TorXakis
+  ContextTorXakis
 , TorXakis.ContextTorXakis.empty
 )
 where
 import           Data.Data            (Data)
-import qualified Data.List            as List
-import           Data.Maybe           (mapMaybe)
-import qualified Data.Set             as Set
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error       ( Error ( Error ) )
-import           TorXakis.Name
-import           TorXakis.NameMap
-import           TorXakis.Sort        ( Sort ( SortADT )
+import           TorXakis.Language
+import           TorXakis.Sort        ( Sort ( SortBool )
                                       , ADTDef
-                                      , adtName
                                       , elemsConstructor
                                       , ConstructorDef
                                       , elemsField
+                                      , FieldDef
                                       , sort
-                                      , usedSorts
                                       )
 import           TorXakis.SortContext
 
-
--- Implicit Functions based on Sort
--- | Implicit function name for constructor
-txsFuncNameConstructor :: ConstructorDef -> TxsString
-txsFuncNameConstructor = TxsString . TorXakis.Name.toText . constructorName
-
--- | Implicit function name for is-made-by-constructor
-txsFuncNameIsConstructor :: ConstructorDef -> TxsString
-txsFuncNameIsConstructor = append prefixIsConstructor . txsFuncNameConstructor
-
--- | Implicit function Name of field access
--- TODO: add additional parameters for ADT name and constructor name (to prepare for evolutionary changes)?
---       with additional parameters, one could allow multiple fields with the same name in a single ADT....
-txsFuncNameField :: FieldDef -> TxsString
-txsFuncNameField = TxsString . TorXakis.Name.toText . fieldName
-
-
+import           TorXakis.ContextSort   -- for now
 
 -- | The TorXakis Context.
-newtype ContextTorXakis = ContextTorXakis { funcContext :: FuncContext
+newtype ContextTorXakis = ContextTorXakis { txsContext :: ContextSort
                                           } deriving (Eq, Ord, Read, Show, Generic, Data)
 
 -- | Constructor of empty ContextTorXakis
 empty :: ContextTorXakis
-empty = ContextTorXakis TorXakis.Subst.empty
+empty = ContextTorXakis TorXakis.ContextSort.empty
 
 instance SortContext ContextTorXakis where
-    memberSort r = memberSort r . funcContext
+    memberSort r = memberSort r . txsContext
 
-    memberADT r = memberADT r . funcContext
+    memberADT r = memberADT r . txsContext
 
-    lookupADT r = lookupADT r . funcContext
+    lookupADT r = lookupADT r . txsContext
 
-    elemsADT = elemsADT . funcContext
+    elemsADT = elemsADT . txsContext
 
     -- Add additional checks to make round tripping possible.
     --
@@ -97,12 +76,12 @@ instance SortContext ContextTorXakis where
     --   for each constructor TorXakis adds 'isCstr' :: X -> Bool      function which should not conflict with
     --              the accessor function   'field'  :: X -> SortField
     -- hence for round tripping we need to check that fields of type Bool don't have a name equal to any isCstr.
-    addADTs as (ContextValExpr ctx vs) =
+    addADTs as (ContextTorXakis ctx) =
         case addADTs as ctx of
              Left e     -> Left e
              Right sctx -> if not $ null conflictADTDefs
                               then Left $ Error ("Conflicts between Field and implicit isConstructor function in the following ADTDefs: " ++ show conflictADTDefs)
-                              else Right $ ContextValExpr sctx vs
+                              else Right $ ContextTorXakis sctx
       where
         conflictADTDefs :: [ADTDef]
         conflictADTDefs = filter hasADTConflict as
@@ -124,7 +103,7 @@ instance SortContext ContextTorXakis where
                 cs = elemsConstructor a
 
                 allFields :: [FieldDef]
-                allFields = concatMap fields cs
+                allFields = concatMap elemsField cs
 
                 allBoolFields :: [FieldDef]
                 allBoolFields = filter boolField allFields

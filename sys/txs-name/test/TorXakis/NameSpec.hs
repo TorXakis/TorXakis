@@ -21,12 +21,11 @@ module TorXakis.NameSpec
 where
 import           Data.Either
 import qualified Data.Text              as T
-
+import           Text.Regex.TDFA
 
 import           Test.Hspec
 import           Test.QuickCheck
 
-import           TorXakis.Language
 import           TorXakis.Name
 
 prop_empty :: Bool
@@ -38,10 +37,10 @@ prop_empty =
 -- | match regex
 prop_regex :: String -> Bool
 prop_regex str =
-    let txt = T.pack str in
-        if satisfyTxsIdentifier txt
-            then isRight $ mkName txt
-            else isLeft $ mkName txt
+    let result = mkName (T.pack str) in
+        if str =~ "\\`[A-Za-z_][A-Za-z_0-9-]*\\'"
+            then isRight result
+            else isLeft result
 
 spec :: Spec
 spec = 

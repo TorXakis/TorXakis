@@ -101,6 +101,9 @@ module TorXakis.Language
 , regexTxsFuncOperator
 , satisfyTxsFuncOperator
   -- * Implicit TorXakis Elements
+, txsFuncNameConstructor
+, txsFuncNameIsConstructor
+, txsFuncNameField
 , prefixIsConstructor
 )
 where
@@ -113,6 +116,12 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 import           Text.Regex.TDFA
 
+import qualified TorXakis.Name
+import           TorXakis.Sort ( ConstructorDef
+                               , constructorName
+                               , FieldDef
+                               , fieldName
+                               )
 -- | The data type that represents content in the TorXakis language.
 -- The content can be output of e.g. a pretty printer or input for a parser.
 newtype TxsString = TxsString { -- | To Text conversion
@@ -452,6 +461,21 @@ satisfyTxsFuncOperator t = T.unpack t =~ regexTxsFuncOperator
 -- TODO: What about operators like
 --      communication ?!
 --      others        :#$.~
+
+-- Implicit Functions based on Sort
+-- | Implicit function name for constructor
+txsFuncNameConstructor :: ConstructorDef -> TxsString
+txsFuncNameConstructor = TxsString . TorXakis.Name.toText . constructorName
+
+-- | Implicit function name for is-made-by-constructor
+txsFuncNameIsConstructor :: ConstructorDef -> TxsString
+txsFuncNameIsConstructor = append prefixIsConstructor . txsFuncNameConstructor
+
+-- | Implicit function Name of field access
+-- TODO: add additional parameters for ADT name and constructor name (to prepare for evolutionary changes)?
+--       with additional parameters, one could allow multiple fields with the same name in a single ADT....
+txsFuncNameField :: FieldDef -> TxsString
+txsFuncNameField = TxsString . TorXakis.Name.toText . fieldName
 
 -- | Prefix of is-made-by-constructor
 prefixIsConstructor :: TxsString

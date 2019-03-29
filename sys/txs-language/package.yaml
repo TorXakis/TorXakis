@@ -23,6 +23,8 @@ library:
   - deepseq
   - regex-tdfa
   - text
+  - txs-name
+  - txs-sort
 
 ghc-options:
 - -O

@@ -18,12 +18,14 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.PrettyPrint
 ( -- * Pretty Print Options
   Options (..)
   -- * Pretty Print class for TorXakis
 , PrettyPrint (..)
+, prettyPrintSortContext
   -- * Helper Functions
 , separator
   -- dependencies, yet part of interface
@@ -33,9 +35,11 @@ where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
-
+import           Prelude             hiding (concat, length, replicate)
 import           TorXakis.Language
+import           TorXakis.Name
 import           TorXakis.Sort
+import           TorXakis.SortContext
 
 -- | The data type that represents the options for pretty printing.
 data Options = Options { -- | May a definition cover multiple lines?
@@ -79,7 +83,7 @@ instance PrettyPrint c FieldDef where
 
 instance PrettyPrint c ConstructorDef where
     prettyPrint o c cv = append cName
-                                (case (short o, fields cv) of
+                                (case (short o, elemsField cv) of
                                     (True, [])   -> empty
                                     (True, x:xs) -> concat [ txsSpace
                                                            , txsOpenScopeConstructor
@@ -93,7 +97,7 @@ instance PrettyPrint c ConstructorDef where
                                                            , txsOpenScopeConstructor
                                                            , txsSpace
                                                            , intercalate (concat [wsField, txsSeparatorLists, txsSpace])
-                                                                         (map (prettyPrint o c) (fields cv))
+                                                                         (map (prettyPrint o c) (elemsField cv))
                                                            , wsField
                                                            , txsCloseScopeConstructor
                                                            ]
@@ -106,26 +110,26 @@ instance PrettyPrint c ConstructorDef where
                                        else txsSpace
 
               shorten :: Sort -> [FieldDef] -> TxsString
-              shorten s []                     = addSort s
-              shorten s (x:xs) | sort x == s   = concat [ txsSeparatorElements
-                                                          , txsSpace
-                                                          , TxsString (TorXakis.Name.toText (fieldName x))
-                                                          , shorten s xs
-                                                          ]
-              shorten s (x:xs)                 = concat [ addSort s
-                                                          , wsField
-                                                          , txsSeparatorLists
-                                                          , txsSpace
-                                                          , TxsString (TorXakis.Name.toText (fieldName x))
-                                                          , shorten (sort x) xs
-                                                          ]
+              shorten s []                   = addSort s
+              shorten s (x:xs) | sort x == s = concat [ txsSeparatorElements
+                                                      , txsSpace
+                                                      , TxsString (TorXakis.Name.toText (fieldName x))
+                                                      , shorten s xs
+                                                      ]
+              shorten s (x:xs)               = concat [ addSort s
+                                                      , wsField
+                                                      , txsSeparatorLists
+                                                      , txsSpace
+                                                      , TxsString (TorXakis.Name.toText (fieldName x))
+                                                      , shorten (sort x) xs
+                                                      ]
 
               addSort :: Sort -> TxsString
               addSort s = concat [ txsSpace
-                                   , txsOperatorOfSort
-                                   , txsSpace
-                                   , prettyPrint o c s
-                                   ]
+                                 , txsOperatorOfSort
+                                 , txsSpace
+                                 , prettyPrint o c s
+                                 ]
 
 instance PrettyPrint c ADTDef where
     prettyPrint o c av = concat [ defLine

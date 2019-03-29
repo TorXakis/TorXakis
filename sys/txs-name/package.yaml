@@ -42,6 +42,7 @@ tests:
         dependencies:
         - hspec
         - QuickCheck
+        - regex-tdfa
         - txs-name
 
 ghc-options:
