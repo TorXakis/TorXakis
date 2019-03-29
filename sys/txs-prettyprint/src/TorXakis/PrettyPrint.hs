@@ -40,6 +40,7 @@ import           TorXakis.Language
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.SortContext
+import           TorXakis.Var
 
 -- | The data type that represents the options for pretty printing.
 data Options = Options { -- | May a definition cover multiple lines?
@@ -78,7 +79,7 @@ instance PrettyPrint c FieldDef where
                                 , txsSpace
                                 , txsOperatorOfSort
                                 , txsSpace
-                                , prettyPrint o c (sort fd)
+                                , prettyPrint o c (TorXakis.Sort.sort fd)
                                 ]
 
 instance PrettyPrint c ConstructorDef where
@@ -89,7 +90,7 @@ instance PrettyPrint c ConstructorDef where
                                                            , txsOpenScopeConstructor
                                                            , txsSpace
                                                            , TxsString (TorXakis.Name.toText (fieldName x))
-                                                           , shorten (sort x) xs
+                                                           , shorten (TorXakis.Sort.sort x) xs
                                                            , wsField
                                                            , txsCloseScopeConstructor
                                                            ]
@@ -110,19 +111,19 @@ instance PrettyPrint c ConstructorDef where
                                        else txsSpace
 
               shorten :: Sort -> [FieldDef] -> TxsString
-              shorten s []                   = addSort s
-              shorten s (x:xs) | sort x == s = concat [ txsSeparatorElements
-                                                      , txsSpace
-                                                      , TxsString (TorXakis.Name.toText (fieldName x))
-                                                      , shorten s xs
-                                                      ]
-              shorten s (x:xs)               = concat [ addSort s
-                                                      , wsField
-                                                      , txsSeparatorLists
-                                                      , txsSpace
-                                                      , TxsString (TorXakis.Name.toText (fieldName x))
-                                                      , shorten (sort x) xs
-                                                      ]
+              shorten s []                                 = addSort s
+              shorten s (x:xs) | TorXakis.Sort.sort x == s = concat [ txsSeparatorElements
+                                                                    , txsSpace
+                                                                    , TxsString (TorXakis.Name.toText (fieldName x))
+                                                                    , shorten s xs
+                                                                    ]
+              shorten s (x:xs)                             = concat [ addSort s
+                                                                    , wsField
+                                                                    , txsSeparatorLists
+                                                                    , txsSpace
+                                                                    , TxsString (TorXakis.Name.toText (fieldName x))
+                                                                    , shorten (TorXakis.Sort.sort x) xs
+                                                                    ]
 
               addSort :: Sort -> TxsString
               addSort s = concat [ txsSpace
@@ -152,6 +153,28 @@ instance PrettyPrint c ADTDef where
               offsetFirst :: TxsString
               offsetFirst   = if multiline o then replicate (1+length txsSeparatorConstructors) txsSpace
                                              else txsSpace
+
+-----------------------------------------------------------------------
+-- Variable
+-------------------------------------------------------------------------
+instance PrettyPrint c VarDef where
+    prettyPrint o c v = concat [ TxsString (TorXakis.Name.toText (name v))
+                               , txsSpace
+                               , txsOperatorOfSort
+                               , txsSpace
+                               , prettyPrint o c (TorXakis.Var.sort v)
+                               ]
+
+instance PrettyPrint c VarsDecl where
+    prettyPrint o c vs = concat [ txsOpenScopeArguments
+                                , txsSpace
+                                , intercalate sepParam $ map (prettyPrint o c) (toList vs)
+                                , close
+                                ]
+        where sepParam = if multiline o then concat [ txsNewLine, txsSeparatorLists, txsSpace]
+                                        else append txsSeparatorLists txsSpace
+              close = if multiline o then append txsNewLine txsCloseScopeArguments
+                                     else txsCloseScopeArguments
 
 ---------------------------------------------------------
 -- ValExpr

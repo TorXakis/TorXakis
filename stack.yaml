@@ -50,11 +50,11 @@ packages:
 - location: sys/txs-sort-gen
 - location: sys/txs-value
 - location: sys/txs-value-gen
-#- location: sys/txs-lex-regex-xsd
+- location: sys/txs-lex-regex-xsd
 #- location: sys/txs-valexpr
 #- location: sys/txs-valexpr-gen
-#- location: sys/txs-var
-#- location: sys/txs-var-gen
+- location: sys/txs-var
+- location: sys/txs-var-gen
 #- location: sys/txs-bexpr
 
 # Dependency packages to be pulled from upstream that are not in the resolver

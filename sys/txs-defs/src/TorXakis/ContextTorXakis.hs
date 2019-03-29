@@ -14,7 +14,7 @@ See LICENSE at root directory of this repository.
 -- Portability :  portable
 --
 -- The TorXakis Context containing all definitions.
--- The TorXakis Context adds additional constraints,
+-- The TorXakis Context adds additional realization constraints,
 -- including
 --
 -- * Prevent name clashes with implicit functions from Sorts
@@ -34,19 +34,23 @@ module TorXakis.ContextTorXakis
 , TorXakis.ContextTorXakis.empty
 )
 where
-import           Data.Data            (Data)
-import           GHC.Generics         (Generic)
+import           Data.Data              (Data)
+import           Data.Maybe             (mapMaybe)
+import qualified Data.Set               as Set
+import           GHC.Generics           (Generic)
 
-import           TorXakis.Error       ( Error ( Error ) )
+import           TorXakis.Error         ( Error ( Error ) )
 import           TorXakis.Language
-import           TorXakis.Sort        ( Sort ( SortBool )
-                                      , ADTDef
-                                      , elemsConstructor
-                                      , ConstructorDef
-                                      , elemsField
-                                      , FieldDef
-                                      , sort
-                                      )
+import           TorXakis.Name
+import           TorXakis.Sort          ( Sort ( SortBool )
+                                        , ADTDef
+                                        , adtName
+                                        , elemsConstructor
+                                        , ConstructorDef
+                                        , elemsField
+                                        , FieldDef
+                                        , sort
+                                        )
 import           TorXakis.SortContext
 
 import           TorXakis.ContextSort   -- for now
@@ -76,25 +80,27 @@ instance SortContext ContextTorXakis where
     --   for each constructor TorXakis adds 'isCstr' :: X -> Bool      function which should not conflict with
     --              the accessor function   'field'  :: X -> SortField
     -- hence for round tripping we need to check that fields of type Bool don't have a name equal to any isCstr.
-    addADTs as (ContextTorXakis ctx) =
-        case addADTs as ctx of
-             Left e     -> Left e
-             Right sctx -> if not $ null conflictADTDefs
-                              then Left $ Error ("Conflicts between Field and implicit isConstructor function in the following ADTDefs: " ++ show conflictADTDefs)
-                              else Right $ ContextTorXakis sctx
+    addADTs as (ContextTorXakis ctx)
+            | not $ null conflictADTDefs = Left $ Error ("ADTDefs with conflicts between Boolean Field and implicit isConstructor function: " ++ show conflictADTDefs)
+            | not $ null keywordADTDefs  = Left $ Error ("ADTDefs that use the given TorXakis keywords: " ++ show keywordADTDefs)
+            | otherwise                  = case addADTs as ctx of
+                                                Left e     -> Left e
+                                                Right sctx -> Right $ ContextTorXakis sctx
       where
-        conflictADTDefs :: [ADTDef]
-        conflictADTDefs = filter hasADTConflict as
+        conflictADTDefs :: [(Name, Set.Set TxsString)]
+        conflictADTDefs = mapMaybe maybeADTConflict as
 
-        hasADTConflict :: ADTDef -> Bool
-        hasADTConflict a = not $ null conflictFieldDefs
+        maybeADTConflict :: ADTDef -> Maybe (Name, Set.Set TxsString)
+        maybeADTConflict a = if Set.null conflictFieldNames
+                                then Nothing
+                                else Just (adtName a, conflictFieldNames)
             where
-                conflictFieldDefs :: [FieldDef]
-                conflictFieldDefs = filter hasBoolFieldConflict allBoolFields
+                conflictFieldNames :: Set.Set TxsString
+                conflictFieldNames = Set.filter hasBoolFieldNameConflict allBoolFieldNames
 
-                -- | A Bool Field has a conflict when it has the same as the implicit is-made-by-constructor function
-                hasBoolFieldConflict :: FieldDef -> Bool
-                hasBoolFieldConflict fd = txsFuncNameField fd `elem` isConstructorNames
+                -- | A Name of Bool Field has a conflict when it has the same textual representation as the implicit is-made-by-constructor function
+                hasBoolFieldNameConflict :: TxsString -> Bool
+                hasBoolFieldNameConflict n = n `elem` isConstructorNames
 
                 isConstructorNames :: [TxsString]
                 isConstructorNames = map txsFuncNameIsConstructor cs
@@ -107,6 +113,21 @@ instance SortContext ContextTorXakis where
 
                 allBoolFields :: [FieldDef]
                 allBoolFields = filter boolField allFields
+                
+                allBoolFieldNames :: Set.Set TxsString
+                allBoolFieldNames = Set.fromList (map txsFuncNameField allBoolFields)
 
                 boolField :: FieldDef -> Bool
                 boolField f = sort f == SortBool
+
+        keywordADTDefs :: [(Name, Set.Set Name)]
+        keywordADTDefs = mapMaybe maybeADTKeyword as
+        
+        maybeADTKeyword :: ADTDef -> Maybe (Name, Set.Set Name)
+        maybeADTKeyword a = let actualNames = usedNames a
+                                reservedUsed = Set.filter (isTxsReserved . TorXakis.Name.toText) actualNames
+                              in
+                                if Set.null reservedUsed
+                                    then Nothing
+                                    else Just (adtName a, reservedUsed)
+                                

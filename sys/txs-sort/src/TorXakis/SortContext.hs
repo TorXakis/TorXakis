@@ -70,7 +70,7 @@ class SortContext c where
 --   when the list of 'ADTDef's would be added to the given context.
 --   The conceptual error reflects the violations of any of the following constraints:
 --
---   * The 'Name's of ADTDef are unique
+--   * The 'Name's of all ADTDefs are unique
 --
 --   * All references are known
 --

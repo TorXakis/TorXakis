@@ -19,11 +19,14 @@ module TorXakis.VarContext
 ( -- * Context
   -- ** Variable Context class
   VarContext (..)
+, conceptualErrorAddVars
   -- dependencies, yet part of interface
 , module TorXakis.SortContext
 , VarDef
 )
 where
+import           TorXakis.Error
+import           TorXakis.Name
 import           TorXakis.SortContext
 import           TorXakis.Var
 
@@ -47,3 +50,23 @@ class SortContext c => VarContext c where
     -- Note: added variables might hide previously defined variables.
     -- Note: the order of the variables is not relevant.
     addVars :: [VarDef] -> c -> Either Error c
+
+-- | Validation function that reports whether a conceptual error will occur
+--   when the list of 'VarDef's would be added to the given context.
+--   The conceptual error reflects the violations of any of the following constraints:
+--
+--   * The 'Name's of the added VarDef are unique
+--
+--   * All references are known
+conceptualErrorAddVars :: VarContext c => [VarDef] -> c -> Maybe Error
+conceptualErrorAddVars vs ctx | not $ null nuVarDefs        = Just $ Error ("Non unique variable definitions: " ++ show nuVarDefs)
+                              | not $ null undefinedSorts   = Just $ Error ("List of variable definitions with undefined sorts: " ++ show undefinedSorts)
+                              | otherwise                   = Nothing
+    where
+            -- | non unique Variable Definitions (i.e. duplicate names)
+        nuVarDefs :: [VarDef]
+        nuVarDefs = repeatedByName vs
+
+        -- | undefined Sorts of Variable Definitions.
+        undefinedSorts :: [VarDef]
+        undefinedSorts = filter (not . flip memberSort ctx . sort) vs

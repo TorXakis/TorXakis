@@ -35,13 +35,10 @@ import           Control.DeepSeq      (NFData)
 import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hashWithSalt))
 import qualified Data.Set             as Set
-import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
-import           TorXakis.Language
 import           TorXakis.Name
-import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort (Sort, HasSort(getSort), UsedSorts(..))
 import           TorXakis.SortContext
 
@@ -66,14 +63,11 @@ instance Hashable VarDef where
 instance HasName VarDef where
     getName = name
 
+instance UsedNames VarDef where
+    usedNames = Set.singleton . name
+
 instance HasSort c VarDef where
     getSort _ = sort
 
 instance UsedSorts c VarDef where
     usedSorts _ = Set.singleton . sort
-
-instance PrettyPrint c VarDef where
-    prettyPrint o c v = TxsString (T.concat [ TorXakis.Name.toText (name v)
-                                            , T.pack " :: "
-                                            , TorXakis.Language.toText (prettyPrint o c (sort v))
-                                            ])

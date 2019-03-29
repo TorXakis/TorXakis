@@ -22,6 +22,7 @@ library:
   - txs-language
   - txs-name
   - txs-sort
+  - txs-var
   #- txs-valexpr
 
 ghc-options:

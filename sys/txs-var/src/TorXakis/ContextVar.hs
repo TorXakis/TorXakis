@@ -24,12 +24,9 @@ module TorXakis.ContextVar
 )
 where
 import           TorXakis.ContextSort
-import           TorXakis.Error
-import           TorXakis.Name
 import           TorXakis.NameMap
 import           TorXakis.SortContext
 import           TorXakis.VarContext
-import           TorXakis.Var
 
 -- | An instance of 'TorXakis.VarContext'.
 data ContextVar = forall c . SortContext c => 
@@ -65,14 +62,6 @@ instance SortContext ContextVar where
                                                 Left e     -> Left e
                                                 Right sctx -> Right $ ContextVar sctx vs
 
--- | non unique Variable Definitions (i.e. duplicate names)
-nuVarDefs :: [VarDef] -> [VarDef]
-nuVarDefs = repeatedByName
-
--- | undefined Sorts of Variable Definitions.
-undefinedSorts :: SortContext c => [VarDef] -> c -> [VarDef]
-undefinedSorts vs ctx = filter (not . flip memberSort ctx . sort) vs
-
 instance VarContext ContextVar where
     memberVar v ctx = member v (varDefs ctx)
 
@@ -80,7 +69,6 @@ instance VarContext ContextVar where
 
     elemsVar ctx    = elems (varDefs ctx)
 
-    addVars vs ctx
-        | not $ null (nuVarDefs vs)          = Left $ Error ("Non unique variable definitions: " ++ show (nuVarDefs vs))
-        | not $ null (undefinedSorts vs ctx) = Left $ Error ("List of variable definitions with undefined sorts: " ++ show (undefinedSorts vs ctx))
-        | otherwise                          = Right $ ctx {varDefs = toNameMap vs `union` varDefs ctx}
+    addVars vs ctx = case conceptualErrorAddVars vs ctx of
+                                Just e  -> Left e
+                                Nothing -> Right $ ctx {varDefs = toNameMap vs `union` varDefs ctx}

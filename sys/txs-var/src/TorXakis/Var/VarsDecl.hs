@@ -31,13 +31,10 @@ import           Control.DeepSeq      (NFData)
 import           Data.Data            (Data)
 import           Data.Maybe           (mapMaybe)
 import qualified Data.Set             as Set
-import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
-import           TorXakis.Language
 import           TorXakis.Name
-import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.Var.VarDef
@@ -75,15 +72,8 @@ mkVarsDecl ctx l | not $ null nuVars                = Left $ Error ("Non unique 
         varsUndefinedSorts = let definedSorts = Set.fromList (elemsSort ctx) in
                                  mapMaybe (maybeUndefinedSorts definedSorts) l
 
+instance UsedNames VarsDecl where
+    usedNames (VarsDecl l) = Set.unions $ map usedNames l
+
 instance UsedSorts c VarsDecl where
     usedSorts ctx (VarsDecl l) = Set.unions $ map (usedSorts ctx) l
-
-instance PrettyPrint c VarsDecl where
-    prettyPrint o c vs = TxsString (T.concat [ T.pack "( "
-                                             , T.intercalate sepParam (map (TorXakis.Language.toText . prettyPrint o c) (toList vs))
-                                             , close
-                                             ])
-        where sepParam = if multiline o then T.pack "\n, "
-                                        else T.pack ", "
-              close = if multiline o then T.pack "\n)"
-                                     else T.pack ")"
