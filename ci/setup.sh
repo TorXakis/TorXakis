@@ -15,11 +15,14 @@ then
     mkdir -p $CACHE_DIR/bin
 fi
 
-if [ -f $CACHE_DIR/bin/stack ]
+if [ -f $CACHE_DIR/bin/stack ] && [ -e $CACHE_DIR/bin/stack-1.9.3 ]
 then
     echo "$CACHE_DIR/bin/stack found in cache."
 else
-    curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C $CACHE_DIR/bin '*/stack'
+    echo "stack not found in cache or different version than 1.9.3."
+    rm -f $CACHE_DIR/bin/stack*
+    curl -L https://github.com/commercialhaskell/stack/releases/download/v1.9.3/stack-1.9.3-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C $CACHE_DIR/bin '*/stack'
+    touch $CACHE_DIR/bin/stack-1.9.3
 fi
 
 if [ -f $CACHE_DIR/bin/cvc4 ] && [ -e $CACHE_DIR/bin/cvc4-1.6 ]
