@@ -59,6 +59,8 @@ spec = do
             err ^? errorLoc `shouldBe` Just expErr
 
         errors
-          = [( prefix </> "UnmatchedParenthesis.txs", ErrorLoc 15 5)]
+          = [( prefix </> "UnmatchedParenthesis.txs", ErrorLoc 15 5)
+            ,( prefix </> "ReservedWordAsIdentifier.txs", ErrorLoc 1 30)
+            ]
           where
             prefix = "test" </> "data" </> "wrong"

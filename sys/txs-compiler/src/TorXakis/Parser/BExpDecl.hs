@@ -152,8 +152,13 @@ predefAct =  predefOffer "ISTEP"
 offerP :: TxsParser OfferDecl
 offerP = do
     l <- mkLoc
-    n <- identifier
+    n <- chanName
     OfferDecl (mkChanRef n l) <$> chanOffersP
+  where
+    chanName = identifier <|> do 
+                                txsSymbol "EXIT"
+                                return $ T.pack "EXIT"
+                              
 
 chanOffersP :: TxsParser [ChanOfferDecl]
 chanOffersP = many chanOfferP

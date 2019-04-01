@@ -1,0 +1,2 @@
+CHANDEF Chans ::= Out, ENDDEF, INIT, In   :: Int
+ENDDEF
