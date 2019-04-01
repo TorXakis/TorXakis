@@ -155,12 +155,12 @@ isLetter c   = isAlphaNum c
 
 -- | Parser for upper-case identifiers.
 ucIdentifier :: String -> TxsParser Text
-ucIdentifier what = (try $ do
+ucIdentifier what = try ( do
                                s <- Text.Parsec.Token.identifier txsTokenP
                                if isUpperCase s 
                                 then return $ T.pack s
                                 else fail "not uppercase"
-                    ) <?> what
+                        ) <?> what
     where
       isUpperCase :: String -> Bool
       isUpperCase s = case s of
@@ -169,12 +169,12 @@ ucIdentifier what = (try $ do
 
 -- | Parser for lower-case identifiers.
 lcIdentifier :: TxsParser Text
-lcIdentifier = (try $ do
+lcIdentifier = try ( do
                            s <- Text.Parsec.Token.identifier txsTokenP
                            if isLowerCase s 
                             then return $ T.pack s
                             else fail "not lowercase"
-                ) <?> "lowercase identifier"
+                   ) <?> "lowercase identifier"
     where
       isLowerCase :: String -> Bool
       isLowerCase s = case s of
