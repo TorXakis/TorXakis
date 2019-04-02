@@ -21,6 +21,9 @@ module TorXakis.ContextVar
   ContextVar
 , TorXakis.ContextVar.empty
 , fromSortContext
+-- dependencies, yet part of interface
+, module TorXakis.VarContext
+, module TorXakis.SortContext
 )
 where
 import           TorXakis.ContextSort

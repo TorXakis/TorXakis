@@ -33,18 +33,13 @@ where
 import           Control.DeepSeq      (NFData)
 import           Data.Data            (Data)
 import qualified Data.Set             as Set
-import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 
 import           TorXakis.ContextVar
 import           TorXakis.Error
 import           TorXakis.FuncSignature
-import           TorXakis.FuncSignatureContext
-import           TorXakis.FunctionName
-import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.Name
 import           TorXakis.Sort
-import           TorXakis.VarContext
 import           TorXakis.Var
 import           TorXakis.ValExpr.ValExpr
 
@@ -71,8 +66,6 @@ toVarContext ctx vs =
 mkFuncDef :: SortContext c => c -> FunctionName -> VarsDecl -> ValExpression -> Either Error FuncDef
 mkFuncDef ctx n ps b | not (null undefinedSorts)                                = Left $ Error ("Variables have undefined sorts " ++ show undefinedSorts)
                      | not (Set.null undefinedVars)                             = Left $ Error ("Undefined variables used in body " ++ show undefinedVars)
-                     | not (isReservedFunctionSignature ctx n argSorts retSort) = Left $ Error ("Function has reserved signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
-                     | not (isPredefinedNonSolvableFuncSignature signature)     = Left $ Error ("Function has predefined signature " ++ show n ++ " " ++ show argSorts ++ " " ++ show retSort)
                      | otherwise                                                = Right $ FuncDef n ps b
     where
         vs :: [VarDef]
@@ -87,17 +80,6 @@ mkFuncDef ctx n ps b | not (null undefinedSorts)                                
         undefinedVars :: Set.Set (RefByName VarDef)
         undefinedVars = freeVars b `Set.difference` Set.fromList (map (RefByName . name) vs)
 
-        argSorts :: [Sort]
-        argSorts = map (getSort ctx) vs
-
-        retSort :: Sort
-        retSort = getSort varContext b
-
-        signature :: FuncSignature
-        signature = case mkFuncSignature ctx n argSorts retSort of
-                        Left e  -> error ("mkFuncDef is unable to create FuncSignature" ++ show e)
-                        Right f -> f
-
 instance SortContext c => HasFuncSignature c FuncDef
     where
         getFuncSignature ctx (FuncDef fn ps bd) =
@@ -105,23 +87,6 @@ instance SortContext c => HasFuncSignature c FuncDef
                 case mkFuncSignature ctx fn (map (getSort ctx) vs) (getSort (toVarContext ctx vs) bd) of
                      Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
                      Right x -> x
-
-instance SortContext c => PrettyPrint c FuncDef where
-    prettyPrint o c fd = 
-        let vctx = toVarContext c (toList (paramDefs fd)) in
-            TxsString ( T.concat [ T.pack "FUNCDEF "
-                                 , TorXakis.FunctionName.toText (TorXakis.FuncDef.funcName fd)
-                                 , separator o
-                                 , indent (T.pack "   ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o c (paramDefs fd)))
-                                 , T.pack " :: "
-                                 , TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o c (getSort vctx (body fd)))
-                                 , separator o
-                                 , T.pack "::="
-                                 , separator o
-                                 , indent (T.pack "   ") (TorXakis.PrettyPrint.TorXakis.toText (prettyPrint o vctx (body fd)))
-                                 , separator o
-                                 , T.pack "ENDDEF"
-                                 ] )
 
 -- ----------------------------------------------------------------------------------------- --
 --

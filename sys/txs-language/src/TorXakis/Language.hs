@@ -48,7 +48,9 @@ module TorXakis.Language
 , txsKeywords
 
 , txsKeywordCloseScopeDef
+
 , txsKeywordSortDef
+, txsKeywordFuncDef
 
 , txsKeywordIf
 , txsKeywordThen
@@ -69,6 +71,9 @@ module TorXakis.Language
 
   -- ** Predefined Functions
 , txsFunctionNot
+, txsFunctionAbs
+, txsFunctionLength
+, txsFunctionAt
 , txsFunctionStringInRegex
   -- ** Predefined Operators
 , txsOperators
@@ -85,10 +90,30 @@ module TorXakis.Language
 
 , txsOpenScopeValExpr
 , txsCloseScopeValExpr
+  -- *** General
 , txsOperatorEqual
+, txsOperatorNotEqual
+  -- *** Boolean operators
 , txsOperatorAnd
+, txsOperatorOr
+, txsOperatorXor
+, txsOperatorImplies
+  -- *** Integer operators
+, txsOperatorUnaryPlus
+, txsOperatorUnaryMinus
+, txsOperatorPlus
+, txsOperatorMinus
+, txsOperatorTimes
 , txsOperatorDivide
 , txsOperatorModulo
+, txsOperatorPower
+  -- *** Comparisons: Integer -> Boolean
+, txsOperatorLessThan
+, txsOperatorLessEqual
+, txsOperatorGreaterThan
+, txsOperatorGreaterEqual
+  -- *** String operators
+, txsOperatorConcat
 
   -- ** Identifiers
 , regexTxsIdentifier
@@ -207,6 +232,18 @@ txsRegularExpression = TxsString (T.pack "Regex")
 txsFunctionNot :: TxsString
 txsFunctionNot = TxsString (T.pack "not")
 
+-- | Function abs (absolute value) in TorXakis
+txsFunctionAbs :: TxsString
+txsFunctionAbs = TxsString (T.pack "abs")
+
+-- | Function length in TorXakis
+txsFunctionLength :: TxsString
+txsFunctionLength = TxsString (T.pack "len")
+
+-- | Function at in TorXakis
+txsFunctionAt :: TxsString
+txsFunctionAt = TxsString (T.pack "at")
+
 -- | Function String in Regular Expression in TorXakis
 txsFunctionStringInRegex :: TxsString
 txsFunctionStringInRegex = TxsString (T.pack "strinre")
@@ -247,6 +284,10 @@ txsKeywordCloseScopeDef = TxsString (T.pack "ENDDEF")
 -- | Definition of Sort in TorXakis.
 txsKeywordSortDef :: TxsString
 txsKeywordSortDef = TxsString (T.pack "TYPEDEF")
+
+-- | Definition of Function in TorXakis.
+txsKeywordFuncDef :: TxsString
+txsKeywordFuncDef = TxsString (T.pack "FUNCDEF")
 
 -- | operator define in TorXakis.
 txsOperatorDef :: TxsString
@@ -296,9 +337,45 @@ txsCloseScopeArguments = TxsString (T.singleton ')')
 txsOperatorEqual :: TxsString
 txsOperatorEqual = TxsString (T.pack "==")
 
+-- | operator not equal in TorXakis.
+txsOperatorNotEqual :: TxsString
+txsOperatorNotEqual = TxsString (T.pack "<>")
+
 -- | operator and in TorXakis.
 txsOperatorAnd :: TxsString
 txsOperatorAnd = TxsString (T.pack "/\\")
+
+-- | operator or in TorXakis.
+txsOperatorOr :: TxsString
+txsOperatorOr = TxsString (T.pack "\\/")
+
+-- | operator Exclusive Or in TorXakis.
+txsOperatorXor :: TxsString
+txsOperatorXor = TxsString (T.pack "\\|/")
+
+-- | operator Implies in TorXakis.
+txsOperatorImplies :: TxsString
+txsOperatorImplies = TxsString (T.pack "=>")
+
+-- | operator unary plus in TorXakis.
+txsOperatorUnaryPlus :: TxsString
+txsOperatorUnaryPlus = TxsString (T.singleton '+')
+
+-- | operator unary minus in TorXakis.
+txsOperatorUnaryMinus :: TxsString
+txsOperatorUnaryMinus = TxsString (T.singleton '-')
+
+-- | operator plus / addition in TorXakis.
+txsOperatorPlus :: TxsString
+txsOperatorPlus = TxsString (T.singleton '+')
+
+-- | operator minus / subtraction in TorXakis.
+txsOperatorMinus :: TxsString
+txsOperatorMinus = TxsString (T.singleton '-')
+
+-- | operator times / multiplication in TorXakis.
+txsOperatorTimes :: TxsString
+txsOperatorTimes = TxsString (T.singleton '*')
 
 -- | operator divide in TorXakis.
 txsOperatorDivide :: TxsString
@@ -307,6 +384,30 @@ txsOperatorDivide = TxsString (T.singleton '/')
 -- | operator modulo in TorXakis.
 txsOperatorModulo :: TxsString
 txsOperatorModulo = TxsString (T.singleton '%')
+
+-- | operator power in TorXakis.
+txsOperatorPower :: TxsString
+txsOperatorPower = TxsString (T.singleton '^')
+
+-- | operator less than in TorXakis.
+txsOperatorLessThan :: TxsString
+txsOperatorLessThan = TxsString (T.singleton '<')
+
+-- | operator less equal in TorXakis.
+txsOperatorLessEqual :: TxsString
+txsOperatorLessEqual = TxsString (T.pack "<=")
+
+-- | operator greater than in TorXakis.
+txsOperatorGreaterThan :: TxsString
+txsOperatorGreaterThan = TxsString (T.singleton '>')
+
+-- | operator greater equal in TorXakis.
+txsOperatorGreaterEqual :: TxsString
+txsOperatorGreaterEqual = TxsString (T.pack ">=")
+
+-- | operator concat in TorXakis.
+txsOperatorConcat :: TxsString
+txsOperatorConcat = TxsString (T.pack "++")
 
 -- | keyword IF in TorXakis.
 txsKeywordIf :: TxsString
@@ -388,9 +489,18 @@ txsOperators = Set.fromList ( [ txsOperatorDef
                               , txsOpenScopeArguments
                               , txsCloseScopeArguments
                               , txsOperatorEqual
+                              , txsOperatorNotEqual
                               , txsOperatorAnd
+                              , txsOperatorOr
+                              , txsOperatorXor
+                              , txsOperatorImplies
                               , txsOperatorDivide
                               , txsOperatorModulo
+                              , txsOperatorLessThan
+                              , txsOperatorLessEqual
+                              , txsOperatorGreaterThan
+                              , txsOperatorGreaterEqual
+                              , txsOperatorConcat
                               ]
                               ++ map (TxsString . T.pack) [ "[", "]", "(", ")"        -- Process Def, Process instantiation, function instantiation/call
                                                           , "#"                       -- Sort
@@ -398,10 +508,7 @@ txsOperators = Set.fromList ( [ txsOperatorDef
                               
                                                           , "'", "\"", "`"            -- constant char, string and regex
                                                                               -- val expression
-                                                          , "<>", "\\/", "\\|/", "=>"    -- boolean
                                                           , "+", "-", "*"                    -- integer (TODO: what about "^"?)
-                                                          , "<", "<=", ">=", ">"                      -- comparison: integer -> bool
-                                                          , "++"                                      -- concat string
                                                           , "="                                       -- Let assignment
                                                                               -- process
                                                           , "?", "!"                        -- Communication (TODO: what about "[[" and "]]"?) (also uses "|")

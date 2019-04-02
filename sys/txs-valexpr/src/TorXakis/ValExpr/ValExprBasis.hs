@@ -118,7 +118,6 @@ mkFunc :: VarContext c => c -> RefByFuncSignature -> [ValExpression] -> Either E
 mkFunc ctx r@(RefByFuncSignature fs) vs 
     | expected /= actual                        = Left $ Error ("Sorts of signature and arguments differ: " ++ show (zip expected actual))
     | not (null undefinedSorts)                 = Left $ Error ("Undefined sorts : " ++ show undefinedSorts)
-    | isPredefinedNonSolvableFuncSignature fs   = Left $ Error ("Signature of predefined function : " ++ show fs) -- to avoid confusion and enable round tripping
     | otherwise                                 = Right $ ValExpression (Vfunc r vs)
         where
             expected = args fs
@@ -130,7 +129,6 @@ mkFunc ctx r@(RefByFuncSignature fs) vs
 -- Only allowed in CNECTDEF
 mkPredefNonSolvable :: VarContext c => c -> RefByFuncSignature -> [ValExpression] -> Either Error ValExpression
 mkPredefNonSolvable ctx r@(RefByFuncSignature fs) vs
-    | not (isPredefinedNonSolvableFuncSignature fs) = Left $ Error ("Signature is not of a predefined function: " ++ show fs)
     | expected /= actual                            = Left $ Error ("Sorts of signature and arguments differ: " ++ show (zip expected actual) )
     | otherwise                                     = unsafePredefNonSolvable ctx r (map Right vs)
         where

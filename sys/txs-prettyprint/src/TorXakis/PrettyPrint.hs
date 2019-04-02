@@ -36,11 +36,13 @@ import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
 import           Prelude             hiding (concat, length, replicate)
+import           TorXakis.FuncContext
 import           TorXakis.Language
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.Var
+import           TorXakis.VarContext
 
 -- | The data type that represents the options for pretty printing.
 data Options = Options { -- | May a definition cover multiple lines?
@@ -180,3 +182,156 @@ instance PrettyPrint c VarsDecl where
 ---------------------------------------------------------
 -- ValExpr
 ---------------------------------------------------------
+-- | Generic Pretty Printer for all instance of 'TorXakis.FuncContext'.
+prettyPrintFuncContext :: FuncContext c => Options -> c -> TxsString
+prettyPrintFuncContext o fc =
+    concat [ prettyPrintSortContext o fc
+           , txsNewLine
+           , T.intercalate txsNewLine (map (prettyPrint o fc) (elemsFunc fc))
+           ]
+
+instance VarContext c => PrettyPrint c ValExpression where
+  prettyPrint o c = prettyPrint o c . view
+
+instance VarContext c => PrettyPrint c ValExpressionView where
+  prettyPrint _ ctx (Vconst c)          = TxsString (valueToText ctx c)
+  prettyPrint _ ctx (Vvar v)            = case lookupVar (toName v) ctx of
+                                            Nothing     -> error ("Pretty Print accessor refers to undefined var " ++ show v)
+                                            Just vDef   -> TxsString (TorXakis.Name.toText (name vDef))
+  prettyPrint o ctx (Vequal a b)        = infixOperator o ctx txsOperatorEqual [a,b]
+  prettyPrint o ctx (Vite c tb fb)      = concat [ txsKeywordIf
+                                                   , txsSpace
+                                                   , indent (replicate (1 + length txsKeywordIf) txsSpace)
+                                                              (prettyPrint o ctx c)
+                                                   , separator o
+                                                   , txsKeywordThen
+                                                   , txsSpace
+                                                   , indent (replicate (1 + length txsKeywordThen) txsSpace)
+                                                              (prettyPrint o ctx tb)
+                                                   , separator o
+                                                   , txsKeywordElse
+                                                   , txsSpace
+                                                   , indent (replicate (1 + length txsKeywordElse) txsSpace)
+                                                              (prettyPrint o ctx fb)
+                                                   , separator o
+                                                   , txsKeywordFi
+                                                   ]
+  prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (funcName (toFuncSignature r)))) vs
+  prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (funcName (toFuncSignature r)))) vs
+  prettyPrint o ctx (Vnot x)            = funcInst o ctx txsFunctionNot [x]
+  prettyPrint o ctx (Vand s)            = infixOperator o ctx txsOperatorAnd (Set.toList s)
+  prettyPrint o ctx (Vdivide t n)       = infixOperator o ctx txsOperatorDivide [t,n]
+  prettyPrint o ctx (Vmodulo t n)       = infixOperator o ctx txsOperatorModulo [t,n]
+  prettyPrint o ctx (Vsum m)            = occuranceOperator o ctx (TxsString (T.pack "+")) (TxsString (T.pack "*")) (Map.toList m)
+  prettyPrint o ctx (Vproduct m)        = occuranceOperator o ctx (TxsString (T.pack "*")) (TxsString (T.pack "^")) (Map.toList m)
+  prettyPrint o ctx (Vgez v)            = infixOperator o ctx (TxsString (T.pack "<=")) [ValExpression (Vconst (Cint 0)),v]
+  prettyPrint o ctx (Vlength s)         = funcInst o ctx (TxsString (T.pack "len")) [s]
+  prettyPrint o ctx (Vat s p)           = funcInst o ctx (TxsString (T.pack "at")) [s,p]
+  prettyPrint o ctx (Vconcat vs)        = infixOperator o ctx (TxsString (T.pack "++")) vs
+  prettyPrint o ctx (Vstrinre s r)      = funcInst o ctx (TxsString (T.pack "strinre")) [s,r]
+  prettyPrint o ctx (Vcstr a c vs)      = case lookupADT (toName a) ctx of
+                                            Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
+                                            Just aDef   -> case lookupConstructor (toName c) aDef of
+                                                                Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
+                                                                Just cDef   -> funcInst o ctx (txsFuncNameConstructor cDef) vs
+  prettyPrint o ctx (Viscstr a c v)     = case lookupADT (toName a) ctx of
+                                            Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
+                                            Just aDef   -> case lookupConstructor (toName c) aDef of
+                                                                Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
+                                                                Just cDef   -> funcInst o ctx (txsFuncNameIsConstructor cDef) [v]
+  prettyPrint o ctx (Vaccess a c p v)   = case lookupADT (toName a) ctx of
+                                            Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
+                                            Just aDef   -> case lookupConstructor (toName c) aDef of
+                                                                Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
+                                                                Just cDef   -> let field = elemsField cDef !! toIndex p in
+                                                                                    funcInst o ctx (txsFuncNameField field) [v]
+
+-- | Helper function since func and predef both are function Instantations in TorXakis
+funcInst :: VarContext c => Options -> c -> TxsString -> [ValExpression] -> TxsString
+funcInst o ctx txsName vs =
+    let offset = if multiline o then concat [ txsNewLine
+                                              , replicate (1 + length txsName) txsSpace
+                                              ]
+                                else empty
+      in
+        concat [ txsName
+               , txsSpace
+               , txsOpenScopeArguments
+               , txsSpace
+               , intercalate (concat [offset, txsSeparatorElements, txsSpace])
+                               (map (indent ( replicate (length txsName + length txsSeparatorElements + 2) txsSpace ) . prettyPrint o ctx) vs)
+               , offset
+               , txsCloseScopeArguments
+               ]
+
+infixOperator :: VarContext c => Options -> c -> TxsString -> [ValExpression] -> TxsString
+infixOperator o ctx txsName vs =
+        -- TODO: assert length txsSpace == 1
+        let offset = if multiline o then replicate (length (append txsName txsSpace)) txsSpace
+                                    else empty
+          in
+            concat [ offset
+                   , txsOpenScopeValExpr
+                   , txsSpace
+                   , intercalate (concat [ separator o
+                                         , offset
+                                         , txsCloseScopeValExpr
+                                         , separator o
+                                         , txsName
+                                         , txsSpace
+                                         , txsOpenScopeValExpr
+                                         , txsSpace
+                                        ])
+                                   (map (indent (replicate (length (concat [ txsName, txsSpace, txsOpenScopeValExpr, txsSpace])) txsSpace) . prettyPrint o ctx) vs)
+                   , separator o
+                   , offset
+                   , txsCloseScopeValExpr
+                   ]
+
+occuranceOperator :: VarContext c => Options -> c -> TxsString -> TxsString -> [(ValExpression, Integer)] -> TxsString
+occuranceOperator o ctx txsOp1 txsOp2 occuranceList =
+        let offset1 = if multiline o then replicate (length txsOp1 + 1) txsSpace
+                                     else empty
+            offset2 = replicate (length txsOp1 + length txsOpenScopeValExpr + 2) txsSpace
+          in
+            concat [ offset1
+                   , txsOpenScopeValExpr
+                   , txsSpace
+                   , intercalate (concat [ separator o
+                                         , offset1
+                                         , txsCloseScopeValExpr
+                                         , separator o
+                                         , txsOp1
+                                         , txsSpace
+                                         , txsOpenScopeValExpr
+                                         , txsSpace
+                                        ])
+                                   (map (indent offset2 . tupleToText) occuranceList)
+                   , separator o
+                   , offset1
+                   , txsCloseScopeValExpr
+                   ]
+    where
+        tupleToText :: (ValExpression, Integer) -> TxsString
+        tupleToText (v,  1) = prettyPrint o ctx v
+        tupleToText (v,  p) = infixOperator o ctx txsOp2 [v, ValExpression (Vconst (Cint p))]
+
+instance SortContext c => PrettyPrint c FuncDef where
+    prettyPrint o c fd = 
+        let vctx = toVarContext c (toList (paramDefs fd)) in
+            concat [ txsKeywordFuncDef
+                   , txsSpace
+                   , TxsString (TorXakis.FunctionName.toText (TorXakis.FuncDef.funcName fd))
+                   , separator o
+                   , indent (replicate 3 txsSpace) (prettyPrint o c (paramDefs fd))
+                   , txsSpace
+                   , txsOperatorOfSort
+                   , txsSpace
+                   , prettyPrint o c (getSort vctx (body fd))
+                   , separator o
+                   , txsOperatorDef
+                   , separator o
+                   , indent (replicate 3 txsSpace) (prettyPrint o vctx (body fd))
+                   , separator o
+                   , txsKeywordCloseScopeDef
+                   ]

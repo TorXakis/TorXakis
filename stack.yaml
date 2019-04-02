@@ -38,8 +38,6 @@ packages:
 #- location: sys/txs-chan
 - location: sys/txs-compiler
 - location: sys/txs-defs
-#- location: sys/txs-funcsignature
-#- location: sys/txs-funcsignature-gen
 - location: sys/txs-language
 - location: sys/txs-name
 - location: sys/txs-name-gen
@@ -51,7 +49,7 @@ packages:
 - location: sys/txs-value
 - location: sys/txs-value-gen
 - location: sys/txs-lex-regex-xsd
-#- location: sys/txs-valexpr
+- location: sys/txs-valexpr
 #- location: sys/txs-valexpr-gen
 - location: sys/txs-var
 - location: sys/txs-var-gen

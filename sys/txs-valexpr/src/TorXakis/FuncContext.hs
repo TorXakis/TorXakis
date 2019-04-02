@@ -19,22 +19,31 @@ module TorXakis.FuncContext
 ( -- * Context
   -- ** Func Context class
   FuncContext (..)
-, prettyPrintFuncContext
   -- dependencies, yet part of interface
-, module TorXakis.FuncSignatureContext
+, module TorXakis.SortContext
 , FuncDef
+, FuncSignature
 )
 where
-import qualified Data.Text           as T
 
+import           TorXakis.FuncSignature
 import           TorXakis.FuncDef
-import           TorXakis.FuncSignatureContext
-import           TorXakis.PrettyPrint.TorXakis
+import           TorXakis.SortContext
 
 -- | A FuncContext Context instance contains all definitions to work with 'TorXakis.FuncDef'.
-class FuncSignatureContext c => FuncContext c where
-    -- | lookup FuncDef
+class SortContext c => FuncContext c where
+    -- | Points the provided FuncSignature to a FunctionDefinition in the context?
+    memberFunc :: FuncSignature -> c -> Bool
+    -- | lookup FuncDef using the provided function signature.
     lookupFunc :: FuncSignature -> c -> Maybe FuncDef
+    -- | All funcSignatures in the context.
+    -- 
+    -- Since all funcSignatures are distinct the following properties hold:
+    --
+    -- prop> List.nub (funcSignatures x) == funcSignatures x
+    -- 
+    -- prop> Set.toList (Set.fromList (funcSignatures x)) == funcSignatures x
+    funcSignatures :: c -> [FuncSignature]
     -- | All FuncDef elements in the context
     elemsFunc :: c -> [FuncDef]
     -- | Add FuncDefs to func context.
@@ -46,15 +55,6 @@ class FuncSignatureContext c => FuncContext c where
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addFuncs :: [FuncDef] -> c -> Either Error c
-
--- | Generic Pretty Printer for all instance of 'TorXakis.FuncContext'.
--- TODO: move to ContextFunc file
-prettyPrintFuncContext :: FuncContext c => Options -> c -> TxsString
-prettyPrintFuncContext o fc =
-    TxsString (T.concat [ T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o fc) (elemsADT fc))
-                        , T.pack "\n"
-                        , T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o fc) (elemsFunc fc))
-                        ])
 
 -- ----------------------------------------------------------------------------------------- --
 --

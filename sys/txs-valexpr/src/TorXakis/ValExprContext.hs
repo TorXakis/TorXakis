@@ -20,11 +20,11 @@ module TorXakis.ValExprContext
   ValExprContext
     -- dependencies, yet part of interface
 , module TorXakis.FuncContext
-, module TorXakis.ValExprConstructionContext
+, module TorXakis.VarContext
 )
 where
-import           TorXakis.FuncContext                   ( FuncContext )
-import           TorXakis.ValExprConstructionContext    ( ValExprConstructionContext )
+import           TorXakis.FuncContext
+import           TorXakis.VarContext
 
 -- | A ValExprContext instance contains all definitions to work with value expressions and references thereof
-class (ValExprConstructionContext c, FuncContext c) => ValExprContext c
+class (VarContext c, FuncContext c) => ValExprContext c

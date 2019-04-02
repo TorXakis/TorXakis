@@ -34,20 +34,16 @@ import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
-import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
 import           TorXakis.FuncSignature
-import           TorXakis.FunctionName
-import qualified TorXakis.Language   as L
 import           TorXakis.Name
-import           TorXakis.PrettyPrint.TorXakis
 import           TorXakis.RefByIndex
 import           TorXakis.Sort
-import           TorXakis.ValExprConstructionContext
 import           TorXakis.Value
 import           TorXakis.Var
+import           TorXakis.VarContext
 
 -- | ValExpressionView: the public view of value expression 'ValExpression'
 -- Should we change to Either Error ValExpression to increase laziness (e.g. in ITE, And, concat, func, and cstr)?
@@ -217,129 +213,4 @@ instance UsedFuncSignatures ValExpressionView where
     usedFuncSignatures (Viscstr _ _ v)   = usedFuncSignatures v
     usedFuncSignatures (Vaccess _ _ _ v) = usedFuncSignatures v
 
--- Pretty Print
-instance VarContext c => PrettyPrint c ValExpression where
-  prettyPrint o c = prettyPrint o c . view
-
-instance VarContext c => PrettyPrint c ValExpressionView where
-  prettyPrint _ ctx (Vconst c)          = L.TxsString (valueToText ctx c)
-  prettyPrint _ ctx (Vvar v)            = case lookupVar (toName v) ctx of
-                                            Nothing     -> error ("Pretty Print accessor refers to undefined var " ++ show v)
-                                            Just vDef   -> L.TxsString (TorXakis.Name.toText (name vDef))
-  prettyPrint o ctx (Vequal a b)        = infixOperator o ctx txsOperatorEqual [a,b]
-  prettyPrint o ctx (Vite c tb fb)      = L.concat [ L.txsKeywordIf
-                                                   , L.txsSpace
-                                                   , L.indent (L.replicate (1 + L.length L.txsKeywordIf) L.txsSpace)
-                                                              (prettyPrint o ctx c)
-                                                   , separator o
-                                                   , L.txsKeywordThen
-                                                   , L.txsSpace
-                                                   , L.indent (L.replicate (1 + L.length L.txsKeywordThen) L.txsSpace)
-                                                              (prettyPrint o ctx tb)
-                                                   , separator o
-                                                   , L.txsKeywordElse
-                                                   , L.txsSpace
-                                                   , L.indent (L.replicate (1 + L.length L.txsKeywordElse) L.txsSpace)
-                                                              (prettyPrint o ctx fb)
-                                                   , separator o
-                                                   , L.txsKeywordFi
-                                                   ]
-  prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (funcName (toFuncSignature r)))) vs
-  prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (funcName (toFuncSignature r)))) vs
-  prettyPrint o ctx (Vnot x)            = funcInst o ctx txsFunctionNot [x]
-  prettyPrint o ctx (Vand s)            = infixOperator o ctx txsOperatorAnd (Set.toList s)
-  prettyPrint o ctx (Vdivide t n)       = infixOperator o ctx txsOperatorDivide [t,n]
-  prettyPrint o ctx (Vmodulo t n)       = infixOperator o ctx txsOperatorModulo [t,n]
-  prettyPrint o ctx (Vsum m)            = occuranceOperator o ctx (TxsString (T.pack "+")) (TxsString (T.pack "*")) (Map.toList m)
-  prettyPrint o ctx (Vproduct m)        = occuranceOperator o ctx (TxsString (T.pack "*")) (TxsString (T.pack "^")) (Map.toList m)
-  prettyPrint o ctx (Vgez v)            = infixOperator o ctx (TxsString (T.pack "<=")) [ValExpression (Vconst (Cint 0)),v]
-  prettyPrint o ctx (Vlength s)         = funcInst o ctx (TxsString (T.pack "len")) [s]
-  prettyPrint o ctx (Vat s p)           = funcInst o ctx (TxsString (T.pack "at")) [s,p]
-  prettyPrint o ctx (Vconcat vs)        = infixOperator o ctx (TxsString (T.pack "++")) vs
-  prettyPrint o ctx (Vstrinre s r)      = funcInst o ctx (TxsString (T.pack "strinre")) [s,r]
-  prettyPrint o ctx (Vcstr a c vs)      = case lookupADT (toName a) ctx of
-                                            Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
-                                            Just aDef   -> case lookupConstructor (toName c) aDef of
-                                                                Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
-                                                                Just cDef   -> funcInst o ctx (txsFuncNameConstructor cDef) vs
-  prettyPrint o ctx (Viscstr a c v)     = case lookupADT (toName a) ctx of
-                                            Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
-                                            Just aDef   -> case lookupConstructor (toName c) aDef of
-                                                                Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
-                                                                Just cDef   -> funcInst o ctx (txsFuncNameIsConstructor cDef) [v]
-  prettyPrint o ctx (Vaccess a c p v)   = case lookupADT (toName a) ctx of
-                                            Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
-                                            Just aDef   -> case lookupConstructor (toName c) aDef of
-                                                                Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
-                                                                Just cDef   -> let field = elemsField cDef !! toIndex p in
-                                                                                    funcInst o ctx (txsFuncNameField field) [v]
-
--- | Helper function since func and predef both are function Instantations in TorXakis
-funcInst :: VarContext c => Options -> c -> TxsString -> [ValExpression] -> TxsString
-funcInst o ctx txsName vs =
-    let offset = if multiline o then L.concat [ L.txsNewLine
-                                              , L.replicate (1 + L.length txsName) L.txsSpace
-                                              ]
-                                else L.empty
-      in
-        L.concat [ txsName
-                 , L.txsSpace
-                 , L.txsOpenScopeArguments
-                 , L.txsSpace
-                 , L.intercalate (L.concat [offset, L.txsSeparatorElements, L.txsSpace])
-                                 (map (L.indent ( L.replicate (L.length txsName + L.length L.txsSeparatorElements + 2) L.txsSpace ) . prettyPrint o ctx) vs)
-                 , offset
-                 , L.txsCloseScopeArguments
-                 ]
-
-infixOperator :: VarContext c => Options -> c -> TxsString -> [ValExpression] -> TxsString
-infixOperator o ctx txsName vs =
-        -- TODO: assert length txsSpace == 1
-        let offset = if multiline o then L.replicate (L.length (L.append txsName L.txsSpace)) L.txsSpace
-                                    else L.empty
-          in
-            L.concat [ offset
-                     , L.txsOpenScopeValExpr
-                     , L.txsSpace
-                     , L.intercalate (L.concat [ separator o
-                                               , offset
-                                               , L.txsCloseScopeValExpr
-                                               , separator o
-                                               , txsName
-                                               , L.txsSpace
-                                               , L.txsOpenScopeValExpr
-                                               , L.txsSpace
-                                              ])
-                                     (map (L.indent (L.replicate (L.length (L.concat [ txsName, L.txsSpace, L.txsOpenScopeValExpr, L.txsSpace])) L.txsSpace) . prettyPrint o ctx) vs)
-                     , separator o
-                     , offset
-                     , L.txsCloseScopeValExpr
-                     ]
-
-occuranceOperator :: VarContext c => Options -> c -> TxsString -> TxsString -> [(ValExpression, Integer)] -> TxsString
-occuranceOperator o ctx txsOp1 txsOp2 occuranceList =
-        let offset1 = if multiline o then L.replicate (L.length txsOp1 + 1) L.txsSpace
-                                     else L.empty
-            offset2 = L.replicate (L.length txsOp1 + L.length L.txsOpenScopeValExpr + 2) L.txsSpace
-          in
-            L.concat [ offset1
-                     , L.txsOpenScopeValExpr
-                     , L.txsSpace
-                     , L.intercalate (L.concat [ separator o
-                                               , offset1
-                                               , L.txsCloseScopeValExpr
-                                               , separator o
-                                               , txsOp1
-                                               , L.txsSpace
-                                               , L.txsOpenScopeValExpr
-                                               , L.txsSpace
-                                              ])
-                                     (map (L.indent offset2 . tupleToText) occuranceList)
-                     , separator o
-                     , offset1
-                     , L.txsCloseScopeValExpr
-                     ]
-    where
-        tupleToText :: (ValExpression, Integer) -> TxsString
-        tupleToText (v,  1) = prettyPrint o ctx v
-        tupleToText (v,  p) = infixOperator o ctx txsOp2 [v, ValExpression (Vconst (Cint p))]
+-- TODO: add UsedNames / UsedFuncNames to find usage of keywords / reserved words

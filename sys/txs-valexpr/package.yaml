@@ -18,24 +18,26 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.ContextValExprConstruction
+  - TorXakis.ContextValExpr
+  - TorXakis.ContextFunc
+  - TorXakis.FuncSignature
   - TorXakis.FuncDef
   - TorXakis.FuncContext
   - TorXakis.Subst
   - TorXakis.ValExpr
-  - TorXakis.ValExprConstructionContext
   - TorXakis.ValExprContext
   dependencies:
   - array
   - containers
   - deepseq
+  - hashable
   - hashmap
   - regex-tdfa
   - text
+  - Unique
+  # TorXakis dependencies
   - txs-basics
-  - txs-funcsignature
   - txs-lex-regex-xsd
-  - txs-language
   - txs-name
   - txs-sort
   - txs-value
