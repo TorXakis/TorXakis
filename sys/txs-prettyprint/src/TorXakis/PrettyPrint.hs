@@ -26,6 +26,7 @@ module TorXakis.PrettyPrint
   -- * Pretty Print class for TorXakis
 , PrettyPrint (..)
 , prettyPrintSortContext
+, prettyPrintFuncContext
   -- * Helper Functions
 , separator
   -- dependencies, yet part of interface
@@ -34,13 +35,22 @@ module TorXakis.PrettyPrint
 where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
 import           GHC.Generics        (Generic)
 import           Prelude             hiding (concat, length, replicate)
+
+import qualified TorXakis.ContextVar
 import           TorXakis.FuncContext
+import           TorXakis.FuncDef
+import           TorXakis.FuncSignature
+import           TorXakis.FunctionName
 import           TorXakis.Language
 import           TorXakis.Name
+import           TorXakis.RefByIndex
 import           TorXakis.Sort
-import           TorXakis.SortContext
+import           TorXakis.ValExpr
+import           TorXakis.Value
 import           TorXakis.Var
 import           TorXakis.VarContext
 
@@ -187,7 +197,7 @@ prettyPrintFuncContext :: FuncContext c => Options -> c -> TxsString
 prettyPrintFuncContext o fc =
     concat [ prettyPrintSortContext o fc
            , txsNewLine
-           , T.intercalate txsNewLine (map (prettyPrint o fc) (elemsFunc fc))
+           , intercalate txsNewLine (map (prettyPrint o fc) (elemsFunc fc))
            ]
 
 instance VarContext c => PrettyPrint c ValExpression where
@@ -216,19 +226,21 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                                    , separator o
                                                    , txsKeywordFi
                                                    ]
-  prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (funcName (toFuncSignature r)))) vs
-  prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (funcName (toFuncSignature r)))) vs
+  prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
+  prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
   prettyPrint o ctx (Vnot x)            = funcInst o ctx txsFunctionNot [x]
   prettyPrint o ctx (Vand s)            = infixOperator o ctx txsOperatorAnd (Set.toList s)
   prettyPrint o ctx (Vdivide t n)       = infixOperator o ctx txsOperatorDivide [t,n]
   prettyPrint o ctx (Vmodulo t n)       = infixOperator o ctx txsOperatorModulo [t,n]
-  prettyPrint o ctx (Vsum m)            = occuranceOperator o ctx (TxsString (T.pack "+")) (TxsString (T.pack "*")) (Map.toList m)
-  prettyPrint o ctx (Vproduct m)        = occuranceOperator o ctx (TxsString (T.pack "*")) (TxsString (T.pack "^")) (Map.toList m)
-  prettyPrint o ctx (Vgez v)            = infixOperator o ctx (TxsString (T.pack "<=")) [ValExpression (Vconst (Cint 0)),v]
-  prettyPrint o ctx (Vlength s)         = funcInst o ctx (TxsString (T.pack "len")) [s]
-  prettyPrint o ctx (Vat s p)           = funcInst o ctx (TxsString (T.pack "at")) [s,p]
-  prettyPrint o ctx (Vconcat vs)        = infixOperator o ctx (TxsString (T.pack "++")) vs
-  prettyPrint o ctx (Vstrinre s r)      = funcInst o ctx (TxsString (T.pack "strinre")) [s,r]
+  prettyPrint o ctx (Vsum m)            = occuranceOperator o ctx txsOperatorPlus txsOperatorTimes (Map.toList m)
+  prettyPrint o ctx (Vproduct m)        = occuranceOperator o ctx txsOperatorTimes txsOperatorPower (Map.toList m)
+  prettyPrint o ctx (Vgez v)            = case mkConst ctx (Cint 0) of
+                                            Left e     -> error ("prettyPrint: Unable to make zero in GEZ " ++ show e)
+                                            Right zero -> infixOperator o ctx txsOperatorLessEqual [zero,v]
+  prettyPrint o ctx (Vlength s)         = funcInst o ctx txsFunctionLength [s]
+  prettyPrint o ctx (Vat s p)           = funcInst o ctx txsFunctionAt [s,p]
+  prettyPrint o ctx (Vconcat vs)        = infixOperator o ctx txsOperatorConcat vs
+  prettyPrint o ctx (Vstrinre s r)      = funcInst o ctx txsFunctionStringInRegex [s,r]
   prettyPrint o ctx (Vcstr a c vs)      = case lookupADT (toName a) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
                                             Just aDef   -> case lookupConstructor (toName c) aDef of
@@ -314,24 +326,32 @@ occuranceOperator o ctx txsOp1 txsOp2 occuranceList =
     where
         tupleToText :: (ValExpression, Integer) -> TxsString
         tupleToText (v,  1) = prettyPrint o ctx v
-        tupleToText (v,  p) = infixOperator o ctx txsOp2 [v, ValExpression (Vconst (Cint p))]
+        tupleToText (v,  p) = case mkConst ctx (Cint p) of
+                                   Left e   -> error ("prettyPrint: Unable to make p in tupleToText: " ++ show e)
+                                   Right cP -> infixOperator o ctx txsOp2 [v, cP]
 
 instance SortContext c => PrettyPrint c FuncDef where
     prettyPrint o c fd = 
-        let vctx = toVarContext c (toList (paramDefs fd)) in
-            concat [ txsKeywordFuncDef
-                   , txsSpace
-                   , TxsString (TorXakis.FunctionName.toText (TorXakis.FuncDef.funcName fd))
-                   , separator o
-                   , indent (replicate 3 txsSpace) (prettyPrint o c (paramDefs fd))
-                   , txsSpace
-                   , txsOperatorOfSort
-                   , txsSpace
-                   , prettyPrint o c (getSort vctx (body fd))
-                   , separator o
-                   , txsOperatorDef
-                   , separator o
-                   , indent (replicate 3 txsSpace) (prettyPrint o vctx (body fd))
-                   , separator o
-                   , txsKeywordCloseScopeDef
-                   ]
+        concat [ txsKeywordFuncDef
+               , txsSpace
+               , TxsString (TorXakis.FunctionName.toText (TorXakis.FuncDef.funcName fd))
+               , separator o
+               , indent (replicate 3 txsSpace) (prettyPrint o c (paramDefs fd))
+               , txsSpace
+               , txsOperatorOfSort
+               , txsSpace
+               , prettyPrint o c (getSort vctx (body fd))
+               , separator o
+               , txsOperatorDef
+               , separator o
+               , indent (replicate 3 txsSpace) (prettyPrint o vctx (body fd))
+               , separator o
+               , txsKeywordCloseScopeDef
+               ]
+        where
+            toVarContext :: [VarDef] -> TorXakis.ContextVar.ContextVar
+            toVarContext vs = case addVars vs (TorXakis.ContextVar.fromSortContext c) of
+                                       Left e     -> error ("toVarContext is unable to make new context: " ++ show e)
+                                       Right nctx -> nctx
+            vctx :: TorXakis.ContextVar.ContextVar
+            vctx = toVarContext $ toList (paramDefs fd)

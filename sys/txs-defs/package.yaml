@@ -23,7 +23,7 @@ library:
   - txs-language
   - txs-name
   - txs-sort
-  #- txs-valexpr
+  - txs-valexpr
 
 ghc-options:
 - -O

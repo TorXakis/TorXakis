@@ -25,6 +25,7 @@ library:
   - text
   - txs-name
   - txs-sort
+  - txs-valexpr
 
 ghc-options:
 - -O

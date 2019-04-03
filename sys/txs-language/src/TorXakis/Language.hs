@@ -130,6 +130,10 @@ module TorXakis.Language
 , txsFuncNameIsConstructor
 , txsFuncNameField
 , prefixIsConstructor
+
+  -- ** Function Signature
+, isPredefinedNonSolvableFuncSignature
+, isReservedFunctionSignature
 )
 where
 import           Control.DeepSeq     (NFData)
@@ -141,12 +145,12 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 import           Text.Regex.TDFA
 
+import           TorXakis.FuncSignature
+import qualified TorXakis.FunctionName
 import qualified TorXakis.Name
-import           TorXakis.Sort ( ConstructorDef
-                               , constructorName
-                               , FieldDef
-                               , fieldName
-                               )
+import           TorXakis.Sort
+import           TorXakis.SortContext
+
 -- | The data type that represents content in the TorXakis language.
 -- The content can be output of e.g. a pretty printer or input for a parser.
 newtype TxsString = TxsString { -- | To Text conversion
@@ -587,3 +591,93 @@ txsFuncNameField = TxsString . TorXakis.Name.toText . fieldName
 -- | Prefix of is-made-by-constructor
 prefixIsConstructor :: TxsString
 prefixIsConstructor = TxsString (T.pack "is")
+
+-- | is Predefined NonSolvable Function Signature?
+-- One can make funcSignatures for Predefined NonSolvable Functions
+-- However these funcSignature can't be added to a Func(Signature)Context.
+isPredefinedNonSolvableFuncSignature :: FuncSignature -> Bool
+isPredefinedNonSolvableFuncSignature f =
+    case (TorXakis.FunctionName.toString (funcName f), args f,                   returnSort f ) of
+         ("toString",                                  [_],                      SortString   ) -> True  -- toString with single argument is predefined for all Sorts
+         ("fromString",                                [SortString],             _            ) -> True
+         ("toXML",                                     [_],                      SortString   ) -> True
+         ("fromXML",                                   [SortString],             _            ) -> True
+         ("takeWhile",                                 [SortString, SortString], SortString   ) -> True
+         ("takeWhileNot",                              [SortString, SortString], SortString   ) -> True
+         ("dropWhile",                                 [SortString, SortString], SortString   ) -> True
+         ("dropWhileNot",                              [SortString, SortString], SortString   ) -> True
+         _                                                                                      -> False
+
+-- | isReservedFunctionSignature includes
+--
+-- * TorXakis FuncSignatures that are mapped onto special constructors
+--
+-- * FuncSignatures that are implicitly defined by defining Sorts / ADTDefs
+isReservedFunctionSignature :: SortContext c => c -> FuncSignature -> Bool
+isReservedFunctionSignature ctx f =    isMappedFuncSignature
+                                    || isSortFuncSignature
+    where
+        txsFuncName :: TxsString
+        txsFuncName = TxsString (TorXakis.FunctionName.toText (funcName f))
+
+        isMappedFuncSignature :: Bool
+        isMappedFuncSignature =
+            if (txsFuncName == txsOperatorEqual) || (txsFuncName == txsOperatorNotEqual)
+                then case (args f,                   returnSort f ) of
+                          ([a,b],                    SortBool     ) -> a == b
+                          _                                         -> False
+                else case (args f,                   returnSort f ) of
+                          ([SortBool],               SortBool     ) -> txsFuncName == txsFunctionNot
+                          ([SortBool, SortBool],     SortBool     ) ->   (txsFuncName == txsOperatorAnd)
+                                                                      || (txsFuncName == txsOperatorOr)
+                                                                      || (txsFuncName == txsOperatorXor)
+                                                                      || (txsFuncName == txsOperatorImplies)
+                          ([SortInt],                SortInt      ) ->   (txsFuncName == txsFunctionAbs)
+                                                                      || (txsFuncName == txsOperatorUnaryPlus)
+                                                                      || (txsFuncName == txsOperatorUnaryMinus)
+                          ([SortInt, SortInt],       SortInt      ) ->   (txsFuncName == txsOperatorPlus)
+                                                                      || (txsFuncName == txsOperatorMinus)
+                                                                      || (txsFuncName == txsOperatorTimes)
+                                                                      || (txsFuncName == txsOperatorDivide)
+                                                                      || (txsFuncName == txsOperatorModulo)
+                                                                      || (txsFuncName == txsOperatorPower)
+                          ([SortInt, SortInt],       SortBool     ) ->   (txsFuncName == txsOperatorLessThan)
+                                                                      || (txsFuncName == txsOperatorLessEqual)
+                                                                      || (txsFuncName == txsOperatorGreaterEqual)
+                                                                      || (txsFuncName == txsOperatorGreaterThan)
+                          ([SortString],             SortInt      ) -> txsFuncName == txsFunctionLength
+                          ([SortString, SortString], SortString   ) -> txsFuncName == txsOperatorConcat
+                          ([SortString, SortInt],    SortString   ) -> txsFuncName == txsFunctionAt
+                          ([SortString, SortRegex],  SortBool     ) -> txsFuncName == txsFunctionStringInRegex
+                          _                                         -> False
+
+        isSortFuncSignature :: Bool
+        isSortFuncSignature = equalsConstructor || equalsIsConstructor || equalsFieldAccess
+
+        -- | exists constructor : funcName == cstrName && same arguments && same returnSort (an ADT)
+        equalsConstructor :: Bool
+        equalsConstructor =
+            case returnSort f of
+                SortADT a -> case lookupADT (TorXakis.Name.toName a) ctx of
+                                  Nothing   -> error ("equalsConstructor -- ADTDef " ++ show a ++ " not defined in context ")
+                                  Just aDef -> any (\c -> txsFuncName == txsFuncNameConstructor c && args f == map sort (elemsField c)) (elemsConstructor aDef)
+                _         -> False
+
+        -- | exists constructor : returnSort func == Bool && funcName == isCstrName
+        equalsIsConstructor :: Bool
+        equalsIsConstructor =
+               (returnSort f == SortBool)
+            && case args f of
+                    [SortADT a] -> case lookupADT (TorXakis.Name.toName a) ctx of
+                                       Nothing   -> error ("equalsIsConstructor -- ADTDef " ++ show a ++ " not defined in context ")
+                                       Just aDef -> any (\c -> txsFuncName == txsFuncNameIsConstructor c) (elemsConstructor aDef)
+                    _           -> False
+
+        -- | exists field : funcName == fieldName && funcReturnSort == fieldSort
+        equalsFieldAccess :: Bool
+        equalsFieldAccess =
+            case args f of
+                [SortADT a] -> case lookupADT (TorXakis.Name.toName a) ctx of
+                                Nothing   -> error ("equalsFieldAccess -- ADTDef " ++ show a ++ " not defined in context ")
+                                Just aDef -> any (any (\field -> txsFuncName == txsFuncNameField field && returnSort f == sort field) . elemsField) (elemsConstructor aDef)
+                _           -> False

@@ -24,9 +24,11 @@ module TorXakis.ValExpr
 , eval
 , module TorXakis.ValExpr.ValExprBasis
 , module TorXakis.ValExpr.ValExprExtension
+, module TorXakis.ValExpr.Subst
 )
 where
 
 import TorXakis.ValExpr.ValExpr
 import TorXakis.ValExpr.ValExprBasis
 import TorXakis.ValExpr.ValExprExtension
+import TorXakis.ValExpr.Subst

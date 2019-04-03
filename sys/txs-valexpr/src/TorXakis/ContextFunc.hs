@@ -23,33 +23,25 @@ module TorXakis.ContextFunc
   ContextFunc
 , TorXakis.ContextFunc.empty
 , TorXakis.ContextFunc.fromSortContext
-  -- * Constructor for optimize ValExpression given a FuncContext
-, mkFuncOpt
   -- dependencies, yet part of interface
 , module TorXakis.ValExprContext
 )
 where
-import           Control.Arrow          (first)
-import           Data.Either
 import qualified Data.HashMap           as HashMap
-import           Data.List
-import qualified Data.Map               as Map
 import           Data.Maybe
 import qualified Data.Set               as Set
 import qualified Data.Text              as T
 
-import           TorXakis.ContextValExpr
+import           TorXakis.ContextValExpr.ContextValExpr
 import           TorXakis.ContextSort
 import           TorXakis.Error
-import           TorXakis.FuncContext
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.ValExprContext
-import           TorXakis.ValExpr.Unsafe
+import           TorXakis.ValExpr.UnsafeSubst
 import           TorXakis.ValExpr.ValExpr
-import           TorXakis.ValExpr.ValExprBasis
 import           TorXakis.Var
 
 -- | An instance of 'TorXakis.ValExprConstructionContext'.
@@ -166,11 +158,9 @@ instance FuncContext ContextFunc where
         newFuncDef updateCtx fd = let nm = TorXakis.FuncDef.funcName fd
                                       ps = paramDefs fd
                                       bd = body fd in
-                                        optimize updateCtx bd >>= mkFuncDef ctx nm ps
+                                        unsafeSubst updateCtx HashMap.empty bd >>= mkFuncDef ctx nm ps
 
         isConstBody :: FuncDef -> Bool
         isConstBody fd = case view (body fd) of
                                 Vconst {} -> True
                                 _         -> False
-
-        optimized = undefined -- TODO

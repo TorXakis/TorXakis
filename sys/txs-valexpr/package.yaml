@@ -23,7 +23,6 @@ library:
   - TorXakis.FuncSignature
   - TorXakis.FuncDef
   - TorXakis.FuncContext
-  - TorXakis.Subst
   - TorXakis.ValExpr
   - TorXakis.ValExprContext
   dependencies:
