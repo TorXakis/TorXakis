@@ -24,14 +24,14 @@ import           Data.Char (chr)
 import qualified Data.Text as T
 import           Test.Hspec
 
-import           TorXakis.ContextTestSort
+import           TorXakis.ContextSort
 import           TorXakis.Sort
 import           TorXakis.Value
 
 -- | ConversionText for String is Identity
 prop_ConversionText_StringId :: Bool
 prop_ConversionText_StringId = 
-    let ctx = empty :: ContextTestSort
+    let ctx = empty :: ContextSort
         val = Cstring (T.pack (map chr [0..255]))
         txt = valueToText ctx val
         actual = valueFromText ctx SortString txt
@@ -43,7 +43,7 @@ prop_ConversionText_StringId =
 -- | ConversionXML for String is Identity
 prop_ConversionXML_StringId :: Bool
 prop_ConversionXML_StringId = 
-    let ctx = empty :: ContextTestSort
+    let ctx = empty :: ContextSort
         val = Cstring (T.pack (map chr [0..255]))
         xml = valueToXML ctx val
         actual = valueFromXML ctx SortString xml
@@ -57,7 +57,7 @@ prop_fromText_String =
     let range = [0..255]
         txt = T.pack ("\"" ++ concatMap (\i -> "&#" ++ show i ++ ";") range ++ "\"")
         
-        ctx = empty :: ContextTestSort
+        ctx = empty :: ContextSort
         actual = valueFromText ctx SortString txt
       in
         
@@ -73,7 +73,7 @@ prop_ConversionText_CharId =
         all check vals
     where check :: Char -> Bool
           check v = 
-                let ctx = empty :: ContextTestSort
+                let ctx = empty :: ContextSort
                     txt = valueToText ctx (Cchar v)
                     actual = valueFromText ctx SortChar txt
                   in
@@ -89,7 +89,7 @@ prop_ConversionXML_CharId =
         all check vals
     where check :: Char -> Bool
           check v = 
-                let ctx = empty :: ContextTestSort
+                let ctx = empty :: ContextSort
                     xml = valueToText ctx (Cchar v)
                     actual = valueFromText ctx SortChar xml
                   in
@@ -105,7 +105,7 @@ prop_fromText_Char =
     where check :: Int -> Bool
           check i =
             let txt = T.pack ("'&#" ++ show i ++ ";'")
-                ctx = empty :: ContextTestSort
+                ctx = empty :: ContextSort
                 actual = valueFromText ctx SortChar txt
               in
                 case actual of
@@ -117,7 +117,7 @@ prop_ConversionText_IntId ::  Bool
 prop_ConversionText_IntId = all check [-255..255]
     where check :: Integer -> Bool
           check v = 
-                let ctx = empty :: ContextTestSort
+                let ctx = empty :: ContextSort
                     txt = valueToText ctx (Cint v)
                     actual = valueFromText ctx SortInt txt
                   in
@@ -130,7 +130,7 @@ prop_ConversionXML_IntId ::  Bool
 prop_ConversionXML_IntId = all check [-255..255]
     where check :: Integer -> Bool
           check v = 
-                let ctx = empty :: ContextTestSort
+                let ctx = empty :: ContextSort
                     xml = valueToText ctx (Cint v)
                     actual = valueFromText ctx SortInt xml
                   in

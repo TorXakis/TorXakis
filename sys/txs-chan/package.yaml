@@ -12,25 +12,19 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 extra-source-files:
 - README.md
 
-dependencies:
-- base >= 4.7 && < 5
-- text
-- txs-sort
-
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.FreeChans
   - TorXakis.ChanContext
-  - TorXakis.ChanDef
-  - TorXakis.ChansDecl
+  - TorXakis.Chan
   dependencies:
+  - base >= 4.7 && < 5
   - containers
   - deepseq
   - hashable
-  - hashmap
   - txs-basics
   - txs-name
+  - txs-sort
 
 ghc-options:
 - -O

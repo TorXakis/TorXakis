@@ -25,9 +25,6 @@ See LICENSE at root directory of this repository.
 --
 -- * Enable round tripping
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.ContextTorXakis
 ( -- * Context TorXakis
   ContextTorXakis

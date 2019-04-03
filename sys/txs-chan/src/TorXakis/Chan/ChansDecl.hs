@@ -18,7 +18,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
-module TorXakis.ChansDecl
+module TorXakis.Chan.ChansDecl
 ( ChansDecl
 , mkChansDecl
 , toList
@@ -27,13 +27,12 @@ where
 
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
-import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
-import TorXakis.Error
-import TorXakis.Name
-import TorXakis.Sort (SortContext, memberSort)
-import TorXakis.ChanDef
+import           TorXakis.Chan.ChanDef
+import           TorXakis.Error
+import           TorXakis.Name
+import           TorXakis.SortContext
 
 -- | Data for a channels declarations.
 --   The order of the channels declarations is relevant.
@@ -42,13 +41,20 @@ newtype ChansDecl = ChansDecl { -- | toList
                         }
          deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-mkChansDecl :: SortContext a => a -> [ChanDef] -> Either MinError ChansDecl
-mkChansDecl ctx l | not $ null nuChans            = Left $ MinError (T.pack ("Non unique names: " ++ show nuChans))
-                  | not $ null undefinedSorts    = Left $ MinError (T.pack ("List of channels with undefined sorts: " ++ show undefinedSorts))
+-- | smart constructor for ChansDecl
+-- Error is returned when
+--
+-- * Any Sort of the channels is not defined within context.
+--
+-- * Channel Names are not unique.
+--
+mkChansDecl :: SortContext c => c -> [ChanDef] -> Either Error ChansDecl
+mkChansDecl ctx l | not $ null nuChans           = Left $ Error ("Non unique names: " ++ show nuChans)
+                  | not $ null undefinedSorts    = Left $ Error ("List of channels with undefined sorts: " ++ show undefinedSorts)
                   | otherwise                    = Right $ ChansDecl l
     where
         nuChans :: [ChanDef]
         nuChans = repeatedByName l
 
         undefinedSorts :: [ChanDef]
-        undefinedSorts = filter (not . (all (memberSort ctx) . toSorts . chanSort ) ) l
+        undefinedSorts = filter (not . (all (flip memberSort ctx) . toSorts . chanSort ) ) l

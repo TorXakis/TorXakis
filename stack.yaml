@@ -35,7 +35,7 @@ ghc-variant: integersimple
 packages:
 - location: sys/txs-basics
 - location: sys/txs-basics-gen
-#- location: sys/txs-chan
+- location: sys/txs-chan
 - location: sys/txs-compiler
 - location: sys/txs-defs
 - location: sys/txs-language
@@ -43,7 +43,6 @@ packages:
 - location: sys/txs-name-gen
 - location: sys/txs-prettyprint
 - location: sys/txs-prettyprint-gen
-#- location: sys/txs-procsignature
 - location: sys/txs-sort
 - location: sys/txs-sort-gen
 - location: sys/txs-value

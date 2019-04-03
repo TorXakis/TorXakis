@@ -18,8 +18,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 module TorXakis.ValExpr.UnsafeSubst
-( unsafeFunc
-, unsafeSubst
+( unsafeSubst
 )
 where
 import           Control.Arrow          (first)

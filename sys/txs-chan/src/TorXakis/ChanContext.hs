@@ -25,72 +25,58 @@ module TorXakis.ChanContext
 ( -- * Context
   -- ** Variable Context
   ChanContext (..)
-  -- ** Minimal Variable Context
-, MinimalChanContext
-, fromSortContext
+, conceptualErrorAddChans
+  -- dependencies, yet part of interface
+, module TorXakis.SortContext
+, ChanDef
 )
 where
-import           Control.DeepSeq        (NFData)
-import           Data.Data              (Data)
-import qualified Data.HashMap    as HashMap
-import qualified Data.Text       as T
-import           GHC.Generics           (Generic)
-
+import           TorXakis.Chan
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.Sort (SortContext(..), memberSort)
-import           TorXakis.ChanDef
+import           TorXakis.Sort
+import           TorXakis.SortContext
 
 ------------------------------------------------------------------------------------------------------------------
 -- Context
 ------------------------------------------------------------------------------------------------------------------
 
--- | A Variable Context instance contains all definitions to work with sort and channels
-class SortContext a => ChanContext a where
-    -- | Accessor for defined channels
-    chanDefs :: a -> HashMap.Map (RefByName ChanDef) ChanDef
-
+-- | A Channel Context instance contains all definitions to work with sort and channels
+class SortContext c => ChanContext c where
+    -- | Refers the provided ChanDef name to a ChanDef in the context?
+    memberChan :: Name -> c -> Bool
+    -- | lookup ChanDef
+    lookupChan :: Name -> c -> Maybe ChanDef
+    -- | All ChanDef elements in the context
+    elemsChan :: c -> [ChanDef]
     -- | Add channels to channel context.
     --   A channel context is returned when the following constraints are satisfied:
     --
-    --   * The names of the added channels are distinct
+    --   * The references of the added channels are distinct
     --
     --   * All sorts are known
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     -- Note: added channels might hide previously defined channels.
     -- Note: the order of the channels is not relevant.
-    addChanDefs :: a -> [ChanDef] -> Either MinError a
+    addChans :: [ChanDef] -> c -> Either Error c
 
-    -- TODO? addVarsDecl function -> don't need to check uniqueness of added channels.
-
--- | A minimal instance of 'ChanContext'.
-data MinimalChanContext a = MinimalChanContext { sortContext :: a
-                                               -- channel definitions
-                                             , _chanDefs :: HashMap.Map (RefByName ChanDef) ChanDef
-                                             } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
-
--- | Create ChanContext from SortContext
-fromSortContext :: a -> MinimalChanContext a
-fromSortContext srt = MinimalChanContext srt HashMap.empty
-
-instance SortContext a => SortContext (MinimalChanContext a) where
-    empty = MinimalChanContext TorXakis.Sort.empty HashMap.empty
-    adtDefs ctx    = adtDefs (sortContext ctx)
-    addADTs ctx as = case addADTs (sortContext ctx) as of
-                          Left e     -> Left e
-                          Right sctx -> Right $ ctx {sortContext = sctx}
-
-instance SortContext a => ChanContext (MinimalChanContext a) where
-    chanDefs = _chanDefs
-    addChanDefs ctx cs
-        | not $ null nuChanDefs              = Left $ MinError (T.pack ("Non unique channel definitions: " ++ show nuChanDefs))
-        | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of channel definitions with undefined sorts: " ++ show undefinedSorts))
-        | otherwise                          = Right $ ctx { _chanDefs = HashMap.union (toMapByName cs) (chanDefs ctx)}
-      where
+-- | Validation function that reports whether a conceptual error will occur
+--   when the list of 'ChanDef's would be added to the given context.
+--   The conceptual error reflects the violations of any of the following constraints:
+--
+--   * The 'Name's of the added ChanDef are unique
+--
+--   * All references are known
+conceptualErrorAddChans :: ChanContext c => [ChanDef] -> c -> Maybe Error
+conceptualErrorAddChans cs ctx | not $ null nuChanDefs       = Just $ Error ("Non unique variable definitions: " ++ show nuChanDefs)
+                               | not $ null undefinedSorts   = Just $ Error ("List of variable definitions with undefined sorts: " ++ show undefinedSorts)
+                               | otherwise                   = Nothing
+    where
+        -- | non unique Channel Definitions (i.e. duplicate names)
         nuChanDefs :: [ChanDef]
         nuChanDefs = repeatedByName cs
 
+        -- | undefined Sorts of Channel Definitions.
         undefinedSorts :: [ChanDef]
-        undefinedSorts = filter (not . (all (memberSort ctx) . toSorts . chanSort ) ) cs
-
+        undefinedSorts = filter (not . (all (flip memberSort ctx) . toSorts . chanSort)) cs
