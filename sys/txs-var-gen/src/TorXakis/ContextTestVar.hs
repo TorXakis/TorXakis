@@ -21,14 +21,18 @@ module TorXakis.ContextTestVar
   ContextTestVar
 , TorXakis.ContextTestVar.empty
 , TorXakis.ContextTestVar.fromSortContext
+, arbitraryContextTestVar
 )
 where
+import           Test.QuickCheck
+
 import           TorXakis.ContextVar
 import           TorXakis.VarContext
-import           TorXakis.TestSortContext
+import           TorXakis.SortGen
 import           TorXakis.TestVarContext
 import           TorXakis.TestVarData
-
+import           TorXakis.Var
+import           TorXakis.VarsDeclGen
 
 -- | An instance of 'TestVarContext'.
 data ContextTestVar = ContextTestVar { basis :: ContextVar
@@ -77,3 +81,16 @@ instance VarContext ContextTestVar where
 
 instance TestVarContext ContextTestVar where
     varSize r ctx = TorXakis.TestVarData.varSize r (basis ctx) (tvd ctx)
+    
+-- | generate an arbitrary Test Var Context
+arbitraryContextTestVar :: Gen ContextTestVar
+arbitraryContextTestVar =
+    let ctx1 = TorXakis.ContextTestVar.empty in do
+        incr <- arbitraryADTDefs ctx1
+        case addADTs incr ctx1 of
+            Left e    -> error ("arbitraryContextTestVar: Invalid generator - addADTs " ++ show e)
+            Right ctx2 -> do
+                            vs <- arbitraryVarsDecl ctx2
+                            case addVars (toList vs) ctx2 of
+                                Left e     -> error ("arbitraryContextTestVar: Invalid generator - addVars " ++ show e)
+                                Right ctx3 -> return ctx3

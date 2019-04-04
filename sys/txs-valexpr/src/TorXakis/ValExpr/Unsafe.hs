@@ -257,7 +257,7 @@ unsafeAnd ps = case partitionEithers (Set.toList ps) of
 
 unsafeUnaryMinus :: Either Error ValExpression -> Either Error ValExpression
 unsafeUnaryMinus (Left e)                                          = Left $ Error ("Unary Minus Error " ++ show e)
-unsafeUnaryMinus (Right (TorXakis.ValExpr.ValExpr.view -> Vsum m)) = unsafeSumFromMap (Map.map (* (-1)) m)
+unsafeUnaryMinus (Right (TorXakis.ValExpr.ValExpr.view -> Vsum m)) = unsafeSumFromMap (Map.map negate m)
 unsafeUnaryMinus (Right x)                                         = unsafeSumFromMap (Map.singleton x (-1))
 
 unsafeDivide :: Either Error ValExpression -> Either Error ValExpression -> Either Error ValExpression
@@ -295,7 +295,7 @@ unsafeSum ps = case partitionEithers ps of
                     (es, _)    -> Left $ Error ("Sum Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))
     where
         flattenSum :: [ValExpression] -> Map.Map ValExpression Integer
-        flattenSum = Map.filter (0 ==) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
+        flattenSum = Map.filter (0 /=) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
 
         fromValExpr :: ValExpression -> Map.Map ValExpression Integer
         fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m) = m
@@ -314,30 +314,31 @@ unsafeSumFactor ps = case partitionEitherTuples ps of
                             (es, _)  -> Left $ Error ("Sum Factor Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))
     where
         flattenSum :: [(ValExpression,Integer)] -> Map.Map ValExpression Integer
-        flattenSum = Map.filter (0 ==) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
+        flattenSum = Map.filter (0 /=) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
         
         fromValExpr :: (ValExpression, Integer) -> Map.Map ValExpression Integer
-        fromValExpr (_                                      , i) | i == 0 = error "Factor of Sum is equal to zero: violates invariant"
-        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m, i)          = Map.map (*i) m
-        fromValExpr (x                                      , i)          = Map.singleton x i
+        fromValExpr (x                                      , 0) = error ("Factor of Sum is equal to zero: violates invariant - " ++ show x)
+        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m, i) = Map.map (*i) m
+        fromValExpr (x                                      , i) = Map.singleton x i
 
 -- unsafeSumFromMap doesn't contain elements of type Vsum.
 unsafeSumFromMap :: Map.Map ValExpression Integer -> Either Error ValExpression
-unsafeSumFromMap m = 
-    let (vals, nonvals) = Map.partitionWithKey isKeyConst m
-        retVal :: Map.Map ValExpression Integer
-        retVal = case sum (map toValue (Map.toList vals)) of
-                    0   -> nonvals
-                    val -> case unsafeConst (Cint val) of
-                                Right x -> Map.insert x 1 nonvals
-                                Left _  -> error "Unexpected failure in unsafeConst in unsafeSum"
-      in
-        case Map.toList retVal of
-            []          -> Right zeroValExpr     -- sum of nothing equal to zero
-            [(term, 1)] -> Right term
-            _           -> Right $ ValExpression (Vsum m)
+unsafeSumFromMap m =
+        let (vals, nonvals) = Map.partitionWithKey isKeyConst m
+            retVal :: Map.Map ValExpression Integer
+            retVal = case sum (map toValue (Map.toList vals)) of
+                        0   -> nonvals
+                        val -> case unsafeConst (Cint val) of
+                                    Right x -> Map.insert x 1 nonvals
+                                    Left _  -> error "Unexpected failure in unsafeConst in unsafeSum"
+          in
+            case Map.toList retVal of
+                []          -> Right zeroValExpr     -- sum of nothing equal to zero
+                [(term, 1)] -> Right term
+                _           -> Right $ ValExpression (Vsum retVal)
     where
         toValue :: (ValExpression, Integer) -> Integer
+        toValue (x                                               , 0) = error ("Factor of Value in Sum is equal to zero: violates invariant - " ++ show x)
         toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o) = i * o
         toValue (_                                               , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeSum"
 
@@ -373,9 +374,9 @@ unsafeProductFactor ps = case partitionEitherTuples ps of
         flattenProduct = Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted)
 
         fromValExpr :: (ValExpression, Integer) -> Map.Map ValExpression Integer
-        fromValExpr (_                                      , i) | i <= 0 = error "Factor of Product is not positive: violates invariant"
-        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m, i)          = Map.map (*i) m
-        fromValExpr (x                                      , i)          = Map.singleton x i
+        fromValExpr (x                                          , i) | i <= 0 = error ("Factor of Product is not positive: violates invariant - " ++ show x)
+        fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vproduct m, i)          = Map.map (*i) m
+        fromValExpr (x                                          , i)          = Map.singleton x i
 
 -- Flatten Product doesn't contain elements of type Vproduct.
 unsafeProductFromMap  :: Map.Map ValExpression Integer -> Either Error ValExpression
@@ -391,8 +392,10 @@ unsafeProductFromMap  m =
             _          -> unsafeSumFromMap $ Map.singleton (ValExpression (Vproduct nonvals)) value
     where
         toValue :: (ValExpression, Integer) -> Integer
-        toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o) = i ^ o
-        toValue (_                                               , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
+        toValue (x                                               , i) | i <= 0 = error ("Non positive factor of Value in Product (" ++ show i ++ "): violates invariant - " ++ show x)
+
+        toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o)          = i ^ o
+        toValue (_                                               , _)          = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
 
 unsafeGEZ :: Either Error ValExpression -> Either Error ValExpression
 unsafeGEZ (Left e) = Left $ Error ("GEZ Error " ++ show e)

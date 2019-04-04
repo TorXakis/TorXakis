@@ -49,7 +49,7 @@ packages:
 - location: sys/txs-value-gen
 - location: sys/txs-lex-regex-xsd
 - location: sys/txs-valexpr
-#- location: sys/txs-valexpr-gen
+- location: sys/txs-valexpr-gen
 - location: sys/txs-var
 - location: sys/txs-var-gen
 #- location: sys/txs-bexpr

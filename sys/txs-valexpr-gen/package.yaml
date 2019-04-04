@@ -24,18 +24,17 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.ContextTestValExprConstruction
-  - TorXakis.TestValExprConstructionContext
-  - TorXakis.TestValExprConstructionData
+  - TorXakis.ContextTestValExpr
+  - TorXakis.TestValExprContext
+  - TorXakis.TestValExprData
   dependencies:
     - txs-basics-gen
     - txs-name
+    - txs-name-gen
     - txs-sort-gen
     - txs-value-gen
     - txs-var
     - txs-var-gen
-    - txs-funcsignature
-    - txs-funcsignature-gen
 
 tests:
     txs-valexpr-gen-test:
@@ -48,6 +47,7 @@ tests:
         dependencies:
         - hspec
         - txs-basics
+        - txs-prettyprint
         - txs-valexpr-gen
 
 ghc-options:
