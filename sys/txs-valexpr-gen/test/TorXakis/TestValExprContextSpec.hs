@@ -49,13 +49,13 @@ propertyInContext prop = do
 prop_MkUnaryMinus_id :: TestValExprContext a => a -> Gen Bool
 prop_MkUnaryMinus_id ctx = do
         ve <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
-        trace   ("\nValExpr:\n" ++ show (prettyPrint (Options True True) ctx ve)) $
-                return $ case mkUnaryMinus ctx ve of
-                                Left e    -> trace ("\nUnexpected error in generator 1 " ++ show e) False
-                                Right mve -> case mkUnaryMinus ctx mve of
-                                                Left e     -> trace ("\nUnexpected error in generator 2 " ++ show e) False
-                                                Right mmve -> (ve == mmve) || trace ("\nValue =\n" ++ show (prettyPrint (Options True True) ctx ve) ++
-                                                                                     "\nleads to wrong value =\n" ++ show (prettyPrint (Options True True) ctx mmve)) False
+        -- trace   ("\nValExpr:\n" ++ show (prettyPrint (Options True True) ctx ve)) $
+        return $ case mkUnaryMinus ctx ve of
+                      Left e    -> trace ("\nUnexpected error in generator 1 " ++ show e) False
+                      Right mve -> case mkUnaryMinus ctx mve of
+                                        Left e     -> trace ("\nUnexpected error in generator 2 " ++ show e) False
+                                        Right mmve -> (ve == mmve) || trace ("\nValue =\n" ++ show (prettyPrint (Options True True) ctx ve) ++
+                                                                             "\nleads to wrong value =\n" ++ show (prettyPrint (Options True True) ctx mmve)) False
 
 -- | a \/ not a <==> True
 prop_AOrNotA :: TestValExprContext a => a -> Gen Bool
@@ -95,40 +95,36 @@ prop_GELE :: TestValExprContext a => a -> Gen Bool
 prop_GELE ctx = do
         a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
-        trace (  "a = " ++ show (prettyPrint (Options True True) ctx a ) ++ 
-               "\nb = " ++ show (prettyPrint (Options True True) ctx b ) )
-              $ return $ mkGE ctx a b == mkLE ctx b a
+        return $ mkGE ctx a b == mkLE ctx b a
 
 -- | a > b <==> b < a
 prop_GTLT :: TestValExprContext a => a -> Gen Bool
 prop_GTLT ctx = do
         a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
-        trace (  "a = " ++ show (prettyPrint (Options True True) ctx a ) ++ 
-               "\nb = " ++ show (prettyPrint (Options True True) ctx b ) )
-              $ return $ mkGT ctx a b == mkLT ctx b a
+        return $ mkGT ctx a b == mkLT ctx b a
 
 -- | a > b <==> not (a <= b)
 prop_GTNotLE :: TestValExprContext a => a -> Gen Bool
 prop_GTNotLE ctx = do
         a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
-        trace (  "a = " ++ show (prettyPrint (Options True True) ctx a ) ++ 
-               "\nb = " ++ show (prettyPrint (Options True True) ctx b ) )
-              $ return $ case mkLE ctx a b of
-                              Left e   -> trace ("\nUnexpected error with mkLE " ++ show e) False
-                              Right le -> mkGT ctx a b == mkNot ctx le
+        --trace (  "a = " ++ show (prettyPrint (Options True True) ctx a ) ++ 
+        --       "\nb = " ++ show (prettyPrint (Options True True) ctx b ) ) $
+        return $ case mkLE ctx a b of
+                      Left e   -> trace ("\nUnexpected error with mkLE " ++ show e) False
+                      Right le -> mkGT ctx a b == mkNot ctx le
 
 -- | a < b <==> not (a >= b)
 prop_LTNotGE :: TestValExprContext a => a -> Gen Bool
 prop_LTNotGE ctx = do
         a <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
         b <- arbitraryValExprOfSort ctx SortInt :: Gen ValExpression
-        trace (  "a = " ++ show (prettyPrint (Options True True) ctx a ) ++ 
-               "\nb = " ++ show (prettyPrint (Options True True) ctx b ) )
-              $ return $ case mkGE ctx a b of
-                              Left e   -> trace ("\nUnexpected error with mkGE " ++ show e) False
-                              Right ge -> mkLT ctx a b == mkNot ctx ge
+        --trace (  "a = " ++ show (prettyPrint (Options True True) ctx a ) ++ 
+        --       "\nb = " ++ show (prettyPrint (Options True True) ctx b ) ) $
+        return $ case mkGE ctx a b of
+                      Left e   -> trace ("\nUnexpected error with mkGE " ++ show e) False
+                      Right ge -> mkLT ctx a b == mkNot ctx ge
 
 prop_ASortUsed :: TestValExprContext a => a -> Gen Bool
 prop_ASortUsed ctx = do
@@ -136,17 +132,15 @@ prop_ASortUsed ctx = do
     return $ not (Set.null (usedSorts ctx e))
 
 spec :: Spec
-spec = do
+spec = modifyMaxSuccess (const 100) $ do
             describe "mkUnaryMinus" $
-                modifyMaxSuccess (const 1000) $
                     it "mkUnaryMinus mkUnaryMinus == id" $ property (propertyInContext prop_MkUnaryMinus_id)
             describe "Or" $
                 it "a \\/ not a == True" $ property (propertyInContext prop_AOrNotA)
             describe "Implies" $ do
                 it "not a => a <==> a"     $ property (propertyInContext prop_NotAImpliesAEqualsA)
                 it "a => not a <==> not a" $ property (propertyInContext prop_AImpliesNotAEqualsNotA)
-            describe "Comparisons" $
-                modifyMaxSuccess (const 1000) $ do
+            describe "Comparisons" $ do
                     it "a >= b <==> b <= a"      $ property (propertyInContext prop_GELE)
                     it "a > b <==> b < a"        $ property (propertyInContext prop_GTLT)
                     it "a > b <==> not (a <= b)" $ property (propertyInContext prop_GTNotLE)
