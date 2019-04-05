@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.FuncSignature
+-- Module      :  TorXakis.ProcSignature
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -13,15 +13,17 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Interface for FuncSignature related functionality.
+-- Interface for ProcSignature related functionality.
 -----------------------------------------------------------------------------
-module TorXakis.FuncSignature
-( module TorXakis.FuncSignature.FuncSignature
-, module TorXakis.FuncSignature.RefByFuncSignature
-, module TorXakis.FuncSignature.UsedFuncSignatures
+module TorXakis.ProcSignature
+( module TorXakis.ProcSignature.ProcSignature
+, module TorXakis.ProcSignature.ProcExit
+, module TorXakis.ProcSignature.RefByProcSignature
+, module TorXakis.ProcSignature.UsedProcSignatures
 )
 where
 
-import TorXakis.FuncSignature.FuncSignature
-import TorXakis.FuncSignature.RefByFuncSignature
-import TorXakis.FuncSignature.UsedFuncSignatures
+import TorXakis.ProcSignature.ProcSignature
+import TorXakis.ProcSignature.ProcExit
+import TorXakis.ProcSignature.RefByProcSignature
+import TorXakis.ProcSignature.UsedProcSignatures

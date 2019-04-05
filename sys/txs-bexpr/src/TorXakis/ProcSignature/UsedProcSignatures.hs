@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  FreeChans
+-- Module      :  UsedProcSignatures
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -13,22 +13,20 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Free Channels in Behaviour Expression related functionality.
+-- Used Proc Signatures in element related functionality.
 -----------------------------------------------------------------------------
-module TorXakis.Chan.FreeChans
-( FreeChans (..)
+module TorXakis.ProcSignature.UsedProcSignatures
+( UsedProcSignatures (..)
+  -- dependencies, yet part of interface
+, Set.Set
+, ProcSignature
 )
 where
 import qualified Data.Set               as Set
 
-import TorXakis.Name
-import TorXakis.Chan.ChanDef
+import TorXakis.ProcSignature.ProcSignature
 
--- | Class for Free Channels
-class FreeChans a where
-    -- | Determine the free channels
-    freeChans :: a -> Set.Set (RefByName ChanDef)
-    -- | Is expression closed?
-    -- A closed expression has no free channels.
-    isClosed :: a -> Bool
-    isClosed = Set.null . freeChans
+-- | Class for Used ProcSignatures
+class UsedProcSignatures a where
+    -- | Determine the used ProcSignatures
+    usedProcSignatures :: a -> Set.Set ProcSignature

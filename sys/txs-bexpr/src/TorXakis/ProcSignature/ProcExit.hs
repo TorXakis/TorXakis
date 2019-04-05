@@ -20,7 +20,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module TorXakis.ProcExit
+module TorXakis.ProcSignature.ProcExit
 ( -- ** Process Exit and functions
   ProcExit (..)
 , exitSorts
@@ -32,7 +32,6 @@ module TorXakis.ProcExit
 import           Control.DeepSeq      (NFData)
 import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hashWithSalt))
-import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
@@ -62,27 +61,27 @@ instance Hashable ProcExit where
     hashWithSalt s Hit       = s `hashWithSalt` "Hit"
 
 -- | Combine Process Exits for Synchronized actions, sequences and choices (max of Process Exits)
-(<<+>>) :: ProcExit -> ProcExit -> Either MinError ProcExit
+(<<+>>) :: ProcExit -> ProcExit -> Either Error ProcExit
 NoExit   <<+>> NoExit                   = Right NoExit
 NoExit   <<+>> Exit exs                 = Right $ Exit exs
 NoExit   <<+>> Hit                      = Right Hit
 Exit exs <<+>> NoExit                   = Right $ Exit exs
 Exit exs <<+>> Exit exs' | exs == exs'  = Right $ Exit exs
-Exit exs <<+>> Exit exs'                = Left $ MinError (T.pack ("ProcExits do not match (max): Exit " ++ show exs ++ " versus Exit " ++ show exs') )
-Exit exs <<+>> Hit                      = Left $ MinError (T.pack ("ProcExits do not match (max): Exit " ++ show exs ++ " versus Hit") )
+Exit exs <<+>> Exit exs'                = Left $ Error ("ProcExits do not match (max): Exit " ++ show exs ++ " versus Exit " ++ show exs')
+Exit exs <<+>> Hit                      = Left $ Error ("ProcExits do not match (max): Exit " ++ show exs ++ " versus Hit")
 Hit      <<+>> NoExit                   = Right Hit
-Hit      <<+>> Exit exs                 = Left $ MinError (T.pack ("ProcExits do not match (max): Hit versus Exit " ++ show exs) )
+Hit      <<+>> Exit exs                 = Left $ Error ("ProcExits do not match (max): Hit versus Exit " ++ show exs)
 Hit      <<+>> Hit                      = Right Hit
 
 -- | Combine Process Exits for parallel (min of Process Exits)
-(<<->>) :: ProcExit -> ProcExit -> Either MinError ProcExit
+(<<->>) :: ProcExit -> ProcExit -> Either Error ProcExit
 NoExit   <<->> NoExit                   = Right NoExit
 NoExit   <<->> Exit _                   = Right NoExit
 NoExit   <<->> Hit                      = Right NoExit
 Exit _   <<->> NoExit                   = Right NoExit
 Exit exs <<->> Exit exs' | exs == exs'  = Right $ Exit exs
-Exit exs <<->> Exit exs'                = Left $ MinError (T.pack ("ProcExits do not match (min): Exit " ++ show exs ++ " versus Exit " ++ show exs') )
-Exit exs <<->> Hit                      = Left $ MinError (T.pack ("ProcExits do not match (min): Exit " ++ show exs ++ " versus Hit") )
+Exit exs <<->> Exit exs'                = Left $ Error ("ProcExits do not match (min): Exit " ++ show exs ++ " versus Exit " ++ show exs')
+Exit exs <<->> Hit                      = Left $ Error ("ProcExits do not match (min): Exit " ++ show exs ++ " versus Hit")
 Hit      <<->> NoExit                   = Right NoExit
-Hit      <<->> Exit exs                 = Left $ MinError (T.pack ("ProcExits do not match (min): Hit versus Exit " ++ show exs) )
+Hit      <<->> Exit exs                 = Left $ Error ("ProcExits do not match (min): Hit versus Exit " ++ show exs)
 Hit      <<->> Hit                      = Right Hit

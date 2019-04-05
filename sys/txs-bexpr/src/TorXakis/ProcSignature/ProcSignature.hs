@@ -21,7 +21,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module TorXakis.ProcSignature
+module TorXakis.ProcSignature.ProcSignature
 ( -- * Process Signature
   ProcSignature (..)
   -- * Has Process Signature class
@@ -40,9 +40,9 @@ import           Data.HashMap         (Map, fromList)
 import           Data.List.Unique     (repeated)
 import           GHC.Generics         (Generic)
 
-import           TorXakis.ChanDef (ChanSort)
+import           TorXakis.Chan
 import           TorXakis.Name
-import           TorXakis.ProcExit
+import           TorXakis.ProcSignature.ProcExit
 import           TorXakis.Sort
 
 -- | A generalized, type-safe reference.

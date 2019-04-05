@@ -30,13 +30,12 @@ import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
 
 import           TorXakis.BExpr.BExpr
-import           TorXakis.ChanDef
+import           TorXakis.Chan
+import           TorXakis.ContextVar
 import           TorXakis.Name
-import           TorXakis.ProcExit
 import           TorXakis.ProcSignature
 import           TorXakis.Sort
-import           TorXakis.VarContext
-import           TorXakis.VarsDecl
+import           TorXakis.Var
 
 -- | Data structure to store the information of a Process Definition:
 -- * A Name
@@ -56,9 +55,12 @@ data ProcDef = ProcDef { -- | The name of the process (of type 'TorXakis.Name')
 
 instance SortContext a => HasProcSignature a ProcDef
     where
-        getProcSignature sctx (ProcDef fn cds pds bd) = case addVars (fromSortContext sctx) (toList pds) of
+        getProcSignature sctx (ProcDef fn cds pds bd) = case addVars (TorXakis.Var.toList pds) (fromSortContext sctx) of
                                                              Left e     -> error ("getProcSignature is unable to add vars to sort context" ++ show e)
-                                                             Right vctx -> ProcSignature fn (map chanSort cds) (map (getSort sctx) (toList pds)) (getProcExit vctx bd)
+                                                             Right vctx -> ProcSignature fn
+                                                                                         (map chanSort cds)
+                                                                                         (map (getSort sctx) (TorXakis.Var.toList pds))
+                                                                                         (getProcExit vctx bd)
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

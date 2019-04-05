@@ -16,11 +16,9 @@ See LICENSE at root directory of this repository.
 -- Channel Definition
 -----------------------------------------------------------------------------
 module TorXakis.Chan
-( module TorXakis.Chan.FreeChans
-, module TorXakis.Chan.ChanDef
+( module TorXakis.Chan.ChanDef
 , module TorXakis.Chan.ChansDecl
 )
 where
-import           TorXakis.Chan.FreeChans
 import           TorXakis.Chan.ChanDef
 import           TorXakis.Chan.ChansDecl
