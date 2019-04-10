@@ -88,8 +88,8 @@ conceptualErrorAddADTs as ctx
         nonUniqueReferences :: [ADTDef]
         nonUniqueReferences = repeatedByNameIncremental definedADTs as
 
-        hasUndefinedSorts :: Set.Set Sort -> ADTDef -> Maybe (ADTDef, Set.Set Sort)
-        hasUndefinedSorts definedSorts adtdef =
+        maybeUndefinedSorts :: Set.Set Sort -> ADTDef -> Maybe (ADTDef, Set.Set Sort)
+        maybeUndefinedSorts definedSorts adtdef =
             let undefinedSorts = usedSorts ctx adtdef `Set.difference` definedSorts in
                 if null undefinedSorts
                     then Nothing
@@ -97,10 +97,10 @@ conceptualErrorAddADTs as ctx
 
         unknownSorts :: [(ADTDef, Set.Set Sort)]
         unknownSorts = let definedSorts = Set.fromList (elemsSort ctx ++ map (SortADT . RefByName . adtName) as) in
-                           mapMaybe (hasUndefinedSorts definedSorts) as
+                           mapMaybe (maybeUndefinedSorts definedSorts) as
         
         nonConstructableADTs :: [ADTDef]
-        nonConstructableADTs =  verifyConstructibleADTs (map adtName definedADTs) as
+        nonConstructableADTs = verifyConstructibleADTs (map adtName definedADTs) as
             where
                 -- | Verifies if given list of 'ADTDef's are constructable.
                 --

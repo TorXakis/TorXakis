@@ -15,9 +15,11 @@ See LICENSE at root directory of this repository.
 --
 -- Variable Definition
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.Chan.ChanDef
 ( ChanSort
 , toSorts
@@ -56,39 +58,31 @@ mkChanSort ctx l | not $ null undefinedSorts = Left $ Error ("mkChanSort: Channe
 instance Hashable ChanSort where
     hashWithSalt s (ChanSort xs)    = s `hashWithSalt` xs
 
--- CHAN DEFs can not be used everywhere -- TODO: do we need to split?
+instance UsedSorts c ChanSort where
+    usedSorts _ = Set.fromList . toSorts
+
+-- CHAN DEFs can not be used everywhere
 -- kind of channel              user defined        exit        HChan           hit         miss        quiescence
 -- Offer                            YES             YES         YES             YES         YES         YES
 -- process instantiation            YES             NO          NO              NO          NO          NO
--- synchronization (parallel)       YES             YES         NO              NO          NO          NO
+-- synchronization (parallel)       YES             NO          NO              NO          NO          NO
 -- HIDE                             YES             NO          NO              NO          NO          NO
 
--- | Data structure of Channel Definition.
-data ChanDef = ChanDefUser { -- | Name
-                             chanName :: Name
-                             -- | ChanSort
-                           , chanSort :: ChanSort
-                           }
-              | ChanDefExit{ -- | ChanSort
-                             chanSort :: ChanSort
-                           }
-              | ChanDefHidden{ -- | ChanSort
-                               chanSort :: ChanSort
-                             }
-              | ChanDefHit
-              | ChanDefMiss
-              | ChanDefQuiescence
-                       deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+-- | Data structure of (User Defined) Channel Definition.
+data ChanDef = ChanDef { -- | Name
+                         chanName :: Name
+                         -- | ChanSort
+                       , chanSort :: ChanSort
+                       }
+               deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | References to channels.
-data ChanRef = ChanRefUser { -- | Name
-                             chanRef :: RefByName ChanDef
-                           }
-              | ChanRefExit
-              | ChanRefHidden
-              | ChanRefHit
-              | ChanRefMiss
-              | ChanRefQuiescence
+data ChanRef =  -- | Reference to a user defined channel
+                ChanRefUser { -- | Name
+                              chanRef :: RefByName ChanDef
+                            }
+              | -- | Reference to the predefined EXIT channel
+                ChanRefExit 
                        deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | toMapByChanRef
@@ -96,16 +90,10 @@ toMapByChanRef :: [ChanDef] -> Map.Map ChanRef ChanDef
 toMapByChanRef = Map.fromList . map toTuple
     where
         toTuple :: ChanDef -> (ChanRef, ChanDef)
-        toTuple cd = case cd of
-                          ChanDefUser{}       -> ( (ChanRefUser . RefByName . chanName) cd, cd)
-                          ChanDefExit{}       -> ( ChanRefExit                            , cd)
-                          ChanDefHidden{}     -> ( ChanRefHidden                          , cd)
-                          ChanDefHit{}        -> ( ChanRefHit                             , cd)
-                          ChanDefMiss{}       -> ( ChanRefMiss                            , cd)
-                          ChanDefQuiescence{} -> ( ChanRefQuiescence                      , cd)
+        toTuple cd = ( (ChanRefUser . RefByName . chanName) cd, cd)
 
 instance HasName ChanDef where
-    getName = chanName          -- TODO: undefined behaviour for EXIT channel etc.
+    getName = chanName
 
 -- | Class for Free Channels
 class FreeChans a where

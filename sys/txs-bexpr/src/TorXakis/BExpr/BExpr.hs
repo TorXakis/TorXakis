@@ -40,6 +40,8 @@ import qualified Data.Set            as Set
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Chan
+import           TorXakis.ChanContext
+import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.ProcSignature
 import           TorXakis.Relabel
@@ -73,13 +75,24 @@ newtype BExpression = BExpression {
         }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
+-- | Goal for TestPurpose
+data Goal =  Hit
+           | Miss
+
 -- | ActOffer
 -- Offer on multiple channels with constraints
-data ActOffer = ActOffer { -- | Offers over channels
+data ActOffer = QuiescenceStep  -- for test purposes
+                                -- TODO: Should we explicitly extend models with their Quiescence Step, or should it `just` be a function of a state?
+              | ActOffer { -- | Offers over channels
                            offers     :: Map.Map ChanRef [ValExpression]
+                           -- | Hidden Variables of ActOffer   ( | HChan ? x :: Int ? y :: Bool )
+                         , hiddenVars :: VarsDecl
                            -- | constraint of ActOffer
                          , constraint :: ValExpression
-                         } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+                           -- | Executing this ActOffer might impact a test goal.   ( | HIT or | MISS )
+                         , mGoal      :: Maybe Goal
+                         } 
+              deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Contains EXIT is equal to the presence of EXIT in the ActOffer.
 containsEXIT :: ActOffer -> Bool
@@ -91,19 +104,13 @@ containsEXIT ao =
         isEXIT _             = False
 
 
--- | ExitKind related to ChanDef ValExpression tuple
-toProcExit :: VarContext a => a -> (ChanRef , [ValExpression]) -> ProcExit
-toProcExit ctx (ChanRefExit{}    , cs) = Exit (map (getSort ctx) cs)
-toProcExit _   (ChanRefQuiescence, _ ) = Hit
-toProcExit _   (ChanRefHit,        _ ) = Hit
-toProcExit _   (ChanRefMiss,       _ ) = Hit
-toProcExit _   _                       = NoExit
-
 instance VarContext a => HasProcExit a ActOffer where
-    getProcExit ctx a = case foldM (<<+>>) NoExit (map (toProcExit ctx) (Map.toList (offers a))) of
-                             Right v -> v
-                             Left e  -> error ("Smart constructor created invalid ActOffer " ++ show e)
-
+    getProcExit ctx QuiescenceStep  = Hit
+    getProcExit ctx a@ActOffer{}    = case Map.lookup ChanRefExit (offers a) of
+                                           Nothing -> case mGoal a of
+                                                           Nothing -> NoExit
+                                                           Just _  -> Hit
+                                           Just vs -> Exit (map (getSort ctx) vs)
 
 instance VarContext a => HasProcExit a BExpression where
     getProcExit ctx = getProcExit ctx . TorXakis.BExpr.BExpr.view
@@ -127,6 +134,45 @@ instance VarContext a => HasProcExit a BExpressionView where
     getProcExit _   (ProcInst ps _ _)   = exit ps
     getProcExit ctx (Hide _ b)          = getProcExit ctx b
 
+instance (VarContext c, ChanContext c) => UsedSorts c BExpression where
+    usedSorts ctx = usedSorts ctx . TorXakis.BExpr.BExpr.view
+
+instance (VarContext c, ChanContext c) => UsedSorts c BExpressionView where
+    usedSorts ctx (ActionPref vs _ b) = Set.unions $ [ usedSorts ctx vs
+                                                      --, usedSorts ctx ao  -- TODO: usedSorts for ActOffer
+                                                      , usedSorts ctx b
+                                                      ]
+    usedSorts ctx (Guard v b)          = Set.unions $ [ usedSorts ctx v
+                                                      , usedSorts ctx b
+                                                      ]
+    usedSorts ctx (Choice s)           = Set.unions $ map (usedSorts ctx) (Set.toList s)
+    usedSorts ctx (Parallel _ bs)     = Set.unions $ map (usedSorts ctx) bs -- TODO: lookup Channels and add sort
+    usedSorts ctx (Enable a vs b)      = Set.unions $ (usedSorts ctx vs : map (usedSorts ctx) [a,b])
+    usedSorts ctx (Disable a b)        = Set.unions $ map (usedSorts ctx) [a,b]
+    usedSorts ctx (Interrupt a b)      = Set.unions $ map (usedSorts ctx) [a,b]
+    usedSorts ctx (ProcInst p _ vs)    = Set.unions (usedSorts ctx p : map (usedSorts ctx) vs) -- Under the assumption of a correct ProcInst and return type is a set of Sorts:
+                                                                                            -- Sorts of Channels are already in ProcSignature, so no need to lookup Channels and add sort
+    usedSorts ctx (Hide m b)           = Set.unions (usedSorts ctx b : map (usedSorts ctx . chanSort) (Map.elems m))    -- TODO: once ChanDef is final: are all cases covered
+    
+instance UsedFuncSignatures BExpression where
+    usedFuncSignatures = usedFuncSignatures . TorXakis.BExpr.BExpr.view
+
+instance UsedFuncSignatures BExpressionView where
+    usedFuncSignatures = undefined -- TODO
+    
+instance UsedProcSignatures BExpression where
+    usedProcSignatures = usedProcSignatures . TorXakis.BExpr.BExpr.view
+
+instance UsedProcSignatures BExpressionView where
+    usedProcSignatures (ActionPref _ _ b) = usedProcSignatures b
+    usedProcSignatures (Choice s)         = Set.unions $ map usedProcSignatures (Set.toList s)
+    usedProcSignatures (Guard _ b)        = usedProcSignatures b
+    usedProcSignatures (Parallel _ l)     = Set.unions $ map usedProcSignatures l
+    usedProcSignatures (Enable a _ b)     = Set.unions $ map usedProcSignatures [a, b]
+    usedProcSignatures (Disable a b)      = Set.unions $ map usedProcSignatures [a, b]
+    usedProcSignatures (Interrupt a b)    = Set.unions $ map usedProcSignatures [a, b]
+    usedProcSignatures (ProcInst p _ _)   = Set.singleton p
+    usedProcSignatures (Hide _ b)         = usedProcSignatures b
 
 instance FreeVars BExpression where
     freeVars = freeVars . TorXakis.BExpr.BExpr.view
@@ -182,4 +228,3 @@ instance Relabel BExpressionView where
 instance Relabel ActOffer where
     relabel' m (ActOffer offs cnrs) = let newOffs = Map.fromList (map (first (relabel' m)) (Map.toList offs)) in
                                                  ActOffer newOffs cnrs
-

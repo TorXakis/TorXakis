@@ -27,10 +27,9 @@ module TorXakis.BExpr
 , containsEXIT
 
 , module TorXakis.BExpr.BExprConstructor
-, module TorXakis.BExpr.BExprContext
 )
 where
 
 import TorXakis.BExpr.BExpr
 import TorXakis.BExpr.BExprConstructor
-import TorXakis.BExpr.BExprContext
+

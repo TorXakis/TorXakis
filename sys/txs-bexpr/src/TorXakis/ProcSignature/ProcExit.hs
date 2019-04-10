@@ -19,6 +19,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.ProcSignature.ProcExit
 ( -- ** Process Exit and functions
@@ -29,10 +30,11 @@ module TorXakis.ProcSignature.ProcExit
 , (<<->>)
 ) where
 
-import           Control.DeepSeq      (NFData)
-import           Data.Data            (Data)
-import           Data.Hashable        (Hashable(hashWithSalt))
-import           GHC.Generics         (Generic)
+import           Control.DeepSeq        (NFData)
+import           Data.Data              (Data)
+import           Data.Hashable          (Hashable(hashWithSalt))
+import qualified Data.Set               as Set
+import           GHC.Generics           (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Sort
@@ -45,6 +47,16 @@ data  ProcExit      =  NoExit
                      | Hit
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
+instance Hashable ProcExit where
+    hashWithSalt s NoExit    = s `hashWithSalt` "NoExit"
+    hashWithSalt s (Exit xs) = s `hashWithSalt` "Exit" 
+                                 `hashWithSalt` xs
+    hashWithSalt s Hit       = s `hashWithSalt` "Hit"
+
+instance UsedSorts c ProcExit where
+    usedSorts _ (Exit s)    = Set.fromList s
+    usedSorts _ _           = Set.empty
+
 -- | Sorts used in Process Exit
 exitSorts :: ProcExit -> [Sort]
 exitSorts (Exit xs) = xs
@@ -53,12 +65,6 @@ exitSorts _         = []
 -- | The expression has Process Exit associated to it.
 class HasProcExit ctx e where
     getProcExit :: ctx -> e -> ProcExit
-
-instance Hashable ProcExit where
-    hashWithSalt s NoExit    = s `hashWithSalt` "NoExit"
-    hashWithSalt s (Exit xs) = s `hashWithSalt` "Exit" 
-                                 `hashWithSalt` xs
-    hashWithSalt s Hit       = s `hashWithSalt` "Hit"
 
 -- | Combine Process Exits for Synchronized actions, sequences and choices (max of Process Exits)
 (<<+>>) :: ProcExit -> ProcExit -> Either Error ProcExit

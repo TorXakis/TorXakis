@@ -19,7 +19,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.ContextTestSort
 (-- * Context Test Sort
   ContextTestSort

@@ -214,3 +214,4 @@ instance UsedFuncSignatures ValExpressionView where
     usedFuncSignatures (Vaccess _ _ _ v) = usedFuncSignatures v
 
 -- TODO: add UsedNames / UsedFuncNames to find usage of keywords / reserved words
+--       Only defined names are used -> so unnecessary to check in ValExpr?

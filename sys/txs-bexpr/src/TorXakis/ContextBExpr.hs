@@ -20,12 +20,9 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module TorXakis.BExpr.BExprContext
+module TorXakis.ContextBExpr
 ( -- * BExpr Context
-  BExprContext(..)
-, MinimalBExprContext (MinimalBExprContext)
---TODO needed?  -- *** Check for usage of undefined process signatures (due to recursive processes)
---, findUndefinedProcSignature
+  ContextBExpr (..)
 )
 where
 import           Control.DeepSeq        (NFData)
@@ -37,9 +34,8 @@ import qualified Data.Text              as T
 import           GHC.Generics           (Generic)
 
 import           TorXakis.BExpr.BExpr
-import           TorXakis.ChanDef
-import           TorXakis.Error         ( MinError(MinError) )
-import           TorXakis.FreeVars
+import           TorXakis.Chan
+import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.ProcDef
 import           TorXakis.ProcExit
@@ -47,24 +43,7 @@ import           TorXakis.ProcSignature
 import           TorXakis.Sort          ( Sort, SortContext (..), memberSort )
 import           TorXakis.ValExprContext
 import           TorXakis.VarContext
-import           TorXakis.VarDef
-import           TorXakis.VarsDecl
-
--- | A BExprContext instance contains all definitions to work with behavioural expressions and references thereof
-class ValExprContext a => BExprContext a where
-    -- | Accessor for Process Definitions
-    procDefs :: a -> HashMap.Map ProcSignature ProcDef
-
-    -- | Add process definitions to behavioural expression context.
-    --   A value expression context is returned when the following constraints are satisfied:
-    --
-    --   * The signatures of the processes definitions are unique.
-    --
-    --   * All references (both Sort, FunctionDefinition, and ProcessDefinition) are known
-    --
-    --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addProcDefs :: a -> [ProcDef] -> Either MinError a
-
+import           TorXakis.Var
 
 -- | A minimal instance of 'BExprContext'.
 data MinimalBExprContext a = MinimalBExprContext { valExprContext :: a

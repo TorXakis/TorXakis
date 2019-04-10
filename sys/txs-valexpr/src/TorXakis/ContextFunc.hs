@@ -16,7 +16,6 @@ See LICENSE at root directory of this repository.
 -- Context containing Value Expressions.
 -----------------------------------------------------------------------------
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
 module TorXakis.ContextFunc
 ( -- * Context
   -- ** instance of Func Context
@@ -24,7 +23,7 @@ module TorXakis.ContextFunc
 , TorXakis.ContextFunc.empty
 , TorXakis.ContextFunc.fromSortContext
   -- dependencies, yet part of interface
-, module TorXakis.ValExprContext
+, module TorXakis.FuncContext
 )
 where
 import qualified Data.HashMap           as HashMap
@@ -35,16 +34,16 @@ import qualified Data.Text              as T
 import           TorXakis.ContextValExpr.ContextValExpr
 import           TorXakis.ContextSort
 import           TorXakis.Error
+import           TorXakis.FuncContext
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.Sort
-import           TorXakis.ValExprContext
 import           TorXakis.ValExpr.UnsafeSubst
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.Var
 
--- | An instance of 'TorXakis.ValExprConstructionContext'.
+-- | An instance of 'TorXakis.FuncContext'.
 data ContextFunc = forall c . SortContext c =>
                             ContextFunc { _sortContext :: c
                                           -- funcSignatures
@@ -74,9 +73,9 @@ instance SortContext ContextFunc where
 
     elemsADT (ContextFunc ctx _) = elemsADT ctx
 
-    addADTs as (ContextFunc ctx vs) = case addADTs as ctx of
-                                                        Left e     -> Left e
-                                                        Right sctx -> Right $ ContextFunc sctx vs
+    addADTs as (ContextFunc ctx fs) = case addADTs as ctx of
+                                           Left e     -> Left e
+                                           Right sctx -> Right $ ContextFunc sctx fs
 
 instance FuncContext ContextFunc where
     memberFunc f ctx = HashMap.member f (funcDefs ctx)

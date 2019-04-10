@@ -33,12 +33,13 @@ module TorXakis.ProcSignature.ProcSignature
 , repeatedByProcSignatureIncremental
 ) where
 
-import           Control.DeepSeq      (NFData)
-import           Data.Data            (Data)
-import           Data.Hashable        (Hashable(hashWithSalt))
-import           Data.HashMap         (Map, fromList)
-import           Data.List.Unique     (repeated)
-import           GHC.Generics         (Generic)
+import           Control.DeepSeq        (NFData)
+import           Data.Data              (Data)
+import           Data.Hashable          (Hashable(hashWithSalt))
+import           Data.HashMap           (Map, fromList)
+import           Data.List.Unique       (repeated)
+import qualified Data.Set               as Set
+import           GHC.Generics           (Generic)
 
 import           TorXakis.Chan
 import           TorXakis.Name
@@ -64,6 +65,9 @@ class HasProcSignature ctx e where
 
 instance HasProcSignature c ProcSignature where
     getProcSignature _ = id
+
+instance UsedSorts c ProcSignature where
+    usedSorts ctx p = Set.unions (usedSorts ctx (exit p) : Set.fromList (args p) : map (usedSorts ctx) (channels p))
 
 instance Hashable ProcSignature where
     hashWithSalt s (ProcSignature n cs as r) = s `hashWithSalt`
