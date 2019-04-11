@@ -69,8 +69,8 @@ class SortContext c => ChanContext c where
 --
 --   * All references are known
 conceptualErrorAddChans :: ChanContext c => [ChanDef] -> c -> Maybe Error
-conceptualErrorAddChans cs ctx | not $ null nuChanDefs       = Just $ Error ("Non unique variable definitions: " ++ show nuChanDefs)
-                               | not $ null undefinedSorts   = Just $ Error ("List of variable definitions with undefined sorts: " ++ show undefinedSorts)
+conceptualErrorAddChans cs ctx | not $ null nuChanDefs       = Just $ Error ("Non unique channel definitions: " ++ show nuChanDefs)
+                               | not $ null undefinedSorts   = Just $ Error ("List of channel definitions with undefined sorts: " ++ show undefinedSorts)
                                | otherwise                   = Nothing
     where
         -- | non unique Channel Definitions (i.e. duplicate names)

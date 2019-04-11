@@ -38,10 +38,8 @@ import           TorXakis.FuncContext
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
 import           TorXakis.Name
-import           TorXakis.Sort
 import           TorXakis.ValExpr.UnsafeSubst
 import           TorXakis.ValExpr.ValExpr
-import           TorXakis.Var
 
 -- | An instance of 'TorXakis.FuncContext'.
 data ContextFunc = forall c . SortContext c =>
@@ -96,39 +94,12 @@ instance FuncContext ContextFunc where
         nuFuncDefs :: [FuncDef]
         nuFuncDefs = repeatedByFuncSignatureIncremental ctx (elemsFunc ctx) fds
 
-        definedSorts :: Set.Set Sort
-        definedSorts = Set.fromList (elemsSort ctx)
-
         undefinedSorts :: [(FuncSignature, Set.Set Sort)]
-        undefinedSorts = mapMaybe maybeUndefinedSorts fds
-
-        maybeUndefinedSorts :: FuncDef -> Maybe (FuncSignature, Set.Set Sort)
-        maybeUndefinedSorts fd = let vctx = toValExprContext (paramDefs fd)
-                                     usedS = Set.unions [usedSorts ctx (paramDefs fd), usedSorts vctx (body fd)]
-                                     undefinedS = usedS `Set.difference` definedSorts
-                                  in
-                                     if Set.null undefinedS
-                                        then Nothing
-                                        else Just (getFuncSignature ctx fd, undefinedS)
-
-        toValExprContext :: VarsDecl -> ContextValExpr
-        toValExprContext vs = case addVars (toList vs) (fromFuncContext ctx) of
-                                   Left e      -> error ("toValExprContext is unable to make new context" ++ show e)
-                                   Right vctx  -> vctx
-
+        undefinedSorts = undefinedSortsInFuncs ctx fds
+        
         undefinedVariables :: [(FuncSignature, Set.Set (RefByName VarDef))]
-        undefinedVariables = mapMaybe maybeUndefinedVariables fds
-
-        maybeUndefinedVariables :: FuncDef -> Maybe (FuncSignature, Set.Set (RefByName VarDef))
-        maybeUndefinedVariables fd = let definedVars :: Set.Set (RefByName VarDef)
-                                         definedVars = Set.fromList (map (RefByName . name) (toList (paramDefs fd)))
-                                         usedVars = freeVars (body fd)
-                                         undefinedVars = usedVars `Set.difference` definedVars
-                                      in
-                                         if Set.null undefinedVars
-                                            then Nothing
-                                            else Just (getFuncSignature ctx fd, undefinedVars)
-
+        undefinedVariables = undefinedVariablesInFuncs ctx fds
+        
         definedFuncSignatures :: Set.Set FuncSignature
         definedFuncSignatures = Set.fromList (funcSignatures ctx ++ map (getFuncSignature ctx) fds)
 
@@ -136,12 +107,12 @@ instance FuncContext ContextFunc where
         undefinedFuncSignatures = mapMaybe maybeUndefinedFuncSignatures fds
 
         maybeUndefinedFuncSignatures :: FuncDef -> Maybe (FuncSignature, Set.Set FuncSignature)
-        maybeUndefinedFuncSignatures fd = let usedFS = usedFuncSignatures (body fd)
-                                              undefinedFS = usedFS `Set.difference` definedFuncSignatures
+        maybeUndefinedFuncSignatures fd = let funcSignaturesUsed = usedFuncSignatures (body fd)
+                                              funcSignaturesUndefined = funcSignaturesUsed `Set.difference` definedFuncSignatures
                                             in
-                                               if Set.null undefinedFS
+                                               if Set.null funcSignaturesUndefined
                                                   then Nothing
-                                                  else Just (getFuncSignature ctx fd, undefinedFS)
+                                                  else Just (getFuncSignature ctx fd, funcSignaturesUndefined)
 
         newCtx :: ContextFunc -> HashMap.Map FuncSignature FuncDef -> ContextFunc
         newCtx ctx' mfs = let updateCtx = ctx'{ funcDefs = HashMap.union (funcDefs ctx') mfs }

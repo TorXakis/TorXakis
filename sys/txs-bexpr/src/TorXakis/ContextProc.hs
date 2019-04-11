@@ -23,6 +23,8 @@ See LICENSE at root directory of this repository.
 module TorXakis.ContextProc
 ( -- * Context for Processes
   ContextProc
+, TorXakis.ContextProc.empty
+, fromFuncContext
 )
 where
 import           Control.DeepSeq        (NFData)
@@ -36,9 +38,12 @@ import           GHC.Generics           (Generic)
 import           TorXakis.Error
 import           TorXakis.Name
 import           TorXakis.ContextFunc
+import           TorXakis.ContextBExpr.ContextBExpr
+import           TorXakis.FuncSignature
 import           TorXakis.ProcContext
 import           TorXakis.ProcDef
 import           TorXakis.ProcSignature
+import           TorXakis.Var
 
 -- | An instance of 'TorXakis.ProcContext'.
 data ContextProc = forall c . FuncContext c =>
@@ -57,9 +62,9 @@ empty = TorXakis.ContextProc.fromFuncContext TorXakis.ContextFunc.empty
 
 instance SortContext ContextProc where
     -- Can't use
-    -- memberSort   = memberSort . sortContext
+    -- memberSort   = memberSort . funcContext
     -- since compiler complains:
-    --        * Cannot use record selector `sortContext' as a function due to escaped type variables
+    --        * Cannot use record selector `funcContext' as a function due to escaped type variables
     --          Probable fix: use pattern-matching syntax instead
     -- For more info see: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=existentialquantification#extension-ExistentialQuantification
     memberSort r (ContextProc ctx _) = memberSort r ctx
@@ -96,13 +101,13 @@ instance ProcContext ContextProc where
 
     elemsProc ctx = HashMap.elems (procDefs ctx)
 
-    addProcs pds ctx = undefined
+    addProcs pds ctx
         | not $ null nuProcDefs              = Left $ Error ("Non unique process definitions: " ++ show nuProcDefs)
         | not $ null undefinedSorts          = Left $ Error ("List of process signatures with references to undefined sorts: " ++ show undefinedSorts)
-        | not $ null undefinedFuncs          = Left $ Error ("List of process signatures with references to undefined funcs: " ++ show undefinedFuncs)
+        | not $ null undefinedFuncSignatures = Left $ Error ("List of process signatures with references to undefined funcs: " ++ show undefinedFuncSignatures)
         | not $ null undefinedProcSignatures = Left $ Error ("List of process signatures with references to undefined process signatures: " ++ show undefinedProcSignatures)
         | not $ null undefinedVariables      = Left $ Error ("List of process signatures with undefined variables in their bodies: " ++ show undefinedVariables)
-        | otherwise                          = Right $ ctx { _procDefs = definedProcSignatures }
+        | otherwise                          = Right $ ctx { procDefs = definedProcs }
       where
         nuProcDefs :: [ProcDef]
         nuProcDefs = repeatedByProcSignatureIncremental ctx (HashMap.elems (procDefs ctx)) pds
@@ -112,7 +117,7 @@ instance ProcContext ContextProc where
 
         undefinedSort :: ProcDef -> Maybe (ProcSignature, Set.Set Sort)
         undefinedSort pd = let ps@(ProcSignature _ cs as e) = getProcSignature ctx pd in
-                                   case filter (not . memberSort ctx) (concat [concatMap toSorts cs, as, exitSorts e]) of
+                                   case filter (not . flip memberSort ctx) (concat [concatMap toSorts cs, as, exitSorts e]) of
                                        [] -> Nothing
                                        xs -> Just (ps, Set.fromList xs)
 
@@ -129,13 +134,31 @@ instance ProcContext ContextProc where
                                         then Nothing
                                         else Just (getProcSignature ctx pd, undefinedVars)
 
-        definedProcSignatures :: HashMap.Map ProcSignature ProcDef
-        definedProcSignatures = HashMap.union (toMapByProcSignature ctx pds) (procDefs ctx)
+        undefinedFuncSignatures :: [(ProcSignature, Set.Set FuncSignature)]
+        undefinedFuncSignatures = mapMaybe undefinedFuncSignature pds
+
+        undefinedFuncSignature :: ProcDef -> Maybe (ProcSignature, Set.Set FuncSignature)
+        undefinedFuncSignature pd = let definedFuncSigs :: Set.Set FuncSignature
+                                        definedFuncSigs   = Set.fromList $ funcSignatures ctx
+                                        usedFuncSigs      = usedFuncSignatures pd
+                                        undefinedFuncSigs = Set.difference usedFuncSigs definedFuncSigs
+                                     in
+                                        if Set.null undefinedFuncSigs
+                                            then Nothing
+                                            else Just (getProcSignature ctx pd, undefinedFuncSigs)
+
+        definedProcs :: HashMap.Map ProcSignature ProcDef
+        definedProcs = HashMap.union (toMapByProcSignature ctx pds) (procDefs ctx)
 
         undefinedProcSignatures :: [(ProcSignature, Set.Set ProcSignature)]
         undefinedProcSignatures = mapMaybe undefinedProcSignature pds
 
         undefinedProcSignature :: ProcDef -> Maybe (ProcSignature, Set.Set ProcSignature)
-        undefinedProcSignature pd = case findUndefinedProcSignature definedProcSignatures (body pd) of
-                                        [] -> Nothing
-                                        xs -> Just (getProcSignature ctx pd, Set.fromList xs)
+        undefinedProcSignature pd = let definedProcSigs :: Set.Set ProcSignature
+                                        definedProcSigs   = Set.fromList (HashMap.keys definedProcs)
+                                        usedProcSigs      = usedProcSignatures pd
+                                        undefinedProcSigs = Set.difference usedProcSigs definedProcSigs
+                                     in
+                                        if Set.null undefinedProcSigs
+                                            then Nothing
+                                            else Just (getProcSignature ctx pd, undefinedProcSigs)

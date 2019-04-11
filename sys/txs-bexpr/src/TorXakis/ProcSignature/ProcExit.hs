@@ -44,7 +44,8 @@ import           TorXakis.Sort
 -- this type is called the /functionality/ of a behaviour expression (see e.g. page 35).
 data  ProcExit      =  NoExit
                      | Exit [Sort]      -- TODO: discuss only EXIT without arguments? See issue https://github.com/TorXakis/TorXakis/issues/475
-                     | Hit
+                     | Hit              -- TODO: * Is concept right? PROCDEF and TESTPROCDEF (or GPROCDEF from Generalized / Goal)
+                                        --       * better name? Also MISS is allowed... 
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 instance Hashable ProcExit where

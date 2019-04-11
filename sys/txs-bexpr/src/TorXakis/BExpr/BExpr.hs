@@ -25,8 +25,8 @@ module TorXakis.BExpr.BExpr
 ( -- * Behaviour Expression type and view
   BExpression (..)
 , BExpressionView (..)
-  -- Action Offer
-, ActOffer (..)
+  -- * ActOffer: the atomic communication step
+, ActOffer
 , containsEXIT
 )
 where
@@ -52,6 +52,8 @@ import           TorXakis.Var
 
 -- | BExpressionView: the public view of Behaviour Expression `BExpression`
 data BExpressionView = ActionPref  VarsDecl ActOffer BExpression
+                                    -- Hidden Variables are declared but not used in offers of ActOffer (maybe used in constraint of ActOffer).
+                         
                      | Guard       ValExpression BExpression
                      | Choice      (Set.Set BExpression)
                      | Parallel    (Set.Set ChanRef) [BExpression] -- actually (MultiSet.MultiSet BExpr) but that has lousy performance (due to sorting which needs more evaluation?)
@@ -78,15 +80,15 @@ newtype BExpression = BExpression {
 -- | Goal for TestPurpose
 data Goal =  Hit
            | Miss
+           deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | ActOffer
 -- Offer on multiple channels with constraints
 data ActOffer = QuiescenceStep  -- for test purposes
                                 -- TODO: Should we explicitly extend models with their Quiescence Step, or should it `just` be a function of a state?
+                                --       in that case we might need to add a constraint to QuiescenceStep as well...
               | ActOffer { -- | Offers over channels
                            offers     :: Map.Map ChanRef [ValExpression]
-                           -- | Hidden Variables of ActOffer   ( | HChan ? x :: Int ? y :: Bool )
-                         , hiddenVars :: VarsDecl
                            -- | constraint of ActOffer
                          , constraint :: ValExpression
                            -- | Executing this ActOffer might impact a test goal.   ( | HIT or | MISS )
@@ -96,20 +98,15 @@ data ActOffer = QuiescenceStep  -- for test purposes
 
 -- | Contains EXIT is equal to the presence of EXIT in the ActOffer.
 containsEXIT :: ActOffer -> Bool
-containsEXIT ao =
-    any isEXIT (Map.keys (offers ao))
-    where
-        isEXIT :: ChanRef -> Bool
-        isEXIT ChanRefExit{} = True
-        isEXIT _             = False
+containsEXIT = Map.member ChanRefExit . offers
 
 
 instance VarContext a => HasProcExit a ActOffer where
-    getProcExit ctx QuiescenceStep  = Hit
+    getProcExit _   QuiescenceStep  = TorXakis.ProcSignature.Hit
     getProcExit ctx a@ActOffer{}    = case Map.lookup ChanRefExit (offers a) of
                                            Nothing -> case mGoal a of
                                                            Nothing -> NoExit
-                                                           Just _  -> Hit
+                                                           Just _  -> TorXakis.ProcSignature.Hit
                                            Just vs -> Exit (map (getSort ctx) vs)
 
 instance VarContext a => HasProcExit a BExpression where
@@ -189,7 +186,7 @@ instance FreeVars BExpressionView where
     freeVars (Hide _ b)             = freeVars b
 
 instance FreeVars ActOffer where
-    freeVars (ActOffer m c) = Set.unions (freeVars c: map freeVars (concat (Map.elems m)))
+    freeVars ao = Set.unions (freeVars (constraint ao): map freeVars (concat (Map.elems (offers ao))))
 
 instance FreeChans BExpression where
     freeChans = freeChans . TorXakis.BExpr.BExpr.view
@@ -206,7 +203,7 @@ instance FreeChans BExpressionView where
     freeChans (Hide m b)         = Set.difference (freeChans b) $ Set.fromList (map chanRef (Map.keys m))
 
 instance FreeChans ActOffer where
-    freeChans (ActOffer m _)     = Set.unions $ map freeChans (Map.keys m)
+    freeChans = Set.unions . map freeChans . Map.keys . offers
 
 instance Relabel BExpression where
     relabel' m b = BExpression $ relabel' m (TorXakis.BExpr.BExpr.view b)
@@ -226,5 +223,6 @@ instance Relabel BExpressionView where
                                             Hide c' (relabel m' b)
 
 instance Relabel ActOffer where
-    relabel' m (ActOffer offs cnrs) = let newOffs = Map.fromList (map (first (relabel' m)) (Map.toList offs)) in
-                                                 ActOffer newOffs cnrs
+    relabel' _ QuiescenceStep          = QuiescenceStep
+    relabel' m (ActOffer offs cnrs mg) = let newOffs = Map.fromList (map (first (relabel' m)) (Map.toList offs))
+                                            in ActOffer newOffs cnrs mg

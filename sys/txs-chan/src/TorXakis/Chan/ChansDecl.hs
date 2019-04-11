@@ -18,6 +18,8 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.Chan.ChansDecl
 ( ChansDecl
 , mkChansDecl
@@ -32,6 +34,7 @@ import           GHC.Generics        (Generic)
 import           TorXakis.Chan.ChanDef
 import           TorXakis.Error
 import           TorXakis.Name
+import           TorXakis.Sort
 import           TorXakis.SortContext
 
 -- | Data for a channels declarations.
@@ -58,3 +61,9 @@ mkChansDecl ctx l | not $ null nuChans           = Left $ Error ("Non unique nam
 
         undefinedSorts :: [ChanDef]
         undefinedSorts = filter (not . (all (flip memberSort ctx) . toSorts . chanSort ) ) l
+
+instance UsedNames ChansDecl where
+    usedNames (ChansDecl l) = usedNames l
+
+instance UsedSorts c ChansDecl where
+    usedSorts ctx (ChansDecl l) = usedSorts ctx l

@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  ContextBExpr
+-- Module      :  ContextBExprBasis
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -13,18 +13,16 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Interface file for a Context for Behaviour Expressions.
+-- Context containing Behaviour Expressions.
 -----------------------------------------------------------------------------
-module TorXakis.ContextBExpr
-(  -- * Context
-  -- ** instance of ValExpr Context
-  ContextBExpr
-, fromProcContext
-, module TorXakis.ContextBExpr.ContextBExprBasis
-  -- dependencies, yet part of interface
-, module TorXakis.ValExprContext
+module TorXakis.ContextBExpr.ContextBExprBasis
+( empty
 )
 where
-import TorXakis.ContextBExpr.ContextBExpr
-import TorXakis.ContextBExpr.ContextBExprBasis
-import TorXakis.BExprContext
+import           TorXakis.ContextBExpr.ContextBExpr
+import qualified TorXakis.ContextProc
+import qualified TorXakis.NameMap
+
+-- | empty
+empty :: ContextBExpr
+empty = fromProcContext TorXakis.ContextProc.empty

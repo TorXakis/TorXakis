@@ -95,6 +95,12 @@ toMapByChanRef = Map.fromList . map toTuple
 instance HasName ChanDef where
     getName = chanName
 
+instance UsedNames ChanDef where
+    usedNames = Set.singleton . chanName
+
+instance UsedSorts c ChanDef where
+    usedSorts ctx = usedSorts ctx . chanSort
+
 -- | Class for Free Channels
 class FreeChans a where
     -- | Determine the free channels

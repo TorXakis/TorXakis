@@ -16,7 +16,6 @@ See LICENSE at root directory of this repository.
 -- Context containing Value Expressions.
 -----------------------------------------------------------------------------
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
 module TorXakis.ContextValExpr.ContextValExpr
 ( -- * Context
   -- ** instance of ValExpr Context

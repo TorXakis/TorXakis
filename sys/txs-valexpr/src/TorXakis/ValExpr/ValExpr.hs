@@ -212,6 +212,3 @@ instance UsedFuncSignatures ValExpressionView where
     usedFuncSignatures (Vcstr _ _ vs)    = Set.unions $ map usedFuncSignatures vs
     usedFuncSignatures (Viscstr _ _ v)   = usedFuncSignatures v
     usedFuncSignatures (Vaccess _ _ _ v) = usedFuncSignatures v
-
--- TODO: add UsedNames / UsedFuncNames to find usage of keywords / reserved words
---       Only defined names are used -> so unnecessary to check in ValExpr?

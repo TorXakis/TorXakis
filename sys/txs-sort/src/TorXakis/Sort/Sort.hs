@@ -205,21 +205,27 @@ class UsedSorts c a where
     -- | Determine the used sorts
     usedSorts :: c -> a -> Set.Set Sort
 
+instance UsedSorts c a => UsedSorts c [a] where
+    usedSorts ctx = Set.unions . map (usedSorts ctx)
+
+instance UsedSorts c a => UsedSorts c (Set.Set a) where
+    usedSorts ctx = Set.unions . map (usedSorts ctx) . Set.toList
+
 instance UsedSorts c FieldDef where
     usedSorts _ = Set.singleton . sort
 
 instance UsedSorts c ConstructorDef where
-    usedSorts ctx c = Set.unions (map (usedSorts ctx) (elemsField c))
+    usedSorts ctx c = usedSorts ctx (elemsField c)
 
 instance UsedSorts c ADTDef where
-    usedSorts ctx a = Set.unions (map (usedSorts ctx) (elemsConstructor a))
+    usedSorts ctx a = usedSorts ctx (elemsConstructor a)
 
 -- | Used Names instance
 instance UsedNames FieldDef where
     usedNames = Set.singleton . fieldName
 
 instance UsedNames ConstructorDef where
-    usedNames c = Set.unions (Set.singleton (constructorName c) : map usedNames (elemsField c))
+    usedNames c = Set.unions [usedNames (constructorName c), usedNames (elemsField c)]
 
 instance UsedNames ADTDef where
-    usedNames a = Set.unions (Set.singleton (adtName a) : map usedNames (elemsConstructor a))
+    usedNames a = Set.unions [usedNames (adtName a), usedNames (elemsConstructor a)]

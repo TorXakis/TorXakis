@@ -17,28 +17,16 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 module TorXakis.BExprContext
 ( -- * BExpr Context
-  BExprContext(..)
+  BExprContext
+  -- dependencies, yet part of interface
+, module TorXakis.ChanContext
+, module TorXakis.ProcContext
+, module TorXakis.VarContext
 )
 where
-import           Control.DeepSeq        (NFData)
-import           Data.Data              (Data)
-import qualified Data.HashMap           as HashMap
-import           Data.Maybe             (mapMaybe)
-import qualified Data.Set               as Set
-import qualified Data.Text              as T
-import           GHC.Generics           (Generic)
-
-import           TorXakis.BExpr.BExpr
-import           TorXakis.Chan
-import           TorXakis.Error
-import           TorXakis.Name
-import           TorXakis.ProcDef
-import           TorXakis.ProcExit
-import           TorXakis.ProcSignature
-import           TorXakis.Sort          ( Sort, SortContext (..), memberSort )
-import           TorXakis.ValExprContext
+import           TorXakis.ChanContext
+import           TorXakis.ProcContext
 import           TorXakis.VarContext
-import           TorXakis.Var
 
 -- | A BExprContext instance contains all definitions to create behavioural expressions
 class (VarContext c, ProcContext c, ChanContext c) => BExprContext c

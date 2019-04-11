@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- Module      :  FuncDef
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
@@ -27,13 +27,16 @@ module TorXakis.FuncDef
 , paramDefs
 , body
 , mkFuncDef
+, undefinedSortsInFuncs
+, undefinedVariablesInFuncs
 )
 where
 
-import           Control.DeepSeq      (NFData)
-import           Data.Data            (Data)
-import qualified Data.Set             as Set
-import           GHC.Generics         (Generic)
+import           Control.DeepSeq        (NFData)
+import           Data.Data              (Data)
+import           Data.Maybe             (mapMaybe)
+import qualified Data.Set               as Set
+import           GHC.Generics           (Generic)
 
 import           TorXakis.ContextVar
 import           TorXakis.Error
@@ -56,37 +59,79 @@ data FuncDef = FuncDef { -- | The name of the function (of type 'TorXakis.Name')
                        }
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
-toVarContext :: SortContext c => c -> [VarDef] -> ContextVar
+toVarContext :: SortContext c => c -> VarsDecl -> ContextVar
 toVarContext ctx vs =
-    case addVars vs (fromSortContext ctx) of
+    case addVars (toList vs) (fromSortContext ctx) of
         Left e      -> error ("toVarContext is unable to make new context" ++ show e)
         Right vctx  -> vctx
 
+-- | Helper function for construction: check for undefined sorts per function definition
+undefinedSortsInFuncs :: SortContext c => c -> [FuncDef] -> [(FuncSignature, Set.Set Sort)]
+undefinedSortsInFuncs ctx = mapMaybe maybeUndefinedSortsInFunc
+    where
+        maybeUndefinedSortsInFunc :: FuncDef -> Maybe (FuncSignature, Set.Set Sort)
+        maybeUndefinedSortsInFunc f = let sortsUndefined = undefinedSorts ctx (paramDefs f) (body f)
+                                         in if Set.null sortsUndefined
+                                               then Nothing
+                                               else Just (getFuncSignature ctx f, sortsUndefined)
+
+undefinedSorts :: SortContext c => c -> VarsDecl -> ValExpression -> Set.Set Sort
+undefinedSorts ctx ps b = let sortsDefined   = Set.fromList (elemsSort ctx)
+                              sortsUsed      = Set.unions [ usedSorts ctx ps
+                                                          , usedSorts (toVarContext ctx ps) b
+                                                          ]
+                            in sortsUsed `Set.difference` sortsDefined
+
+-- | Helper function for construction: check for undefined variables per function definition
+undefinedVariablesInFuncs :: SortContext c => c -> [FuncDef] -> [(FuncSignature, Set.Set (RefByName VarDef))]
+undefinedVariablesInFuncs ctx = mapMaybe maybeUndefinedVariablesInFunc
+    where
+        maybeUndefinedVariablesInFunc :: FuncDef -> Maybe (FuncSignature, Set.Set (RefByName VarDef))
+        maybeUndefinedVariablesInFunc f = let variablesUndefined = undefinedVariables (paramDefs f) (body f)
+                                            in if Set.null variablesUndefined
+                                                  then Nothing
+                                                  else Just (getFuncSignature ctx f, variablesUndefined)
+
+undefinedVariables :: VarsDecl -> ValExpression -> Set.Set (RefByName VarDef)
+undefinedVariables ps b = let variablesDefined :: Set.Set (RefByName VarDef)
+                              variablesDefined   = Set.fromList (map (RefByName . name) (toList ps))
+                              variablesUsed      = freeVars b
+                                in variablesUsed `Set.difference` variablesDefined
+
 -- | constructor for FuncDef
 mkFuncDef :: SortContext c => c -> FunctionName -> VarsDecl -> ValExpression -> Either Error FuncDef
-mkFuncDef ctx n ps b | not (null undefinedSorts)                                = Left $ Error ("Variables have undefined sorts " ++ show undefinedSorts)
-                     | not (Set.null undefinedVars)                             = Left $ Error ("Undefined variables used in body " ++ show undefinedVars)
-                     | otherwise                                                = Right $ FuncDef n ps b
+mkFuncDef ctx n ps b | not (Set.null sortsUndefined) = Left $ Error ("Function definition has undefined sorts: " ++ show sortsUndefined)
+                     | not (Set.null varsUndefined)  = Left $ Error ("Function definition has undefined variables in body: " ++ show varsUndefined)
+                     | otherwise                     = Right $ FuncDef n ps b
     where
-        vs :: [VarDef]
-        vs = toList ps
+        sortsUndefined = undefinedSorts ctx ps b
+        varsUndefined  = undefinedVariables ps b
 
-        varContext :: ContextVar
-        varContext = toVarContext ctx vs
-        
-        undefinedSorts :: Set.Set Sort
-        undefinedSorts = Set.unions [usedSorts ctx ps, usedSorts varContext b] `Set.difference` Set.fromList (elemsSort ctx)
+instance UsedNames FuncDef where
+    -- Notes:
+    -- 1. A FunctionName is NOT a Name.
+    -- 2. A valid definition uses only defined names, hence the body will only add duplicates.
+    --    However, changes in ValExpr, such as the introduction of `let`, could make this assumption invalid.
+    -- TODO: do we add the code? to be robust against this change? and to make ValExpr and BExpr more alike?
+    usedNames = usedNames . paramDefs
 
-        undefinedVars :: Set.Set (RefByName VarDef)
-        undefinedVars = freeVars b `Set.difference` Set.fromList (map (RefByName . name) vs)
+-- TODO: how to refactor with sortsUsed in undefinedSorts to make this code only once?
+instance SortContext c => UsedSorts c FuncDef where
+     usedSorts ctx f  = let ps = paramDefs f
+                            b  = body f
+                          in Set.unions [ usedSorts ctx ps
+                                        , usedSorts (toVarContext ctx ps) b
+                                        ]
+
+instance UsedFuncSignatures FuncDef where
+    usedFuncSignatures = usedFuncSignatures . body
 
 instance SortContext c => HasFuncSignature c FuncDef
     where
         getFuncSignature ctx (FuncDef fn ps bd) =
-            let vs = toList ps in
-                case mkFuncSignature ctx fn (map (getSort ctx) vs) (getSort (toVarContext ctx vs) bd) of
-                     Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
-                     Right x -> x
+            case mkFuncSignature ctx fn (map (getSort ctx) (toList ps)) (getSort (toVarContext ctx ps) bd) of
+                 Left e -> error ("getFuncSignature is unable to create FuncSignature" ++ show e)
+                 Right x -> x
 
 -- ----------------------------------------------------------------------------------------- --
 --

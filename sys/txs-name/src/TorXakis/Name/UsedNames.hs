@@ -32,5 +32,12 @@ class UsedNames a where
     -- | Determine the used names
     usedNames :: a -> Set.Set Name
 
+instance UsedNames a => UsedNames [a] where
+    usedNames = Set.unions . map usedNames
+
+instance UsedNames a => UsedNames (Set.Set a) where
+    usedNames = Set.unions . map usedNames . Set.toList
+
 instance UsedNames Name where
     usedNames = Set.singleton
+

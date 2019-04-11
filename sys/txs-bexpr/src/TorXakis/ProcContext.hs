@@ -18,6 +18,10 @@ See LICENSE at root directory of this repository.
 module TorXakis.ProcContext
 ( -- * Process Context
   ProcContext(..)
+    -- dependencies, yet part of interface
+, ProcDef
+, ProcSignature
+, module TorXakis.FuncContext
 )
 where
 import           TorXakis.Error
