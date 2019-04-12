@@ -339,8 +339,7 @@ cmdExit :: String -> UIO ()
 cmdExit _args  =  do
      x <- lift $ gets uihins
      case x of
-        (cmdhin:cmdhins) -> do
-                             if  cmdhin == stdin
+        (cmdhin:cmdhins) -> if  cmdhin == stdin
                                then do doCmd "QUIT" ""
                                        return ()
                                else do lift $ modify ( \e -> e { uihins = cmdhins } )
