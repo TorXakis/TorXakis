@@ -89,6 +89,6 @@ Exit _   <<->> NoExit                   = Right NoExit
 Exit exs <<->> Exit exs' | exs == exs'  = Right $ Exit exs
 Exit exs <<->> Exit exs'                = Left $ Error ("ProcExits do not match (min): Exit " ++ show exs ++ " versus Exit " ++ show exs')
 Exit exs <<->> Hit                      = Left $ Error ("ProcExits do not match (min): Exit " ++ show exs ++ " versus Hit")
-Hit      <<->> NoExit                   = Right NoExit
+Hit      <<->> NoExit                   = Right NoExit      -- TODO: HIT see https://github.com/TorXakis/TorXakis/issues/809
 Hit      <<->> Exit exs                 = Left $ Error ("ProcExits do not match (min): Hit versus Exit " ++ show exs)
 Hit      <<->> Hit                      = Right Hit

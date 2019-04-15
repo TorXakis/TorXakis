@@ -21,7 +21,6 @@ module TorXakis.ContextBExpr.ContextBExprBasis
 where
 import           TorXakis.ContextBExpr.ContextBExpr
 import qualified TorXakis.ContextProc
-import qualified TorXakis.NameMap
 
 -- | empty
 empty :: ContextBExpr

@@ -27,19 +27,14 @@ module TorXakis.ContextProc
 , fromFuncContext
 )
 where
-import           Control.DeepSeq        (NFData)
-import           Data.Data              (Data)
 import qualified Data.HashMap           as HashMap
 import           Data.Maybe             (mapMaybe)
 import qualified Data.Set               as Set
-import qualified Data.Text              as T
-import           GHC.Generics           (Generic)
 
+import           TorXakis.Chan
+import           TorXakis.ContextFunc
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.ContextFunc
-import           TorXakis.ContextBExpr.ContextBExpr
-import           TorXakis.FuncSignature
 import           TorXakis.ProcContext
 import           TorXakis.ProcDef
 import           TorXakis.ProcSignature
@@ -107,45 +102,23 @@ instance ProcContext ContextProc where
         | not $ null undefinedFuncSignatures = Left $ Error ("List of process signatures with references to undefined funcs: " ++ show undefinedFuncSignatures)
         | not $ null undefinedProcSignatures = Left $ Error ("List of process signatures with references to undefined process signatures: " ++ show undefinedProcSignatures)
         | not $ null undefinedVariables      = Left $ Error ("List of process signatures with undefined variables in their bodies: " ++ show undefinedVariables)
+        | not $ null undefinedChannels       = Left $ Error ("List of process signatures with undefined channels in their bodies: " ++ show undefinedChannels)
         | otherwise                          = Right $ ctx { procDefs = definedProcs }
       where
         nuProcDefs :: [ProcDef]
         nuProcDefs = repeatedByProcSignatureIncremental ctx (HashMap.elems (procDefs ctx)) pds
 
         undefinedSorts :: [(ProcSignature, Set.Set Sort)]
-        undefinedSorts = mapMaybe undefinedSort pds
-
-        undefinedSort :: ProcDef -> Maybe (ProcSignature, Set.Set Sort)
-        undefinedSort pd = let ps@(ProcSignature _ cs as e) = getProcSignature ctx pd in
-                                   case filter (not . flip memberSort ctx) (concat [concatMap toSorts cs, as, exitSorts e]) of
-                                       [] -> Nothing
-                                       xs -> Just (ps, Set.fromList xs)
+        undefinedSorts = undefinedSortsInProcs ctx pds
 
         undefinedVariables :: [(ProcSignature, Set.Set (RefByName VarDef))]
-        undefinedVariables = mapMaybe undefinedVariable pds
-
-        undefinedVariable :: ProcDef -> Maybe (ProcSignature, Set.Set (RefByName VarDef))
-        undefinedVariable pd = let definedVars :: Set.Set (RefByName VarDef)
-                                   definedVars   = Set.fromList (map toRefByName (toList (paramDefs pd)))
-                                   freeVars      = freeVars (body pd)
-                                   undefinedVars = Set.difference freeVars definedVars
-                                in
-                                    if Set.null undefinedVars
-                                        then Nothing
-                                        else Just (getProcSignature ctx pd, undefinedVars)
+        undefinedVariables = undefinedVariablesInProcs ctx pds
 
         undefinedFuncSignatures :: [(ProcSignature, Set.Set FuncSignature)]
-        undefinedFuncSignatures = mapMaybe undefinedFuncSignature pds
-
-        undefinedFuncSignature :: ProcDef -> Maybe (ProcSignature, Set.Set FuncSignature)
-        undefinedFuncSignature pd = let definedFuncSigs :: Set.Set FuncSignature
-                                        definedFuncSigs   = Set.fromList $ funcSignatures ctx
-                                        usedFuncSigs      = usedFuncSignatures pd
-                                        undefinedFuncSigs = Set.difference usedFuncSigs definedFuncSigs
-                                     in
-                                        if Set.null undefinedFuncSigs
-                                            then Nothing
-                                            else Just (getProcSignature ctx pd, undefinedFuncSigs)
+        undefinedFuncSignatures = undefinedFuncSignaturesInProcs ctx pds
+        
+        undefinedChannels :: [(ProcSignature, Set.Set (RefByName ChanDef))]
+        undefinedChannels = undefinedChannelsInProcs ctx pds
 
         definedProcs :: HashMap.Map ProcSignature ProcDef
         definedProcs = HashMap.union (toMapByProcSignature ctx pds) (procDefs ctx)
@@ -156,7 +129,7 @@ instance ProcContext ContextProc where
         undefinedProcSignature :: ProcDef -> Maybe (ProcSignature, Set.Set ProcSignature)
         undefinedProcSignature pd = let definedProcSigs :: Set.Set ProcSignature
                                         definedProcSigs   = Set.fromList (HashMap.keys definedProcs)
-                                        usedProcSigs      = usedProcSignatures pd
+                                        usedProcSigs      = usedProcSignatures (body pd)
                                         undefinedProcSigs = Set.difference usedProcSigs definedProcSigs
                                      in
                                         if Set.null undefinedProcSigs

@@ -19,11 +19,9 @@ module TorXakis.BExpr
 ( -- * Behaviour Expression type and view
   BExpression
 , BExpressionView (..)
-, BExpr
-, BExprView
 , view
   -- Actions Offer
-, ActOffer (..)
+, ActOffer
 , containsEXIT
 
 , module TorXakis.BExpr.BExprConstructor

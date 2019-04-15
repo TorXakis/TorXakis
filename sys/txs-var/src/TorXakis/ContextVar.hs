@@ -43,7 +43,7 @@ empty :: ContextVar
 empty = fromSortContext TorXakis.ContextSort.empty
 
 -- | Constructor from SortContext
-fromSortContext :: SortContext b => b -> ContextVar
+fromSortContext :: SortContext c => c -> ContextVar
 fromSortContext ctx = ContextVar ctx TorXakis.NameMap.empty
 
 instance SortContext ContextVar where

@@ -22,11 +22,14 @@ module TorXakis.BExprContext
 , module TorXakis.ChanContext
 , module TorXakis.ProcContext
 , module TorXakis.VarContext
+, module TorXakis.ValExprContext
 )
 where
 import           TorXakis.ChanContext
 import           TorXakis.ProcContext
+import           TorXakis.ValExprContext
 import           TorXakis.VarContext
 
 -- | A BExprContext instance contains all definitions to create behavioural expressions
-class (VarContext c, ProcContext c, ChanContext c) => BExprContext c
+class (VarContext c, ProcContext c, ChanContext c, ValExprContext c) => BExprContext c      -- TODO: can this be nicer ProcContext => FuncContext
+                                                                                            --                         VarContext + FuncContext <==> ValExprContext

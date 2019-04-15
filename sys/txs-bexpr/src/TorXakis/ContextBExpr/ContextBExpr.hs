@@ -27,7 +27,6 @@ module TorXakis.ContextBExpr.ContextBExpr
 where
 import           TorXakis.BExprContext
 import           TorXakis.NameMap
-import           TorXakis.ValExprContext
 
 -- | An instance of 'TorXakis.BExprContext'.
 data ContextBExpr = forall c . ProcContext c =>

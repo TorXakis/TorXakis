@@ -26,7 +26,7 @@ module TorXakis.BExpr.BExpr
   BExpression (..)
 , BExpressionView (..)
   -- * ActOffer: the atomic communication step
-, ActOffer
+, ActOffer (..)
 , containsEXIT
 )
 where
@@ -143,7 +143,7 @@ instance (VarContext c, ChanContext c) => UsedSorts c BExpressionView where
                                                       , usedSorts ctx b
                                                       ]
     usedSorts ctx (Choice s)           = Set.unions $ map (usedSorts ctx) (Set.toList s)
-    usedSorts ctx (Parallel _ bs)     = Set.unions $ map (usedSorts ctx) bs -- TODO: lookup Channels and add sort
+    usedSorts ctx (Parallel _ bs)      = Set.unions $ map (usedSorts ctx) bs -- TODO: lookup Channels and add sort
     usedSorts ctx (Enable a vs b)      = Set.unions $ (usedSorts ctx vs : map (usedSorts ctx) [a,b])
     usedSorts ctx (Disable a b)        = Set.unions $ map (usedSorts ctx) [a,b]
     usedSorts ctx (Interrupt a b)      = Set.unions $ map (usedSorts ctx) [a,b]

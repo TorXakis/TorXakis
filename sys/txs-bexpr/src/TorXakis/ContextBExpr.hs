@@ -22,7 +22,7 @@ module TorXakis.ContextBExpr
 , fromProcContext
 , module TorXakis.ContextBExpr.ContextBExprBasis
   -- dependencies, yet part of interface
-, module TorXakis.ValExprContext
+, module TorXakis.BExprContext
 )
 where
 import TorXakis.ContextBExpr.ContextBExpr
