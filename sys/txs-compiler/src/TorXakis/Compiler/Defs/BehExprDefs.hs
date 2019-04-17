@@ -254,10 +254,8 @@ toOffer mm vrvds (OfferDecl cr cods) = case chanRefName cr of
         let definedLength = length (chansorts cId)
             actualLength = length cods
           in if definedLength == actualLength
-                then do
-                        ofrs <- traverse (uncurry (toChanOffer vrvds))
-                                     (zip (chansorts cId) cods)
-                        return $ Offer cId ofrs
+                then Offer cId <$> traverse (uncurry (toChanOffer vrvds))
+                                            (zip (chansorts cId) cods)
                 else throwError Error
                         { _errorType = TypeMismatch
                         , _errorLoc  = getErrorLoc cr
