@@ -251,9 +251,19 @@ toOffer mm vrvds (OfferDecl cr cods) = case chanRefName cr of
         return $ Offer chanIdExit ofrs
     _      -> do
         cId  <- lookupChId mm (getLoc cr)
-        ofrs <- traverse (uncurry (toChanOffer vrvds))
-                     (zip (chansorts cId) cods)
-        return $ Offer cId ofrs
+        let definedLength = length (chansorts cId)
+            actualLength = length cods
+          in if definedLength == actualLength
+                then do
+                        ofrs <- traverse (uncurry (toChanOffer vrvds))
+                                     (zip (chansorts cId) cods)
+                        return $ Offer cId ofrs
+                else throwError Error
+                        { _errorType = TypeMismatch
+                        , _errorLoc  = getErrorLoc cr
+                        , _errorMsg  = "Mismatch in defined (" <> T.pack (show definedLength) 
+                                           <> ") and actual (" <> T.pack (show actualLength) <> ") channel parameters."
+                        }
 
 -- | Compile a channel offer declaration into a channel offer.
 toChanOffer :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
