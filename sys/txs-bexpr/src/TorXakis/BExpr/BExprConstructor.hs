@@ -156,14 +156,11 @@ unsafeParallel _ cs bs = let fbs = flattenParallel bs
 
 -- | Create an enable behaviour expression.
 mkEnable :: BExprContext c => c -> BExpression -> [VarDef] -> BExpression -> Either Error BExpression
-mkEnable ctx b1 vs b2 | null nonUniqueNames = case getProcExit ctx b1 of
-                                                Exit xs -> if xs == map (getSort ctx) vs 
-                                                            then mkVarsDecl ctx vs >>= (\vd -> unsafeEnable ctx b1 vd b2)
-                                                            else Left $ Error "Mismatch in sorts between ExitKind of initial process and ChanOffers"
-                                                _       -> Left $ Error "ExitKind of initial process must be EXIT"
-                      | otherwise           = Left $ Error ("Non unique names : " ++ show nonUniqueNames)
-    where
-        nonUniqueNames = repeatedByName vs
+mkEnable ctx b1 vs b2 = case getProcExit ctx b1 of
+                             Exit xs -> if xs == map (getSort ctx) vs 
+                                           then mkVarsDecl ctx vs >>= (\vd -> unsafeEnable ctx b1 vd b2)
+                                           else Left $ Error "Mismatch in sorts between ExitKind of initial process and ChanOffers"
+                             _       -> Left $ Error "ExitKind of initial process must be EXIT"
 
 unsafeEnable :: c -> BExpression -> VarsDecl -> BExpression -> Either Error BExpression
 -- stop >>> p <==> stop
@@ -203,8 +200,8 @@ unsafeProcInst _ p cs vs = Right $ BExpression (ProcInst p cs vs)
 
 -- | Create a hide behaviour expression.
 --   The given set of channels is hidden for its environment.
-mkHide :: c -> Map.Map ChanRef ChanDef -> BExpression -> Either Error BExpression
-mkHide = unsafeHide
+mkHide :: SortContext c => c -> [ChanDef] -> BExpression -> Either Error BExpression
+mkHide ctx cs b = mkChansDecl ctx cs >>= (\d -> unsafeHide ctx (toMapByChanRef (TorXakis.Chan.toList d)) b)
 
 unsafeHide :: c -> Map.Map ChanRef ChanDef -> BExpression -> Either Error BExpression
 unsafeHide _ cs b = Right $ BExpression (Hide cs b)

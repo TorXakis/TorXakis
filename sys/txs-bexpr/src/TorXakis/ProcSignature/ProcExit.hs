@@ -44,23 +44,29 @@ import           TorXakis.Sort
 -- this type is called the /functionality/ of a behaviour expression (see e.g. page 35).
 data  ProcExit      =  NoExit
                      | Exit [Sort]      -- TODO: discuss only EXIT without arguments? See issue https://github.com/TorXakis/TorXakis/issues/475
-                     | Hit              -- TODO: * Is concept right? PROCDEF and TESTPROCDEF (or GPROCDEF from Generalized / Goal)
+                     | Hit [Sort]       -- TODO: * Is concept right? PROCDEF and TESTPROCDEF (or GPROCDEF from Generalized / Goal)
                                         --       * better name? Also MISS is allowed... 
+                                        -- Can user in case of MISS always provide the necessary data? 
+                                        -- Yes, since one can always make an ADT with two constructors: one for HIT and one for MISS!
+                                 
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 instance Hashable ProcExit where
     hashWithSalt s NoExit    = s `hashWithSalt` "NoExit"
     hashWithSalt s (Exit xs) = s `hashWithSalt` "Exit" 
                                  `hashWithSalt` xs
-    hashWithSalt s Hit       = s `hashWithSalt` "Hit"
+    hashWithSalt s (Hit xs)  = s `hashWithSalt` "Hit"
+                                 `hashWithSalt` xs
 
 instance UsedSorts c ProcExit where
     usedSorts _ (Exit s)    = Set.fromList s
+    usedSorts _ (Hit s)     = Set.fromList s
     usedSorts _ _           = Set.empty
 
 -- | Sorts used in Process Exit
 exitSorts :: ProcExit -> [Sort]
 exitSorts (Exit xs) = xs
+exitSorts (Hit xs)  = xs
 exitSorts _         = []
 
 -- | The expression has Process Exit associated to it.
@@ -69,26 +75,28 @@ class HasProcExit ctx e where
 
 -- | Combine Process Exits for Synchronized actions, sequences and choices (max of Process Exits)
 (<<+>>) :: ProcExit -> ProcExit -> Either Error ProcExit
-NoExit   <<+>> NoExit                   = Right NoExit
-NoExit   <<+>> Exit exs                 = Right $ Exit exs
-NoExit   <<+>> Hit                      = Right Hit
-Exit exs <<+>> NoExit                   = Right $ Exit exs
-Exit exs <<+>> Exit exs' | exs == exs'  = Right $ Exit exs
-Exit exs <<+>> Exit exs'                = Left $ Error ("ProcExits do not match (max): Exit " ++ show exs ++ " versus Exit " ++ show exs')
-Exit exs <<+>> Hit                      = Left $ Error ("ProcExits do not match (max): Exit " ++ show exs ++ " versus Hit")
-Hit      <<+>> NoExit                   = Right Hit
-Hit      <<+>> Exit exs                 = Left $ Error ("ProcExits do not match (max): Hit versus Exit " ++ show exs)
-Hit      <<+>> Hit                      = Right Hit
+NoExit  <<+>> NoExit               = Right NoExit
+NoExit  <<+>> Exit xs              = Right $ Exit xs
+NoExit  <<+>> Hit xs               = Right $ Hit xs
+Exit xs <<+>> NoExit               = Right $ Exit xs
+Exit xs <<+>> Exit xs' | xs == xs' = Right $ Exit xs
+Exit xs <<+>> Exit xs'             = Left $ Error ("ProcExits do not match (max): Exit " ++ show xs ++ " versus Exit " ++ show xs')
+Exit xs <<+>> Hit xs'              = Left $ Error ("ProcExits do not match (max): Exit " ++ show xs ++ " versus Hit " ++ show xs')
+Hit xs  <<+>> NoExit               = Right $ Hit xs
+Hit xs  <<+>> Exit xs'             = Left $ Error ("ProcExits do not match (max): Hit " ++ show xs ++ " versus Exit " ++ show xs')
+Hit xs  <<+>> Hit xs' | xs == xs'  = Right $ Hit xs
+Hit xs  <<+>> Hit xs'              = Left $ Error ("ProcExits do not match (max): Hit " ++ show xs ++ " versus Hit " ++ show xs')
 
 -- | Combine Process Exits for parallel (min of Process Exits)
 (<<->>) :: ProcExit -> ProcExit -> Either Error ProcExit
-NoExit   <<->> NoExit                   = Right NoExit
-NoExit   <<->> Exit _                   = Right NoExit
-NoExit   <<->> Hit                      = Right NoExit
-Exit _   <<->> NoExit                   = Right NoExit
-Exit exs <<->> Exit exs' | exs == exs'  = Right $ Exit exs
-Exit exs <<->> Exit exs'                = Left $ Error ("ProcExits do not match (min): Exit " ++ show exs ++ " versus Exit " ++ show exs')
-Exit exs <<->> Hit                      = Left $ Error ("ProcExits do not match (min): Exit " ++ show exs ++ " versus Hit")
-Hit      <<->> NoExit                   = Right NoExit      -- TODO: HIT see https://github.com/TorXakis/TorXakis/issues/809
-Hit      <<->> Exit exs                 = Left $ Error ("ProcExits do not match (min): Hit versus Exit " ++ show exs)
-Hit      <<->> Hit                      = Right Hit
+NoExit  <<->> NoExit                = Right NoExit
+NoExit  <<->> Exit _                = Right NoExit
+NoExit  <<->> Hit xs                = Right $ Hit xs
+Exit _  <<->> NoExit                = Right NoExit
+Exit xs <<->> Exit xs' | xs == xs'  = Right $ Exit xs
+Exit xs <<->> Exit xs'              = Left $ Error ("ProcExits do not match (min): Exit " ++ show xs ++ " versus Exit " ++ show xs')
+Exit xs <<->> Hit xs'               = Left $ Error ("ProcExits do not match (min): Exit " ++ show xs ++ " versus Hit " ++ show xs')
+Hit xs  <<->> NoExit                = Right $ Hit xs
+Hit xs  <<->> Exit xs'              = Left $ Error ("ProcExits do not match (min): Hit " ++ show xs ++ " versus Exit " ++ show xs') -- TODO: Should it be HIT since termination of a parallel process doesn't `hamper` HITting test purpose.
+Hit xs  <<->> Hit xs' | xs == xs'   = Right $ Hit xs
+Hit xs  <<->> Hit xs'               = Left $ Error ("ProcExits do not match (min): Hit " ++ show xs ++ " versus Hit " ++ show xs')

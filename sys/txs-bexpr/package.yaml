@@ -19,8 +19,14 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.BExpr
+  - TorXakis.BExprContext
+  - TorXakis.ContextBExpr
+  - TorXakis.ContextChanVar
+  - TorXakis.ContextProc
+  - TorXakis.ProcContext
   - TorXakis.ProcDef
   - TorXakis.ProcSignature
+  - TorXakis.Relabel
   dependencies:
   - containers
   - deepseq

@@ -71,8 +71,7 @@ hide s (RelabelMap m) = let l  = Set.toList s
                             RelabelMap (Map.union m' evasiveMoves)
     where
         deleteAll :: Ord k => [k] ->  Map.Map k a ->  Map.Map k a
-        deleteAll [] p = p
-        deleteAll (x:xs) p = deleteAll xs (Map.delete x p)
+        deleteAll xs p = foldl (flip Map.delete) p xs
         
         reverseMap :: Ord a => Map.Map k a -> Map.Map a k
         reverseMap = Map.fromList . map swap . Map.toList

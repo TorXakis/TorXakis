@@ -15,9 +15,6 @@ See LICENSE at root directory of this repository.
 --
 -- Context for Variables.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -79,4 +76,4 @@ conceptualErrorAddChans cs ctx | not $ null nuChanDefs       = Just $ Error ("No
 
         -- | undefined Sorts of Channel Definitions.
         undefinedSorts :: [ChanDef]
-        undefinedSorts = filter (not . (all (flip memberSort ctx) . toSorts . chanSort)) cs
+        undefinedSorts = filter (not . (all (`memberSort` ctx) . toSorts . chanSort)) cs

@@ -55,13 +55,10 @@ tests:
     - filemanip
     - filepath
     - containers
-    - raw-strings-qq
     - QuickCheck
 
     # Local dependencies
     - txs-compiler
-    - txs-basics
-    - txs-basics-gen
     - txs-language
     - txs-prettyprint
     - txs-prettyprint-gen

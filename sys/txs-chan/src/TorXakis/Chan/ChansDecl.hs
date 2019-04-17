@@ -60,7 +60,7 @@ mkChansDecl ctx l | not $ null nuChans           = Left $ Error ("Non unique nam
         nuChans = repeatedByName l
 
         undefinedSorts :: [ChanDef]
-        undefinedSorts = filter (not . (all (flip memberSort ctx) . toSorts . chanSort ) ) l
+        undefinedSorts = filter (not . (all (`memberSort` ctx) . toSorts . chanSort ) ) l
 
 instance UsedNames ChansDecl where
     usedNames (ChansDecl l) = usedNames l

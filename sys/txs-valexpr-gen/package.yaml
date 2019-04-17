@@ -14,7 +14,6 @@ extra-source-files:
 
 dependencies:
 - base >= 4.7 && < 5
-- containers
 - QuickCheck
 - txs-sort
 - txs-valexpr
@@ -45,8 +44,8 @@ tests:
         - -rtsopts
         - -with-rtsopts=-N
         dependencies:
+        - containers
         - hspec
-        - txs-basics
         - txs-prettyprint
         - txs-valexpr-gen
 

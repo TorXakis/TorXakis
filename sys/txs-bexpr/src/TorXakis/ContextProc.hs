@@ -15,10 +15,7 @@ See LICENSE at root directory of this repository.
 --
 -- Context for ValExpr: all defined sorts, variables, and functions
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE ExistentialQuantification #-}
 module TorXakis.ContextProc
 ( -- * Context for Processes

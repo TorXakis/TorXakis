@@ -15,9 +15,6 @@ See LICENSE at root directory of this repository.
 --
 -- Context for Chan and Var: all defined sorts, variables, and channels
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE ExistentialQuantification #-}
 module TorXakis.ContextChanVar
 ( -- * ChanVar Context
