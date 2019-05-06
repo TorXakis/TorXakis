@@ -61,6 +61,7 @@ spec = do
         errors
           = [( prefix </> "UnmatchedParenthesis.txs", ErrorLoc 15 5)
             ,( prefix </> "ReservedWordAsIdentifier.txs", ErrorLoc 7 30)
+            ,( prefix </> "WrongChannelArguments.txs", ErrorLoc 8 5)
             ]
           where
             prefix = "test" </> "data" </> "wrong"
