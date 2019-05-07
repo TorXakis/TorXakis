@@ -78,6 +78,8 @@ failureTestCases = [ wrongChannelArguments1
                    , duplicatedChan1
                    , duplicatedChan2
                    , duplicatedChan3
+                   , duplicatedChanInOffer
+                   , duplicatedExitInOffer
                    , duplicatedFunc1
                    , duplicatedFunc2
                    , duplicatedProc1
@@ -176,6 +178,24 @@ CHANDEF myChans   ::= In :: Int ENDDEF
 CHANDEF yourChans ::= In :: Int ENDDEF
             |]
          , [MultipleDefinitions Channel]
+         )
+    duplicatedChanInOffer = 
+        ( "A channel occurs more than once in an offer"
+         , [r|
+PROCDEF p [A] () ::=
+    A | A
+ENDDEF
+            |]
+         , [Undefined Process]
+         )
+    duplicatedExitInOffer = 
+        ( "An Exit occurs more than once in an offer"
+         , [r|
+PROCDEF p [A] () EXIT ::=
+    EXIT | EXIT
+ENDDEF
+            |]
+         , [Undefined Process]
          )
     duplicatedFunc1 =
         ( "Function with same signature twice. Variant 1."
