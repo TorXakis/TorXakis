@@ -295,8 +295,8 @@ checkSortIds sId0 sId1 =
     when (sId0 /= sId1) $ Left Error
     { _errorType = TypeMismatch
     , _errorLoc  = NoErrorLoc
-    , _errorMsg  = "Sorts do not match "
-                  <> T.pack (show sId0) <> T.pack (show sId1)
+    , _errorMsg  = "Sorts do not match: "
+                  <> T.pack (show sId0) <> " versus " <> T.pack (show sId1)
     }
 
 -- | An expression has typed-variables if a map can be found from the location

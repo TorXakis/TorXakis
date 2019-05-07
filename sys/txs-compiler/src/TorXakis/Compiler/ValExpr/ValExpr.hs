@@ -115,7 +115,7 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
                   then Left Error
                        { _errorType = Undefined Function
                        , _errorLoc  = NoErrorLoc
-                       , _errorMsg  = "Length of arguments don't match"
+                       , _errorMsg  = "Length of arguments don't match "
                                      <> T.pack (show sig)
                        }
                   else do
