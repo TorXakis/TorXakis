@@ -256,7 +256,7 @@ cmdInit args = do
                                     , IOS.sigs   = sigs'
                                     }
                lift $ TxsCore.txsInit tdefs' sigs' ( IFS.hmack servhs . map TxsShow.pshow )
-               IFS.pack "INIT" ["input files parsed:", unwords (words args)]
+               IFS.pack "INIT" ["input files parsed:", args]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
