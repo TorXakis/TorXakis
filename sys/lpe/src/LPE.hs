@@ -30,6 +30,7 @@ module LPE
 , lpeInterrupt
 )
 where
+--import Debug.Trace
 
 import Control.Monad.State
 
@@ -208,14 +209,14 @@ preGNFBExpr bexpr@(TxsDefs.view -> Parallel{}) choiceCnt freeVarsInScope procId 
     return (procInst'', procDefs''')
 
 
-preGNFBExpr bexpr'@(TxsDefs.view -> Hide _hiddenChans _bexpr) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
+preGNFBExpr bexpr'@(TxsDefs.view -> Hide {}) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
     -- HIDE at lower level not allowed
     (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
     -- translate the created ProcDef with LPEHide
     lpeHide procInst' translatedProcDefs procDefs'' 
 
 
-preGNFBExpr bexpr'@(TxsDefs.view -> Enable _bexprL _exitChans _bexprR) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
+preGNFBExpr bexpr'@(TxsDefs.view -> Enable {}) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
     -- ENABLE at lower level not allowed
     (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
     -- translate the created ProcDef with preGNFEnable
@@ -223,7 +224,7 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Enable _bexprL _exitChans _bexprR) choiceCnt
 
     return (bexprRes, procDefsRes) 
 
-preGNFBExpr bexpr'@(TxsDefs.view -> Disable _bexprL _bexprR) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
+preGNFBExpr bexpr'@(TxsDefs.view -> Disable {}) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
     -- DISABLE at lower level not allowed
     (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
     -- translate the created ProcDef with preGNFDisable
@@ -231,7 +232,7 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Disable _bexprL _bexprR) choiceCnt freeVarsI
     
     return (bexprRes, procDefsRes)
 
-preGNFBExpr bexpr'@(TxsDefs.view -> Interrupt _bexprL _bexprR) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
+preGNFBExpr bexpr'@(TxsDefs.view -> Interrupt {}) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
         -- INTERRUPT at lower level not allowed
         (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
         -- translate the created ProcDef with lpeInterrupt
@@ -1013,7 +1014,6 @@ lpeInterrupt (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
     let -- decompose given ProcDef
         ProcDef _chansDef paramsDef bexpr = fromMaybe (error "lpeInterrupt: could not find the given procId") (Map.lookup procIdInst procDefs')
         Interrupt bexprLHS bexprRHS = TxsDefs.view bexpr
-
     -- translate LHS to LPE 
     (procInstLHS, procDefs'') <- createProcDef bexprLHS "interrupt$lhs" procIdInst procDefs'
     (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe, procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
