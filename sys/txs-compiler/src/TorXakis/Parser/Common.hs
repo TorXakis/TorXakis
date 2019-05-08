@@ -18,7 +18,7 @@ See LICENSE at root directory of this repository.
 module TorXakis.Parser.Common
     ( TxsParser
     , txsSymbol
-    , identifier
+    , TorXakis.Parser.Common.identifier
     , mkLoc
     , lcIdentifier
     , txsLexeme
@@ -35,13 +35,14 @@ where
 
 import           Control.Monad          (void, when)
 import           Control.Monad.Identity (Identity)
+import           Data.Char              (isUpper, isLower, isAlphaNum)
 import           Data.Text              (Text)
 import qualified Data.Text              as T
-import           Text.Parsec            (ParsecT, getPosition, getState, many,
+import           Text.Parsec            (ParsecT, getPosition, getState,
                                          putState, sourceColumn, sourceLine,
                                          try, (<?>), (<|>))
-import           Text.Parsec.Char       (alphaNum, letter, lower, oneOf, upper)
-import           Text.Parsec.Token      hiding (identifier)
+import           Text.Parsec.Char       (alphaNum, letter, oneOf)
+import           Text.Parsec.Token
 
 import           TorXakis.Parser.Data
 
@@ -58,7 +59,7 @@ txsLangDef = LanguageDef
     , commentLine     = "--"
     , nestedComments  = True
     , identStart      = letter
-    , identLetter     = alphaNum <|> oneOf "_'"
+    , identLetter     = alphaNum <|> oneOf "_"
     , opStart         = opLetter txsLangDef
     , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
     , reservedNames   = txsReservedNames
@@ -99,6 +100,7 @@ txsReservedNames
     , "NI"
     , "SYNC"
     , "EXIT"
+    , "STOP"
     , "ACCEPT"
     , "STAUTDEF"
     , "VAR"
@@ -111,9 +113,6 @@ txsReservedNames
 
 txsTokenP :: GenTokenParser ParserInput St Identity
 txsTokenP = makeTokenParser txsLangDef
-
-txsIdentLetter :: TxsParser Char
-txsIdentLetter = identLetter txsLangDef
 
 -- | Parse given symbol, discarding its result.
 txsSymbol :: String -- ^ String representation of the symbol.
@@ -149,33 +148,47 @@ getNextId = do
     putState $ incId st
     return (nextId st)
 
+-- | isLetter 
+isLetter :: Char -> Bool
+isLetter '_' = True
+isLetter c   = isAlphaNum c
+
 -- | Parser for upper-case identifiers.
 ucIdentifier :: String -> TxsParser Text
-ucIdentifier what = txsLexeme (identifierNE idStart) <?> what
+ucIdentifier what = try ( do
+                               s <- Text.Parsec.Token.identifier txsTokenP
+                               if isUpperCase s 
+                                then return $ T.pack s
+                                else fail "not uppercase"
+                        ) <?> what
     where
-      idStart = upper
+      isUpperCase :: String -> Bool
+      isUpperCase s = case s of
+                            []      -> False
+                            (x:xs)  -> isUpper x && all isLetter xs
 
 -- | Parser for lower-case identifiers.
 lcIdentifier :: TxsParser Text
-lcIdentifier = txsLexeme (identifierNE idStart) <?> "lowercase identifier"
+lcIdentifier = try ( do
+                           s <- Text.Parsec.Token.identifier txsTokenP
+                           if isLowerCase s 
+                            then return $ T.pack s
+                            else fail "not lowercase"
+                   ) <?> "lowercase identifier"
     where
-      idStart = lower <|> oneOf "_"
+      isLowerCase :: String -> Bool
+      isLowerCase s = case s of
+                            []       -> False
+                            ('_':xs) -> all isLetter xs
+                            (x:xs)   -> isLower x && all isLetter xs
 
 -- | Parser for identifiers, which may start with lower or upper case letters.
 identifier :: TxsParser Text
-identifier = txsLexeme (identifierNE idStart) <?> "identifier"
-    where
-      idStart = lower <|> upper <|> oneOf "_"
+identifier = T.pack <$> Text.Parsec.Token.identifier txsTokenP <?> "identifier"
 
 -- | Like @identifier@, but try.
 tryIdentifier :: TxsParser Text
-tryIdentifier = try identifier
-
--- | Parser for non-empty identifiers.
-identifierNE :: TxsParser Char -> TxsParser Text
-identifierNE idStart = T.cons <$> idStart <*> idEnd
-    where
-      idEnd  = T.pack <$> many txsIdentLetter
+tryIdentifier = try TorXakis.Parser.Common.identifier
 
 -- | Parse expressions of the form "IN exp NI", where 'p' is the expressions
 -- parser.
@@ -217,7 +230,7 @@ declWithParamsP :: String
                 -> TxsParser a
 declWithParamsP declName paramsP bodyP end = do
     l <- try (mkLoc <* txsSymbol declName)
-    n <- txsLexeme identifier
+    n <- txsLexeme TorXakis.Parser.Common.identifier
     params <- paramsP
     txsSymbol "::="
     res <- bodyP params n l

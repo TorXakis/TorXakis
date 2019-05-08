@@ -20,6 +20,7 @@ import qualified Data.Map as Map
 import           Data.Maybe
 import qualified Data.Text         as T
 
+import SortId
 import TxsDefs
 import VarId
 import Constant
@@ -202,11 +203,11 @@ testExitActionPref = TestCase $
 
 
       varIdPpcLHS' :: VarId
-      varIdPpcLHS' = VarId (T.pack "P$lhs$pc$P$interrupt$lhs") 133 intSort
+      varIdPpcLHS' = VarId (T.pack "P$lhs$pc$P$interrupt$lhs") 133 sortIdInt
       varIdPpcRHS' :: VarId
-      varIdPpcRHS' = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 134 intSort
+      varIdPpcRHS' = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 134 sortIdInt
       varIdPpcRHS2' :: VarId
-      varIdPpcRHS2' = VarId (T.pack "P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs") 135 intSort
+      varIdPpcRHS2' = VarId (T.pack "P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs") 135 sortIdInt
       
       vexprPpcLHS' :: VExpr
       vexprPpcLHS' = cstrVar varIdPpcLHS'

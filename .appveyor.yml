@@ -5,7 +5,7 @@
 build: off
 skip_tags: true
 
-version: pre-0.8.0.{build}.{branch}
+version: pre-0.9.0.{build}.{branch}
 # branches:
     # only:
     # - develop
@@ -13,9 +13,9 @@ version: pre-0.8.0.{build}.{branch}
 
 init:
 - ps: Write-Host Starting init at $(Get-Date)
-- ps: $env:Path += ";C:\Program Files\Git\mingw64\bin"
 - ps: $CACHE_DIR = "C:\TorXakis\.cache"
 - ps: $CACHE_DIR_REL = ".cache"
+- ps: $env:Path += ";C:\Program Files\Git\mingw64\bin"
 - ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;C:\Users\appveyor\AppData\Roaming\local\bin"
 - mkdir %LOCALAPPDATA%\Programs\stack
 - mkdir %LOCALAPPDATA%\Programs\stack\x86_64-windows
@@ -26,7 +26,7 @@ install:
 # obtain the stack executable
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\stack.exe")) {
-        curl -OutFile stack.zip http://www.stackage.org/stack/windows-i386 -Verbose
+        curl  -Verbose -OutFile stack.zip https://github.com/commercialhaskell/stack/releases/download/v1.9.3/stack-1.9.3-windows-i386.zip
         7z x $("-o" + $CACHE_DIR) stack.zip stack.exe
     } else {
         Write-Host "stack.exe found.";
@@ -43,7 +43,7 @@ install:
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\z3")) {
         # install z3
-        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-win.zip -Verbose
+        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.8.5-nightly/z3-4.8.5.b63a0e31d3e2-x64-win.zip -Verbose
         mkdir $CACHE_DIR\z3
         7z x $("-o${CACHE_DIR}\z3\") z3.zip
         move ${CACHE_DIR}\z3\z3-*\* ${CACHE_DIR}\z3

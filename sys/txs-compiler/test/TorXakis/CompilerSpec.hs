@@ -46,6 +46,9 @@ spec = do
     describe "Compiles large models" $
       checkSuccess `onAllFilesIn` ("test" </> "data" </> "large")
 
+    describe "Compiles the regression tests" $
+      checkSuccess `onAllFilesIn` ("test" </> "data" </> "regression")
+
     -- Failure test cases
     describe "Reports the expected errors " $
         parallel $ traverse_ checkFailure failureTestCases
@@ -63,7 +66,10 @@ spec = do
                 Left err -> err ^.. biplate `shouldBe` expectedErrs
 
 failureTestCases :: [(TestName, CodeSnippet, [ErrorType])]
-failureTestCases = [ duplicatedFuncParam1
+failureTestCases = [ wrongChannelArguments1
+                   , wrongChannelArguments2
+                   , wrongChannelArguments3
+                   , duplicatedFuncParam1
                    , duplicatedFuncParam2
                    , duplicatedProcParam1
                    , duplicatedProcParam2
@@ -72,6 +78,8 @@ failureTestCases = [ duplicatedFuncParam1
                    , duplicatedChan1
                    , duplicatedChan2
                    , duplicatedChan3
+                   , duplicatedChanInOffer
+                   , duplicatedExitInOffer
                    , duplicatedFunc1
                    , duplicatedFunc2
                    , duplicatedProc1
@@ -80,6 +88,33 @@ failureTestCases = [ duplicatedFuncParam1
                    , duplicatedVarInLet1
                    ]
   where
+    wrongChannelArguments1 =
+        ( "Wrong usage of Channel. Variant 1. More arguments than defined."
+        , [r|
+PROCDEF p [ A ] ( x :: Int ) ::=
+    A ! x
+ENDDEF
+           |]
+        , [Undefined Process]
+        )
+    wrongChannelArguments2 =
+        ( "Wrong usage of Channel. Variant 2. Less arguments than defined."
+        , [r|
+PROCDEF p [ A :: Int ] ( ) ::=
+    A
+ENDDEF
+           |]
+        , [Undefined Process]
+        )
+    wrongChannelArguments3 =
+        ( "Wrong usage of Channel. Variant 3. Different sort of argument than defined."
+        , [r|
+PROCDEF p [ A :: Int ] ( s :: String ) ::=
+    A ! s
+ENDDEF
+           |]
+        , [Undefined Process]
+        )
     duplicatedFuncParam1 =
         ( "Function with two `x` parameters. Variant 1."
          , [r|
@@ -143,6 +178,24 @@ CHANDEF myChans   ::= In :: Int ENDDEF
 CHANDEF yourChans ::= In :: Int ENDDEF
             |]
          , [MultipleDefinitions Channel]
+         )
+    duplicatedChanInOffer = 
+        ( "A channel occurs more than once in an offer"
+         , [r|
+PROCDEF p [A] () ::=
+    A | A
+ENDDEF
+            |]
+         , [Undefined Process]
+         )
+    duplicatedExitInOffer = 
+        ( "An Exit occurs more than once in an offer"
+         , [r|
+PROCDEF p [A] () EXIT ::=
+    EXIT | EXIT
+ENDDEF
+            |]
+         , [Undefined Process]
          )
     duplicatedFunc1 =
         ( "Function with same signature twice. Variant 1."
