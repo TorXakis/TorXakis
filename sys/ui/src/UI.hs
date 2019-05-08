@@ -68,7 +68,7 @@ main  =  withSocketsDo $ do
               home <- getHomeDirectory
               _ <- runStateT ( runInputT (txsHaskelineSettings home) $
                                do { doCmd "START" ""
-                                  ; doCmd "INIT"  $ unwords (inputFiles uiArgs)
+                                  ; doCmd "INIT" $ show (inputFiles uiArgs)
                                   ; cmdsIntprSafe
                                   }
                              )

@@ -241,7 +241,7 @@ cmdInit args = do
      unid               <- gets IOS.uid
      tdefs              <- lift TxsCore.txsGetTDefs
      sigs               <- gets IOS.sigs
-     srctxts            <- lift $ lift $ mapM readFile (words args)
+     srctxts            <- lift $ lift $ mapM readFile (read args :: [String])
      let srctxt          = List.intercalate "\n\n" srctxts
      ((unid',tdefs', sigs'),e) <- lift $ lift $ catch
                              ( let parsing = compileLegacy srctxt
@@ -256,7 +256,7 @@ cmdInit args = do
                                     , IOS.sigs   = sigs'
                                     }
                lift $ TxsCore.txsInit tdefs' sigs' ( IFS.hmack servhs . map TxsShow.pshow )
-               IFS.pack "INIT" ["input files parsed:", unwords (words args)]
+               IFS.pack "INIT" ["input files parsed:", args]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
