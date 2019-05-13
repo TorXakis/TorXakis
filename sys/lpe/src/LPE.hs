@@ -1071,7 +1071,8 @@ lpeInterrupt (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                         actionPref actOffer' procInst''
                 else    if actOfferContainsExit actOffer
                             then    -- if LHS exited, disable RHS: replace ProcInst with pc$RHS = -1
-                                    let paramsDefRHS' = cstrConst (Cint (-1)) : map cstrVar (tail paramsDefRHS) in 
+                                    let 
+                                        paramsDefRHS' = cstrConst (Cint (-1)) : map cstrVar (tail paramsDefRHS) in 
                                     actionPref actOffer' (procInst procIdNew chansOrig (map cstrVar paramsDef ++ paramsInstLHS ++ paramsDefRHS') ) 
                             else    -- just replace the ProcInst with the new version 
                                     -- A >->  P$interrupt[](<params of P$interrupt>, <paramsLHS>, <paramsRHS_def>)
@@ -1206,7 +1207,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) tr
                                    , ProcId.procvars = varsort <$> paramsNew}
 
           -- update the ProcInsts in the steps
-          steps' = map (stepsUpdateProcInsts calledProcs procToParams pcMapping procIdNew chansDef) steps
+          steps' = map (stepsUpdateProcInsts calledProcs procToParams pcMapping procIdNew chansDef paramsNew) steps
 
           procDefLpe = ProcDef chansDef paramsNew (wrapSteps steps')
           procDefs'' = Map.insert procIdNew procDefLpe procDefsGnf
@@ -1289,16 +1290,15 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) tr
         updateProcInst _ _ _ = error "Only allowed with ProcInst"
         
         -- update the ProcInsts in the steps to the new ProcId
-        stepsUpdateProcInsts :: [Proc] -> ProcToParams -> PCMapping -> ProcId -> [ChanId] -> BExpr -> BExpr
-        stepsUpdateProcInsts _procs _procToParams _pcMap procIdNew chansInst' (TxsDefs.view -> ActionPref actOffer bexpr) | isStop bexpr =
+        stepsUpdateProcInsts :: [Proc] -> ProcToParams -> PCMapping -> ProcId -> [ChanId] -> [VarId] -> BExpr -> BExpr
+        stepsUpdateProcInsts _procs _procToParams _pcMap procIdNew chansInst' paramsInst' (TxsDefs.view -> ActionPref actOffer bexpr) | isStop bexpr =
             let -- get the params, but leave out the first one because it's the program counter
-                (_:params) = ProcId.procvars procIdNew
-                paramsANYs = map (cstrConst . Cany) params
-                paramsInst = (cstrConst (Cint (-1)) : paramsANYs)
+                (_:params) = paramsInst'
+                paramsInst = (cstrConst (Cint (-1)) : map cstrVar params)
                 procInst' = procInst procIdNew chansInst' paramsInst in
             actionPref actOffer procInst'
 
-        stepsUpdateProcInsts procs procToParams pcMap procIdNew chansInst2 (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst' _paramsInst)) =
+        stepsUpdateProcInsts procs procToParams pcMap procIdNew chansInst2 _paramInst2 (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst' _paramsInst)) =
             -- change ProcInst to new signature if it's fully translated to LPE already
             --      note: we are using translatedProcDefs from the call to lpe above (!)
             --              the ProcDef that is currently being translated is NOT included in there yet
@@ -1326,7 +1326,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) tr
                     params ++ paramsRec
                 createParams _ _ = error "Only allowed with list of tuples and ProcInst"
                 
-        stepsUpdateProcInsts _ _ _ _ _ bexpr = bexpr
+        stepsUpdateProcInsts _ _ _ _ _ _ bexpr = bexpr
 
 lpe _ _ _ = error "Only allowed with ProcInst"
 
