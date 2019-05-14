@@ -435,7 +435,12 @@ testMultipleProcDefs3 = TestCase $
 -- with procInst = LPE_P[A,B](0, ANY, ANY)
 testProcDefIdentity :: Test
 testProcDefIdentity = TestCase $
-     assertBool "ProcDef identity"  (eqProcDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst''  procDefs'))
+  let actual = lpeTransformFunc procInst'' procDefs' in
+     assertBool ("ProcDef identity" ++
+                 "\nexpected " ++ show (procInst', procDefPlpe) ++
+                 "\nactual   " ++ show actual
+                )
+                (eqProcDef (Just (procInst', procDefPlpe)) actual)
      where
       procInst'' = procInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA,chanIdB] []
@@ -502,7 +507,7 @@ testProcDefIdentity = TestCase $
                             (procInst procIdPlpe [chanIdA, chanIdB] [intMin1, anyInt, anyInt])
                       ])
 
-      procDefs' = Map.fromList  [  (procIdP, procDefP)
+      procDefs' = Map.fromList  [ (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
       procInst' = procInst procIdPlpe [chanIdA, chanIdB] [int0, anyInt, anyInt]
 
