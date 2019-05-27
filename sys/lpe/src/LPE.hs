@@ -1084,7 +1084,7 @@ lpeInterrupt (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
 
             if (procIdInst', chansInst') `elem` lLPE translatedProcDefs
                 then    -- if the ProcInst is still in LPE translation: leave it untouched
-                        error ("Is this possible? LHS and RHS are translated to lpe")
+                        error "Is this possible? LHS and RHS are translated to lpe"
                         actionPref actOffer' procInst''
                 else    if actOfferContainsExit actOffer
                             then    -- if LHS exited, disable RHS: replace ProcInst with pc$RHS = -1
@@ -1099,25 +1099,23 @@ lpeInterrupt (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
 
 
         stepsUpdateRHS :: ProcId -> [ChanId] -> [VarId] -> [VarId] -> BExpr -> BExpr
-        stepsUpdateRHS procIdNew chansOrig paramsDef paramsDefLHS (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst' paramsInstRHS)) =
-            if (procIdInst', chansInst') `elem` lLPE translatedProcDefs
-                then
-                    -- if the ProcInst is still in LPE translation: leave it untouched
-                    error ("Is this possible? LHS and RHS are translated to lpe")
-                    actionPref actOffer procInst''
-                else    if actOfferContainsExit actOffer
-                            then
-                                -- RHS exits: so allow LHS to continue (and RHS to interrupt)
-                                -- interrupt does not exit, so remove it.
-                                let paramsInstRHS' = cstrConst (Cint 0) : tail paramsInstRHS 
-                                    actOffer' = actOfferWithoutExit actOffer 
-                                    in
-                                        actionPref actOffer' (procInst procIdNew chansOrig $ map cstrVar (paramsDef ++ paramsDefLHS) ++ paramsInstRHS')
-                            else
-                                -- ProcInst is directly recursive to RHS 
-                                --      and update to new ProcId/Inst
-                                --      A >->  P[](<params of P>, <paramsLHS_def>, <paramsRHS_lpe>)
-                                actionPref actOffer (procInst procIdNew chansOrig $ map cstrVar (paramsDef ++ paramsDefLHS) ++ paramsInstRHS)
+        stepsUpdateRHS procIdNew chansOrig paramsDef paramsDefLHS (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst' paramsInstRHS))
+            | (procIdInst', chansInst') `elem` lLPE translatedProcDefs =
+                -- if the ProcInst is still in LPE translation: leave it untouched
+                error "Is this possible? LHS and RHS are translated to lpe"
+                actionPref actOffer procInst''
+            | actOfferContainsExit actOffer =
+                -- RHS exits: so allow LHS to continue (and RHS to interrupt)
+                -- interrupt does not exit, so remove it.
+                let paramsInstRHS' = cstrConst (Cint 0) : tail paramsInstRHS 
+                    actOffer' = actOfferWithoutExit actOffer 
+                  in
+                    actionPref actOffer' (procInst procIdNew chansOrig $ map cstrVar (paramsDef ++ paramsDefLHS) ++ paramsInstRHS')
+            | otherwise =
+                -- ProcInst is directly recursive to RHS 
+                --      and update to new ProcId/Inst
+                --      A >->  P[](<params of P>, <paramsLHS_def>, <paramsRHS_lpe>)
+                actionPref actOffer (procInst procIdNew chansOrig $ map cstrVar (paramsDef ++ paramsDefLHS) ++ paramsInstRHS)
                         
         stepsUpdateRHS _ _ _ _ bexpr = error ("Unexpected Bexpr: " ++ show bexpr)
 
