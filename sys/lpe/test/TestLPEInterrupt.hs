@@ -29,8 +29,8 @@ import ValExpr
 import LPEfunc
 import TestDefinitions
 
--- import Debug.Trace
--- import TxsShow
+import Debug.Trace
+import TxsShow
 
 ---------------------------------------------------------------------------
 -- Helper functions
@@ -60,9 +60,9 @@ lpeInterruptTestWrapper procInst'' translatedProcDefs procDefs' =
         
 testStopExit :: Test
 testStopExit = TestCase $
---    trace ("\ntestStopExit:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)  ++ 
---             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)) $
---             -- "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+    --trace ("\ntestStopExit:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)  ++ 
+    --         "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)) $
+    --         -- "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
       assertBool "testStopExit" (eqProcDef (Just (procInst', procDefPlpe)) (Just (res_procInst, res_procDef) ))
    where
       (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId") (lpeInterruptTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -78,7 +78,7 @@ testStopExit = TestCase $
                                                             , hiddenvars = Set.fromList []
                                                             , constraint = cstrEqual vexprPpcInterruptRHS int0
                                                             } 
-                                                (procInst procIdPlpe [] [int0, int0]))
+                                                (procInst procIdPlpe [] [vexprPpcInterruptLHS, int0]))
       procInst' = procInst procIdPlpe [] [int0, int0]
 
 
@@ -94,9 +94,10 @@ testStopExit = TestCase $
  
 testActionPrefExit :: Test
 testActionPrefExit = TestCase $
---    trace ("\testActionPrefExit:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)  ++ 
---             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)) $
---             -- "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+    -- trace ("\ntestActionPrefExit:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)
+    --        ++ "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)
+    --        ++ "\n res_procDefs': " ++ pshow_procDefs res_procDefs'
+    --       ) $
       assertBool "testActionPrefExit" (eqProcDef (Just (procInst', procDefPlpe)) (Just (res_procInst, res_procDef) ))
    where
       (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId") (lpeInterruptTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -122,7 +123,7 @@ testActionPrefExit = TestCase $
                                                                   , hiddenvars = Set.fromList []
                                                                   , constraint = cstrEqual vexprPpcInterruptRHS int0
                                                                   } 
-                                                (procInst procIdPlpe [] [int0, int0]) 
+                                                (procInst procIdPlpe [] [vexprPpcInterruptLHS, int0]) 
                                           ])
       procInst' = procInst procIdPlpe [] [int0, int0]
 
@@ -133,14 +134,15 @@ testActionPrefExit = TestCase $
 -- P[](pc$P$interrupt$lhs, pc$P$interrupt$rhs) ::= 
 --       EXIT [pc$P$interrupt$rhs == 0, pc$P$interrupt$lhs == 1] >-> P[](-1, -1)
 --   ##  A [pc$P$interrupt$rhs == 0, pc$P$interrupt$lhs == 0] >-> P[](1, pc$P$interrupt$rhs)
---   ##  {} [pc$P$interrupt$rhs == 0] >-> P[](0,0)      
+--   ##  {} [pc$P$interrupt$rhs == 0] >-> P[](pc$P$interrupt$lhs,0)      
 -- P(0,0)
  
 testActionPrefExitExit :: Test
 testActionPrefExitExit = TestCase $
---    trace ("\testActionPrefExit:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)  ++ 
---             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)) $
---             -- "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+    -- trace ("\ntestActionPrefExit:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)
+    --          ++ "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) 
+    --          ++ "\n res_procDefs': " ++ pshow_procDefs res_procDefs'
+    --        ) $
       assertBool "testActionPrefExit" (eqProcDef (Just (procInst', procDefPlpe)) (Just (res_procInst, res_procDef) ))
    where
       (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId") (lpeInterruptTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -172,26 +174,27 @@ testActionPrefExitExit = TestCase $
                                                                   , hiddenvars = Set.fromList []
                                                                   , constraint = cstrEqual vexprPpcInterruptRHS int0
                                                                   } 
-                                                (procInst procIdPlpe [] [int0, int0]) 
+                                                (procInst procIdPlpe [] [vexprPpcInterruptLHS, int0]) 
                                           ])
       procInst' = procInst procIdPlpe [] [int0, int0]
 
 -- P[A]() ::= EXIT [>< A >-> EXIT 
 --    with procInst = P[]()
 -- becomes 
--- P[A](P$lhs$pc$P$interrupt$lhs, P$rhs$pc$P$interrupt$rhs, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs ) ::= 
---       {} [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 1] >-> P[A](0, 0, ANY) 
---   ##  A [P$rhs$pc$P$interrupt$rhs == 0] >-> P[A](-1, 1, 1) 
---   ##  A [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 0] >-> P[A](-1, 1, 1)      // dead branch due to an extra unfolding of a ProcDef during translation
---   ##  EXIT [P$rhs$pc$P$interrupt$rhs == 0,  P$lhs$pc$P$interrupt$lhs == 0] >-> P[A](-1, -1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs)
--- P[A](0,0, ANY)
+-- P[A](P$lhs$pc$P$interrupt$lhs, P$rhs$pc$P$interrupt$rhs ) ::= 
+--       {} [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 1] >-> P[A](P$lhs$pc$P$interrupt$lhs, 0) 
+--   ##  A [P$rhs$pc$P$interrupt$rhs == 0] >-> P[A](-1, 1) 
+--   ##  A [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 0] >-> P[A](-1, 1)      // dead branch due to an extra unfolding of a ProcDef during translation
+--   ##  EXIT [P$rhs$pc$P$interrupt$rhs == 0,  P$lhs$pc$P$interrupt$lhs == 0] >-> P[A](-1, -1)
+-- P[A](0,0)
  
  
 testExitActionPref :: Test
 testExitActionPref = TestCase $
---    trace ("\testExitActionPref:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)  ++ 
---             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)) $
---             -- "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+    trace ("\ntestExitActionPref:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)
+           ++ "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)
+    --        ++ "\n res_procDefs': " ++ pshow_procDefs res_procDefs'
+           ) $
       assertBool "testActionPrefExit" (eqProcDef (Just (procInst', procDefPlpe)) (Just (res_procInst, res_procDef) ))
    where
       (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId") (lpeInterruptTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -206,55 +209,39 @@ testExitActionPref = TestCase $
       varIdPpcLHS' = VarId (T.pack "P$lhs$pc$P$interrupt$lhs") 133 sortIdInt
       varIdPpcRHS' :: VarId
       varIdPpcRHS' = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 134 sortIdInt
-      varIdPpcRHS2' :: VarId
-      varIdPpcRHS2' = VarId (T.pack "P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs") 135 sortIdInt
       
       vexprPpcLHS' :: VExpr
       vexprPpcLHS' = cstrVar varIdPpcLHS'
       vexprPpcRHS' :: VExpr
       vexprPpcRHS' = cstrVar varIdPpcRHS'
-      vexprPpcRHS2' :: VExpr
-      vexprPpcRHS2' = cstrVar varIdPpcRHS2'
 
-      procIdPlpe = procIdGen "P" [] [varIdPpcLHS', varIdPpcRHS', varIdPpcRHS2']
-      procDefPlpe = ProcDef [] [varIdPpcLHS', varIdPpcRHS', varIdPpcRHS2'] (
+      procIdPlpe = procIdGen "P" [] [varIdPpcLHS', varIdPpcRHS']
+      procDefPlpe = ProcDef [] [varIdPpcLHS', varIdPpcRHS'] (
                                     choice $ Set.fromList [
-                                          -- {} [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 1] >-> P[A](0, 0, ANY) 
+                                          -- {} [P$rhs$pc$P$interrupt$rhs == 1] >-> P[A](pcLHS, 0) 
                                           actionPref  ActOffer {  offers = Set.empty
                                                                   , hiddenvars = Set.fromList []
-                                                                  , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPpcRHS' int1)
-                                                                                                                  (cstrEqual vexprPpcRHS2' int1)
-                                                                                                                  (cstrConst (Cbool False))
-                                                                              ])
+                                                                  , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprPpcRHS' int1
+                                                                                                        ])
                                                                   } 
-                                                (procInst procIdPlpe [] [int0, int0, anyInt]), 
+                                                (procInst procIdPlpe [] [vexprPpcLHS', int0]), 
 
-                                          --   ##  A [P$rhs$pc$P$interrupt$rhs == 0] >-> P[A](-1, 1, 1) 
+                                          --   ##  A [P$rhs$pc$P$interrupt$rhs == 0] >-> P[A](-1, 1) 
                                           actionPref actOfferA { hiddenvars = Set.fromList []
                                                                , constraint = cstrEqual vexprPpcRHS' int0
                                                                }
-                                                     (procInst procIdPlpe [] [intMin1, int1, int1]),
+                                                     (procInst procIdPlpe [] [vexprPpcLHS', int1]),
 
-                                          
-                                          --   ##  A [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 0] >-> P[A](-1, 1, 1)      // dead branch due to an extra unfolding of a ProcDef during translation
-                                          actionPref  actOfferA {  hiddenvars = Set.fromList []
-                                                                  ,   constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPpcRHS' int1)
-                                                                                                                        (cstrEqual vexprPpcRHS2' int0)
-                                                                                                                        (cstrConst (Cbool False))
-                                                                                    ])
-                                                } 
-                                                (procInst procIdPlpe [] [intMin1, int1, int1]),
-
-                                          --   ##  EXIT [P$rhs$pc$P$interrupt$rhs == 0,  P$lhs$pc$P$interrupt$lhs == 0] >-> P[A](-1, -1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs)
+                                          --   ##  EXIT [P$rhs$pc$P$interrupt$rhs == 0,  P$lhs$pc$P$interrupt$lhs == 0] >-> P[A](-1, -1)
                                           actionPref  actOfferExit {  hiddenvars = Set.fromList []
                                                                   ,   constraint = cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPpcRHS' int0)
                                                                                                                         (cstrEqual vexprPpcLHS' int0)
                                                                                                                         (cstrConst (Cbool False))
                                                                                     ])
                                                 } 
-                                                (procInst procIdPlpe [] [intMin1, intMin1, vexprPpcRHS2'])
+                                                (procInst procIdPlpe [] [intMin1, intMin1])
                                     ])
-      procInst' = procInst procIdPlpe [] [int0, int0, anyInt]
+      procInst' = procInst procIdPlpe [] [int0, int0]
 
 
 

@@ -30,8 +30,6 @@ module LPE
 , lpeInterrupt
 )
 where
-import Debug.Trace
-
 import qualified Control.Arrow
 import           Control.Exception
 import           Control.Monad.State
@@ -60,7 +58,6 @@ import Relabel (relabel)
 import Subst
 import SortOf
 
--- import Debug.Trace
 import TxsShow
 
 -- ----------------------------------------------------------------------------------------- --
@@ -1021,62 +1018,62 @@ lpeInterrupt (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
         Interrupt bexprLHS bexprRHS = TxsDefs.view bexpr
     -- translate LHS to LPE 
     (procInstLHS, procDefs'') <- createProcDef bexprLHS "interrupt$lhs" procIdInst procDefs'
-    trace (   "\nbexprLHS = " ++ pshow bexprLHS
-           ++ "\nbexprRHS = " ++ pshow bexprRHS
-           ++ "\nprocInstLHS = " ++ pshow procInstLHS
-           ) $ do
-        (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe', procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
-        let paramsInstLHS_lpe = case TxsDefs.view bexprLHS of
-                                ProcInst _ _ additionalParamsLHS ->    take (length paramsInst + 1) paramsInstLHS_lpe'
-                                                                    ++ additionalParamsLHS
-                                                                    ++ drop (length paramsInst + 1 + length additionalParamsLHS) paramsInstLHS_lpe'
-                                _                                -> paramsInstLHS_lpe'
-        trace ("\nparamsInstLHS_lpe = " ++ pshow paramsInstLHS_lpe) $ do
-            -- translate RHS to LPE
-            (procInstRHS, procDefs4) <- createProcDef bexprRHS "interrupt$rhs" procIdInst procDefs'''
-            trace ("\nprocInstRHS = " ++ pshow procInstLHS) $ do
-                (TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe paramsInstRHS_lpe', procDefs5) <- lpe procInstRHS translatedProcDefs procDefs4
-                let paramsInstRHS_lpe = case TxsDefs.view bexprRHS of
-                        ProcInst _ _ additionalParamsRHS ->    take (length paramsInst + 1) paramsInstRHS_lpe'
-                                                            ++ additionalParamsRHS
-                                                            ++ drop (length paramsInst + 1 + length additionalParamsRHS) paramsInstRHS_lpe'
-                        _                                -> paramsInstRHS_lpe'
-                trace ("\nparamsInstRHS_lpe = " ++ pshow paramsInstRHS_lpe) $ do
-                    -- combine LHS and RHS into new ProcDef: P$pre1$interrupt
+    -- trace (   "\nbexprLHS = " ++ pshow bexprLHS
+    --       ++ "\nbexprRHS = " ++ pshow bexprRHS
+    --       ++ "\nprocInstLHS = " ++ pshow procInstLHS
+    --       ) $ do
+    (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe', procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
+    let paramsInstLHS_lpe = case TxsDefs.view bexprLHS of
+                            ProcInst _ _ additionalParamsLHS ->    take (length paramsInst + 1) paramsInstLHS_lpe'
+                                                                ++ additionalParamsLHS
+                                                                ++ drop (length paramsInst + 1 + length additionalParamsLHS) paramsInstLHS_lpe'
+                            _                                -> paramsInstLHS_lpe'
+    -- trace ("\nparamsInstLHS_lpe = " ++ pshow paramsInstLHS_lpe) $ do
+    -- translate RHS to LPE
+    (procInstRHS, procDefs4) <- createProcDef bexprRHS "interrupt$rhs" procIdInst procDefs'''
+    -- trace ("\nprocInstRHS = " ++ pshow procInstLHS) $ do
+    (TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe paramsInstRHS_lpe', procDefs5) <- lpe procInstRHS translatedProcDefs procDefs4
+    let paramsInstRHS_lpe = case TxsDefs.view bexprRHS of
+            ProcInst _ _ additionalParamsRHS ->    take (length paramsInst + 1) paramsInstRHS_lpe'
+                                                ++ additionalParamsRHS
+                                                ++ drop (length paramsInst + 1 + length additionalParamsRHS) paramsInstRHS_lpe'
+            _                                -> paramsInstRHS_lpe'
+    -- trace ("\nparamsInstRHS_lpe = " ++ pshow paramsInstRHS_lpe) $ do
+    -- combine LHS and RHS into new ProcDef: P$pre1$interrupt
 
-                    let -- decompose LHS ProcDef and prefix params
-                        ProcDef _chans paramsDefLHS_lpe bexprLHS_lpe = fromMaybe (error "lpeInterrupt lhs: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs5)
-                        -- prefix all params to make them unique: params from lhs and rhs may clash
-                        -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
-                        prefixLHS = prefix ++ "$lhs$"
-                    paramsDefLHS_lpe_prefixed <- mapM (prefixVarId prefixLHS) paramsDefLHS_lpe
-                    let paramMapLHS = Map.fromList $ zip paramsDefLHS_lpe (map cstrVar paramsDefLHS_lpe_prefixed)
-                        bexprLHS_lpe_subst = Subst.subst paramMapLHS (Map.fromList []) bexprLHS_lpe
+    let -- decompose LHS ProcDef and prefix params
+        ProcDef _chans paramsDefLHS_lpe bexprLHS_lpe = fromMaybe (error "lpeInterrupt lhs: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs5)
+        -- prefix all params to make them unique: params from lhs and rhs may clash
+        -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
+        prefixLHS = prefix ++ "$lhs$"
+    paramsDefLHS_lpe_prefixed <- mapM (prefixVarId prefixLHS) paramsDefLHS_lpe
+    let paramMapLHS = Map.fromList $ zip paramsDefLHS_lpe (map cstrVar paramsDefLHS_lpe_prefixed)
+        bexprLHS_lpe_subst = Subst.subst paramMapLHS (Map.fromList []) bexprLHS_lpe
 
-                    let -- decompose RHS ProcDef and prefix params
-                        ProcDef _chans paramsDefRHS_lpe bexprRHS_lpe = fromMaybe (error "lpeInterrupt rhs: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)
-                        -- prefix all params to make them unique: params from lhs and rhs may clash
-                        -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
-                        prefixRHS = prefix ++ "$rhs$"
-                    paramsDefRHS_lpe_prefixed <- mapM (prefixVarId prefixRHS) paramsDefRHS_lpe
-                    let paramMapRHS = Map.fromList $ zip paramsDefRHS_lpe (map cstrVar paramsDefRHS_lpe_prefixed)
-                        bexprRHS_lpe_subst = Subst.subst paramMapRHS (Map.fromList []) bexprRHS_lpe
+    let -- decompose RHS ProcDef and prefix params
+        ProcDef _chans paramsDefRHS_lpe bexprRHS_lpe = fromMaybe (error "lpeInterrupt rhs: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)
+        -- prefix all params to make them unique: params from lhs and rhs may clash
+        -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
+        prefixRHS = prefix ++ "$rhs$"
+    paramsDefRHS_lpe_prefixed <- mapM (prefixVarId prefixRHS) paramsDefRHS_lpe
+    let paramMapRHS = Map.fromList $ zip paramsDefRHS_lpe (map cstrVar paramsDefRHS_lpe_prefixed)
+        bexprRHS_lpe_subst = Subst.subst paramMapRHS (Map.fromList []) bexprRHS_lpe
 
-                    let paramsDefRes = paramsDef ++ paramsDefLHS_lpe_prefixed ++ paramsDefRHS_lpe_prefixed
-                        procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes }
-                        procInstRes = procInst procIdRes chansInst (paramsInst ++ paramsInstLHS_lpe ++ paramsInstRHS_lpe)
-                    
-                    trace ("\nprocInstRes = " ++ pshow procInstRes) $ do
-                        -- update the steps:
-                        let stepsLHS' = map (stepsUpdateLHS procIdRes (head paramsDefRHS_lpe_prefixed) chansInst paramsDef paramsDefRHS_lpe_prefixed) $ extractSteps bexprLHS_lpe_subst
-                            stepsRHS' = map (stepsUpdateRHS procIdRes chansInst paramsDef paramsDefLHS_lpe_prefixed) $ extractSteps bexprRHS_lpe_subst
-                            
-                        let -- create new ProcDef 
-                            procDefRes = ProcDef chansInst paramsDefRes (wrapSteps (stepsLHS' ++ stepsRHS'))
-                            -- add new ProcDef to ProcDefs:
-                            procDefsRes = Map.insert procIdRes procDefRes procDefs5 
+    let paramsDefRes = paramsDef ++ paramsDefLHS_lpe_prefixed ++ paramsDefRHS_lpe_prefixed
+        procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes }
+        procInstRes = procInst procIdRes chansInst (paramsInst ++ paramsInstLHS_lpe ++ paramsInstRHS_lpe)
+    
+    -- trace ("\nprocInstRes = " ++ pshow procInstRes) $ do
+    -- update the steps:
+    let stepsLHS' = map (stepsUpdateLHS procIdRes (head paramsDefRHS_lpe_prefixed) chansInst paramsDef paramsDefRHS_lpe_prefixed) $ extractSteps bexprLHS_lpe_subst
+        stepsRHS' = map (stepsUpdateRHS procIdRes chansInst paramsDef paramsDefLHS_lpe_prefixed) $ extractSteps bexprRHS_lpe_subst
+        
+    let -- create new ProcDef 
+        procDefRes = ProcDef chansInst paramsDefRes (wrapSteps (stepsLHS' ++ stepsRHS'))
+        -- add new ProcDef to ProcDefs:
+        procDefsRes = Map.insert procIdRes procDefRes procDefs5 
 
-                        return (procInstRes, procDefsRes)
+    return (procInstRes, procDefsRes)
     where 
         stepsUpdateLHS :: ProcId -> VarId -> [ChanId] -> [VarId] -> [VarId] -> BExpr -> BExpr
         stepsUpdateLHS procIdNew pcRHS chansOrig paramsDef paramsDefRHS (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst' paramsInstLHS)) =
