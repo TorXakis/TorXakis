@@ -29,8 +29,8 @@ import ValExpr
 import LPEfunc
 import TestDefinitions
 
-import Debug.Trace
-import TxsShow
+--import Debug.Trace
+--import TxsShow
 
 ---------------------------------------------------------------------------
 -- Helper functions
@@ -191,10 +191,10 @@ testActionPrefExitExit = TestCase $
  
 testExitActionPref :: Test
 testExitActionPref = TestCase $
-    trace ("\ntestExitActionPref:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)
-           ++ "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)
+    -- trace ("\ntestExitActionPref:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)
+    --        ++ "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)
     --        ++ "\n res_procDefs': " ++ pshow_procDefs res_procDefs'
-           ) $
+    --        ) $
       assertBool "testActionPrefExit" (eqProcDef (Just (procInst', procDefPlpe)) (Just (res_procInst, res_procDef) ))
    where
       (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId") (lpeInterruptTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -244,8 +244,6 @@ testExitActionPref = TestCase $
       procInst' = procInst procIdPlpe [] [int0, int0]
 
 
-
-        
 ----------------------------------------------------------------------------------------
 -- List of Tests
 ----------------------------------------------------------------------------------------
@@ -255,5 +253,4 @@ testLPEInterruptList = TestList [
                         ,     TestLabel "testActionPrefExit" testActionPrefExit
                         ,     TestLabel "testActionPrefExitExit" testActionPrefExitExit
                         ,     TestLabel "testExitActionPref" testExitActionPref
-
                         ]

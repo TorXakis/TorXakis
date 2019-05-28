@@ -273,7 +273,15 @@ actOfferAB   = ActOffer {  offers = Set.fromList [
                         , constraint = cstrConst (Cbool True)
                         }
 
-                        
+-- action: C
+actOfferC :: ActOffer
+actOfferC   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdC0
+                                              , chanoffers = []
+                                        }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
+            }
 
 
 -- action: EXIT
@@ -285,32 +293,41 @@ actOfferExit   = ActOffer {  offers = Set.singleton
                         , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
-      
+
 -- sorts, chanIds
 chanIdA0 :: ChanId
 chanIdA0 = ChanId    { ChanId.name = T.pack "A"
                      , ChanId.unid = 2
                      , ChanId.chansorts = []
-                     }                  
+                     }
 
 chanIdA :: ChanId
 chanIdA = ChanId    { ChanId.name = T.pack "A"
                     , ChanId.unid = 2
                     , ChanId.chansorts = [sortIdInt]
                     }
+
 chanIdB0 :: ChanId
 chanIdB0 = ChanId    { ChanId.name = T.pack "B"
                      , ChanId.unid = 3
                      , ChanId.chansorts = []
                      }
+
 chanIdB :: ChanId
 chanIdB = ChanId    { ChanId.name = T.pack "B"
                     , ChanId.unid = 4
                     , ChanId.chansorts = [sortIdInt]
                     }
+
+chanIdC0 :: ChanId
+chanIdC0 = ChanId   { ChanId.name = T.pack "C"
+                    , ChanId.unid = 5
+                    , ChanId.chansorts = []
+                    }
+
 chanIdC :: ChanId
 chanIdC = ChanId    { ChanId.name = T.pack "C"
-                    , ChanId.unid = 5
+                    , ChanId.unid = 6
                     , ChanId.chansorts = [sortIdInt]
                     }
 

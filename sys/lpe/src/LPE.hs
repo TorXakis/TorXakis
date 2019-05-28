@@ -31,7 +31,6 @@ module LPE
 )
 where
 import qualified Control.Arrow
-import           Control.Exception
 import           Control.Monad.State
 import qualified Data.List           as List
 import qualified Data.Map            as Map
@@ -1088,9 +1087,7 @@ lpeInterrupt (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                         actionPref actOffer' procInst''
                 else    if actOfferContainsExit actOffer
                             then    -- if LHS exited, disable RHS: replace ProcInst with pc$RHS = -1
-                                    -- TODO: make pc of combined process equal to -1
-                                    assert (head paramsInstLHS == cstrConst (Cint (-1))) $
-                                        let paramsDefRHS' = cstrConst (Cint (-1)) : map cstrVar (tail paramsDefRHS) in 
+                                    let paramsDefRHS' = cstrConst (Cint (-1)) : map cstrVar (tail paramsDefRHS) in 
                                         actionPref actOffer' (procInst procIdNew chansOrig (map cstrVar paramsDef ++ paramsInstLHS ++ paramsDefRHS') ) 
                             else    -- just replace the ProcInst with the new version 
                                     -- A >->  P$interrupt[](<params of P$interrupt>, <paramsLHS>, <paramsRHS_def>)
