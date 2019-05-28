@@ -70,7 +70,8 @@ import           TorXakis.Compiler.Defs.BehExprDefs (toBExpr, toOffer)
 import           TorXakis.Compiler.Defs.ModelDef    (chRefsToChIdSet,
                                                      modelDeclToModelDef)
 import           TorXakis.Compiler.Error            (Error (Error), ErrorType (InvalidExpression, TypeMismatch),
-                                                     getErrorLoc, _errorLoc,
+                                                     getErrorLoc, _errorLoc, 
+                                                     ErrorLoc(NoErrorLoc), Entity(Model),
                                                      _errorMsg, _errorType)
 import           TorXakis.Compiler.Maps             (dropHandler, lookupChId,
                                                      usedChIds, (.@@))
@@ -79,6 +80,7 @@ import           TorXakis.Compiler.Maps.VarRef      (varDefsFromExp)
 import           TorXakis.Compiler.MapsTo           ((:&) ((:&)), Contents, In,
                                                      MapsTo, innerMap, keys,
                                                      values, (<.+>))
+import           TorXakis.Compiler.Validation       (checkUnique)
 import           TorXakis.Compiler.ValExpr.CstrDef  (compileToCstrDefs)
 import           TorXakis.Compiler.ValExpr.SortId   (exitSort, inferVarTypes)
 import           TorXakis.Compiler.ValExpr.ValExpr  (expDeclToValExpr)
@@ -142,7 +144,8 @@ modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
                        , In (ProcId, ()) (Contents mm) ~ 'False )
                     => mm -> [ModelDecl] -> CompilerM (Map ModelId ModelDef)
-modelDeclsToTxsDefs mm mds =
+modelDeclsToTxsDefs mm mds = do
+    checkUnique (NoErrorLoc, Model, "Model") (map modelName mds) 
     Map.fromList <$> (zip <$> traverse modelDeclToModelId  mds
                           <*> traverse (modelDeclToModelDef mm') mds)
     where

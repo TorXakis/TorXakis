@@ -86,6 +86,7 @@ failureTestCases = [ wrongChannelArguments1
                    , duplicatedProc2
                    , duplicatedVarInActPrefix1
                    , duplicatedVarInLet1
+                   , duplicatedModelDefName
                    ]
   where
     wrongChannelArguments1 =
@@ -260,6 +261,25 @@ FUNCDEF let() :: Int ::=
 ENDDEF
            |]
         , [MultipleDefinitions Variable, MultipleDefinitions Variable]
+        )
+    duplicatedModelDefName =
+            ( "Duplicated modeldef name"
+         , [r|
+MODELDEF Mod ::=
+    CHAN IN
+    CHAN OUT
+    BEHAVIOUR
+            EXIT
+ENDDEF
+
+MODELDEF Mod ::=
+    CHAN IN
+    CHAN OUT
+    BEHAVIOUR
+            STOP
+ENDDEF
+           |]
+        , [MultipleDefinitions Model]
         )
 
 type TestName = String
