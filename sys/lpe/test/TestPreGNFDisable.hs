@@ -304,9 +304,9 @@ testDisable4 = TestCase $
 --          make a new ProcDef for P
 --                P[A](P$disable$lhs, P$lhs$pc$P$lhs, P$lhs$P1$A$y, P$rhs$pc$P$rhs) :=
 --                    A$A$1 [P$rhs$pc$P$rhs == 0]                     >-> P[A](1, P$lhs$pc$P$lhs, P$lhs$P1$A$y, -1)   
---                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, -1, ANY, P$rhs$pc$P$rhs) 
+--                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, -1, P$lhs$P1$A$y, P$rhs$pc$P$rhs) 
 --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs)
---                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, -1, ANY, P$rhs$pc$P$rhs)
+--                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, -1, P$lhs$P1$A$y, P$rhs$pc$P$rhs)
 --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs) 
 --          with ProcInst: P[A](0, 0, ANY, 0)
       procIdP' = procIdGen "P" [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPlhsP1y, varIdPpcRHS]
@@ -335,7 +335,7 @@ testDisable4 = TestCase $
                                                                                                 (cstrConst (Cbool False))
                                                                                     ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, anyInt, vexprPpcRHS]),
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, vexprPlhsP1y, vexprPpcRHS]),
 
                                                       --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs)
                                                       actionPref 
@@ -363,7 +363,7 @@ testDisable4 = TestCase $
                                                                                                 (cstrConst (Cbool False))
                                                                                     ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, anyInt, vexprPpcRHS]),
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, vexprPlhsP1y, vexprPpcRHS]),
 
                                                       --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs) 
                                                       actionPref 
@@ -398,8 +398,8 @@ testDisable4 = TestCase $
 --          
 --          make a new ProcDef for P
 --                P[A](P$disable$lhs, x, P$lhs$pc$P$lhs, P$lhs$P$lhs$A$x, P$rhs$pc$P$rhs, P$rhs$P$rhs$A$x) :=
---                      A [P$disable$lhs == 0, pc$P$lhs == 0]   >-> P[A](0, x, -1, ANY, pc$P$rhs, P$rhs$A$x) 
---                 ##   A [pc$P$rhs == 0]                       >-> P[A](1, x, pc$P$lhs, P$lhs$A$x, -1, ANY)   
+--                      A [P$disable$lhs == 0, pc$P$lhs == 0]   >-> P[A](0, x, -1, P$lhs$A$x, pc$P$rhs, P$rhs$A$x) 
+--                 ##   A [pc$P$rhs == 0]                       >-> P[A](1, x, pc$P$lhs, P$lhs$A$x, -1, P$rhs$A$x)   
 --          with ProcInst: P[A](0, 2, 0, ANY, 0, ANY)
 testDisable5 :: Test
 testDisable5 = TestCase $
@@ -444,12 +444,12 @@ testDisable5 = TestCase $
                                                                                                       (cstrConst (Cbool False))
                                                                                           ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, vexprX, intMin1, anyInt, vexprPpcRHS, vexprPrhsX]),
+                                                            (procInst procIdP' [chanIdA] [int0, vexprX, intMin1, vexprPlhsX, vexprPpcRHS, vexprPrhsX]),
 
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
                                                                       } 
-                                                            (procInst procIdP' [chanIdA] [int1, vexprX, vexprPpcLHS, vexprPlhsX, intMin1, anyInt])
+                                                            (procInst procIdP' [chanIdA] [int1, vexprX, vexprPpcLHS, vexprPlhsX, intMin1, vexprPrhsX])
                                                 ])
 
 
