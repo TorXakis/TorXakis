@@ -113,7 +113,7 @@ data Error
     deriving (Eq, Data)
 
 instance Show Error where
-    show (Error t l m) = show t ++ " at " ++ show l ++ ": " ++ (unpack m)
+    show (Error t l m) = show t ++ " at " ++ show l ++ ": " ++ unpack m
     show (Errors es)   = intercalate "\n" (map show es)
 
 makeLenses ''Error
