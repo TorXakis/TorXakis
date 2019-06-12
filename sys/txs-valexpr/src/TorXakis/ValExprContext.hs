@@ -28,3 +28,4 @@ import           TorXakis.VarContext
 
 -- | A ValExprContext instance contains all definitions to work with value expressions and references thereof
 class (VarContext c, FuncContext c) => ValExprContext c
+

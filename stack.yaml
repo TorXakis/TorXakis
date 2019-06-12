@@ -53,6 +53,10 @@ packages:
 - location: sys/txs-var
 - location: sys/txs-var-gen
 - location: sys/txs-bexpr
+- location: sys/txs-core
+- location: sys/txs-corestate
+- location: sys/txs-server
+- location: sys/txs-serverstate
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
