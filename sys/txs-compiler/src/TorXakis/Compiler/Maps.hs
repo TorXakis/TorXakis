@@ -185,7 +185,7 @@ findRight vdefs l = Left ||| cErr ||| Right $ lookup l vdefs
       err = Error
             { _errorType = Undefined Function
             , _errorLoc  = getErrorLoc l
-            , _errorMsg  = "Could not function declaration."
+            , _errorMsg  = "Could not find function declaration."
             }
 
 -- | Find the variable declaration that corresponds to a variable reference.
@@ -198,7 +198,7 @@ findVarDecl mm l = Left ||| Right ||| cErr $ lookup l mm
       err = Error
             { _errorType = Undefined Variable
             , _errorLoc  = getErrorLoc l
-            , _errorMsg  = "Could not variable declaration."
+            , _errorMsg  = "Could not find variable declaration."
             }
 
 -- | Find the variable id that corresponds to a given variable reference.
