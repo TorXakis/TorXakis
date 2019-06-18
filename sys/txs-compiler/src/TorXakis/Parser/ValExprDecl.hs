@@ -48,7 +48,7 @@ valExpP =  buildExpressionParser table termP
               ]
       uop = do
           (le, lr, opN) <- opP
-          return $ \ex0 -> mkFappl le lr opN [ex0]
+          return $ \ex0 -> mkExpDecl le Nothing (Fappl (Name opN) lr [ex0])
       opP = do
           le  <- mkLoc
           lr  <- mkLoc
@@ -56,21 +56,36 @@ valExpP =  buildExpressionParser table termP
           return (le, lr, opN)
       bop = do
           (le, lr, opN) <- opP
-          return $ \ex0 ex1 -> (mkFappl le lr opN [ex0, ex1])
+          return $ \ex0 ex1 -> mkExpDecl le Nothing (Fappl (Name opN) lr [ex0, ex1])
 
 -- | Terms of the TorXakis value expressions.
 termP :: TxsParser ExpDecl
-termP = txsSymbol "(" *> ( valExpP <* txsSymbol ")")
-    <|> mkRegexConstExp  <$> mkLoc <*> txsRegexP
-    <|> letExpP
-    <|> txsITEP
-    <|> txsFapplP
-    <|> mkBoolConstExp   <$> mkLoc <*> try txsBoolP
-    <|> mkIntConstExp    <$> mkLoc <*> txsIntP
-    <|> mkStringConstExp <$> mkLoc <*> txsStringP
-    <|> mkVarExp         <$> mkLoc <*> (lcIdentifier <|> ucIdentifier "")
+termP = do
+            l <- mkLoc
+            c <- termImplicitP
+            ms <- optionMaybe ofSortP
+            return $ mkExpDecl l ms (childExpChild c)
+    where
+        termImplicitP :: TxsParser ExpChildDecl
+        termImplicitP = mkNestedExp
+            <|> mkRegexConstExp  <$> mkLoc <*> txsRegexP
+            <|> letExpP
+            <|> txsITEP
+            <|> txsFapplP
+            <|> mkBoolConstExp   <$> mkLoc <*> try txsBoolP
+            <|> mkIntConstExp    <$> mkLoc <*> txsIntP
+            <|> mkStringConstExp <$> mkLoc <*> txsStringP
+            <|> mkVarExp         <$> mkLoc <*> (lcIdentifier <|> ucIdentifier "")
 
-letExpP :: TxsParser ExpDecl
+mkNestedExp :: TxsParser ExpChildDecl
+mkNestedExp  = do
+    l <- mkLoc
+    try (txsSymbol "(")
+    subEx <- valExpP
+    txsSymbol ")"
+    return $ mkLetExpDecl [] subEx l
+    
+letExpP :: TxsParser ExpChildDecl
 letExpP = do
     l <- mkLoc
     try (txsSymbol "LET")
@@ -111,7 +126,7 @@ txsRegexP = do
     where
       regexChar c = (isPrint c && c /= '\'') || c == ' '
 
-txsITEP :: TxsParser ExpDecl
+txsITEP :: TxsParser ExpChildDecl
 txsITEP = do
     l <- mkLoc
     try (txsSymbol "IF")
@@ -150,7 +165,7 @@ txsSpecialCOp = oneOf [ '='
 
 -- | Function application parser.
 --
-txsFapplP :: TxsParser ExpDecl
+txsFapplP :: TxsParser ExpChildDecl
 txsFapplP = do
     le <- mkLoc
     lr <- mkLoc
