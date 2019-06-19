@@ -73,6 +73,8 @@ failureTestCases = [ wrongChannelArguments1
                    , typeMismatch2
                    , typeMismatch3
                    , typeMismatch4
+                   , typeMismatch5
+                   , typeMismatch6
                    , duplicatedFuncParam1
                    , duplicatedFuncParam2
                    , duplicatedProcParam1
@@ -152,13 +154,31 @@ ENDDEF
         , [Undefined Function]
         )
     typeMismatch4 =
-        ( "Type Mismatch. Variant 4. Different implicit sort than explicitly defined. Argument of operator."
+        ( "Type Mismatch. Variant 4. Different implicit sort than explicitly defined. Nested argument of Function."
         , [r|
 FUNCDEF f ( x :: Int ) :: Int ::=
     f ( 3 + "string" :: Int )
 ENDDEF
            |]
         , [Undefined Function]
+        )    
+    typeMismatch5 =
+        ( "Type Mismatch. Variant 5. Different implicit sort than explicitly defined. Argument of Process."
+        , [r|
+PROCDEF p [A] ( x :: String ) ::=
+    p[A] ( 3 :: String )
+ENDDEF
+           |]
+        , [Undefined Process]
+        )
+    typeMismatch6 =
+        ( "Type Mismatch. Variant 6. Different implicit sort than explicitly defined. Nested argument of Process."
+        , [r|
+PROCDEF p [A] ( x :: String ) ::=
+    p[A] ( "string" ++ 3 :: String )
+ENDDEF
+           |]
+        , [Undefined Process]
         )    
     duplicatedFuncParam1 =
         ( "Function with two `x` parameters. Variant 1."

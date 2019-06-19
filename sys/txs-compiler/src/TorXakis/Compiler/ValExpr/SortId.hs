@@ -223,7 +223,7 @@ inferExpTypes mm ex =
                                   , _errorMsg  = "Explicit provided type \"" <> T.pack (show s) <> "\" not in implicitly derived types : " <> T.pack (show ss)
                                   }
                             )
-                        return $ [s]
+                        return [s]
   where
     implicitExpTypes :: Either Error [SortId]
     implicitExpTypes =
