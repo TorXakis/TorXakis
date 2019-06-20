@@ -69,6 +69,12 @@ failureTestCases :: [(TestName, CodeSnippet, [ErrorType])]
 failureTestCases = [ wrongChannelArguments1
                    , wrongChannelArguments2
                    , wrongChannelArguments3
+                   , typeMismatch1
+                   , typeMismatch2
+                   , typeMismatch3
+                   , typeMismatch4
+                   , typeMismatch5
+                   , typeMismatch6
                    , duplicatedFuncParam1
                    , duplicatedFuncParam2
                    , duplicatedProcParam1
@@ -116,6 +122,64 @@ ENDDEF
            |]
         , [Undefined Process]
         )
+    typeMismatch1 =
+        ( "Type Mismatch. Variant 1. Different implicit sort of valexpression than explicitly defined in let variable."
+        , [r|
+PROCDEF p [ A :: Int ] ( x :: Int ) ::=
+    LET a :: Int = "string" IN
+        A ! a
+    NI
+ENDDEF
+           |]
+        , [Undefined Process]
+        )
+    typeMismatch2 =
+        ( "Type Mismatch. Variant 2. Different implicit sort than explicitly defined. Argument of LET."
+        , [r|
+PROCDEF p [ A :: Int ] ( x :: Int ) ::=
+    LET a = "string" :: Int IN
+        A ! a
+    NI
+ENDDEF
+           |]
+        , [Undefined Process]
+        )
+    typeMismatch3 =
+        ( "Type Mismatch. Variant 3. Different implicit sort than explicitly defined. Argument of Function."
+        , [r|
+FUNCDEF f ( x :: Int ) :: Int ::=
+    f ( "string" :: Int )
+ENDDEF
+           |]
+        , [Undefined Function]
+        )
+    typeMismatch4 =
+        ( "Type Mismatch. Variant 4. Different implicit sort than explicitly defined. Nested argument of Function."
+        , [r|
+FUNCDEF f ( x :: Int ) :: Int ::=
+    f ( 3 + "string" :: Int )
+ENDDEF
+           |]
+        , [Undefined Function]
+        )    
+    typeMismatch5 =
+        ( "Type Mismatch. Variant 5. Different implicit sort than explicitly defined. Argument of Process."
+        , [r|
+PROCDEF p [A] ( x :: String ) ::=
+    p[A] ( 3 :: String )
+ENDDEF
+           |]
+        , [Undefined Process]
+        )
+    typeMismatch6 =
+        ( "Type Mismatch. Variant 6. Different implicit sort than explicitly defined. Nested argument of Process."
+        , [r|
+PROCDEF p [A] ( x :: String ) ::=
+    p[A] ( "string" ++ 3 :: String )
+ENDDEF
+           |]
+        , [Undefined Process]
+        )    
     duplicatedFuncParam1 =
         ( "Function with two `x` parameters. Variant 1."
          , [r|
