@@ -37,7 +37,7 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
 import           Data.Maybe
-import           Debug.Trace
+--import           Debug.Trace
 
 import TranslatedProcDefs
 
@@ -698,6 +698,7 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
 
 lpePar _ _ _ = error "only allowed with ProcInst"
 
+-- | A rename by prepending the prefix (and generating a new unid)
 prefixVarId :: (EnvB.EnvB envb) => String -> VarId -> envb VarId
 prefixVarId prefix (VarId name' _ sort') = do
     unid' <- EnvB.newUnid
@@ -747,7 +748,7 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
             return $ actionPref 
                         actOffer{ offers = Set.fromList os'
                                 , constraint = constraint_substituted
-                                , hiddenvars = hidvars} 
+                                , hiddenvars = Set.union hidvars (hiddenvars actOffer)} 
                         bexpr_substituted
             where
                 hideChansOffer :: (EnvB.EnvB envb) => [Offer] -> envb([Offer], Set.Set VarId, [(VarId, VarId)])
@@ -770,12 +771,10 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
                                                 transformVar var' = do  unid' <- EnvB.newUnid
                                                                         
                                                                         let name' = T.unpack (VarId.name var') ++ "_" ++ 
-                                                                                        if unid' < 0 -- EnvCore / IOC line 205-209 hands out negative numbers
+                                                                                        if unid' < 0
                                                                                             then "m" ++ show (abs unid')
                                                                                             else show unid'
-                                                                        trace ("\nunid' = " ++ show unid' ++
-                                                                               "\nname' = " ++ name') $
-                                                                            return var' { VarId.name = T.pack name', VarId.unid = unid'}
+                                                                        return var' { VarId.name = T.pack name', VarId.unid = unid'}
         hideChans _ _ = error "hideChans: unknown input"            
 
 lpeHide _ _ _ = error "lpeHide: was called with something other than a ProcInst"
