@@ -37,6 +37,7 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
 import           Data.Maybe
+import           Debug.Trace
 
 import TranslatedProcDefs
 
@@ -767,8 +768,14 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
                                                 -- make hiddenvars globally unique, practically they get a local scope
                                                 transformVar :: EnvB.EnvB envb => VarId -> envb VarId
                                                 transformVar var' = do  unid' <- EnvB.newUnid
-                                                                        let name' = T.unpack (VarId.name var') ++ "_" ++ show unid'
-                                                                        return var' { VarId.name = T.pack name', VarId.unid = unid'}
+                                                                        
+                                                                        let name' = T.unpack (VarId.name var') ++ "_" ++ 
+                                                                                        if unid' < 0 -- EnvCore / IOC line 205-209 hands out negative numbers
+                                                                                            then "m" ++ show (abs unid')
+                                                                                            else show unid'
+                                                                        trace ("\nunid' = " ++ show unid' ++
+                                                                               "\nname' = " ++ name') $
+                                                                            return var' { VarId.name = T.pack name', VarId.unid = unid'}
         hideChans _ _ = error "hideChans: unknown input"            
 
 lpeHide _ _ _ = error "lpeHide: was called with something other than a ProcInst"
