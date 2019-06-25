@@ -37,7 +37,6 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
 import           Data.Maybe
---import           Debug.Trace
 
 import TranslatedProcDefs
 
@@ -603,13 +602,14 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
 
                 constraintLR = cstrAnd (Set.fromList [constraintL, constraintR])
 
+                paramsLR = paramsL ++ paramsR
                 -- new ActOffers and ProcInst
                 actOfferLR = ActOffer { offers = offersLR,
                                         hiddenvars = Set.union hiddenvarsL hiddenvarsR,
                                         constraint = constraintLR}
-                procInstLR = procInst procIdPAR' chansDefPar (paramsL ++ paramsR)
+                procInstLR = procInst procIdPAR' chansDefPar paramsLR
             in
-            actionPref actOfferLR procInstLR
+                actionPref actOfferLR procInstLR
 
           -- check if given step can be executed by itself according to parallel semantics
           isValidStep :: Set.Set ChanId -> BExpr -> Bool
@@ -669,6 +669,13 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
         let paramMap = Map.fromList $ zip paramsDef (map cstrVar paramsDefPrefixed)
             -- TODO: properly initialise funcDefs param of subst
             bexpr'' = Subst.subst paramMap (Map.fromList []) bexpr'
+            -- See https://github.com/TorXakis/TorXakis/issues/885 : 
+            -- changing the parameters and relabeling of channels is NOT enough
+            -- one also has to make channel parameters / variables introduced in the bexpr unique.
+            -- For example, the usage of P[A](x)::= A ? A$1 [[ A$1 > x ]]
+            -- in P[A1](4) ||| P[A2](5) 
+            -- needs something like A1$1 and A2$1 
+            --                   or op1$A$1 and op2$A$1
         return (opNr+1, stepsOpParams ++ [(extractSteps bexpr'', paramsDefPrefixed)], paramsInsts ++ paramsInstLPE, procDefs'''')
           where 
             transformToProcInst :: (EnvB.EnvB envb) => BExpr -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
