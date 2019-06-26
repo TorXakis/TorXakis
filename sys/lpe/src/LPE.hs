@@ -602,13 +602,14 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
 
                 constraintLR = cstrAnd (Set.fromList [constraintL, constraintR])
 
+                paramsLR = paramsL ++ paramsR
                 -- new ActOffers and ProcInst
                 actOfferLR = ActOffer { offers = offersLR,
                                         hiddenvars = Set.union hiddenvarsL hiddenvarsR,
                                         constraint = constraintLR}
-                procInstLR = procInst procIdPAR' chansDefPar (paramsL ++ paramsR)
+                procInstLR = procInst procIdPAR' chansDefPar paramsLR
             in
-            actionPref actOfferLR procInstLR
+                actionPref actOfferLR procInstLR
 
           -- check if given step can be executed by itself according to parallel semantics
           isValidStep :: Set.Set ChanId -> BExpr -> Bool
@@ -668,6 +669,13 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
         let paramMap = Map.fromList $ zip paramsDef (map cstrVar paramsDefPrefixed)
             -- TODO: properly initialise funcDefs param of subst
             bexpr'' = Subst.subst paramMap (Map.fromList []) bexpr'
+            -- See https://github.com/TorXakis/TorXakis/issues/885 : 
+            -- changing the parameters and relabeling of channels is NOT enough
+            -- one also has to make channel parameters / variables introduced in the bexpr unique.
+            -- For example, the usage of P[A](x)::= A ? A$1 [[ A$1 > x ]]
+            -- in P[A1](4) ||| P[A2](5) 
+            -- needs something like A1$1 and A2$1 
+            --                   or op1$A$1 and op2$A$1
         return (opNr+1, stepsOpParams ++ [(extractSteps bexpr'', paramsDefPrefixed)], paramsInsts ++ paramsInstLPE, procDefs'''')
           where 
             transformToProcInst :: (EnvB.EnvB envb) => BExpr -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
@@ -697,6 +705,7 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
 
 lpePar _ _ _ = error "only allowed with ProcInst"
 
+-- | A rename by prepending the prefix (and generating a new unid)
 prefixVarId :: (EnvB.EnvB envb) => String -> VarId -> envb VarId
 prefixVarId prefix (VarId name' _ sort') = do
     unid' <- EnvB.newUnid
@@ -746,7 +755,7 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
             return $ actionPref 
                         actOffer{ offers = Set.fromList os'
                                 , constraint = constraint_substituted
-                                , hiddenvars = hidvars} 
+                                , hiddenvars = Set.union hidvars (hiddenvars actOffer)} 
                         bexpr_substituted
             where
                 hideChansOffer :: (EnvB.EnvB envb) => [Offer] -> envb([Offer], Set.Set VarId, [(VarId, VarId)])
@@ -767,7 +776,11 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
                                                 -- make hiddenvars globally unique, practically they get a local scope
                                                 transformVar :: EnvB.EnvB envb => VarId -> envb VarId
                                                 transformVar var' = do  unid' <- EnvB.newUnid
-                                                                        let name' = T.unpack (VarId.name var') ++ "_" ++ show unid'
+                                                                        
+                                                                        let name' = T.unpack (VarId.name var') ++ "_" ++ 
+                                                                                        if unid' < 0
+                                                                                            then "m" ++ show (abs unid')
+                                                                                            else show unid'
                                                                         return var' { VarId.name = T.pack name', VarId.unid = unid'}
         hideChans _ _ = error "hideChans: unknown input"            
 
