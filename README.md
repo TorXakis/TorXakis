@@ -211,3 +211,6 @@ See the README files in each folders to get a more detailed explanation.
 [11]: https://github.com/TorXakis/TorXakis/issues/40
 [13]: https://github.com/TorXakis/TorXakis/releases
 [15]: https://git-lfs.github.com/
+
+## Acknowledgements
+Part of the research is carried out as part of the Enable-S3 program under the responsibility of ESI (TNO) with Philips as the carrying industrial partner. The Enable-S3 research is supported by the Netherlands Ministry of Economic Affairs (Toeslag voor Topconsortia voor Kennis en Innovatie) . 
