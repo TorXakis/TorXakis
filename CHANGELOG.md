@@ -1,5 +1,11 @@
 # Torxakis Changelog
 
+## v0.8.1
+
+Bug fixes in
+- Linear Process Equation (LPE)
+- TorXakis Compiler
+
 ## v0.8.0
 
 Added Linear Process Equation (LPE) command (thanks to Carsten Rütz)
