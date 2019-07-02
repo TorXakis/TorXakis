@@ -6,24 +6,24 @@ resolver: lts-11.22
 ghc-variant: integersimple
 
 packages:
-- location: sys/behave
-- location: sys/behavedefs
-- location: sys/behaveenv
-- location: sys/bexpr
-- location: sys/cnect
-- location: sys/core
-- location: sys/coreenv
-- location: sys/defs
-- location: sys/lexregexxsd
-- location: sys/lpe
-- location: sys/server
-- location: sys/serverenv
-- location: sys/solve
-- location: sys/testsel
-- location: sys/ui
-- location: sys/value
-- location: sys/valexpr
-- location: sys/txs-compiler
+- sys/behave
+- sys/behavedefs
+- sys/behaveenv
+- sys/bexpr
+- sys/cnect
+- sys/core
+- sys/coreenv
+- sys/defs
+- sys/lexregexxsd
+- sys/lpe
+- sys/server
+- sys/serverenv
+- sys/solve
+- sys/testsel
+- sys/ui
+- sys/value
+- sys/valexpr
+- sys/txs-compiler
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
