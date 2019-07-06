@@ -5,7 +5,7 @@
 # See LICENSE at root directory of this repository.
 
 # Install TorXakis.
-# inside this we need to run this script:
+
 apt-get update
 
 echo "Installing ${TXS_PKG}"
@@ -14,15 +14,15 @@ cd /build
 
 apt-get install $TXS_PKG -y
 
-cd /test
+cd /TorXakis
 
-# Test with "Echo".
-cat examps/Echo/Echo_Simulator.txscmd | torxakis examps/Echo/Echo.txs &> /dev/null &
-cat examps/Echo/Echo_Tester.txscmd | torxakis examps/Echo/Echo.txs
+# # Test with "Echo".
+cat test/examps/Echo/Echo_Simulator.txscmd | torxakis examps/Echo/Echo.txs &> /dev/null &
+cat test/examps/Echo/Echo_Tester.txscmd | torxakis examps/Echo/Echo.txs
 
-# Test with "Moving Arms"
-cat examps/MovingArms/MovingArms_Simulator.txscmd | \
+# # Test with "Moving Arms"
+cat test/examps/MovingArms/MovingArms_Simulator.txscmd | \
     torxakis examps/MovingArms/MovingArms.txs examps/MovingArms/RestrictedAxisPurpose.txs \
     &> /dev/null &
-cat examps/MovingArms/MovingArms_RestrictedAxisPurpose_eager3_Tester.txscmd | \
+cat test/examps/MovingArms/MovingArms_RestrictedAxisPurpose_eager3_Tester.txscmd | \
     torxakis examps/MovingArms/MovingArms.txs  examps/MovingArms/RestrictedAxisPurpose.txs
