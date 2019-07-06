@@ -8,7 +8,8 @@
 # inside this we need to run this script:
 apt-get update
 cd root
-apt-get install ./torxakis_0.6.0_amd64.deb -y
+echo "Installing ${TXS_PKG_PATH}"
+apt-get install $TXS_PKG_PATH -y
 
 # Test with "Echo".
 cat test/examps/Echo/Echo_Simulator.txscmd | torxakis examps/Echo/Echo.txs &> /dev/null &

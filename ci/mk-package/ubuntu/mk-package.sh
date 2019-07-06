@@ -68,10 +68,11 @@ fi
 cd /build
 
 # Create the deb package
+# TODO: change -v to $TXS_VERSION once the tag is updated
 fpm -s dir \
     -t deb \
     -n torxakis \
-    -v $TXS_VERSION \
+    -v 0.8.1 \
     -C $TXS_TMP \
     -d "libgmp-dev" \
     -d "libexpat1" \
