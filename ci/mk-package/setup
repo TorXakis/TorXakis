@@ -6,7 +6,7 @@
 
 # Build the docker containers
 
-mkdir ci/mk-package/.package-build
+mkdir -p ci/mk-package/.package-build
 
 for ubuntu_dirs in `ls -d ci/mk-package/ubuntu/*/`
 do

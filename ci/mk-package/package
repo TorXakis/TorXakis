@@ -22,7 +22,7 @@ do
     docker run --rm \
            -e TXS_VERSION=$1 \
            -e UBUNTU_VERSION=${ubuntu_version} \
-           -v $(pwd)/ci/mk-package/.package-build:/build \
+           -v $(pwd)/.package-build:/build \
            -ti torxakis-packager:${ubuntu_version} mk-package.sh
 
 done

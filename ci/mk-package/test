@@ -15,7 +15,9 @@ do
 
     # Test with the given ubuntu version
     docker run --rm \
-           -e TXS_PKG=./torxakis_${TXS_VERSION}-ubuntu_${ubuntu_version}-amd64.deb \
-           -v $(pwd)/ci/mk-package/.package-build:/build \
-           --entrypoint "/root/ci/mk-package/install-test" -it ubuntu:${v}
+           -e TXS_PKG=./torxakis_$1-ubuntu_${ubuntu_version}-amd64.deb \
+           -v $(pwd)/.package-build:/build \
+           -v $(pwd)/test:/test \
+           -v $(pwd)/ci/mk-package:/root \
+           --entrypoint "/root/install-test" -it ubuntu:${ubuntu_version}
 done
