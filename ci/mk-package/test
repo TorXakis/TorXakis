@@ -4,21 +4,18 @@
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
 
-
-
 # Test that the the `TorXakis` `.deb` package can be installed and run in different ubuntu versions.
 
-versions=("16.04") # "17.10" "18.04")
-
-for v in "${versions[@]}"
+for ubuntu_dirs in `ls -d ci/mk-package/ubuntu/*/`
 do
-   echo
-   echo "Testing with Ubuntu: $v"
-   echo
+    ubuntu_version=`basename ${ubuntu_dirs}`
+    echo
+    echo "Testing with Ubuntu: ${ubuntu_version}"
+    echo
 
-   # Test with the given ubuntu version
-   docker run --rm \
-     -e TXS_PKG_PATH=./$1 \
-     -v $(pwd):/root \
-     --entrypoint "/root/ci/mk-package/install-test" -it ubuntu:${v}
+    # Test with the given ubuntu version
+    docker run --rm \
+           -e TXS_PKG=./torxakis_${TXS_VERSION}-ubuntu_${ubuntu_version}-amd64.deb \
+           -v $(pwd)/ci/mk-package/.package-build:/build \
+           --entrypoint "/root/ci/mk-package/install-test" -it ubuntu:${v}
 done

@@ -1,5 +1,7 @@
 FROM ubuntu:16.04
 
+WORKDIR /build
+
 RUN apt-get update && \
   apt-get install -y \
   git \
@@ -13,10 +15,8 @@ RUN gem install --no-ri --no-rdoc fpm
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
 
-COPY . script/
+ADD .package-build /build
 
-ADD mk-package.sh /mk-package.sh
-
-ADD build /build
+ADD ubuntu/mk-package.sh /mk-package.sh
 
 ENTRYPOINT ["/mk-package.sh"]

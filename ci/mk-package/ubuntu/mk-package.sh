@@ -1,5 +1,7 @@
 #!/bin/bash
 
+chown -R `whoami` /build
+
 git --version
 stack --version
 
@@ -20,9 +22,9 @@ cd TorXakis
 
 git fetch origin
 
-git checkout v{$TXS_VERSION}
+git checkout v$TXS_VERSION
 
-git pull origin v{$TXS_VERSION}
+git pull origin v$TXS_VERSION
 
 export STACK_ROOT="/build/.stack"
 
@@ -68,11 +70,12 @@ fi
 cd /build
 
 # Create the deb package
-# TODO: change -v to $TXS_VERSION once the tag is updated
+rm -f torxakis_${TXS_VERSION}-ubuntu_${UBUNTU_VERSION}-amd64.deb
+
 fpm -s dir \
     -t deb \
     -n torxakis \
-    -v 0.8.1 \
+    -v $TXS_VERSION \
     -C $TXS_TMP \
     -d "libgmp-dev" \
     -d "libexpat1" \

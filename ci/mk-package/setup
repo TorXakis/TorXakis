@@ -1,11 +1,18 @@
 #!/bin/bash
 
-# Install the programs necessary to make a Linux package for TorXakis
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
 
-# fpm (http://fpm.readthedocs.io/en/latest/)
-sudo apt-get install ruby ruby-dev rubygems build-essential -y
-sudo gem install --no-ri --no-rdoc fpm
+# Build the docker containers
 
-# rpmbuild
-sudo apt-get install rpm -y
+mkdir ci/mk-package/.package-build
 
+for ubuntu_dirs in `ls -d ci/mk-package/ubuntu/*/`
+do
+    ubuntu_version=`basename ${ubuntu_dirs}`
+    docker build \
+           --tag=torxakis-packager:${ubuntu_version} \
+           -f ci/mk-package/ubuntu/${ubuntu_version}/Dockerfile \
+           ci/mk-package
+done

@@ -4,12 +4,14 @@
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
 
+cd /build
+
 # Install TorXakis.
 # inside this we need to run this script:
 apt-get update
 cd root
-echo "Installing ${TXS_PKG_PATH}"
-apt-get install $TXS_PKG_PATH -y
+echo "Installing ${TXS_PKG}"
+apt-get install $TXS_PKG -y
 
 # Test with "Echo".
 cat test/examps/Echo/Echo_Simulator.txscmd | torxakis examps/Echo/Echo.txs &> /dev/null &
