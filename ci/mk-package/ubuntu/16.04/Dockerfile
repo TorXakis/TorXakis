@@ -6,7 +6,8 @@ RUN apt-get update && \
   ruby ruby-dev rubygems \
   build-essential \
   curl \
-  rpm
+  rpm \
+  libtinfo-dev
 
 RUN gem install --no-ri --no-rdoc fpm
 

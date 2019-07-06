@@ -24,22 +24,19 @@ git checkout $TXS_VERSION
 
 git pull origin $TXS_VERSION
 
+export STACK_ROOT="/build/.stack"
+
 # We will be using a stack configuration file that is linux specific
 export STACK_YAML="stack_linux.yaml"
 
-# stack build --fast
+stack build --fast
 
-TXS_TMP=/build
-# rm -fr $TXS_TMP
+export TXS_TMP=/build
 mkdir -p ${TXS_TMP}/usr/bin
-
-# echo "Temporary directory is: ${TXS_TMP}"
 
 TXS_BIN=`stack path --local-install-root --silent --stack-yaml stack_linux.yaml`/bin
 
 cp ${TXS_BIN}/* ${TXS_TMP}/usr/bin/
-
-# cd $TXS_TMP
 
 export CACHE_DIR="/build"
 
@@ -68,25 +65,21 @@ else
     touch $CACHE_DIR/usr/bin/z3-4.8.5
 fi
 
-# # Download and copy the Z3 binary
-# curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.6.0/z3-4.6.0-x64-ubuntu-14.04.zip -o z3.zip
-# unzip -p z3.zip "bin/z3" > usr/bin/z3
-# chmod +x usr/bin/z3
+cd /build
 
-# cd -
-
-# # Create the deb package
-# fpm -s dir \
-#     -t deb \
-#     -n torxakis \
-#     -v $TXS_VERSION \
-#     -C $TXS_TMP \
-#     -d "libgmp-dev" \
-#     -d "libexpat1" \
-#     -d "netbase" \
-#     -d "libgomp1" \
-#     -p torxakis_VERSION_ARCH.deb \
-#     usr/bin
+# Create the deb package
+fpm -s dir \
+    -t deb \
+    -n torxakis \
+    -v $TXS_VERSION \
+    -C $TXS_TMP \
+    -d "libgmp-dev" \
+    -d "libexpat1" \
+    -d "netbase" \
+    -d "libgomp1" \
+    -p torxakis_${TXS_VERSION}-ubuntu_${UBUNTU_VERSION}-amd64.deb \
+    usr/bin
+# -p torxakis_VERSION_ARCH.deb \
 
 # # Create an rpm from the deb package
 echo "Creating torxakis_${TXS_VERSION}-ubuntu_${UBUNTU_VERSION}-amd64.deb"
