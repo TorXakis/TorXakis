@@ -20,9 +20,9 @@ cd TorXakis
 
 git fetch origin
 
-git checkout $TXS_VERSION
+git checkout v{$TXS_VERSION}
 
-git pull origin $TXS_VERSION
+git pull origin v{$TXS_VERSION}
 
 export STACK_ROOT="/build/.stack"
 
