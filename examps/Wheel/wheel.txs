@@ -1,0 +1,358 @@
+-- Wheel with
+-- * Check in North position
+-- * Grab in East Position
+-- * Release in South Position
+-- * Two ExtendMotors, controlling 2 Grabbers each
+-- * One RotationMotor controlling the Wheel orientation
+-- and Counter clockwise rotation
+
+-- A item
+TYPEDEF Item ::= Item { toInt :: Int }
+ENDDEF
+
+-- Maybe of Item
+TYPEDEF MaybeItem ::= Nothing
+                   | Just { item :: Item }
+ENDDEF 
+
+-- List of MaybeItems
+TYPEDEF ListMaybeItem ::= Nil
+                       | Cstr { head :: MaybeItem; tail :: ListMaybeItem }
+ENDDEF
+
+-- add to end of List
+FUNCDEF add (maybeItem :: MaybeItem; l :: ListMaybeItem) :: ListMaybeItem ::=
+    IF isNil (l) 
+        THEN Cstr (maybeItem, Nil)
+        ELSE Cstr(head(l), add(maybeItem, tail(l)))
+    FI
+ENDDEF
+
+-- A quality measurement
+TYPEDEF Quality ::= Quality { toBool :: Bool }
+ENDDEF
+
+-- Maybe of Quality
+TYPEDEF MaybeQuality ::= Nothing
+                       | Just { quality :: Quality }
+ENDDEF 
+
+-- Pair of Maybe Item and Maybe Quality
+TYPEDEF Pair ::= Pair { maybeItem :: MaybeItem
+                      ; maybeQuality :: MaybeQuality
+                      }
+ENDDEF 
+
+-- List of PairItemQuality
+TYPEDEF ListPair ::= Nil
+                   | Cstr { head :: Pair; tail :: ListPair }
+ENDDEF
+
+-- add to end of List
+FUNCDEF add (p :: Pair; l :: ListPair) :: ListPair ::=
+    IF isNil (l) 
+        THEN Cstr (p, Nil)
+        ELSE Cstr(head(l), add(p, tail(l)))
+    FI
+ENDDEF
+
+-- A Grabber: A ExtendMotor controls two Grabbers
+TYPEDEF Grabber ::= Grabber { toInt :: Int }
+ENDDEF
+
+-----------------------------------------------------------------------------------------------------------------
+-- An ExtendMotor. A wheel contains two ExtendMotors
+TYPEDEF ExtendMotor ::= ExtendMotor { toInt :: Int }
+ENDDEF
+
+TYPEDEF StateExtendMotor ::= Neutral 
+                           | Extend { extendGrabber :: Grabber }
+                           | TouchDown { touchDownGrabber :: Grabber }
+ENDDEF 
+
+PROCDEF extendMotor [ Command :: ExtendMotor # StateExtendMotor
+                    ; Response :: ExtendMotor # StateExtendMotor ]
+                    (extendMotor :: ExtendMotor
+                    ; state :: StateExtendMotor) ::=
+        ( [[ isNeutral (state) ]]   =>> Command ! extendMotor ? c [[ isExtend (c) ]] 
+                                    >-> Response ! extendMotor ! c 
+                                    >-> extendMotor [Command, Response] (extendMotor, c) )
+    ##
+        ( [[ isExtend (state) ]]    =>> Command ! extendMotor ? c [[ (isTouchDown (c) /\ (extendGrabber(state) == touchDownGrabber(c))) ]]
+                                    >-> Response ! extendMotor ! c 
+                                    >-> extendMotor [Command, Response] (extendMotor, c)
+        )
+    ##
+        ( [[ isTouchDown (state) ]] =>> Command ! extendMotor ? c [[ isNeutral (c) ]]
+                                    >-> Response ! extendMotor ! c 
+                                    >-> extendMotor [Command, Response] (extendMotor, c))
+ENDDEF
+-----------------------------------------------------------------------------------------------------------------
+PROCDEF rotationMotor [ Command; Response :: Int ] (state :: Int) ::=
+    LET next = (state+90)%360 IN
+            Command 
+        >-> Response ! next 
+        >-> rotationMotor [Command, Response]( next )
+    NI
+ENDDEF
+
+-----------------------------------------------------------------------------------------------------------------
+-- Provide items with incrementing value to the wheel
+PROCDEF itemProvider [ Info :: Item ] ( current :: Int) ::=
+    Info ! Item(current) >-> itemProvider [Info] (current +1)
+ENDDEF
+
+PROCDEF blockWheelUntilReleased [ ReleaseWheel ] (n :: Int) EXIT ::=
+    ReleaseWheel >-> (   [[ n == 1 ]] =>> EXIT
+                     ##  [[ n > 1 ]] =>> blockWheelUntilReleased [ ReleaseWheel ] ( n-1 )
+                     )
+ENDDEF
+
+PROCDEF grab [ GrabInfo :: ExtendMotor # Grabber
+             ; ItemInfo :: Item
+             ; Command :: ExtendMotor # StateExtendMotor
+             ; Response :: ExtendMotor # StateExtendMotor
+             ; ReleaseWheel
+             ; GrabResult :: MaybeItem
+             ] ( ) EXIT ::=
+    HIDE [ LocalResults :: Item # Bool ] IN
+            LocalResults ? d ? b | GrabResult ? md [[ IF b THEN md == Just(d) ELSE md == Nothing FI ]] >-> EXIT
+        |[ LocalResults ]|
+            ItemInfo ? d >-> LocalResults ! d ? b >-> EXIT
+        |[ LocalResults ]|
+            (   GrabInfo ? extendMotor ? grabber
+            >-> Command ! extendMotor ! Extend (grabber)
+            >-> Response ! extendMotor ! Extend (grabber)
+            >-> Command ! extendMotor ! TouchDown (grabber)
+            >-> Response ! extendMotor ! TouchDown (grabber)
+            >-> (
+                    (   LocalResults ? d ? b
+                    >-> EXIT
+                    )
+                |||
+                    (   Command ! extendMotor ! Neutral
+                    >-> Response ! extendMotor ! Neutral 
+                    >-> ReleaseWheel
+                    >-> EXIT
+                    )
+                )
+            )
+    NI
+ENDDEF
+
+PROCDEF check [ CheckInfo :: ExtendMotor # Grabber # MaybeItem; ReleaseWheel; CheckionResult :: MaybeItem # MaybeQuality ] ( ) EXIT ::=
+        CheckInfo ? extendMotor ? grabber ? maybeItem
+    >-> ReleaseWheel
+    >-> (   [[ isNothing (maybeItem) ]] =>> CheckionResult ! maybeItem ! Nothing >-> EXIT
+        ##  [[ isJust (maybeItem) ]] =>> CheckionResult ! maybeItem ? q [[ isJust(q) ]] >-> EXIT
+        )
+ENDDEF
+
+PROCDEF release [ ReleaseInfo :: ExtendMotor # Grabber # MaybeItem # MaybeQuality
+                ; Command :: ExtendMotor # StateExtendMotor
+                ; Response :: ExtendMotor # StateExtendMotor
+                ; ReleaseWheel 
+                ] ( ) EXIT ::=
+        ReleaseInfo ? extendMotor ? grabber ? maybeItem ? maybeQuality
+        -- Only release item with good quality
+    >-> (   [[ IF isJust(maybeQuality) THEN not (toBool (quality (maybeQuality))) ELSE True FI ]] =>> ReleaseWheel >-> EXIT
+        ##  [[ IF isJust(maybeQuality) THEN toBool (quality (maybeQuality)) ELSE False FI ]] =>> releaseItem [ Command, Response, ReleaseWheel ] (extendMotor, grabber)
+        )
+ENDDEF
+
+PROCDEF releaseItem [ Command :: ExtendMotor # StateExtendMotor
+                    ; Response :: ExtendMotor # StateExtendMotor
+                    ; ReleaseWheel ] 
+                    ( extendMotor :: ExtendMotor
+                    ; grabber :: Grabber ) 
+                    EXIT ::=
+        Command ! extendMotor ! Extend (grabber)
+    >-> Response ! extendMotor ! Extend (grabber)
+    >-> Command ! extendMotor ! TouchDown (grabber)
+    >-> Response ! extendMotor ! TouchDown (grabber)
+    >-> Command ! extendMotor ! Neutral
+    >-> Response ! extendMotor ! Neutral
+    >-> ReleaseWheel
+    >-> EXIT
+ENDDEF
+
+PROCDEF wheelControl [ CommandExtendMotor :: ExtendMotor # StateExtendMotor
+                     ; ResponseExtendMotor :: ExtendMotor # StateExtendMotor
+                     ; CommandRotationMotor
+                     ; ResponseRotationMotor :: Int
+                     ; ItemInfo :: Item
+                     ; GrabInfo :: ExtendMotor # Grabber 
+                     ; CheckInfo :: ExtendMotor # Grabber # MaybeItem
+                     ; ReleaseInfo :: ExtendMotor # Grabber # MaybeItem # MaybeQuality
+                     ; Index
+                     ; GrabResult :: MaybeItem
+                     ; CheckionResult :: MaybeItem # MaybeQuality
+                     ] () ::=
+    HIDE [ ReleaseWheel ] IN
+            (   grab [ GrabInfo, ItemInfo, CommandExtendMotor, ResponseExtendMotor, ReleaseWheel, GrabResult ] ()
+            ||| check [ CheckInfo, ReleaseWheel, CheckionResult ]()
+            ||| release [ ReleaseInfo, CommandExtendMotor, ResponseExtendMotor, ReleaseWheel ]()
+            )
+        |[ ReleaseWheel ]|
+            (   blockWheelUntilReleased [ ReleaseWheel ] (3)
+            >>> (   Index >-> EXIT
+                ||| CommandRotationMotor >-> ResponseRotationMotor ?x >-> EXIT
+                )
+            >>> wheelControl [ CommandExtendMotor, ResponseExtendMotor, CommandRotationMotor, ResponseRotationMotor
+                             , ItemInfo, GrabInfo, CheckInfo, ReleaseInfo
+                             , Index
+                             , GrabResult, CheckionResult]()
+            )
+    NI
+ENDDEF
+
+PROCDEF stateDatabase [ NorthInfo :: ExtendMotor # Grabber # MaybeItem
+                      ; EastInfo  :: ExtendMotor # Grabber
+                      ; SouthInfo :: ExtendMotor # Grabber # MaybeItem # MaybeQuality
+                      ; Index
+                      ; ItemInfo :: MaybeItem
+                      ; QualityInfo :: MaybeItem # MaybeQuality
+                      ] () ::=
+    HIDE [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor :: ExtendMotor
+         ; NorthGrabber, EastGrabber, SouthGrabber :: Grabber
+         ; NorthItem :: MaybeItem
+         ; SouthQuality :: MaybeItem # MaybeQuality 
+         ] IN
+            (
+                    extendMotorInfo [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor, Index ] (ExtendMotor(1), ExtendMotor(2), ExtendMotor(1), ExtendMotor(2)) -- move to params stateDatabase???
+                |[ Index ]| 
+                    grabberInfo [ NorthGrabber, EastGrabber, SouthGrabber, Index ] (Grabber(1), Grabber(1), Grabber(2), Grabber(2))
+                |||
+                    itemList [ ItemInfo, NorthItem ] (Cstr(Nothing, Nil))
+                |||
+                    qualityList [ QualityInfo, SouthQuality ] ( Cstr(Pair(Nothing,Nothing)
+                                                              , Cstr(Pair(Nothing,Nothing)
+                                                              , Cstr(Pair(Nothing,Nothing)
+                                                              , Nil)))
+                                                              )
+            )
+        |[ NorthExtendMotor, EastExtendMotor, SouthExtendMotor
+         , NorthGrabber, EastGrabber, SouthGrabber
+         , NorthItem
+         , SouthQuality 
+         ]|
+            combineInfo [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor
+                        , NorthGrabber, EastGrabber, SouthGrabber
+                        , NorthItem
+                        , SouthQuality
+                        , NorthInfo
+                        , EastInfo
+                        , SouthInfo
+                        ]()
+    NI
+ENDDEF
+
+PROCDEF combineInfo [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor :: ExtendMotor
+                    ; NorthGrabber, EastGrabber, SouthGrabber :: Grabber
+                    ; NorthItem :: MaybeItem
+                    ; SouthQuality :: MaybeItem # MaybeQuality 
+                    ; NorthInfo :: ExtendMotor # Grabber # MaybeItem
+                    ; EastInfo  :: ExtendMotor # Grabber
+                    ; SouthInfo :: ExtendMotor # Grabber # MaybeItem # MaybeQuality
+                    ] () ::=
+        (       NorthInfo ? extendMotor ? bh ? maybeItem | NorthExtendMotor ? localExtendMotor | NorthGrabber ? localBh | NorthItem ? localMaybeItem 
+                                                   [[ (extendMotor == localExtendMotor)  /\ (bh == localBh) /\ (maybeItem == localMaybeItem) ]]
+            >-> EXIT
+        |||     EastInfo ? extendMotor ? bh | EastExtendMotor ? localExtendMotor | EastGrabber ? localBh
+                                                   [[ (extendMotor == localExtendMotor)  /\ (bh == localBh) ]]
+            >-> EXIT
+        |||     SouthInfo ? extendMotor ? bh ? maybeItem ? maybeQuality | SouthExtendMotor ? localExtendMotor | SouthGrabber ? localBh | SouthQuality ? localMaybeItem ? localMaybeQuality
+                                                   [[ (extendMotor == localExtendMotor)  /\ (bh == localBh) /\ (maybeItem == localMaybeItem) /\ (maybeQuality == localMaybeQuality) ]]
+            >-> EXIT
+        ) 
+    >>> combineInfo [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor
+                    , NorthGrabber, EastGrabber, SouthGrabber
+                    , NorthItem
+                    , SouthQuality
+                    , NorthInfo
+                    , EastInfo
+                    , SouthInfo
+                    ]()
+ENDDEF
+
+PROCDEF extendMotorInfo [ NorthInfo, EastInfo, SouthInfo :: ExtendMotor; Index ] ( north, east, south, west :: ExtendMotor) ::=
+    (   NorthInfo ! north >-> EXIT
+    ||| EastInfo ! east >-> EXIT
+    ||| SouthInfo ! south >-> EXIT
+    )
+    >>> Index
+    >-> extendMotorInfo [ NorthInfo, EastInfo, SouthInfo, Index ] ( east, south, west, north ) -- CCW
+ENDDEF
+
+PROCDEF grabberInfo [ NorthInfo, EastInfo, SouthInfo :: Grabber; Index ] ( north, east, south, west :: Grabber) ::=
+    (   NorthInfo ! north >-> EXIT
+    ||| EastInfo ! east >-> EXIT
+    ||| SouthInfo ! south >-> EXIT
+    )
+    >>> Index
+    >-> grabberInfo [ NorthInfo, EastInfo, SouthInfo, Index ] ( east, south, west, north) -- CCW
+ENDDEF
+
+PROCDEF itemList [ Add, Get :: MaybeItem ] (l :: ListMaybeItem) ::=
+        Add ? md >-> itemList [Add,Get] (add(md,l))
+    ##
+        [[isCstr(l)]] =>> Get ! head(l) >-> itemList [Add,Get] (tail(l))
+ENDDEF
+
+PROCDEF qualityList [ Add, Get :: MaybeItem # MaybeQuality ] (l :: ListPair) ::=
+        Add ? d ? q >-> qualityList [Add,Get] (add(Pair(d,q),l))
+    ##
+        [[isCstr(l)]] =>> Get ! maybeItem(head(l)) ! maybeQuality(head(l)) >-> qualityList [Add,Get] (tail(l))
+ENDDEF
+
+PROCDEF wheel [ CommandExtendMotor, ResponseExtendMotor :: ExtendMotor # StateExtendMotor
+              ; CommandRotationMotor
+              ; ResponseRotationMotor :: Int
+              ; ItemInfo :: Item
+              ; GrabResult :: MaybeItem
+              ; CheckResult :: MaybeItem # MaybeQuality
+              ; Index
+              ; CheckInfo :: ExtendMotor # Grabber # MaybeItem
+              ; GrabInfo  :: ExtendMotor # Grabber
+              ; ReleaseInfo :: ExtendMotor # Grabber # MaybeItem # MaybeQuality
+              ] () ::=
+            (       extendMotor [CommandExtendMotor, ResponseExtendMotor] (ExtendMotor(1), Neutral)
+                ||| extendMotor [CommandExtendMotor, ResponseExtendMotor] (ExtendMotor(2), Neutral)
+                ||| rotationMotor [CommandRotationMotor, ResponseRotationMotor](0)
+            )
+        |[ CommandExtendMotor, ResponseExtendMotor, CommandRotationMotor, ResponseRotationMotor ]|
+                    wheelControl [ CommandExtendMotor, ResponseExtendMotor, CommandRotationMotor, ResponseRotationMotor
+                                 , ItemInfo, GrabInfo, CheckInfo, ReleaseInfo
+                                 , Index
+                                 , GrabResult, CheckResult]()
+                |[ CheckInfo, GrabInfo, ReleaseInfo, Index, GrabResult, CheckResult ]|
+                    stateDatabase [ CheckInfo, GrabInfo, ReleaseInfo, Index, GrabResult, CheckResult ] ()
+ENDDEF
+
+CHANDEF Channels ::= CommandExtendMotor, ResponseExtendMotor :: ExtendMotor # StateExtendMotor
+                   ; CommandRotationMotor
+                   ; ResponseRotationMotor :: Int
+                   ; ItemInfo :: Item
+                   ; GrabResult :: MaybeItem
+                   ; CheckResult :: MaybeItem # MaybeQuality
+                   ; Index
+                   ; CheckInfo :: ExtendMotor # Grabber # MaybeItem
+                   ; GrabInfo  :: ExtendMotor # Grabber
+                   ; ReleaseInfo :: ExtendMotor # Grabber # MaybeItem # MaybeQuality
+ENDDEF
+
+MODELDEF Model ::=
+    CHAN IN  ResponseExtendMotor
+           , ResponseRotationMotor
+           , ItemInfo
+           , GrabResult
+           , CheckResult
+    CHAN OUT CommandExtendMotor
+           , CommandRotationMotor
+           , Index
+           , CheckInfo
+           , GrabInfo
+           , ReleaseInfo
+    BEHAVIOUR 
+        wheel [ CommandExtendMotor, ResponseExtendMotor, CommandRotationMotor, ResponseRotationMotor, ItemInfo, GrabResult, CheckResult, Index, CheckInfo, GrabInfo, ReleaseInfo ]()
+ENDDEF

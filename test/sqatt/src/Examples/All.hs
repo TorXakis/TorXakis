@@ -23,6 +23,7 @@ import qualified Examples.Point             as Point
 import qualified Examples.Queue             as Queue
 import qualified Examples.ReadWriteConflict as ReadWriteConflict
 import qualified Examples.StimulusResponse  as StimulusResponse
+import qualified Examples.Wheel             as Wheel
 import           Sqatt
 
 allExamples :: [TxsExampleSet]
@@ -38,4 +39,5 @@ allExamples = [ Adder.exampleSet
               , ReadWriteConflict.exampleSet
               , Queue.exampleSet
               , StimulusResponse.exampleSet
+              , Wheel.exampleSet
               ]
