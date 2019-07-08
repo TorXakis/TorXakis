@@ -11,8 +11,6 @@ import java.util.*;
 public class Copyright {
     private static boolean solve = false;
 
-    private static String[] copyright = new String[0];
-
     public static void main(String[] args) {
         if (args.length == 0) {
             System.err.println("Usage: copyright <path>");
@@ -41,7 +39,7 @@ public class Copyright {
             System.err.println("Can't find copyright file at " + copyrightFile.toString());
             System.exit(-1);
         }
-
+        String[] copyright = new String[0];
         try {
             copyright = Files.readAllLines(copyrightFile.toPath()).toArray(copyright);
             System.out.println("Searching for Copyright notice:\n" + String.join("\n", copyright) + "\n");
@@ -52,17 +50,17 @@ public class Copyright {
         }
 
         Copyright c = new Copyright();
-        c.addExtensionCommentedCopyright(".hs", commentSectionBased("{-", "-}", copyright));
-        c.addExtensionCommentedCopyright(".x", commentLineBased("--", copyright));
-        c.addExtensionCommentedCopyright(".y", commentSectionBased("{-", "-}", copyright));
-        c.addExtensionCommentedCopyright(".txs", commentSectionBased("{-", "-}", copyright));
-        c.addExtensionCommentedCopyright(".java", commentSectionBased("/*", "*/", copyright));
-        c.addExtensionCommentedCopyright("Makefile", commentLineBased("#", copyright));
-        c.addExtensionCommentedCopyright(".yaml", commentLineBased("#", copyright));
-        c.addExtensionCommentedCopyright(".sh", commentLineBased("#", copyright));
-        c.addExtensionCommentedCopyright(".yml", commentLineBased("#", copyright));
-        c.addExtensionCommentedCopyright(".bat", commentLineBased("@REM", copyright));
-        c.addExtensionCommentedCopyright(".txt", copyright);
+        c.addExtensionCopyrightHandler(".hs",      new CopyrightInCommentSection("{-", "-}", copyright));
+        c.addExtensionCopyrightHandler(".x",       new CopyrightInCommentLines  ("--", copyright));
+        c.addExtensionCopyrightHandler(".y",       new CopyrightInCommentSection("{-", "-}", copyright));
+        c.addExtensionCopyrightHandler(".txs",     new CopyrightInCommentSection("{-", "-}", copyright));
+        c.addExtensionCopyrightHandler(".java",    new CopyrightInCommentSection("/*", "*/", copyright));
+        c.addExtensionCopyrightHandler("Makefile", new CopyrightInCommentLines  ("#", copyright));
+        c.addExtensionCopyrightHandler(".yaml",    new CopyrightInCommentLines  ("#", copyright));
+        c.addExtensionCopyrightHandler(".sh",      new CopyrightInCommentLines  (s -> s.startsWith("#!"), "#", copyright));
+        c.addExtensionCopyrightHandler(".yml",     new CopyrightInCommentLines  ("#", copyright));
+        c.addExtensionCopyrightHandler(".bat",     new CopyrightInCommentLines  ("@REM", copyright));
+        c.addExtensionCopyrightHandler(".txt",     new CopyrightInText          (copyright));
 
         try {
             c.walkFiles(path, ignorePaths);
@@ -83,28 +81,12 @@ public class Copyright {
         }
     }
 
-    private void addExtensionCommentedCopyright(String extension, String[] commentedCopyright) {
-//		System.out.println("Notice for '" + extension + "' is:\n" + String.join("\n", commentedCopyright));
-        map.put(extension, commentedCopyright);
+    private void addExtensionCopyrightHandler(String extension, CopyrightHandler handler) {
+        map.put(extension, handler);
     }
 
-    private static String[] commentLineBased(final String comment, final String[] txtLines) {
-        List<String> retList = new ArrayList<>();
-        for (String line : txtLines) {
-            retList.add(comment + " " + line);
-        }
-        return retList.toArray(new String[0]);
-    }
 
-    private static String[] commentSectionBased(final String open, final String close, final String[] txt) {
-        List<String> retList = new ArrayList<>();
-        retList.add(open);
-        Collections.addAll(retList, txt);
-        retList.add(close);
-        return retList.toArray(new String[0]);
-    }
-
-    private Map<String, String[]> map = new HashMap<>();
+    private Map<String, CopyrightHandler> map = new HashMap<>();
     private int count = 0;
 
     private int getCount() {
@@ -133,30 +115,15 @@ public class Copyright {
                     if (!entry.endsWith("license.txt")) {
                         for (String key : map.keySet()) {
                             if (entry.toString().endsWith(key)) {
+//                              System.out.println(entry.toString() + " analyzing...");
                                 files += 1;
 
-                                String[] commentedCopyright = map.get(key);
+                                CopyrightHandler handler = map.get(key);
 
-                                List<String> lines = Files.readAllLines(entry);
-                                String[] actual = lines.toArray(new String[0]);
-
-                                if (actual.length < commentedCopyright.length) {
-                                    handledErroneousFile(entry, commentedCopyright);
-                                } else {
-                                    int i = 0;
-                                    int j = commentedCopyright.length;
-                                    while (i != j) {
-//										System.out.println("Expected[i]" + commentedCopyright[i]);
-//										System.out.println("Actual[i]" + actual[i]);
-                                        if (commentedCopyright[i].equals(actual[i])) {
-                                            i = i + 1;
-                                        } else {
-                                            j = i;
-                                        }
-                                    }
-                                    if (i != commentedCopyright.length) {
-                                        handledErroneousFile(entry, commentedCopyright);
-                                    }
+                                if (!handler.checkCopyright(entry))
+                                {
+                                    System.out.println(entry.toString());
+                                    count ++;
                                 }
                             }
                         }
@@ -181,8 +148,9 @@ public class Copyright {
             List<String> allLinesList = Files.readAllLines(entry);
             String[] allLines = allLinesList.toArray(new String[0]);
             if (allLines.length >= commentedCopyright.length
-                    && (allLines[0].contains(copyright[0])
-                    || allLines[1].contains(copyright[0]))) {
+//                    && (allLines[0].contains(copyright[0])
+//                    || allLines[1].contains(copyright[0]))
+                ) {
                 updateNotice(entry, commentedCopyright, allLines);
             } else {
                 addNotice(entry, commentedCopyright);
@@ -208,5 +176,84 @@ public class Copyright {
         Files.delete(entry);
         Files.createFile(entry);
         Files.write(entry, fileContent.getBytes(), StandardOpenOption.APPEND);
+    }
+}
+
+interface CopyrightHandler {
+    public boolean checkCopyright (Path p) throws IOException;
+    //public boolean deleteCopyright (Path p) throws IOException;
+    //public boolean updateCopyright (Path p, String[] newCopyright) throws IOException;
+}
+
+interface SkipLine {
+    public boolean skipLine (String line);
+}
+
+abstract class CopyrightByLines implements CopyrightHandler {
+    protected String[] copyrightLines;
+    protected SkipLine skipLine = l -> { return false; };
+
+    public boolean checkCopyright (Path p) throws IOException
+    {
+        List<String> lines = Files.readAllLines(p);
+
+        String[] actual = lines.toArray(new String[0]);
+
+        int l = 0;
+        while ( (l < actual.length) && skipLine.skipLine(actual[l]) )
+        {
+            l++;
+        }
+//      System.out.println("Skipped " + l + " lines");
+        if ( (actual.length - l) < copyrightLines.length) {
+            return false;
+        } else {
+            int i = 0;
+            int j = copyrightLines.length;
+            while (i != j) {
+//              System.out.println("Expected["+ i + "] " + copyrightLines[i]);
+//              System.out.println("Actual  ["+ i + "] " + actual[l+i]);
+                if (copyrightLines[i].equals(actual[l+i])) {
+                    i = i + 1;
+                } else {
+                    j = i;
+                }
+            }
+            return (i == copyrightLines.length);
+        }
+    }
+}
+
+class CopyrightInText extends CopyrightByLines {
+    public CopyrightInText (final String[] txt) {
+        copyrightLines = txt;
+    }
+}
+
+class CopyrightInCommentSection extends CopyrightByLines {
+    public CopyrightInCommentSection (final String open, final String close, final String[] txtLines) {
+        List<String> retList = new ArrayList<>();
+        retList.add(open);
+        Collections.addAll(retList, txtLines);
+        retList.add(close);
+        copyrightLines = retList.toArray(new String[0]);
+    }
+}
+
+class CopyrightInCommentLines extends CopyrightByLines {
+    public CopyrightInCommentLines (final String comment, final String[] txtLines) {
+        List<String> retList = new ArrayList<>();
+        for (String line : txtLines) {
+            retList.add(comment + " " + line);
+        }
+        copyrightLines = retList.toArray(new String[0]);
+    }
+    public CopyrightInCommentLines (final SkipLine skipLine, final String comment, final String[] txtLines) {
+        this.skipLine = skipLine;
+        List<String> retList = new ArrayList<>();
+        for (String line : txtLines) {
+            retList.add(comment + " " + line);
+        }
+        copyrightLines = retList.toArray(new String[0]);
     }
 }
