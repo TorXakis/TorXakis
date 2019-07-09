@@ -7,8 +7,7 @@ IF [%1]==[] GOTO InvalidNumberArguments		REM TARGET_DIR
 
 set TARGET_DIR=%1
 
-javac %~dp0/Copyright.java
-java -cp %~dp0 Copyright %TARGET_DIR% 1
+javac %~dp0/Copyright.java && java -cp %~dp0 Copyright %TARGET_DIR% 1
 GOTO END
 
 :InvalidNumberArguments
