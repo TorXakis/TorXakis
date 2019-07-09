@@ -56,9 +56,9 @@ import           TorXakis.Parser.Data               (ParsedDefs, adts)
 data TxsCompiler = TxsCompiler
 
 instance TorXakis.Compiler.Compiler TxsCompiler ContextSort where
-    compile _ s = case compileString s of
-                    Left err  -> Left $ TorXakis.Compiler.Error err
-                    Right ctx -> Right ctx
+    compile _ _ s = case compileString s of     -- not incremental yet!
+                        Left err  -> Left $ TorXakis.Compiler.Error err
+                        Right ctx -> Right ctx
 
 -- | Compile a file into a TorXakis model.
 --
@@ -93,7 +93,7 @@ compileParsedDefs parsedDefs = do
     -- Generate a map from 'Text' to 'Sort' using the ADT's that are declared
     -- in 'parsedDefs', as well as the predefined Sorts ("Bool", "Int", "Regex",
     -- "String").
-    ss <- getSortDictionary parsedDefs
+    ss <- getSortDictionary parsedDefs                                      -- when parsing incrementally, should this always be done?
 
     adtsToContext ss (parsedDefs ^. adts) TorXakis.ContextSort.empty        -- when parsing incrementally empty must be changed to current context
 

@@ -23,8 +23,19 @@ module TorXakis.Compiler
 where
 
 import           TorXakis.Error
-import           TorXakis.SortContext
 
-class SortContext ctx => Compiler c ctx where
-    compile :: c -> String -> Either Error ctx
-    -- compileFile :: c -> FilePath -> IO (Either Error ctx)
+-- | compiler class
+class Compiler c ctx where
+    compile :: c -> ctx -> String -> Either Error ctx
+
+{- discuss with Jan: how to handle the sub parsers 
+   * they should support ValExpr Context (can be derived from FuncContext by ContextValExpr.fromFuncContext)
+   * Variables are not automatically added to the provided context
+   * Final usage compileValExpr + subst (VarsThatHaveAValue)
+   
+    -- compileVarDecls (define variables and optionally assign values to them)
+    compileVarDecls :: ValExprContext ctx => c -> ctx -> String -> Either Error VarDecls
+    where VarDecls is something like:   combination of Map Name Sort and Map Name (Maybe ValExpr)
+    
+    -- compileValExpr
+    compileValExpr :: ValExprContext ctx => c -> ctx -> String -> Either Error ValExpr
