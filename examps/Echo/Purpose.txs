@@ -1,0 +1,18 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+PROCDEF alternateIncrement [ In, Out :: Int ] ( val :: Int ) HIT ::=
+        In ? v [[ IF val > 0 THEN v <= -val ELSE v >= -val FI ]]
+    >-> Out ! v
+    >-> alternateIncrement [ In, Out ] ( v )
+ENDDEF
+
+PURPDEF AlternateIncrement ::=
+    CHAN IN    Input
+    CHAN OUT   Output
+
+    GOAL alternateIncrement ::= alternateIncrement [Input,Output] (0)
+ENDDEF
