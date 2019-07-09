@@ -9,7 +9,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TypeFamilies      #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.Defs.TxsDefs
+-- Module      :  TorXakis.TxsCompiler.Defs.TxsDefs
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -19,7 +19,7 @@ See LICENSE at root directory of this repository.
 --
 -- Compilation functions related to 'TorXakis' definitions.
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.Defs.TxsDefs
+module TorXakis.TxsCompiler.Defs.TxsDefs
     ( adtsToContext
 --    , cnectDeclsToTxsDefs
 --    , mapperDeclsToTxsDefs
@@ -34,14 +34,14 @@ import qualified Data.Text                          as T
 
 import           TorXakis.SortContext               (SortContext, addADTs)
 import           TorXakis.Sort                      (Sort)
-import           TorXakis.Compiler.Data             (CompilerM)
-import           TorXakis.Compiler.Error            (Error (Error), ErrorType (InvalidExpression),
+import           TorXakis.TxsCompiler.Data             (CompilerM)
+import           TorXakis.TxsCompiler.Error            (Error (Error), ErrorType (InvalidExpression),
                                                      ErrorLoc (NoErrorLoc) )
-import           TorXakis.Compiler.MapsTo           (MapsTo)
-import           TorXakis.Compiler.ValExpr.ADTDef   (compileToADTDefs)
---import           TorXakis.Compiler.ValExpr.SortId   (exitSort, inferVarTypes)
---import           TorXakis.Compiler.ValExpr.ValExpr  (expDeclToValExpr)
---import           TorXakis.Compiler.ValExpr.VarId    (mkVarIds)
+import           TorXakis.TxsCompiler.MapsTo           (MapsTo)
+import           TorXakis.TxsCompiler.ValExpr.ADTDef   (compileToADTDefs)
+--import           TorXakis.TxsCompiler.ValExpr.SortId   (exitSort, inferVarTypes)
+--import           TorXakis.TxsCompiler.ValExpr.ValExpr  (expDeclToValExpr)
+--import           TorXakis.TxsCompiler.ValExpr.VarId    (mkVarIds)
 import           TorXakis.Parser.Data               (ADTDecl)
 
 -- | Compile a list of ADT declarations, and add to @TorXakis.SortContext@.

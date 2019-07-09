@@ -17,7 +17,7 @@ See LICENSE at root directory of this repository.
 -- We don't want a warning for the line '[se0s, se1s, se2s] <- traverse (inferExpTypes mm) [e0, e1, e2]'
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.ValExpr.SortId
+-- Module      :  TorXakis.TxsCompiler.ValExpr.SortId
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -27,7 +27,7 @@ See LICENSE at root directory of this repository.
 --
 -- Compilation functions related to @Sort@ values.
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.ValExpr.Sort
+module TorXakis.TxsCompiler.ValExpr.Sort
     ( -- * Sort lookups
 --      sortOfVarDecl
 --    , sortOfVarDeclM
@@ -65,19 +65,19 @@ import           Prelude                  hiding (lookup)
 --import           TorXakis.FuncSignature   (FuncSignature (args, returnSort))
 import           TorXakis.Sort            (Sort (SortBool, SortInt, SortRegex, SortString))
 
-import           TorXakis.Compiler.Data   (CompilerM)
-import           TorXakis.Compiler.Error  (Error (Error--, Errors
+import           TorXakis.TxsCompiler.Data   (CompilerM)
+import           TorXakis.TxsCompiler.Error  (Error (Error--, Errors
                                                  ),
                                            ErrorLoc (NoErrorLoc),
                                            ErrorType (TypeMismatch),
 --                                           getErrorLoc,
                                            _errorLoc,
                                            _errorMsg, _errorType)
-import           TorXakis.Compiler.Maps   (--findFuncDecl
+import           TorXakis.TxsCompiler.Maps   (--findFuncDecl
                                            --, findFuncReturnSorts, determineF
                                            --, findSort, getUniqueElement,
                                            (.@!!))
-import           TorXakis.Compiler.MapsTo (MapsTo
+import           TorXakis.TxsCompiler.MapsTo (MapsTo
                                            --, innerMap, lookup,
                                            --values, (<.++>), (<.+>)
                                            )

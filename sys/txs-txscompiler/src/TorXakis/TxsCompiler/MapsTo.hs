@@ -17,7 +17,7 @@ See LICENSE at root directory of this repository.
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.MapsTo
+-- Module      :  TorXakis.TxsCompiler.MapsTo
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -30,7 +30,7 @@ See LICENSE at root directory of this repository.
 -- A constraint of the form 'MapsTo k v mm' denotes that 'mm' contains a map
 -- from keys of type 'k' to values of type 't'.
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.MapsTo
+module TorXakis.TxsCompiler.MapsTo
     ( -- * Predicates on maps
       MapsTo
     , In
@@ -65,8 +65,8 @@ import           GHC.TypeLits            (ErrorMessage ((:<>:), ShowType, Text),
                                           TypeError)
 import           Prelude                 hiding (lookup)
 
-import           TorXakis.Compiler.Data  (CompilerM)
-import           TorXakis.Compiler.Error (Entity (Entity), Error (Error),
+import           TorXakis.TxsCompiler.Data  (CompilerM)
+import           TorXakis.TxsCompiler.Error (Entity (Entity), Error (Error),
                                           ErrorLoc (NoErrorLoc),
                                           ErrorType (Undefined), _errorLoc,
                                           _errorMsg, _errorType)

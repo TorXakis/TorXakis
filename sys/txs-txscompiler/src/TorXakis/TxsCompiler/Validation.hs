@@ -6,7 +6,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.Validation
+-- Module      :  TorXakis.TxsCompiler.Validation
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -17,7 +17,7 @@ See LICENSE at root directory of this repository.
 -- Functions to validate 'TorXakis' models
 --------------------------------------------------------------------------------
 {-# LANGUAGE ScopedTypeVariables #-}
-module TorXakis.Compiler.Validation
+module TorXakis.TxsCompiler.Validation
     ( checkUnique )
 where
 
@@ -27,8 +27,8 @@ import           Data.Semigroup            ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 
-import           TorXakis.Compiler.Data    (CompilerM)
-import           TorXakis.Compiler.Error
+import           TorXakis.TxsCompiler.Data    (CompilerM)
+import           TorXakis.TxsCompiler.Error
 
 -- | Template to fill in error values.
 type ErrorTemplate = (ErrorLoc, Entity, Text)

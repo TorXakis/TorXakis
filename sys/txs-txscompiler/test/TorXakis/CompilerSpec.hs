@@ -6,7 +6,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.CompilerSpec
+-- Module      :  TorXakis.TxsCompilerSpec
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -16,7 +16,7 @@ See LICENSE at root directory of this repository.
 --
 -- Tests for the 'TorXakis' compiler.
 --------------------------------------------------------------------------------
-module TorXakis.CompilerSpec
+module TorXakis.TxsCompilerSpec
     (spec)
 where
 
@@ -38,7 +38,7 @@ import           Test.QuickCheck.Monadic
 --import           Text.RawString.QQ       (r)
 
 import           Common                  (onAllFilesIn)
-import           TorXakis.Compiler       (compileFile, 
+import           TorXakis.TxsCompiler       (compileFile, 
                                           compileString
                                           )
 import           TorXakis.Language
@@ -47,7 +47,7 @@ import           TorXakis.SortContext
 import           TorXakis.SortGenContext
 import           TorXakis.OptionsGen
 
---import           TorXakis.Compiler.Error
+--import           TorXakis.TxsCompiler.Error
 
 spec :: Spec
 spec = do

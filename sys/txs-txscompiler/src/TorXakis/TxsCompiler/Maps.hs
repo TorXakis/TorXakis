@@ -13,7 +13,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TypeOperators         #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.Maps
+-- Module      :  TorXakis.TxsCompiler.Maps
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -24,7 +24,7 @@ See LICENSE at root directory of this repository.
 -- Compiler specific maps and operations on them.
 --------------------------------------------------------------------------------
 
-module TorXakis.Compiler.Maps
+module TorXakis.TxsCompiler.Maps
     ( -- * Map lookups
       (.@)
     , (.@!!)
@@ -59,14 +59,14 @@ import           Prelude                  hiding (lookup)
 --import           TorXakis.FuncSignature   (FuncSignature(args, returnSort))
 import           TorXakis.Sort            (Sort)
 
-import           TorXakis.Compiler.Data   (CompilerM)
-import           TorXakis.Compiler.Error  (Entity (Entity, Function),
+import           TorXakis.TxsCompiler.Data   (CompilerM)
+import           TorXakis.TxsCompiler.Error  (Entity (Entity, Function),
                                            Error (Error), ErrorLoc (NoErrorLoc),
                                            ErrorType (MultipleDefinitions, Undefined),
                                            HasErrorLoc, errorLoc, errorMsg,
                                            getErrorLoc, _errorLoc, _errorMsg,
                                            _errorType)
-import           TorXakis.Compiler.MapsTo ( MapsTo
+import           TorXakis.TxsCompiler.MapsTo ( MapsTo
                                           --, innerMap
                                            , lookup, lookupM)
 import           TorXakis.Parser.Data     (FuncDeclE,

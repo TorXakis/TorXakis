@@ -6,7 +6,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.ValExpr.ADTDef
+-- Module      :  TorXakis.TxsCompiler.ValExpr.ADTDef
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -16,7 +16,7 @@ See LICENSE at root directory of this repository.
 --
 -- Compilation functions related to 'TorXakis' Adt definitions.
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.ValExpr.ADTDef
+module TorXakis.TxsCompiler.ValExpr.ADTDef
     ( compileToADTDefs
     , compileToSorts)
 where
@@ -30,9 +30,9 @@ import           TorXakis.Sort                     (Sort (SortADT),
                                                     ADTDef, mkADTDef,
                                                     ConstructorDef, mkConstructorDef,
                                                     FieldDef (FieldDef))
-import           TorXakis.Compiler.Data            (CompilerM)
-import           TorXakis.Compiler.Error           (Error (..), ErrorType (..), getErrorLoc)
-import           TorXakis.Compiler.MapsTo          (MapsTo, lookupM)
+import           TorXakis.TxsCompiler.Data            (CompilerM)
+import           TorXakis.TxsCompiler.Error           (Error (..), ErrorType (..), getErrorLoc)
+import           TorXakis.TxsCompiler.MapsTo          (MapsTo, lookupM)
 import           TorXakis.Parser.Data              (ADTDecl, adtName,
                                                     CstrDecl, cstrName,
                                                     FieldDecl, fieldName, fieldSort,

@@ -27,7 +27,7 @@ import           Test.Hspec           (Spec, describe, it, parallel,
                                        shouldSatisfy, shouldBe)
 
 import           Common                  (onAllFilesIn)
-import           TorXakis.Compiler.Error (errorLoc, ErrorLoc(ErrorLoc))
+import           TorXakis.TxsCompiler.Error (errorLoc, ErrorLoc(ErrorLoc))
 import           TorXakis.Parser         (parseFile)
 
 

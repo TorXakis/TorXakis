@@ -39,7 +39,7 @@ import           Text.Parsec                (ParseError, eof, errorPos, many,
                                              runParserT, sourceColumn,
                                              sourceLine, try, (<|>))
 
-import           TorXakis.Compiler.Error    (Error (Error), ErrorLoc (ErrorLoc),
+import           TorXakis.TxsCompiler.Error    (Error (Error), ErrorLoc (ErrorLoc),
                                              ErrorType (ParseError),
                                              errorColumn, errorLine, _errorLoc,
                                              _errorMsg, _errorType)

@@ -10,7 +10,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TypeSynonymInstances #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.ValExpr.ExpDecl
+-- Module      :  TorXakis.TxsCompiler.ValExpr.ExpDecl
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -20,7 +20,7 @@ See LICENSE at root directory of this repository.
 --
 -- Compilation functions related to expression declarations.
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.ValExpr.ExpDecl
+module TorXakis.TxsCompiler.ValExpr.ExpDecl
     ( HasVarReferences
     , mapRefToDecls
     )
@@ -35,11 +35,11 @@ import           Data.Semigroup               ((<>))
 import           Data.Text                    (Text)
 import           GHC.Exts                     (toList)
 
-import           TorXakis.Compiler.Data       (CompilerM)
-import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.Maps       ((.@!!))
-import           TorXakis.Compiler.MapsTo     (MapsTo, (<.+>))
-import           TorXakis.Compiler.Validation
+import           TorXakis.TxsCompiler.Data       (CompilerM)
+import           TorXakis.TxsCompiler.Error
+import           TorXakis.TxsCompiler.Maps       ((.@!!))
+import           TorXakis.TxsCompiler.MapsTo     (MapsTo, (<.+>))
+import           TorXakis.TxsCompiler.Validation
 import           TorXakis.Parser.Data         (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
                                                ChanOfferDecl (ExclD, QuestD),
                                                CnectDecl, CodecItem (CodecItem),

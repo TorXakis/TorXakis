@@ -11,7 +11,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TypeOperators              #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.Data
+-- Module      :  TorXakis.TxsCompiler.Data
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -22,7 +22,7 @@ See LICENSE at root directory of this repository.
 --  Data used for the 'TorXakis' compiler.
 --------------------------------------------------------------------------------
 {-# LANGUAGE ScopedTypeVariables #-}
-module TorXakis.Compiler.Data
+module TorXakis.TxsCompiler.Data
     ( CompilerM
     , runCompiler
     -- * State query and manipulation
@@ -41,7 +41,7 @@ import           Control.Monad.Except    (MonadError, catchError)
 import           Control.Monad.State     (MonadState, StateT, gets, put)
 import           Data.Either             (partitionEithers)
 
-import           TorXakis.Compiler.Error (Error)
+import           TorXakis.TxsCompiler.Error (Error)
 
 -- | State of the compiler.
 newtype St = St { nextId :: Int } deriving (Eq, Show)

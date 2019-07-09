@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.ValExpr.Constant
+-- Module      :  TorXakis.TxsCompiler.ValExpr.Constant
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -15,7 +15,7 @@ See LICENSE at root directory of this repository.
 --
 -- Compilation to 'TorXakis' @Constant@'s.
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.ValExpr.Constant
+module TorXakis.TxsCompiler.ValExpr.Constant
     (constToConstant)
 where
 

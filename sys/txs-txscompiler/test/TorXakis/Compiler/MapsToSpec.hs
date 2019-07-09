@@ -11,7 +11,7 @@ See LICENSE at root directory of this repository.
 
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.MapsToSpec
+-- Module      :  TorXakis.TxsCompiler.MapsToSpec
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -21,7 +21,7 @@ See LICENSE at root directory of this repository.
 --
 -- Tests for @MapsTo@
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.MapsToSpec
+module TorXakis.TxsCompiler.MapsToSpec
     (spec)
 where
 
@@ -29,9 +29,9 @@ import           Data.Map                 (Map)
 import           Prelude                  hiding (lookup)
 import           Test.Hspec               (Spec, it, shouldBe)
 
-import           TorXakis.Compiler.Error
+import           TorXakis.TxsCompiler.Error
 
-import           TorXakis.Compiler.MapsTo
+import           TorXakis.TxsCompiler.MapsTo
 
 data Fruit = Orange | Pear | Apple | Banana deriving (Show, Eq)
 data Vegetable = Cucumber | Carrot | Spinach deriving (Show, Eq)

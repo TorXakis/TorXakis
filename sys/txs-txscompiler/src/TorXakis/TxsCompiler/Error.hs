@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.Error
+-- Module      :  TorXakis.TxsCompiler.Error
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -17,7 +17,7 @@ See LICENSE at root directory of this repository.
 --
 -- Compiler error type and associated functions.
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.Error
+module TorXakis.TxsCompiler.Error
     ( -- * Error type and field accessors.
       Error (..)
       -- ** Lenses for error fields.

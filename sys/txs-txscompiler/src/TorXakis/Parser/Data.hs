@@ -243,7 +243,7 @@ import           Data.Set                (Set)
 import           Data.Text               (Text)
 import           GHC.Exts                (IsList, Item, fromList, toList)
 
-import           TorXakis.Compiler.Error
+import           TorXakis.TxsCompiler.Error
 
 -- | State of the parser.
 newtype St = St { nextId :: Int } deriving (Eq, Show)
