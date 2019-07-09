@@ -5,7 +5,7 @@
 build: off
 skip_tags: true
 
-version: pre-0.8.0.{build}.{branch}
+version: pre-0.9.0.{build}.{branch}
 # branches:
     # only:
     # - develop
@@ -13,9 +13,9 @@ version: pre-0.8.0.{build}.{branch}
 
 init:
 - ps: Write-Host Starting init at $(Get-Date)
-- ps: $env:Path += ";C:\Program Files\Git\mingw64\bin"
 - ps: $CACHE_DIR = "C:\TorXakis\.cache"
 - ps: $CACHE_DIR_REL = ".cache"
+- ps: $env:Path += ";C:\Program Files\Git\mingw64\bin"
 - ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;C:\Users\appveyor\AppData\Roaming\local\bin"
 - mkdir %LOCALAPPDATA%\Programs\stack
 - mkdir %LOCALAPPDATA%\Programs\stack\x86_64-windows
@@ -26,7 +26,7 @@ install:
 # obtain the stack executable
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\stack.exe")) {
-        curl -OutFile stack.zip http://www.stackage.org/stack/windows-i386 -Verbose
+        curl  -Verbose -OutFile stack.zip https://github.com/commercialhaskell/stack/releases/download/v2.1.1/stack-2.1.1-windows-x86_64.zip
         7z x $("-o" + $CACHE_DIR) stack.zip stack.exe
     } else {
         Write-Host "stack.exe found.";
@@ -35,7 +35,7 @@ install:
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\cvc4.exe")) {
         # obtain the cvc4 executable
-        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.6/cvc4-1.6-win64-opt.exe -Verbose
+        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.7/cvc4-1.7-win64-opt.exe -Verbose
     } else {
         Write-Host "cvc4.exe found.";
     }
@@ -43,7 +43,7 @@ install:
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\z3")) {
         # install z3
-        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-win.zip -Verbose
+        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.8.5/z3-4.8.5-x64-win.zip -Verbose
         mkdir $CACHE_DIR\z3
         7z x $("-o${CACHE_DIR}\z3\") z3.zip
         move ${CACHE_DIR}\z3\z3-*\* ${CACHE_DIR}\z3
