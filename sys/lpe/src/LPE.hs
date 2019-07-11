@@ -188,10 +188,13 @@ preGNFBExpr bexpr@(TxsDefs.view -> ProcInst procIdInst _ _) _choiceCnt _freeVars
 
 preGNFBExpr bexpr@(TxsDefs.view -> Choice{}) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
     -- choice at lower level not allowed
-    (procInst'@(TxsDefs.view -> ProcInst procId' _ _), procDefs'') <- preGNFBExprCreateProcDefWithUniqueness bexpr choiceCnt freeVarsInScope procId procDefs'
-    -- recursively translate the created ProcDef
-    procDefs''' <- preGNF procId' translatedProcDefs procDefs''
-    return (procInst', procDefs''')
+    (procInst', procDefs'') <- preGNFBExprCreateProcDefWithUniqueness bexpr choiceCnt freeVarsInScope procId procDefs'
+    case TxsDefs.view procInst' of
+        ProcInst procId' _ _    -> do
+                -- recursively translate the created ProcDef
+                procDefs''' <- preGNF procId' translatedProcDefs procDefs''
+                return (procInst', procDefs''')
+        _                       -> error "preGNFBExpr: unexpected internal lpe result"
 
 
 preGNFBExpr bexpr@(TxsDefs.view -> Parallel{}) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
@@ -411,38 +414,42 @@ gnfBExpr (TxsDefs.view -> ActionPref actOffer
                                                 (TxsDefs.view -> ProcInst procIdInst _ _))) choiceCnt procId gnfTodo translatedProcDefs procDefs' = do
 
     -- create new ProcDef of bexpr'
-    (procInst'@(TxsDefs.view -> ProcInst procId' _ _ ), procDefs'') <- gnfBExprCreateProcDefWithUniqueness bexpr' choiceCnt (extractVars actOffer) procId procDefs'
-
-    -- if the ProcId that is being called is still in GNF translation (current GNF translation or up the tree)
-    --  then postpone the GNF translation of the newly generated ProcDef
-    --      until the ProcId being called has been translated to GNF 
-    --      (the newly created ProcDef is of the form [[condition]] -> P() and thus for a GNF translation 
-    --          we first need to unfold P() for which we need P() to be translated to GNF already.
-    if procIdInst `elem` lGNFinTranslation translatedProcDefs
-        then do -- remember the newly created ProcId for later GNF translation
-                let procIds = fromMaybe [] (Map.lookup procIdInst gnfTodo)         -- look up the ProcIds already collected
-                    gnfTodo' = Map.insert procIdInst (procId':procIds) gnfTodo
-                return ([actionPref actOffer procInst'], procDefs'', gnfTodo')                                                    
-        else do -- recursively translate the called ProcDef
-                -- reset GNF loop detection: we made progress, thus we are breaking a possible chain of direct calls (ProcInsts)
-                let translatedProcDefs' = translatedProcDefs { lGNFdirectcalls = []}
-                (procDefs''', gnfTodo') <- gnf procIdInst gnfTodo translatedProcDefs' procDefs''
-                return ([actionPref actOffer procInst'], procDefs''', gnfTodo')
-
+    (procInst', procDefs'') <- gnfBExprCreateProcDefWithUniqueness bexpr' choiceCnt (extractVars actOffer) procId procDefs'
+    case TxsDefs.view procInst' of
+        ProcInst procId' _ _ -> 
+            -- if the ProcId that is being called is still in GNF translation (current GNF translation or up the tree)
+            --  then postpone the GNF translation of the newly generated ProcDef
+            --      until the ProcId being called has been translated to GNF 
+            --      (the newly created ProcDef is of the form [[condition]] -> P() and thus for a GNF translation 
+            --          we first need to unfold P() for which we need P() to be translated to GNF already.
+            if procIdInst `elem` lGNFinTranslation translatedProcDefs
+                then do -- remember the newly created ProcId for later GNF translation
+                        let procIds = fromMaybe [] (Map.lookup procIdInst gnfTodo)         -- look up the ProcIds already collected
+                            gnfTodo' = Map.insert procIdInst (procId':procIds) gnfTodo
+                        return ([actionPref actOffer procInst'], procDefs'', gnfTodo')                                                    
+                else do -- recursively translate the called ProcDef
+                        -- reset GNF loop detection: we made progress, thus we are breaking a possible chain of direct calls (ProcInsts)
+                        let translatedProcDefs' = translatedProcDefs { lGNFdirectcalls = []}
+                        (procDefs''', gnfTodo') <- gnf procIdInst gnfTodo translatedProcDefs' procDefs''
+                        return ([actionPref actOffer procInst'], procDefs''', gnfTodo')
+        _ -> error "gnfBExpr: unexpected internal lpe result"
+        
 -- case ActionPref -> "something else"
 --  multi-action not allowed: split it
 gnfBExpr (TxsDefs.view -> ActionPref actOffer bexpr') choiceCnt procId gnfTodo translatedProcDefs procDefs' = do 
     -- create new ProcDef of bexpr'
-    (procInst'@(TxsDefs.view -> ProcInst procId' _ _ ), procDefs'') <- gnfBExprCreateProcDefWithUniqueness bexpr' choiceCnt (extractVars actOffer) procId procDefs'
-
-    -- reset GNF loop detection: we made progress, thus we are breaking a possible chain of direct calls (ProcInsts)
-    let translatedProcDefs' = translatedProcDefs { lGNFdirectcalls = []}
-    
-    -- recursively translate the created ProcDef
-    (procDefs''', gnfTodo') <- gnf procId' gnfTodo translatedProcDefs' procDefs''
-    -- return bexpr with the original bexpr' replaced with the new ProcInst
-    return ([actionPref actOffer procInst'], procDefs''', gnfTodo')
-
+    (procInst', procDefs'') <- gnfBExprCreateProcDefWithUniqueness bexpr' choiceCnt (extractVars actOffer) procId procDefs'
+    case TxsDefs.view procInst' of
+        ProcInst procId' _ _ ->
+            do
+                -- reset GNF loop detection: we made progress, thus we are breaking a possible chain of direct calls (ProcInsts)
+                let translatedProcDefs' = translatedProcDefs { lGNFdirectcalls = []}
+                
+                -- recursively translate the created ProcDef
+                (procDefs''', gnfTodo') <- gnf procId' gnfTodo translatedProcDefs' procDefs''
+                -- return bexpr with the original bexpr' replaced with the new ProcInst
+                return ([actionPref actOffer procInst'], procDefs''', gnfTodo')
+        _   -> error "gnfBExpr: unexpected internal lpe result"
 
 gnfBExpr bexpr@(TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) _choiceCnt procId gnfTodo translatedProcDefs procDefs'
     -- direct calls are not in GNF: need to instantiate
@@ -654,29 +661,33 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
         -- translate operand to ProcInst if necessary
         (opProcInst, procDefs''') <- transformToProcInst operand procIdInst procDefs''
         -- translate to lpe
-        (TxsDefs.view -> ProcInst procIdLPE chansInstLPE paramsInstLPE, procDefs'''') <- lpe opProcInst translatedProcDefs procDefs'''
+        
+        res3 <- lpe opProcInst translatedProcDefs procDefs'''
+        case res3 of
+            (TxsDefs.view -> ProcInst procIdLPE chansInstLPE paramsInstLPE, procDefs'''') ->
+                do
+                    let -- decompose translated ProcDef
+                        ProcDef chansDef paramsDef bexpr = fromMaybe (error "translateOperand: could not find the given procId") (Map.lookup procIdLPE procDefs'''')
 
-        let -- decompose translated ProcDef
-            ProcDef chansDef paramsDef bexpr = fromMaybe (error "translateOperand: could not find the given procId") (Map.lookup procIdLPE procDefs'''')
-
-            -- instantiate the channels
-            chanmap = Map.fromList (zip chansDef chansInstLPE)
-            bexpr' = relabel chanmap bexpr
-            -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
-            prefix = "op" ++ show opNr ++ "$"
-            -- TODO: create new unids as well!
-        paramsDefPrefixed <- mapM (prefixVarId prefix) paramsDef
-        let paramMap = Map.fromList $ zip paramsDef (map cstrVar paramsDefPrefixed)
-            -- TODO: properly initialise funcDefs param of subst
-            bexpr'' = Subst.subst paramMap (Map.fromList []) bexpr'
-            -- See https://github.com/TorXakis/TorXakis/issues/885 : 
-            -- changing the parameters and relabeling of channels is NOT enough
-            -- one also has to make channel parameters / variables introduced in the bexpr unique.
-            -- For example, the usage of P[A](x)::= A ? A$1 [[ A$1 > x ]]
-            -- in P[A1](4) ||| P[A2](5) 
-            -- needs something like A1$1 and A2$1 
-            --                   or op1$A$1 and op2$A$1
-        return (opNr+1, stepsOpParams ++ [(extractSteps bexpr'', paramsDefPrefixed)], paramsInsts ++ paramsInstLPE, procDefs'''')
+                        -- instantiate the channels
+                        chanmap = Map.fromList (zip chansDef chansInstLPE)
+                        bexpr' = relabel chanmap bexpr
+                        -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
+                        prefix = "op" ++ show opNr ++ "$"
+                        -- TODO: create new unids as well!
+                    paramsDefPrefixed <- mapM (prefixVarId prefix) paramsDef
+                    let paramMap = Map.fromList $ zip paramsDef (map cstrVar paramsDefPrefixed)
+                        -- TODO: properly initialise funcDefs param of subst
+                        bexpr'' = Subst.subst paramMap (Map.fromList []) bexpr'
+                        -- See https://github.com/TorXakis/TorXakis/issues/885 : 
+                        -- changing the parameters and relabeling of channels is NOT enough
+                        -- one also has to make channel parameters / variables introduced in the bexpr unique.
+                        -- For example, the usage of P[A](x)::= A ? A$1 [[ A$1 > x ]]
+                        -- in P[A1](4) ||| P[A2](5) 
+                        -- needs something like A1$1 and A2$1 
+                        --                   or op1$A$1 and op2$A$1
+                    return (opNr+1, stepsOpParams ++ [(extractSteps bexpr'', paramsDefPrefixed)], paramsInsts ++ paramsInstLPE, procDefs'''')
+            _   -> error "translateOperand: unexpected internal lpe result" 
           where 
             transformToProcInst :: (EnvB.EnvB envb) => BExpr -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
             -- if operand is already a ProcInst: no need to change anything
@@ -728,17 +739,19 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
         -- reuse current ProcDef: strip the HIDE operator, just leave the bexpr
         procDef' = ProcDef chansDef paramsDef bexpr'
         procDefs'' = Map.insert procIdInst procDef' procDefs'
-    (procInst_lpe@(TxsDefs.view -> ProcInst procId_lpe _chansInst_lpe _paramsInst_lpe), procDefs''') <- lpe procInst' translatedProcDefs procDefs''
-
-    
-    let -- decompose translated ProcDef
-        ProcDef chansDef_lpe paramsDef_lpe bexpr_lpe = fromMaybe (error "lpeHide: could not find the given procId") (Map.lookup procId_lpe procDefs''')
-        -- strip hidden chans and update ProcDef
-        steps = extractSteps bexpr_lpe
-    steps' <- mapM (hideChans hiddenChans) steps
-    let procDef_lpe = ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
-        procDefs'''' = Map.insert procId_lpe procDef_lpe procDefs'''
-    return (procInst_lpe, procDefs'''')
+    (procInst_lpe, procDefs''') <- lpe procInst' translatedProcDefs procDefs''
+    case TxsDefs.view procInst_lpe of
+        ProcInst procId_lpe _chansInst_lpe _paramsInst_lpe -> 
+            do
+                let -- decompose translated ProcDef
+                    ProcDef chansDef_lpe paramsDef_lpe bexpr_lpe = fromMaybe (error "lpeHide: could not find the given procId") (Map.lookup procId_lpe procDefs''')
+                    -- strip hidden chans and update ProcDef
+                    steps = extractSteps bexpr_lpe
+                steps' <- mapM (hideChans hiddenChans) steps
+                let procDef_lpe = ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
+                    procDefs'''' = Map.insert procId_lpe procDef_lpe procDefs'''
+                return (procInst_lpe, procDefs'''')
+        _           -> error "lpeHide: unexpected internal lpe result"
     where
         hideChans :: EnvB.EnvB envb => Set.Set ChanId -> BExpr -> envb BExpr
         hideChans _ bexpr | isStop bexpr = return stop
@@ -817,56 +830,60 @@ preGNFEnable :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> e
 preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translatedProcDefs procDefs' = do
     -- translate left bexpr of Enable to LPE first
     (procInstLHS, procDefs'') <- createProcDef bexprL "lhs" procIdInst procDefs'
-    (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInst_lpe paramsInst_lpe, procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
-
-    unidR <- EnvB.newUnid
-    let -- decompose translated ProcDef
-        ProcDef _chansDefL_lpe paramsDefL_lpe bexprL_lpe = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs''')
-        stepsL = extractSteps bexprL_lpe
-
-        -- make sure RHS is a ProcInst, otherwise create new ProcDef and ProcInst
-        (procInstR, procDefs4) = case bexprR of 
-                                        (TxsDefs.view -> ProcInst{}) -> 
-                                                -- if already ProcInst: return as is (arguments will be updated later)
-                                                (bexprR, procDefs''')
-                                        _ ->    -- else create create new ProcDef of bexprR
-                                                let paramsAccept = extractVarIdsChanOffers acceptChanOffers
-                                                    procDefR = ProcDef chansDef (paramsDef ++ paramsAccept) bexprR
-                                                    -- create new ProcId
-                                                    name' = T.append (ProcId.name procIdInst) (T.pack "$rhs")
-                                                    procIdR = procIdInst {  ProcId.name = name',
-                                                                            ProcId.unid = unidR,
-                                                                            -- concatenate the original params with the varIds passed via ACCEPT to extend their scope into the RHS of ENABLE
-                                                                            ProcId.procvars = varsort <$> paramsDef ++ paramsAccept} 
-                                                    -- create ProcInst, translate params to VExprs
-                                                    paramsDef' = map cstrVar (paramsDef ++ paramsAccept)
-                                                    procInstR' = procInst procIdR chansDef paramsDef'
-                                                    -- put created ProcDefs in the ProcDefs
-                                                    procDefsNew = Map.insert procIdR procDefR procDefs''' in
-                                                (procInstR', procDefsNew)
-
-        -- replace EXITs in LHS with ProcInst of RHS
-        steps_replaced = map (replaceExits procInstR) stepsL
-        steps_replaced' = map (updateProcInst procIdRes procIdLHS_lpe paramsDef) steps_replaced
-
-        -- create new ProcDef for result
-        paramsDefRes = paramsDef ++ paramsDefL_lpe
-        procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes}
-        procInstRes = procInst procIdRes chansInst (paramsInst ++ paramsInst_lpe) 
-        procDefRes = ProcDef chansDef paramsDefRes (wrapSteps steps_replaced')
-        procDefsRes = Map.insert procIdRes procDefRes procDefs4
-
-    procDefsRes' <- preGNF procIdRes translatedProcDefs procDefsRes
     
-    -- let resProcDef = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procIdRes procDefsRes')
+    res2 <- lpe procInstLHS translatedProcDefs procDefs''
+    case res2 of 
+        (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInst_lpe paramsInst_lpe, procDefs''') ->
+            do
+                unidR <- EnvB.newUnid
+                let -- decompose translated ProcDef
+                    ProcDef _chansDefL_lpe paramsDefL_lpe bexprL_lpe = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs''')
+                    stepsL = extractSteps bexprL_lpe
 
-    -- trace ("### preGNFEnable of " ++ pshow procIdInst ++ 
-    --             "\n bexpr: " ++ pshow bexpr  ++
-    --             "\n full: " ++ show bexpr ++ 
-    --             "\n result: " ++  (pshow $ DefProc resProcDef) ++ 
-    --             "\n full: " ++ show resProcDef ++ 
-    --             "\n all ProcDefs: " ++ pshow_procDefs procDefsRes) $ 
-    return (procInstRes, procDefsRes')
+                    -- make sure RHS is a ProcInst, otherwise create new ProcDef and ProcInst
+                    (procInstR, procDefs4) = case bexprR of 
+                                                    (TxsDefs.view -> ProcInst{}) -> 
+                                                            -- if already ProcInst: return as is (arguments will be updated later)
+                                                            (bexprR, procDefs''')
+                                                    _ ->    -- else create create new ProcDef of bexprR
+                                                            let paramsAccept = extractVarIdsChanOffers acceptChanOffers
+                                                                procDefR = ProcDef chansDef (paramsDef ++ paramsAccept) bexprR
+                                                                -- create new ProcId
+                                                                name' = T.append (ProcId.name procIdInst) (T.pack "$rhs")
+                                                                procIdR = procIdInst {  ProcId.name = name',
+                                                                                        ProcId.unid = unidR,
+                                                                                        -- concatenate the original params with the varIds passed via ACCEPT to extend their scope into the RHS of ENABLE
+                                                                                        ProcId.procvars = varsort <$> paramsDef ++ paramsAccept} 
+                                                                -- create ProcInst, translate params to VExprs
+                                                                paramsDef' = map cstrVar (paramsDef ++ paramsAccept)
+                                                                procInstR' = procInst procIdR chansDef paramsDef'
+                                                                -- put created ProcDefs in the ProcDefs
+                                                                procDefsNew = Map.insert procIdR procDefR procDefs''' in
+                                                            (procInstR', procDefsNew)
+
+                    -- replace EXITs in LHS with ProcInst of RHS
+                    steps_replaced = map (replaceExits procInstR) stepsL
+                    steps_replaced' = map (updateProcInst procIdRes procIdLHS_lpe paramsDef) steps_replaced
+
+                    -- create new ProcDef for result
+                    paramsDefRes = paramsDef ++ paramsDefL_lpe
+                    procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes}
+                    procInstRes = procInst procIdRes chansInst (paramsInst ++ paramsInst_lpe) 
+                    procDefRes = ProcDef chansDef paramsDefRes (wrapSteps steps_replaced')
+                    procDefsRes = Map.insert procIdRes procDefRes procDefs4
+
+                procDefsRes' <- preGNF procIdRes translatedProcDefs procDefsRes
+                
+                -- let resProcDef = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procIdRes procDefsRes')
+
+                -- trace ("### preGNFEnable of " ++ pshow procIdInst ++ 
+                --             "\n bexpr: " ++ pshow bexpr  ++
+                --             "\n full: " ++ show bexpr ++ 
+                --             "\n result: " ++  (pshow $ DefProc resProcDef) ++ 
+                --             "\n full: " ++ show resProcDef ++ 
+                --             "\n all ProcDefs: " ++ pshow_procDefs procDefsRes) $ 
+                return (procInstRes, procDefsRes')
+        _   -> error "preGNFEnable: internal lpe results unexpected"
     where
         ProcDef chansDef paramsDef bexpr = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procIdInst procDefs')
         Enable bexprL acceptChanOffers bexprR = TxsDefs.view bexpr
@@ -930,47 +947,57 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
         
     -- translate left bexpr of Disable to LPE
     (procInstLHS, procDefs'') <- createProcDef bexprL "lhs" procIdInst procDefs'
-    (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe, procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
-    let -- decompose translated ProcDef
-        ProcDef _chans paramsDefLHS_lpe bexprLHS_lpe = fromMaybe (error "preGNFDisable 2: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs''')
-        -- prefix all params to make them unique: params from lhs and rhs may clash
-        -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
-        prefix = T.unpack (ProcId.name procIdInst)
-
-        prefixLHS = prefix ++ "$lhs$"
-    paramsDefLHS_lpe_prefixed <- mapM (prefixVarId prefixLHS) paramsDefLHS_lpe
-    let paramMapLHS = Map.fromList $ zip paramsDefLHS_lpe (map cstrVar paramsDefLHS_lpe_prefixed)
-        bexprLHS_lpe_subst = Subst.subst paramMapLHS (Map.fromList []) bexprLHS_lpe
-
-    -- translate right bexpr of Disable to LPE
-    (procInstRHS, procDefs4) <- createProcDef bexprR "rhs" procIdInst  procDefs'''
-    (TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe paramsInstRHS_lpe, procDefs5) <- lpe procInstRHS translatedProcDefs procDefs4
-    let -- decompose translated ProcDef
-        ProcDef _chans paramsDefRHS_lpe bexprRHS_lpe = fromMaybe (error "preGNFDisable 3: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)
-        -- prefix all params to make them unique: params from lhs and rhs may clash
-        -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
-        prefixRHS = prefix ++ "$rhs$"
-    paramsDefRHS_lpe_prefixed <- mapM (prefixVarId prefixRHS) paramsDefRHS_lpe
-    let paramMapRHS = Map.fromList $ zip paramsDefRHS_lpe (map cstrVar paramsDefRHS_lpe_prefixed)
-        bexprRHS_lpe_subst = Subst.subst paramMapRHS (Map.fromList []) bexprRHS_lpe
-
-    disableUnid <- EnvB.newUnid
     
-    let varIdDisable = VarId name' disableUnid sortIdInt
-        stepsLHS' = map (updateProcInst 0 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed
-                        . addDisableConstraint varIdDisable) 
-                        (extractSteps bexprLHS_lpe_subst)
-        stepsRHS' = map (updateProcInst 1 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed) (extractSteps bexprRHS_lpe_subst)
+    res2 <- lpe procInstLHS translatedProcDefs procDefs''
+    case res2 of 
+        (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe, procDefs''') ->
+            do
+                let -- decompose translated ProcDef
+                    ProcDef _chans paramsDefLHS_lpe bexprLHS_lpe = fromMaybe (error "preGNFDisable 2: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs''')
+                    -- prefix all params to make them unique: params from lhs and rhs may clash
+                    -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
+                    prefix = T.unpack (ProcId.name procIdInst)
 
-        name' = T.append (ProcId.name procIdInst) (T.pack "$disable$lhs")
-        paramsDefRes = [varIdDisable] ++ paramsDef ++ paramsDefLHS_lpe_prefixed ++ paramsDefRHS_lpe_prefixed
-        procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes}
-        -- procInstRes = updateProcInstOriginal procInst' procIdRes paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed--chansDef ([cstrConst (Cint 0)] ++ paramsInstLHS_lpe ++ paramsInstRHS_lpe)
-        procInstRes = procInst procIdRes chansInst ((cstrConst (Cint 0) : paramsInst) ++ paramsInstLHS_lpe ++ paramsInstRHS_lpe) 
-        procDefRes = ProcDef chansDef paramsDefRes (wrapSteps (stepsLHS' ++ stepsRHS'))
-        -- add new ProcDef to ProcDefs:
-        procDefsRes = Map.insert procIdRes procDefRes procDefs5 
-    return (procInstRes, procDefsRes)
+                    prefixLHS = prefix ++ "$lhs$"
+                paramsDefLHS_lpe_prefixed <- mapM (prefixVarId prefixLHS) paramsDefLHS_lpe
+                let paramMapLHS = Map.fromList $ zip paramsDefLHS_lpe (map cstrVar paramsDefLHS_lpe_prefixed)
+                    bexprLHS_lpe_subst = Subst.subst paramMapLHS (Map.fromList []) bexprLHS_lpe
+
+                -- translate right bexpr of Disable to LPE
+                (procInstRHS, procDefs4) <- createProcDef bexprR "rhs" procIdInst  procDefs'''
+                
+                res4 <- lpe procInstRHS translatedProcDefs procDefs4
+                case res4 of
+                    (TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe paramsInstRHS_lpe, procDefs5) ->
+                        do
+                            let -- decompose translated ProcDef
+                                ProcDef _chans paramsDefRHS_lpe bexprRHS_lpe = fromMaybe (error "preGNFDisable 3: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)
+                                -- prefix all params to make them unique: params from lhs and rhs may clash
+                                -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
+                                prefixRHS = prefix ++ "$rhs$"
+                            paramsDefRHS_lpe_prefixed <- mapM (prefixVarId prefixRHS) paramsDefRHS_lpe
+                            let paramMapRHS = Map.fromList $ zip paramsDefRHS_lpe (map cstrVar paramsDefRHS_lpe_prefixed)
+                                bexprRHS_lpe_subst = Subst.subst paramMapRHS (Map.fromList []) bexprRHS_lpe
+
+                            disableUnid <- EnvB.newUnid
+                            
+                            let varIdDisable = VarId name' disableUnid sortIdInt
+                                stepsLHS' = map (updateProcInst 0 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed
+                                                . addDisableConstraint varIdDisable) 
+                                                (extractSteps bexprLHS_lpe_subst)
+                                stepsRHS' = map (updateProcInst 1 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed) (extractSteps bexprRHS_lpe_subst)
+
+                                name' = T.append (ProcId.name procIdInst) (T.pack "$disable$lhs")
+                                paramsDefRes = [varIdDisable] ++ paramsDef ++ paramsDefLHS_lpe_prefixed ++ paramsDefRHS_lpe_prefixed
+                                procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes}
+                                -- procInstRes = updateProcInstOriginal procInst' procIdRes paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed--chansDef ([cstrConst (Cint 0)] ++ paramsInstLHS_lpe ++ paramsInstRHS_lpe)
+                                procInstRes = procInst procIdRes chansInst ((cstrConst (Cint 0) : paramsInst) ++ paramsInstLHS_lpe ++ paramsInstRHS_lpe) 
+                                procDefRes = ProcDef chansDef paramsDefRes (wrapSteps (stepsLHS' ++ stepsRHS'))
+                                -- add new ProcDef to ProcDefs:
+                                procDefsRes = Map.insert procIdRes procDefRes procDefs5 
+                            return (procInstRes, procDefsRes)
+                    _   -> error "preGNFDisable: unexpected internal lpe result -4 "
+        _   -> error "preGNFDisable: unexpected internal lpe result - 2"
     where 
         addDisableConstraint :: VarId -> BExpr -> BExpr
         addDisableConstraint varIdDisable (TxsDefs.view -> ActionPref actOffer bexpr') = 
@@ -1034,58 +1061,67 @@ lpeInterrupt (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
     --       ++ "\nbexprRHS = " ++ pshow bexprRHS
     --       ++ "\nprocInstLHS = " ++ pshow procInstLHS
     --       ) $ do
-    (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe', procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
-    let paramsInstLHS_lpe = case TxsDefs.view bexprLHS of
-                            ProcInst _ _ additionalParamsLHS ->    take (length paramsInst + 1) paramsInstLHS_lpe'
-                                                                ++ additionalParamsLHS
-                                                                ++ drop (length paramsInst + 1 + length additionalParamsLHS) paramsInstLHS_lpe'
-                            _                                -> paramsInstLHS_lpe'
-    -- trace ("\nparamsInstLHS_lpe = " ++ pshow paramsInstLHS_lpe) $ do
-    -- translate RHS to LPE
-    (procInstRHS, procDefs4) <- createProcDef bexprRHS "interrupt$rhs" procIdInst procDefs'''
-    -- trace ("\nprocInstRHS = " ++ pshow procInstLHS) $ do
-    (TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe paramsInstRHS_lpe', procDefs5) <- lpe procInstRHS translatedProcDefs procDefs4
-    let paramsInstRHS_lpe = case TxsDefs.view bexprRHS of
-            ProcInst _ _ additionalParamsRHS ->    take (length paramsInst + 1) paramsInstRHS_lpe'
-                                                ++ additionalParamsRHS
-                                                ++ drop (length paramsInst + 1 + length additionalParamsRHS) paramsInstRHS_lpe'
-            _                                -> paramsInstRHS_lpe'
-    -- trace ("\nparamsInstRHS_lpe = " ++ pshow paramsInstRHS_lpe) $ do
-    -- combine LHS and RHS into new ProcDef: P$pre1$interrupt
-
-    let -- decompose LHS ProcDef and prefix params
-        ProcDef _chans paramsDefLHS_lpe bexprLHS_lpe = fromMaybe (error "lpeInterrupt lhs: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs5)
-        -- prefix all params to make them unique: params from lhs and rhs may clash
-        -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
-        prefixLHS = prefix ++ "$lhs$"
-    paramsDefLHS_lpe_prefixed <- mapM (prefixVarId prefixLHS) paramsDefLHS_lpe
-    let paramMapLHS = Map.fromList $ zip paramsDefLHS_lpe (map cstrVar paramsDefLHS_lpe_prefixed)
-        bexprLHS_lpe_subst = Subst.subst paramMapLHS (Map.fromList []) bexprLHS_lpe
-
-    let -- decompose RHS ProcDef and prefix params
-        ProcDef _chans paramsDefRHS_lpe bexprRHS_lpe = fromMaybe (error "lpeInterrupt rhs: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)
-        -- prefix all params to make them unique: params from lhs and rhs may clash
-        -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
-        prefixRHS = prefix ++ "$rhs$"
-    paramsDefRHS_lpe_prefixed <- mapM (prefixVarId prefixRHS) paramsDefRHS_lpe
-    let paramMapRHS = Map.fromList $ zip paramsDefRHS_lpe (map cstrVar paramsDefRHS_lpe_prefixed)
-        bexprRHS_lpe_subst = Subst.subst paramMapRHS (Map.fromList []) bexprRHS_lpe
-
-    let paramsDefRes = paramsDef ++ paramsDefLHS_lpe_prefixed ++ paramsDefRHS_lpe_prefixed
-        procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes }
-        procInstRes = procInst procIdRes chansInst (paramsInst ++ paramsInstLHS_lpe ++ paramsInstRHS_lpe)
     
-    -- trace ("\nprocInstRes = " ++ pshow procInstRes) $ do
-    -- update the steps:
-    let stepsLHS' = map (stepsUpdateLHS procIdRes (head paramsDefRHS_lpe_prefixed) chansInst paramsDef paramsDefRHS_lpe_prefixed) $ extractSteps bexprLHS_lpe_subst
-        stepsRHS' = map (stepsUpdateRHS procIdRes chansInst paramsDef paramsDefLHS_lpe_prefixed) $ extractSteps bexprRHS_lpe_subst
-        
-    let -- create new ProcDef 
-        procDefRes = ProcDef chansInst paramsDefRes (wrapSteps (stepsLHS' ++ stepsRHS'))
-        -- add new ProcDef to ProcDefs:
-        procDefsRes = Map.insert procIdRes procDefRes procDefs5 
+    res3 <- lpe procInstLHS translatedProcDefs procDefs''
+    case res3 of
+        (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe', procDefs''') ->
+            do
+                let paramsInstLHS_lpe = case TxsDefs.view bexprLHS of
+                                        ProcInst _ _ additionalParamsLHS ->    take (length paramsInst + 1) paramsInstLHS_lpe'
+                                                                            ++ additionalParamsLHS
+                                                                            ++ drop (length paramsInst + 1 + length additionalParamsLHS) paramsInstLHS_lpe'
+                                        _                                -> paramsInstLHS_lpe'
+                -- trace ("\nparamsInstLHS_lpe = " ++ pshow paramsInstLHS_lpe) $ do
+                -- translate RHS to LPE
+                (procInstRHS, procDefs4) <- createProcDef bexprRHS "interrupt$rhs" procIdInst procDefs'''
+                -- trace ("\nprocInstRHS = " ++ pshow procInstLHS) $ do
+                res4 <- lpe procInstRHS translatedProcDefs procDefs4
+                case res4 of 
+                    (TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe paramsInstRHS_lpe', procDefs5) ->
+                        do
+                            let paramsInstRHS_lpe = case TxsDefs.view bexprRHS of
+                                    ProcInst _ _ additionalParamsRHS ->    take (length paramsInst + 1) paramsInstRHS_lpe'
+                                                                        ++ additionalParamsRHS
+                                                                        ++ drop (length paramsInst + 1 + length additionalParamsRHS) paramsInstRHS_lpe'
+                                    _                                -> paramsInstRHS_lpe'
+                            -- trace ("\nparamsInstRHS_lpe = " ++ pshow paramsInstRHS_lpe) $ do
+                            -- combine LHS and RHS into new ProcDef: P$pre1$interrupt
 
-    return (procInstRes, procDefsRes)
+                            let -- decompose LHS ProcDef and prefix params
+                                ProcDef _chans paramsDefLHS_lpe bexprLHS_lpe = fromMaybe (error "lpeInterrupt lhs: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs5)
+                                -- prefix all params to make them unique: params from lhs and rhs may clash
+                                -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
+                                prefixLHS = prefix ++ "$lhs$"
+                            paramsDefLHS_lpe_prefixed <- mapM (prefixVarId prefixLHS) paramsDefLHS_lpe
+                            let paramMapLHS = Map.fromList $ zip paramsDefLHS_lpe (map cstrVar paramsDefLHS_lpe_prefixed)
+                                bexprLHS_lpe_subst = Subst.subst paramMapLHS (Map.fromList []) bexprLHS_lpe
+
+                            let -- decompose RHS ProcDef and prefix params
+                                ProcDef _chans paramsDefRHS_lpe bexprRHS_lpe = fromMaybe (error "lpeInterrupt rhs: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)
+                                -- prefix all params to make them unique: params from lhs and rhs may clash
+                                -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
+                                prefixRHS = prefix ++ "$rhs$"
+                            paramsDefRHS_lpe_prefixed <- mapM (prefixVarId prefixRHS) paramsDefRHS_lpe
+                            let paramMapRHS = Map.fromList $ zip paramsDefRHS_lpe (map cstrVar paramsDefRHS_lpe_prefixed)
+                                bexprRHS_lpe_subst = Subst.subst paramMapRHS (Map.fromList []) bexprRHS_lpe
+
+                            let paramsDefRes = paramsDef ++ paramsDefLHS_lpe_prefixed ++ paramsDefRHS_lpe_prefixed
+                                procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes }
+                                procInstRes = procInst procIdRes chansInst (paramsInst ++ paramsInstLHS_lpe ++ paramsInstRHS_lpe)
+                            
+                            -- trace ("\nprocInstRes = " ++ pshow procInstRes) $ do
+                            -- update the steps:
+                            let stepsLHS' = map (stepsUpdateLHS procIdRes (head paramsDefRHS_lpe_prefixed) chansInst paramsDef paramsDefRHS_lpe_prefixed) $ extractSteps bexprLHS_lpe_subst
+                                stepsRHS' = map (stepsUpdateRHS procIdRes chansInst paramsDef paramsDefLHS_lpe_prefixed) $ extractSteps bexprRHS_lpe_subst
+                                
+                            let -- create new ProcDef 
+                                procDefRes = ProcDef chansInst paramsDefRes (wrapSteps (stepsLHS' ++ stepsRHS'))
+                                -- add new ProcDef to ProcDefs:
+                                procDefsRes = Map.insert procIdRes procDefRes procDefs5 
+
+                            return (procInstRes, procDefsRes)
+                    _   -> error "lpeInterrupt: unexpected internal lpe results - 4"
+        _   -> error "lpeInterrupt: unexpected internal lpe results - 4"
     where 
         stepsUpdateLHS :: ProcId -> VarId -> [ChanId] -> [VarId] -> [VarId] -> BExpr -> BExpr
         stepsUpdateLHS procIdNew pcRHS chansOrig paramsDef paramsDefRHS (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst' paramsInstLHS)) =

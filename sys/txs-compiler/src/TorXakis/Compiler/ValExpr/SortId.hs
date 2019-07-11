@@ -241,25 +241,28 @@ inferExpTypes mm ex =
             vdsSid <- foldM (letVarTypes mm) Map.empty (toList <$> vss)
             inferExpTypes (vdsSid <.+> mm) subEx
         If e0 e1 e2 -> do
-            [se0s, se1s, se2s] <- traverse (inferExpTypes mm) [e0, e1, e2]
-            when (sortIdBool `notElem` se0s)
-                (Left Error
-                    { _errorType = TypeMismatch
-                    , _errorLoc  = getErrorLoc e0
-                    , _errorMsg  = "Guard expression must be a Boolean."
-                               <> " Got " <> T.pack (show se0s)
-                    })
-            let ses = se1s `intersect` se2s
-            when (null ses)
-                (Left Error
-                    { _errorType = TypeMismatch
-                    , _errorLoc  = getErrorLoc ex
-                    , _errorMsg  = "The sort of the two IF branches don't match."
-                               <> "(" <> T.pack (show se1s)
-                               <>" and " <> T.pack (show se2s) <> ")"
-                    }
-                 )
-            return ses
+            l <- traverse (inferExpTypes mm) [e0, e1, e2]
+            case l of
+                [se0s, se1s, se2s] -> do
+                                        when (sortIdBool `notElem` se0s)
+                                             (Left Error
+                                                   { _errorType = TypeMismatch
+                                                   , _errorLoc  = getErrorLoc e0
+                                                   , _errorMsg  = "Guard expression must be a Boolean."
+                                                              <> " Got " <> T.pack (show se0s)
+                                                   })
+                                        let ses = se1s `intersect` se2s
+                                        when (null ses)
+                                            (Left Error
+                                                { _errorType = TypeMismatch
+                                                , _errorLoc  = getErrorLoc ex
+                                                , _errorMsg  = "The sort of the two IF branches don't match."
+                                                           <> "(" <> T.pack (show se1s)
+                                                           <>" and " <> T.pack (show se2s) <> ")"
+                                                }
+                                             )
+                                        return ses
+                _                  -> error "inferExpTypes: 3 arguments should lead to 3 return values"
         Fappl _ l exs -> concat <$> do
             sess <- traverse (inferExpTypes mm) exs
             for (sequence sess) $ \ses -> do
