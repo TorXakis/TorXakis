@@ -33,10 +33,10 @@ extra-deps:
 
 # Override default flag values for local packages and extra-deps
 flags:
-  text:
-    integer-simple: true
   hexpat:
     bundle: true
+  text:
+    integer-simple: true
   hashable:
     integer-gmp: false
   integer-logarithms:
