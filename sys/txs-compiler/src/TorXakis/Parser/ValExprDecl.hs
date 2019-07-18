@@ -48,7 +48,7 @@ valExpP =  buildExpressionParser table termP
               ]
       uop = do
           (le, lr, opN) <- opP
-          return $ \ex0 -> mkFappl le lr opN [ex0]
+          return $ \ex0 -> mkExpDecl le Nothing (Fappl (Name opN) lr [ex0])
       opP = do
           le  <- mkLoc
           lr  <- mkLoc
@@ -56,24 +56,39 @@ valExpP =  buildExpressionParser table termP
           return (le, lr, opN)
       bop = do
           (le, lr, opN) <- opP
-          return $ \ex0 ex1 -> (mkFappl le lr opN [ex0, ex1])
+          return $ \ex0 ex1 -> mkExpDecl le Nothing (Fappl (Name opN) lr [ex0, ex1])
 
 -- | Terms of the TorXakis value expressions.
 termP :: TxsParser ExpDecl
-termP = txsSymbol "(" *> ( valExpP <* txsSymbol ")")
-    <|> try (mkRegexConstExp  <$> mkLoc <*> txsRegexP)
-    <|> try letExpP
-    <|> try txsITEP
-    <|> try txsFapplP
-    <|> mkBoolConstExp   <$> mkLoc <*> try txsBoolP
-    <|> mkIntConstExp    <$> mkLoc <*> txsIntP
-    <|> mkStringConstExp <$> mkLoc <*> txsStringP
-    <|> mkVarExp         <$> mkLoc <*> (lcIdentifier <|> ucIdentifier "")
+termP = do
+            l <- mkLoc
+            c <- termImplicitP
+            ms <- optionMaybe ofSortP
+            return $ mkExpDecl l ms (childExpChild c)
+    where
+        termImplicitP :: TxsParser ExpChildDecl
+        termImplicitP = mkNestedExp
+            <|> mkRegexConstExp  <$> mkLoc <*> txsRegexP
+            <|> letExpP
+            <|> txsITEP
+            <|> txsFapplP
+            <|> mkBoolConstExp   <$> mkLoc <*> try txsBoolP
+            <|> mkIntConstExp    <$> mkLoc <*> txsIntP
+            <|> mkStringConstExp <$> mkLoc <*> txsStringP
+            <|> mkVarExp         <$> mkLoc <*> (lcIdentifier <|> ucIdentifier "")
 
-letExpP :: TxsParser ExpDecl
+mkNestedExp :: TxsParser ExpChildDecl
+mkNestedExp  = do
+    l <- mkLoc
+    try (txsSymbol "(")
+    subEx <- valExpP
+    txsSymbol ")"
+    return $ mkLetExpDecl [] subEx l
+    
+letExpP :: TxsParser ExpChildDecl
 letExpP = do
     l <- mkLoc
-    txsSymbol "LET"
+    try (txsSymbol "LET")
     vss <- letSeqVarDeclsP
     subEx <- inP valExpP
     return $ mkLetExpDecl vss subEx l
@@ -103,7 +118,7 @@ txsBoolP =  (txsSymbol "True" >> return True)
 
 txsRegexP :: TxsParser Text
 txsRegexP = do
-    txsSymbol "REGEX"
+    try (txsSymbol "REGEX")
     txsLexeme $ txsSymbol "('"
     res <- T.pack <$> many (satisfy regexChar)
     txsLexeme $ txsSymbol "')"
@@ -111,10 +126,10 @@ txsRegexP = do
     where
       regexChar c = (isPrint c && c /= '\'') || c == ' '
 
-txsITEP :: TxsParser ExpDecl
+txsITEP :: TxsParser ExpChildDecl
 txsITEP = do
     l <- mkLoc
-    txsSymbol "IF"
+    try (txsSymbol "IF")
     ex0 <- valExpP
     txsSymbol "THEN"
     ex1 <- valExpP
@@ -126,7 +141,7 @@ txsITEP = do
 txsBopSymbolP :: TxsParser Text
 txsBopSymbolP = try $ T.pack <$> do
     op <- txsLexeme (many1 txsSpecialCOp)
-    if op `elem` [">->", "|", "||", "|||", ">>>", "[>>", "[><", "##", "<-"]
+    if op `elem` [">->", "|", "||", "|||", ">>>", "[>>", "[><", "##", "<-", "->"]
         then parserFail $ "Operator \"" ++ op
                         ++ "\" not allowed in value expressions."
         else return op
@@ -150,7 +165,7 @@ txsSpecialCOp = oneOf [ '='
 
 -- | Function application parser.
 --
-txsFapplP :: TxsParser ExpDecl
+txsFapplP :: TxsParser ExpChildDecl
 txsFapplP = do
     le <- mkLoc
     lr <- mkLoc
@@ -158,5 +173,3 @@ txsFapplP = do
     exs <- valExpP `sepBy` txsSymbol ","
     txsSymbol ")"
     return $ mkFappl le lr fN exs
-
-

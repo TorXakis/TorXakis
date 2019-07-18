@@ -1,0 +1,150 @@
+\chapter{det}
+
+\section{Introduction}
+
+Non-determinism in an LPE can have a strong impact on the performance of exploring its state space.
+Preferably, an LPE should therefore be completely deterministic.
+Unfortunately, there are no determinization methods known for symbolic models such as LPEs.
+
+The \texttt{det} command described in this section is only a naive attempt at LPE determinization: it looks for two summands that are non-deterministic (see \ref{isdet}), and then rewrites the LPE so that these summands have become deterministic.
+This may mean that the entire LPE has become deterministic, but more typically the non-determinism will have moved to a different part of the LPE.
+
+The \texttt{det} command is intended to be repeated in the hope that non-determinism eventually disappears from the LPE.
+It is definitely possible that this may never happen!
+It is also likely that the LPE will grow very large; it is therefore advised to symbolically reduce the LPE using other LPE operations after each application of \texttt{det}.
+
+\section{Algorithm}
+
+Let the input LPE model be $M$ and the underlying LPE be $P$, and let two summands of $P$, $s_\alpha$ and $s_\beta$, be non-deterministic (see \ref{isdet}).
+Elements of $s_\alpha$ and $s_\beta$ are referenced conform \ref{summandelements}.
+Define
+\begin{align*}
+C_{\alpha,\beta} &= C_\alpha = C_\beta \\
+m_{\alpha,\beta} &= m_\alpha = m_\beta \\
+X_\alpha &= [ x_\beta(j) \rightarrow x_\alpha(j) \;|\; 1 \leq j \leq m_{\alpha,\beta} ] \\
+X_\beta &= [ x_\alpha(j) \rightarrow x_\beta(j) \;|\; 1 \leq j \leq m_{\alpha,\beta} ]
+\end{align*}
+
+and let $y(j)$ be a bijective function that yields fresh variables for $1 \leq j \leq m_{\alpha,\beta}$.
+
+The \texttt{det} algorithm follows these steps:
+
+\begin{enumerate}
+\item Create a new LPE $P'$ with the same parameters as $P$, but without any summands.
+Create a new LPE model $M'$ that has the same definition as $M$, except that its references to $P$ have been replaced by references to $P'$.
+
+\item Add a new, fresh parameter $f$ of type \texttt{Bool} to $P'$.
+Where $M'$ instantiates $P'$, initialize $f$ with $\textbf{false}$.
+
+\item Add a new, fresh parameter $Y$ to $P'$, which is a substitution from variables to values -- in practice, this is implemented with multiple parameters and/or a data hierarchy.
+Where $M'$ instantiates $P'$, initialize $Y$ with $[]$.
+
+\item Add to $P'$ each summand $s_i, i \neq \alpha, \beta$ of $P$ after changing the guard of $s_i$ from $g_i$ to $\neg f \land g_i$.
+
+\item Add to $P'$ two new summands ${s_\alpha}'$ and ${s_\beta}'$ that are defined as
+\begin{align*}
+{s_\alpha}' = C_{\alpha,\beta} \; \texttt{?} \; x_\alpha(1) \; &\cdots{} \; \texttt{?} \; x_\alpha(m_{\alpha,\beta}) \; [[\neg f \land g_\alpha \land \neg g_\beta[X_\alpha]]] \\
+&\texttt{>->} \; P(v_\alpha(p_1), \cdots{}, v_\alpha(p_k), \textbf{false}, []) \\
+{s_\beta}' = C_{\alpha,\beta} \; \texttt{?} \; x_\beta(1) \; &\cdots{} \; \texttt{?} \; x_\beta(m_{\alpha,\beta}) \; [[\neg f \land \neg g_\alpha[X_\beta] \land g_\beta]] \\
+&\texttt{>->} \; P(v_\beta(p_1), \cdots{}, v_\beta(p_k), \textbf{false}, [])
+\end{align*}
+
+\item Add to $P'$ a new summand ${s_{\alpha,\beta}}'$ that is defined as
+\begin{align*}
+{s_{\alpha,\beta}}' &= C_{\alpha,\beta} \; \texttt{?} \; x_\alpha(1) \; \cdots{} \; \texttt{?} \; x_\alpha(m_{\alpha,\beta}) \; [[\neg f \land g_\alpha \land g_\beta[X_\alpha]]] \\
+&\texttt{>->} \; P(p_1, \cdots{}, p_k, \textbf{true}, [y(1) \rightarrow x_\alpha(1), \cdots{}, y(m_{\alpha,\beta}) \rightarrow x_\alpha(m_{\alpha,\beta})])
+\end{align*}
+
+\item For $i \in \{\alpha, \beta\}$ and for each possible successor $s_\gamma$ of $s_i$ (see \ref{possiblesuccessors}) in $P$, add to $P'$ a new summand ${s_\gamma}'$ that is defined as
+\begin{align*}
+{s_\gamma}' = C_\gamma \; \texttt{?} \; x_\gamma(1) \; &\cdots{} \; \texttt{?} \; x_\gamma(m_\gamma) \; [[f \land g_\gamma[Y_i]]] \\
+&\texttt{>->} \; P(v_\gamma(p_1)[Y_i], \cdots{}, v_\gamma(p_k)[Y_i], \textbf{false}, [])
+\end{align*}
+
+where
+\begin{align*}
+Y_i &= [ p_j \rightarrow v_i(p_j)[\overline{Y_i}][Y] \;|\; 1 \leq j \leq k ] \\
+\overline{Y_i} &= [x_i(1) \rightarrow y(1), \cdots{}, x_i(m_{\alpha,\beta}) \rightarrow y(m_{\alpha,\beta})]
+\end{align*}
+
+\end{enumerate}
+
+Intuitively, the specific non-deterministic behavior of summands $s_\alpha$ and $s_\beta$ is preserved by summand ${s_{\alpha,\beta}}'$, while summands ${s_\alpha}'$ and ${s_\beta}'$ cover the deterministic behavior.
+The $f$ parameter indicates that the process has just taken the non-deterministic action of ${s_\gamma}'$, and the $Y$ parameter contains the exact communication values of that action.
+
+If $f$ is \textbf{false}, $P'$ has the same behavior as $P$ because the summands that are created in steps 4 to 6.
+If $f$ is \textbf{true}, $P'$ also has the same behavior as $P$, but in such a way that the changes of summands $s_\alpha$ and $s_\beta$ are applied retroactively.
+
+\section{Example}
+
+Consider the following LPE:
+
+\begin{lstlisting}
+//Process definition:
+PROCDEF example[A :: Int, B, C](x, y :: Int)
+  = A ? i [[x==0 /\ i>=0 /\ i<=5]] >-> example[A, B, C](1, i+1)
+  + A ? i [[x==0 /\ i>=5 /\ i<=9]] >-> example[A, B, C](1, i-1)
+  + B [[x==1 /\ y<=4]] >-> example[A, B, C](0, 0)
+  + C [[x==1 /\ y>=5]] >-> example[A, B, C](0, 0)
+  ;
+
+//Initialization:
+example[A, B, C](0, 0);
+\end{lstlisting}
+
+Consider the first two summands, calling the first $s_1$ and the second $s_2$.
+These summands are non-deterministic.
+
+Applying the steps of the \texttt{det} algorithm causes the following changes:
+
+\begin{enumerate}
+\item A new LPE model $M'$ and new LPE $P'$ are created.
+\item $P'$ is extended with a new parameter $\texttt{f}$.
+\item $P'$ is extended with a new parameter $\texttt{z}$ (a singleton substitution).
+\item The \texttt{B} and \texttt{C} summands of the input LPE are added with modified guards.
+\item Based on $s_1$ and $s_2$, summands ${s_1}'$ and ${s_2}'$ are created and added.
+\item Based on $s_1$ and $s_2$, summand ${s_{1, 2}}'$ is created and added.
+\item The possible successors of $s_1$ and $s_2$ are the \texttt{B} and \texttt{C} summands of the input LPE, which results in 2 new \texttt{B} summands and 2 new \texttt{C} summands.
+\end{enumerate}
+
+This gives the following output LPE:
+
+\begin{lstlisting}
+PROCDEF example'[A :: Int, B, C](x, y :: Int, f: Bool, z: Int)
+  = B [[not(f) /\ x==1 /\ y<=4]]
+          >-> example'[A, B, C](0, 0, false, 0)
+  + C [[not(f) /\ x==1 /\ y>=5]]
+          >-> example'[A, B, C](0, 0, false, 0)
+  + A ? i [[not(f) /\ x==0 /\ i>=0 /\ i<5]]
+          >-> example'[A, B, C](1, i, false, 0)
+  + A ? i [[not(f) /\ x==0 /\ i>5 /\ i<=9]]
+          >-> example'[A, B, C](1, i, false, 0)
+  + A ? i [[not(f) /\ x==0 /\ i==5]]
+          >-> example'[A, B, C](x, y, true, i)
+  + B [[f /\ z+1<=4]] >-> example[A, B, C](0, 0, false, 0)
+  + B [[f /\ z-1<=4]] >-> example[A, B, C](0, 0, false, 0)
+  + C [[f /\ z+1>=5]] >-> example[A, B, C](0, 0, false, 0)
+  + C [[f /\ z-1>=5]] >-> example[A, B, C](0, 0, false, 0)
+  ;
+
+//Initialization:
+example'[A, B, C](0, 0, false, 0);
+\end{lstlisting}
+
+The non-determinism has moved to the \texttt{B} and \texttt{C} summands at the bottom.
+A subsequent application of the \texttt{clean} command removes one of the \texttt{B} summands at the bottom (because
+\begin{align*}
+z+1<=4 \rightarrow z-1<=4
+\end{align*}
+
+the second \texttt{B} summand \emph{contains} the first) and one of the \texttt{C} summands at the bottom (because
+\begin{align*}
+z-1>=5 \rightarrow z+1>=5
+\end{align*}
+
+the first \texttt{C} summand \emph{contains} the second).
+Afterwards, the LPE is completely deterministic.
+
+
+
+

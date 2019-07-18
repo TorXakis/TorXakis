@@ -123,7 +123,7 @@ ioeTestRegex = [
         ("Regex escape range",              testRegex "\\|{2,4}"),
         ("Regex concat operator",           testRegex "ab+c*d?"),
         ("Regex mixed small",               testRegex "(ab+)|(p)"),
-        ("Regex mixed large",               testRegex "(ab+c*d?)|(ef{2}g{3,6}h{3,})|(p)") -- bug reported https://ghc.haskell.org/trac/ghc/ticket/12974
+        ("Regex mixed large",               testRegex "(ab+c*d?)|(ef{2}g{3,6}h{3,})|(p)")
     ]
 
 -----------------------------------------------------
@@ -306,7 +306,7 @@ testConditionalIntPresentValue = testTemplateValue conditionalIntDef [conditiona
         createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v]    = [ cstrIsCstr presentCstrId (cstrVar v)
                                   , cstrITE (cstrIsCstr presentCstrId (cstrVar v))
-                                            (cstrGT (cstrAccess presentCstrId 0 (cstrVar v)) (cstrConst (Cint boundary)) )
+                                            (cstrGT (cstrAccess presentCstrId "value" 0 (cstrVar v)) (cstrConst (Cint boundary)) )
                                             (cstrConst (Cbool True))
                                   ]
         createAssertions _   = error "One variable in problem"

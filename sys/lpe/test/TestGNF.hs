@@ -17,7 +17,7 @@ import VarId
 import Test.HUnit
 
 import ValExpr
-
+import SortId
 import TranslatedProcDefs
 import TxsDefs
 import LPEfunc
@@ -239,8 +239,8 @@ testGuardProcInst = TestCase $
    assertBool "guard procInst"  $ eqProcDefs procDefs'' procDefsResult
    where
       (procDefsResult, _gnfTodo) =  gnfFunc procIdP emptyTranslatedProcDefs procDefs'
-      procIdP = procIdGen "P" [] []
-      procIdQ = procIdGen "Q" [] []
+      procIdP = procIdGen "P" [chanIdA] []
+      procIdQ = procIdGen "Q" [chanIdA] []
       procDefP = ProcDef [] [] (guard   (cstrEqual vexprX int1 )
                                         (procInst procIdQ [chanIdA] []))
       procDefQ = ProcDef [] []  (actionPref actOfferAx stop)
@@ -360,7 +360,7 @@ testGuardLoop = TestCase $
 
 
       varIdQgnf1X :: VarId
-      varIdQgnf1X = VarId (T.pack "Q$gnf1$x") 33 intSort
+      varIdQgnf1X = VarId (T.pack "Q$gnf1$x") 233 sortIdInt
       vexprQgnf1X :: VExpr
       vexprQgnf1X = cstrVar varIdQgnf1X
 

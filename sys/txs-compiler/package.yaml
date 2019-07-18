@@ -13,10 +13,19 @@ dependencies:
 - base >= 4.7 && < 5
 - lens
 
+flags:
+  develop:
+    manual: True
+    default: False
+
+when:
+- condition: (!flag(develop))
+  ghc-options:
+  - -Werror
+
 ghc-options:
-- -Werror
-- -Wall
 - -O
+- -Wall
 - -fconstraint-solver-iterations=10
 - -Wcompat
 - -Wincomplete-record-updates
@@ -28,7 +37,7 @@ library:
   exposed-modules:
   - TorXakis.Compiler
   - TorXakis.Compiler.Error
-  - TorXakis.Parser  
+  - TorXakis.Parser
   - TorXakis.Compiler.MapsTo
   dependencies:
   - text
@@ -54,11 +63,10 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -Werror
-    - -Wall
     - -O
     dependencies:
     - hspec
+    - hspec-core
     - filemanip
     - filepath
     - containers
@@ -71,4 +79,5 @@ extra-source-files:
 - test/data/success/*.txs
 - test/data/examps/*.txs
 - test/data/parser/success/*.txs
+- test/data/regression/*.txs
 - README.md

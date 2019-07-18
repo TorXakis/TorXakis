@@ -1,0 +1,94 @@
+\chapter{confcheck} \label{confcheck}
+
+\section{Introduction}
+
+The \texttt{confcheck} command perform a \emph{confluence analysis} on the LPE in order to determine which \istep{} summands are \emph{confluent}
+A confluent \istep{} summand is an \istep{} summand with the property that the possible behavior of a system is the same up to branching bisimulation before and after the application of that summand.
+
+The \texttt{confcheck} command will rename confluent \istep{}s to \cistep{}s.
+Afterwards, the \texttt{confelm} command can be used next in order to prioritize \cistep{}s, which may reduce the state space.
+
+\section{Algorithm}
+
+Consider all possible summands pairs, referencing the elements of the summands conform \ref{summandelements}.
+Select all pairs $(s_\alpha, s_\beta)$ of which $C_\alpha$ equals \istep{}.
+
+Since it cannot be assumed that
+\begin{align*}
+\{ x_1(1), \cdots{} x_1(m_1) \} \cap \{ x_2(1), \cdots{} x_2(m_2) \} = \emptyset{}
+\end{align*}
+
+a substitution $X$ is introduced such that
+\begin{align*}
+X = [ x_2(j) \rightarrow q(x_2(j)) \;|\; 1 \leq j \leq m_2 ]
+\end{align*}
+
+where $q(x)$ is a surjective function that yields fresh variables.
+
+We also define
+\begin{align*}
+V_{1} &= [p_j \rightarrow v_1(p_j) \;|\; 1 \leq j \leq k] \\
+V_{2} &= [p_j \rightarrow v_2(p_j)[X] \;|\; 1 \leq j \leq k]
+\end{align*}
+
+Using the definitions above, a particular \istep{} summand $s_1$ is confluent if the following expression is a tautology for all pairs $(s_1, s_2)$ such that $s_2 \neq s_1$:
+\begin{align*}
+g_1 \land g_2[X] \rightarrow g_1[V_2] \land g_2[X][V_1] \land \bigwedge\limits_{j=1}^{k} p_j[V_2][V_1] = p_j[V_1][V_2]
+\end{align*}
+
+Note that this approach does \emph{not} yield all confluent \istep{} summands (it is an under-approximation).
+
+\section{Example}
+
+Consider the following example:
+
+\begin{lstlisting}
+//Process definition:
+PROCDEF example[A :: Int](x, y :: Int)
+  = A ? i [[x<=9 /\ x==i]] >-> example[A](x+1, y)
+  + ISTEP [[y<=9]] >-> example[A](x, y+1)
+  ;
+
+//Initialization:
+example[A](0, 0);
+\end{lstlisting}
+
+Let $s_1$ be the first and $s_2$ the second summand.
+Is $s_2$ confluent?
+
+First, since $\{ x_1(1), \cdots{} x_1(m_1) \} \cap \{ x_2(1), \cdots{} x_2(m_2) \} = \emptyset{}$, $X$ can be ignored.
+
+Second, if
+\begin{align*}
+g_1 \land g_2 \Leftrightarrow (x \leq 9 \land x=i) \land (y \leq 9)
+\end{align*}
+
+holds, then
+\begin{align*}
+g_1[V_2] \land g_2[V_1] &\Leftrightarrow (x \leq 9 \land x=i)[ y \rightarrow y+1 ] \land (y \leq 9)[ x \rightarrow y+1 ] \\
+&\Leftrightarrow (x \leq 9 \land x=i) \land (y \leq 9)
+\end{align*}
+
+holds as well.
+
+Third, it is the case that
+\begin{align*}
+x[V_1][V_2] = x+1 = x[V_2][V_1] \\
+y[V_1][V_2] = y+1 = y[V_2][V_1]
+\end{align*}
+
+Therefore the confluence condition holds, which means that $s_2$ is confluent.
+
+To store the new information about the second summand, the channel is renamed to \cistep{}:
+
+\begin{lstlisting}
+//Process definition:
+PROCDEF example[A :: Int](x, y :: Int)
+  = A ? i [[x<=9 /\ x==i]] >-> example[A](x+1, y)
+  + CISTEP [[y<=9]] >-> example[A](x, y+1)
+  ;
+
+//Initialization:
+example[A](0, 0);
+\end{lstlisting}
+

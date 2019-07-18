@@ -43,7 +43,8 @@ import           BehExprDefs                       (chanIdExit, chanIdIstep)
 import           ChanId                            (ChanId, chansorts)
 import           Constant                          (Constant (Cbool))
 import           FuncTable                         (Handler, Signature)
-import           ProcId                            (ExitSort (Exit), ProcId, ChanSort(ChanSort),
+import           ProcId                            (ChanSort (ChanSort),
+                                                    ExitSort (Exit), ProcId,
                                                     exitSortIds, procchans,
                                                     procvars)
 import qualified ProcId
@@ -59,9 +60,10 @@ import           ValExpr                           (ValExpr, cstrConst)
 import           VarId                             (VarId, varsort)
 
 import           TorXakis.Compiler.Data            (CompilerM, forCatch)
-import           TorXakis.Compiler.Error           (Entity (Process),
+import           TorXakis.Compiler.Error           (Entity (Process, Channel),
                                                     Error (Error),
                                                     ErrorType (MultipleDefinitions, NoDefinition, ParseError, TypeMismatch),
+                                                    ErrorLoc (NoErrorLoc),
                                                     getErrorLoc, _errorLoc,
                                                     _errorMsg, _errorType)
 import           TorXakis.Compiler.Maps            (chRefsToIds, dropHandler,
@@ -75,6 +77,7 @@ import           TorXakis.Compiler.ValExpr.ValExpr (expDeclToValExpr)
 import           TorXakis.Parser.Data              (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
                                                     ChanDeclE,
                                                     ChanOfferDecl (ExclD, QuestD),
+                                                    chanRefOfOfferDecl,
                                                     ChanRefE, FuncDeclE,
                                                     LetVarDecl, Loc,
                                                     OfferDecl (OfferDecl),
@@ -211,14 +214,35 @@ toActOffer :: ( MapsTo Text SortId mm
            -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
            -> ActOfferDecl
            -> CompilerM ActOffer
-toActOffer mm vrvds (ActOfferDecl osd mc) = do
-    os <- traverse (toOffer mm vrvds) osd
-    c  <- maybe (return . cstrConst . Cbool $ True)
-                (liftEither . expDeclToValExpr vrvds sortIdBool)
-                mc
-    -- Filter the internal actions (to comply with the current TorXakis compiler).
-    let os' = filter ((chanIdIstep /=) . chanid) os
-    return $ ActOffer (Set.fromList os') Set.empty c
+toActOffer mm vrvds (ActOfferDecl osd mc) =
+    let chanRefList :: [Text]
+        chanRefList = map (chanRefName . chanRefOfOfferDecl) osd
+        chanRefSet :: Set.Set Text
+        chanRefSet = Set.fromList chanRefList
+    in
+        if Set.size chanRefSet == length chanRefList
+        then do
+            os <- traverse (toOffer mm vrvds) osd
+            c  <- maybe (return . cstrConst . Cbool $ True)
+                        (liftEither . expDeclToValExpr vrvds sortIdBool)
+                        mc
+            -- Filter the internal actions (to comply with the current TorXakis compiler).
+            let os' = filter ((chanIdIstep /=) . chanid) os
+            return $ ActOffer (Set.fromList os') Set.empty c
+        else
+            throwError Error
+                        { _errorType = MultipleDefinitions Channel
+                        , _errorLoc  = NoErrorLoc
+                        , _errorMsg  = "List of Channels that occur multiple times in ActOffer: " <> T.pack (show (findDuplicates chanRefSet chanRefList))
+                        }
+    where
+        -- find the Duplicates
+        -- alternative implementation, make multiset and use elements with occurrence > 1
+        findDuplicates :: Ord a => Set.Set a -> [a] -> Set.Set a
+        findDuplicates _ []                        = Set.empty
+        findDuplicates s l      | Set.null s       = Set.fromList l
+        findDuplicates s (x:xs) | x `Set.member` s = findDuplicates (Set.delete x s) xs
+                                | otherwise        = Set.insert x (findDuplicates s xs)
 
 -- | Compile a list offer declarations on a channel into a list of offer
 -- declarations.
@@ -250,9 +274,17 @@ toOffer mm vrvds (OfferDecl cr cods) = case chanRefName cr of
         return $ Offer chanIdExit ofrs
     _      -> do
         cId  <- lookupChId mm (getLoc cr)
-        ofrs <- traverse (uncurry (toChanOffer vrvds))
-                     (zip (chansorts cId) cods)
-        return $ Offer cId ofrs
+        let definedLength = length (chansorts cId)
+            actualLength = length cods
+          in if definedLength == actualLength
+                then Offer cId <$> traverse (uncurry (toChanOffer vrvds))
+                                            (zip (chansorts cId) cods)
+                else throwError Error
+                        { _errorType = TypeMismatch
+                        , _errorLoc  = getErrorLoc cr
+                        , _errorMsg  = "Mismatch in defined (" <> T.pack (show definedLength) 
+                                           <> ") and actual (" <> T.pack (show actualLength) <> ") channel parameters."
+                        }
 
 -- | Compile a channel offer declaration into a channel offer.
 toChanOffer :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])

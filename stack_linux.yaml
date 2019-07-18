@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-11.17
+resolver: lts-11.22
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -50,6 +50,9 @@ packages:
 - location: sys/defs
 - location: sys/lexregexxsd
 - location: sys/lpe
+- location: sys/lpeops
+- location: sys/lpeq
+- location: sys/lpeutils
 - location: sys/server
 - location: sys/serverenv
 - location: sys/solve

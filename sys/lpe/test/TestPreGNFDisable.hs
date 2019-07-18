@@ -25,13 +25,14 @@ import Constant
 import ValExpr
 import TranslatedProcDefs
 import LPEfunc
+import SortId
 import TestDefinitions
 
---import Debug.Trace
---import TxsShow
+-- import Debug.Trace
+-- import TxsShow
 
 
---type ProcDefs = Map.Map ProcId ProcDef
+-- type ProcDefs = Map.Map ProcId ProcDef
 
 ---------------------------------------------------------------------------
 -- Tests
@@ -83,7 +84,6 @@ testDisable1 = TestCase $
       procInst' = procInst procIdP' [chanIdA] [int0, int0, int0]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
                                                 (choice $ Set.fromList [
-
                                                       actionPref 
                                                             actOfferA { constraint = cstrAnd (Set.fromList [ 
                                                                                                 cstrITE (cstrEqual vexprPdisable int0)
@@ -92,13 +92,10 @@ testDisable1 = TestCase $
                                                                                           ])
                                                                         } 
                                                             (procInst procIdP' [chanIdA] [int0, intMin1, vexprPpcRHS]),
-
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
                                                                         } 
                                                             (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
-
-
                                                 ])
 
 
@@ -159,16 +156,11 @@ testDisable2 = TestCase $
                                                                                           ])
                                                                         } 
                                                             (procInst procIdP' [chanIdA] [int0, intMin1, intMin1]),
-
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
                                                                       } 
                                                             (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
-
-
                                                 ])
-
-        
 
 
 
@@ -233,7 +225,6 @@ testDisable3 = TestCase $
       procInst' = procInst procIdP' [chanIdA] [int0, int0, int0]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
                                                 (choice $ Set.fromList [
-
                                                       actionPref 
                                                             actOfferAExit { constraint = cstrAnd (Set.fromList [ 
                                                                                                 cstrITE (cstrEqual vexprPdisable int0)
@@ -242,17 +233,11 @@ testDisable3 = TestCase $
                                                                                           ])
                                                                         } 
                                                             (procInst procIdP' [chanIdA] [int0, intMin1, intMin1]),
-
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
                                                                       }
                                                             (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
-
-
                                                 ])
-
-        
-  
 
 -- P[A]() := P1[A](0) [>> A?x >-> STOP
 -- P1[A](y) :=    A?x >-> STOP
@@ -312,16 +297,16 @@ testDisable4 = TestCase $
 
 
       varIdPlhsP1y :: VarId
-      varIdPlhsP1y = VarId (T.pack "P$lhs$P1$A$y") 33 intSort
+      varIdPlhsP1y = VarId (T.pack "P$lhs$P1$A$y") 33 sortIdInt
       vexprPlhsP1y :: VExpr
       vexprPlhsP1y = cstrVar varIdPlhsP1y
 --          
 --          make a new ProcDef for P
 --                P[A](P$disable$lhs, P$lhs$pc$P$lhs, P$lhs$P1$A$y, P$rhs$pc$P$rhs) :=
 --                    A$A$1 [P$rhs$pc$P$rhs == 0]                     >-> P[A](1, P$lhs$pc$P$lhs, P$lhs$P1$A$y, -1)   
---                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, -1, ANY, P$rhs$pc$P$rhs) 
+--                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, -1, P$lhs$P1$A$y, P$rhs$pc$P$rhs) 
 --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs)
---                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, -1, ANY, P$rhs$pc$P$rhs)
+--                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, -1, P$lhs$P1$A$y, P$rhs$pc$P$rhs)
 --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs) 
 --          with ProcInst: P[A](0, 0, ANY, 0)
       procIdP' = procIdGen "P" [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPlhsP1y, varIdPpcRHS]
@@ -350,7 +335,7 @@ testDisable4 = TestCase $
                                                                                                 (cstrConst (Cbool False))
                                                                                     ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, anyInt, vexprPpcRHS]),
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, vexprPlhsP1y, vexprPpcRHS]),
 
                                                       --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs)
                                                       actionPref 
@@ -378,7 +363,7 @@ testDisable4 = TestCase $
                                                                                                 (cstrConst (Cbool False))
                                                                                     ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, anyInt, vexprPpcRHS]),
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, vexprPlhsP1y, vexprPpcRHS]),
 
                                                       --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs) 
                                                       actionPref 
@@ -413,8 +398,8 @@ testDisable4 = TestCase $
 --          
 --          make a new ProcDef for P
 --                P[A](P$disable$lhs, x, P$lhs$pc$P$lhs, P$lhs$P$lhs$A$x, P$rhs$pc$P$rhs, P$rhs$P$rhs$A$x) :=
---                      A [P$disable$lhs == 0, pc$P$lhs == 0]   >-> P[A](0, x, -1, ANY, pc$P$rhs, P$rhs$A$x) 
---                 ##   A [pc$P$rhs == 0]                       >-> P[A](1, x, pc$P$lhs, P$lhs$A$x, -1, ANY)   
+--                      A [P$disable$lhs == 0, pc$P$lhs == 0]   >-> P[A](0, x, -1, P$lhs$A$x, pc$P$rhs, P$rhs$A$x) 
+--                 ##   A [pc$P$rhs == 0]                       >-> P[A](1, x, pc$P$lhs, P$lhs$A$x, -1, P$rhs$A$x)   
 --          with ProcInst: P[A](0, 2, 0, ANY, 0, ANY)
 testDisable5 :: Test
 testDisable5 = TestCase $
@@ -439,12 +424,12 @@ testDisable5 = TestCase $
 
 
       varIdPlhsX :: VarId
-      varIdPlhsX = VarId (T.pack "P$lhs$P$lhs$A$x") 33 intSort
+      varIdPlhsX = VarId (T.pack "P$lhs$P$lhs$A$x") 33 sortIdInt
       vexprPlhsX :: VExpr
       vexprPlhsX = cstrVar varIdPlhsX
 
       varIdPrhsX :: VarId
-      varIdPrhsX = VarId (T.pack "P$rhs$P$rhs$A$x") 33 intSort
+      varIdPrhsX = VarId (T.pack "P$rhs$P$rhs$A$x") 33 sortIdInt
       vexprPrhsX :: VExpr
       vexprPrhsX = cstrVar varIdPrhsX
 
@@ -459,15 +444,13 @@ testDisable5 = TestCase $
                                                                                                       (cstrConst (Cbool False))
                                                                                           ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, vexprX, intMin1, anyInt, vexprPpcRHS, vexprPrhsX]),
+                                                            (procInst procIdP' [chanIdA] [int0, vexprX, intMin1, vexprPlhsX, vexprPpcRHS, vexprPrhsX]),
 
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
                                                                       } 
-                                                            (procInst procIdP' [chanIdA] [int1, vexprX, vexprPpcLHS, vexprPlhsX, intMin1, anyInt])
+                                                            (procInst procIdP' [chanIdA] [int1, vexprX, vexprPpcLHS, vexprPlhsX, intMin1, vexprPrhsX])
                                                 ])
-
-        
 
 
 ----------------------------------------------------------------------------------------
@@ -480,5 +463,4 @@ testPreGNFDisableList = TestList [
                         ,    TestLabel "EXIT | A , ActionPref" testDisable3
                         ,    TestLabel "ProcInst , ActionPref -4 " testDisable4
                         ,    TestLabel "ProcInst , ActionPref -5 " testDisable5
-
                         ]

@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 --------------------------------------------------------------------------------
 -- |
 -- Module      :  TorXakis.Compiler.Error
@@ -34,7 +35,9 @@ module TorXakis.Compiler.Error
 where
 
 import           Control.Lens.TH (makeLenses)
-import           Data.Text       (Text)
+import           Data.Data       (Data)
+import           Data.List       (intercalate)
+import           Data.Text       (Text, unpack)
 
 -- | Entity to which the error is related.
 data Entity
@@ -45,12 +48,13 @@ data Entity
     | Variable
     | Sort
     | Channel
+    | Model
     -- | In case an error must be generated from a generic function that cannot
     -- have access to the entity type. The error type can be made more specific
     -- by the caller of such a generic function (see for instance
     -- @getUniqueElement@).
     | Entity
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data)
 
 -- | Type of errors that can occur when compiling a 'TorXakis' model file.
 data ErrorType
@@ -71,7 +75,7 @@ data ErrorType
     | NoDefinition -- ^ No definition found for function or process.
     | InvalidExpression
     | CompilerPanic -- ^ An error in the compiler has happened.
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data)
 
 -- | Location of an error.
 data ErrorLoc
@@ -85,7 +89,12 @@ data ErrorLoc
         { errorLine   :: Int
         , errorColumn :: Int
         }
-    deriving (Eq, Show)
+    deriving (Eq, Data)
+
+instance Show ErrorLoc where
+    show  NoErrorLoc     = "<no location>"
+    show (ErrorPredef t) = "<predefined entity " ++ show t ++ " >"
+    show (ErrorLoc l c)  = "line " ++ show l ++ " and column " ++ show c
 
 -- | Entities that have an error location.
 class HasErrorLoc l where
@@ -96,11 +105,15 @@ data Error
     -- | Single error.
     = Error
     { _errorType :: ErrorType
-    , _errorLoc  :: ErrorLoc
-    , _errorMsg  :: Text
+    , _errorLoc  :: ErrorLoc  -- PvdL: Why Not Maybe ErrorLoc and have not NoErrorLoc??
+    , _errorMsg  :: Text    -- already in human readable form
     }
     -- | Multiple errors.
     | Errors [Error]
-    deriving (Eq, Show)
+    deriving (Eq, Data)
+
+instance Show Error where
+    show (Error t l m) = show t ++ " at " ++ show l ++ ": " ++ unpack m
+    show (Errors es)   = intercalate "\n" (map show es)
 
 makeLenses ''Error

@@ -19,6 +19,7 @@ module EnvCore
   , initUnid -- :: IOC.IOC Int
   , newUnid -- :: IOC.IOC Int
   , putMsgs -- :: [EnvData.Msg] -> IOC ()
+  , putInfo -- :: [String] -> IOC ()
   -- * Operation on core-state
   , modifyCS
   , putCS
@@ -216,7 +217,8 @@ putMsgs msg = do
      putMsgs' <- gets (putmsgs . state)
      putMsgs' msg
 
-
+putInfo :: [String] -> IOC ()
+putInfo = mapM_ (\m -> putMsgs [ EnvData.TXS_CORE_USER_INFO m ])
 
 -- ----------------------------------------------------------------------------------------- --
 -- set ChanOffers (needed during LPE translation)

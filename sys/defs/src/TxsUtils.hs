@@ -195,7 +195,7 @@ instance UsedFids (ValExprView VarId)
     usedFids (Vfunc fid vexps)          =  fid : usedFids vexps
     usedFids (Vcstr _cid vexps)         =  usedFids vexps
     usedFids (Viscstr _cid vexp)        =  usedFids vexp
-    usedFids (Vaccess _cid _p vexp)     =  usedFids vexp
+    usedFids (Vaccess _cid _n _p vexp)  =  usedFids vexp
     usedFids (Vconst _const)            =  []
     usedFids (Vvar _v)                  =  []
     usedFids (Vite cond tb fb)          =  usedFids [cond, tb, fb]

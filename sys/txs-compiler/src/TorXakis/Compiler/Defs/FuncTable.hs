@@ -108,7 +108,7 @@ cstrToHandlers mm sId c = do
     cId  <- lookupM (getLoc c) mm
     cTH  <- cstrToMkCstrHandler mm sId c
     iTH  <- cstrToIsCstrHandler mm sId c
-    fTHs <- imapM (fieldToAccessCstrHandler mm sId cId) (cstrFields c)
+    fTHs <- imapM (\i f -> fieldToAccessCstrHandler mm sId cId (fieldName f) i f) (cstrFields c)
     -- Taken from TxsHappy@949:
     astFid <- sortToStringFuncId sId
     asfFid <- sortFromStringFuncId sId
@@ -164,13 +164,14 @@ fieldToAccessCstrHandler :: MapsTo Text SortId mm
                          => mm
                          -> SortId  -- ^ Sort id of the containing ADT.
                          -> CstrId  -- ^ Id of the containing constructor.
+                         -> Text    -- ^ Name of the field in the constructor.
                          -> Int     -- ^ Position of the field in the constructor.
                          -> FieldDecl
                          -> CompilerM (Text, SignHandler VarId)
-fieldToAccessCstrHandler mm sId cId p f = do
+fieldToAccessCstrHandler mm sId cId n p f = do
     fId <- findSortIdM mm (fieldSort f)
     return ( fieldName f
-           , Map.singleton (Signature [sId] fId) (accessHandler cId p))
+           , Map.singleton (Signature [sId] fId) (accessHandler cId n p))
 
 -- | Create a function table from a list of function declarations.
 funcDeclsToFuncTable :: ( MapsTo Text SortId mm

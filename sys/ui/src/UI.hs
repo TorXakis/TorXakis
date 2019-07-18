@@ -62,13 +62,13 @@ main  =  withSocketsDo $ do
 
     where
       startUI uiArgs = do
-          hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
+          putStrLn "\nTXS >>  TorXakis :: Model-Based Testing\n"
           now <- getCurrentTime
           bracket (initializeServer uiArgs) cleanup $ \(hc, _) -> do
               home <- getHomeDirectory
               _ <- runStateT ( runInputT (txsHaskelineSettings home) $
                                do { doCmd "START" ""
-                                  ; doCmd "INIT"  $ unwords (inputFiles uiArgs)
+                                  ; doCmd "INIT" $ show (inputFiles uiArgs)
                                   ; cmdsIntprSafe
                                   }
                              )
@@ -79,7 +79,7 @@ main  =  withSocketsDo $ do
                                   , uitimers  = Map.singleton "global" now
                                   , uiparams  = Map.empty
                                   }
-              hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
+              putStrLn "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
 
       initializeServer :: UIArgs -> IO (Handle, Maybe TxsServerInfo)
       initializeServer uiArgs = do
@@ -208,43 +208,46 @@ cmdsIntprSafe = handle handleCtrlC (withInterrupt cmdsIntpr)
 -- | TorXakis UI commands processing.
 cmdsIntpr :: UIO ()
 cmdsIntpr  =  do
-     (cmdhin:_cmdhins) <- lift $ gets uihins
-     line <- if cmdhin /= stdin
-             then liftIO $ hGetLine cmdhin
-             else filter (/= '\r') . fromMaybe "" <$> getInputLine txsPrompt
-     unless (cmdhin /= stdin || null line) $
-         -- Add the line to the history, removing the duplicates, and trimming
-         -- leading and trailing white-spaces.
-         modifyHistory $ addHistoryRemovingAllDupes (strip line)
-     let (cmd,args1)   = span (/= ' ') (dropWhile (== ' ') line)
-     let (args,redir1) = span (/= '$') (dropWhile (== ' ') args1)
-     let redir         = replace "$<"  " $< "
-                         $ replace "$>"  " $> "
-                         $ replace "$>>" " $= " redir1
-     case words redir of
-           []                      -> do setOut "" WriteMode
-                                         cmdIntpr cmd args
-           ["$<",fin]              -> do setOut "" WriteMode
-                                         args' <- liftIO $ readFile fin
-                                         cmdIntpr cmd $ replace "\n" " " args'
-           ["$>",fout]             -> do setOut fout WriteMode
-                                         cmdIntpr cmd args
-           ["$=",fapp]             -> do setOut fapp AppendMode
-                                         cmdIntpr cmd args
-           ["$<",fin,"$>",fout]    -> do setOut fout WriteMode
-                                         args' <- liftIO $ readFile fin
-                                         cmdIntpr cmd $ replace "\n" " " args'
-           ["$<",fin,"$=",fapp]    -> do setOut fapp AppendMode
-                                         args' <- liftIO $ readFile fin
-                                         cmdIntpr cmd $ replace "\n" " " args'
-           ["$>",fout,"$<",fin]    -> do setOut fout WriteMode
-                                         args' <- liftIO $ readFile fin
-                                         cmdIntpr cmd $ replace "\n" " " args'
-           ["$=",fapp,"$<",fin]    -> do setOut fapp AppendMode
-                                         args' <- liftIO $ readFile fin
-                                         cmdIntpr cmd $ replace "\n" " " args'
-           _                       -> do putErr "wrong IO-redirection in command"
-                                         cmdsIntpr
+     x <- lift $ gets uihins
+     case x of
+        (cmdhin:_cmdhins) -> do
+                         line <- if cmdhin /= stdin
+                                 then liftIO $ hGetLine cmdhin
+                                 else filter (/= '\r') . fromMaybe "" <$> getInputLine txsPrompt
+                         unless (cmdhin /= stdin || null line) $
+                             -- Add the line to the history, removing the duplicates, and trimming
+                             -- leading and trailing white-spaces.
+                             modifyHistory $ addHistoryRemovingAllDupes (strip line)
+                         let (cmd,args1)   = span (/= ' ') (dropWhile (== ' ') line)
+                         let (args,redir1) = span (/= '$') (dropWhile (== ' ') args1)
+                         let redir         = replace "$<"  " $< "
+                                             $ replace "$>"  " $> "
+                                             $ replace "$>>" " $= " redir1
+                         case words redir of
+                               []                      -> do setOut "" WriteMode
+                                                             cmdIntpr cmd args
+                               ["$<",fin]              -> do setOut "" WriteMode
+                                                             args' <- liftIO $ readFile fin
+                                                             cmdIntpr cmd $ replace "\n" " " args'
+                               ["$>",fout]             -> do setOut fout WriteMode
+                                                             cmdIntpr cmd args
+                               ["$=",fapp]             -> do setOut fapp AppendMode
+                                                             cmdIntpr cmd args
+                               ["$<",fin,"$>",fout]    -> do setOut fout WriteMode
+                                                             args' <- liftIO $ readFile fin
+                                                             cmdIntpr cmd $ replace "\n" " " args'
+                               ["$<",fin,"$=",fapp]    -> do setOut fapp AppendMode
+                                                             args' <- liftIO $ readFile fin
+                                                             cmdIntpr cmd $ replace "\n" " " args'
+                               ["$>",fout,"$<",fin]    -> do setOut fout WriteMode
+                                                             args' <- liftIO $ readFile fin
+                                                             cmdIntpr cmd $ replace "\n" " " args'
+                               ["$=",fapp,"$<",fin]    -> do setOut fapp AppendMode
+                                                             args' <- liftIO $ readFile fin
+                                                             cmdIntpr cmd $ replace "\n" " " args'
+                               _                       -> do putErr "wrong IO-redirection in command"
+                                                             cmdsIntpr
+        _                    -> error "cmdsIntpr failed: error in internal structure"
 
 
 
@@ -302,16 +305,21 @@ cmdIntpr cmdname args  =
          ; "map"           -> cmdMap        args
          ; "ncomp"         -> cmdNComp      args
          ; "lpe"           -> cmdLPE        args
+         ; "lpeop"         -> cmdLPEOp      args
+         ; "lpeq"          -> cmdLPEQ       args
+         ; "merge"         -> cmdMerge      args
 -- ---------------------------------------------------------------------------------- system --
          ; "systart"       -> cmdSyStart    args
          ; "systop"        -> cmdSyStop     args
 -- ---------------------------------------------------------------------------- unrecognized --
          ; _               -> do putErr $ "unrecognized command `" ++ cmdname ++  "` (enter 'help' for help)"
-                                 (cmdhin:cmdhins) <- lift $ gets uihins
-                                 if  cmdhin == stdin
-                                    then    cmdsIntpr
-                                    else do lift $ modify ( \e -> e { uihins = cmdhins } )
-                                            cmdsIntpr
+                                 x <- lift $ gets uihins
+                                 case x of
+                                    (cmdhin:cmdhins) -> if  cmdhin == stdin
+                                                            then    cmdsIntpr
+                                                            else do lift $ modify ( \e -> e { uihins = cmdhins } )
+                                                                    cmdsIntpr
+                                    _                -> error "unrecognized command handling failed"
          }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -332,12 +340,14 @@ cmdQuit _  =  do
 
 cmdExit :: String -> UIO ()
 cmdExit _args  =  do
-     (cmdhin:cmdhins) <- lift $ gets uihins
-     if  cmdhin == stdin
-       then do doCmd "QUIT" ""
-               return ()
-       else do lift $ modify ( \e -> e { uihins = cmdhins } )
-               cmdsIntpr
+     x <- lift $ gets uihins
+     case x of
+        (cmdhin:cmdhins) -> if  cmdhin == stdin
+                               then do doCmd "QUIT" ""
+                                       return ()
+                               else do lift $ modify ( \e -> e { uihins = cmdhins } )
+                                       cmdsIntpr
+        _                -> error "cmdExit failed"
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -584,6 +594,26 @@ cmdLPE args  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
+cmdLPEOp :: String -> UIO ()
+cmdLPEOp args  =  do
+     doCmd "LPEOP" args
+     cmdsIntpr
+-- ----------------------------------------------------------------------------------------- --
+
+cmdLPEQ :: String -> UIO ()
+cmdLPEQ args  =  do
+     doCmd "LPEQ" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdMerge :: String -> UIO ()
+cmdMerge args  =  do
+     doCmd "MERGE" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
 cmdSyStart :: String -> UIO ()
 cmdSyStart args  =  do
      systems <- lift $ gets uisystems
@@ -592,17 +622,19 @@ cmdSyStart args  =  do
              -> if Map.member nm systems
                  then do putErr "system name in use"
                          cmdsIntpr
-                 else do (Just hin, Just hout, Just herr, ph)
-                             <- liftIO $ createProcess (proc cmd args')
+                 else do x <- liftIO $ createProcess (proc cmd args')
                                                      { std_out = CreatePipe
                                                      , std_in  = CreatePipe
                                                      , std_err = CreatePipe
                                                      }
-                         liftIO $ hSetBuffering hin  NoBuffering
-                         liftIO $ hSetBuffering hout NoBuffering
-                         liftIO $ hSetBuffering herr NoBuffering
-                         lift $ modify ( \e -> e { uisystems = Map.insert nm ph systems } )
-                         cmdsIntpr
+                         case x of
+                            (Just hin, Just hout, Just herr, ph) -> do
+                                 liftIO $ hSetBuffering hin  NoBuffering
+                                 liftIO $ hSetBuffering hout NoBuffering
+                                 liftIO $ hSetBuffering herr NoBuffering
+                                 lift $ modify ( \e -> e { uisystems = Map.insert nm ph systems } )
+                                 cmdsIntpr
+                            _                                    -> error "createProcess failed"
          ; _ -> do putErr "no system to start"
                    cmdsIntpr
          }

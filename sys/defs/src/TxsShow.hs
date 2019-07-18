@@ -44,6 +44,7 @@ import           Sum
 import           TxsDefs
 import           ValExpr
 import           VarId
+import           Id
 
 specialOpChars :: String
 specialOpChars  =  "=+-*/\\^<>|@&%"                 -- must be equal to $special in TxsAlex
@@ -94,19 +95,21 @@ instance PShow TxsDefs where
         s ++ "\nCSTRDEF " ++ T.unpack nm
         ++ " :: " ++ Utils.join " # " (map pshow a)
         ++ " -> " ++ pshow srt ++  " ;\n"
-      showElem s (IdFunc (FuncId nm _ a srt), DefFunc (FuncDef vids vexp) ) =
+      showElem s (IdFunc (FuncId nm _ _ srt), DefFunc (FuncDef vids vexp) ) =
         s ++ "\nFUNCDEF " ++ T.unpack nm
         ++ " ( " ++ Utils.join "; " [ T.unpack n ++ " :: " ++ pshow vsrt
                                     | VarId n _ vsrt <- vids
                                     ]
         ++ " ) "
-        ++ " :: " ++ Utils.join " # " (map pshow a)
-        ++ " -> " ++ pshow srt ++ " ;\n"
-        ++ "  ::=  " ++ pshow vexp ++ " ;\n"
+        ++ " :: " ++ pshow srt ++ "\n"
+        ++ "  ::=  " ++ pshow vexp ++ "\nENDDEF\n"
       showElem s (IdProc (ProcId nm _ _ _ xt), DefProc (ProcDef chans pvars bexp) ) =
         s ++ "\nPROCDEF " ++ T.unpack nm
         ++ " [ " ++ Utils.join "; "
-        [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
+        [ T.unpack n ++ 
+            case srts of
+                [] -> ""
+                _  -> " :: " ++ Utils.join " # " (map pshow srts)
         | ChanId n _ srts <- chans
         ]
         ++ " ] "
@@ -115,26 +118,29 @@ instance PShow TxsDefs where
                                     ]
         ++ " ) "
         ++ case xt of
-             NoExit     -> "NOEXIT\n"
+             NoExit     -> "\n"
              Exit xsrts -> "EXIT " ++ Utils.join " # " (map pshow xsrts) ++ " \n"
              Hit        -> "HIT\n"
         ++ "  ::=\n" ++ pshow bexp ++  "\nENDDEF\n"
-      showElem s (IdModel (ModelId nm _), DefModel (ModelDef chins chouts _ bexp) ) =
+      showElem s (IdModel (ModelId nm _), DefModel (ModelDef chins chouts chsyncs bexp) ) =
         s ++ "\nMODELDEF " ++ T.unpack nm ++"  ::=\n"
         ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
+        ++ "  SYNC  " ++ Utils.join "," (map showMultiChannel chsyncs) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
         ++ "ENDDEF\n"
-      showElem s (IdPurp (PurpId nm _), DefPurp (PurpDef chins chouts _ goals) ) =
+      showElem s (IdPurp (PurpId nm _), DefPurp (PurpDef chins chouts chsyncs goals) ) =
         s ++ "\nPURPDEF " ++ T.unpack nm ++"  ::=\n"
         ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
+        ++ "  SYNC  " ++ Utils.join "," (map showMultiChannel chsyncs) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow goals   ++ "\n"
         ++ "ENDDEF\n"
-      showElem s (IdMapper (MapperId nm _), DefMapper (MapperDef chins chouts _ bexp) ) =
+      showElem s (IdMapper (MapperId nm _), DefMapper (MapperDef chins chouts chsyncs bexp) ) =
         s ++ "\nMAPPERDEF " ++ T.unpack nm ++"  ::=\n"
         ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
+        ++ "  SYNC  " ++ Utils.join "," (map showMultiChannel chsyncs) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
         ++ "ENDDEF\n"
       showElem s (IdCnect (CnectId nm _), DefCnect (CnectDef cnecttype conndefs) ) =
@@ -145,6 +151,9 @@ instance PShow TxsDefs where
       showElem _ _ =
         error "illegal list"
 
+showMultiChannel :: Set.Set ChanId -> String
+showMultiChannel cids = "{" ++ List.intercalate "|" (map (T.unpack . ChanId.name) (Set.toList cids)) ++ "}"
+
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: BExpr
 
@@ -154,9 +163,22 @@ instance PShow BExpr
 
 instance PShow BExprView
   where
-    pshow (ActionPref actoff bexp)
-      =  pshow actoff ++ "\n"
-         ++ "  >->  " ++ "( " ++ pshow bexp ++ " )"
+    pshow (ActionPref actoff@(ActOffer _ hidvars _) bexp) | Set.null hidvars
+      = pshow actoff ++ "\n >-> ( " ++ pshow bexp ++ " )"
+    pshow (ActionPref (ActOffer ofs hidvars c) bexp)
+      = let ls = Set.toList hidvars in
+            "HIDE [ Hidden$Channel :: " ++ Utils.join " # " (map (pshow . varsort) ls) ++ " ] IN\n" 
+             ++ " { Hidden$Channel ? " ++ Utils.join " ? " (map (T.unpack . VarId.name) ls)
+             ++ (case Set.toList ofs of
+                    [] -> ""
+                    os -> " | " ++ Utils.join " | " (map pshow os)
+                )
+             ++ " }"
+             ++ case ValExpr.view c of
+                    Vconst (Cbool True) -> ""
+                    _                   -> " [[ " ++ pshow c ++ " ]]"
+             ++ "\n >-> ( " ++ pshow bexp ++ " )"
+             ++ "\nNI"
     pshow (Guard c bexp)
       =  "[[ " ++ pshow c ++ " ]] =>> \n" ++ "( " ++ pshow bexp ++ " )"
     pshow (Choice bexps)
@@ -191,10 +213,10 @@ instance PShow BExprView
          ++ " [" ++ Utils.join "," (map pshow chans) ++ "]"
          ++ " ( " ++ Utils.join ", " (map pshow vexps) ++ " )\n"
     pshow (Hide chans bexp)
-      =  "HIDE "
+      =  "HIDE ["
          ++ Utils.join "; " [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
                             | ChanId n _ srts <- Set.toList chans
-                            ] ++ " IN\n"
+                            ] ++ "] IN\n"
          ++ pshow bexp ++ "\n"
          ++ "NI\n"
     pshow (ValueEnv ve bexp)
@@ -206,24 +228,19 @@ instance PShow BExprView
       =  "STAUT " ++ pshow init' ++ "\n"  ++ pshow ve ++ "\n"
            ++ Utils.join ";\n" (map pshow trns)
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: ActOffer
 
 
 instance PShow ActOffer
   where
-    pshow (ActOffer ofs hidvars c)
-      =  "{ " ++ Utils.join " | " (map pshow (Set.toList ofs)) ++ "} "
-         ++ ( if  null hidvars
-                then ""
-                else  "{/ " ++ Utils.join " | " (map pshow (Set.toList hidvars)) ++ " /} "
-            )
-         ++ case ValExpr.view c of
-            { Vconst (Cbool True) -> ""
-            ; _                   -> "\n   [[ " ++ pshow c ++ " ]]"
-            }
-
+    pshow (ActOffer ofs _hidvars c) =
+        case Set.toList ofs of
+                    [] -> "ISTEP"
+                    ls -> "{ " ++ Utils.join " | " (map pshow ls) ++ " }"
+        ++ case ValExpr.view c of
+                    Vconst (Cbool True) -> ""
+                    _                   -> " [[ " ++ pshow c ++ " ]]"
 
 instance PShow Offer where
   pshow (Offer chid choffs) = pshow chid ++ concatMap pshow choffs
@@ -255,10 +272,9 @@ instance PShow v => PShow (ValExprView v) where
     pshow (Vcstr cid vexps)
       =  pshow cid ++ "(" ++ Utils.join "," (map pshow vexps) ++ ")"
     pshow (Viscstr cid vexp)
-      = "is"++ T.unpack (CstrId.name cid) ++ "(" ++ pshow vexp ++ ")"
-    pshow (Vaccess cid p vexp)
-      =  "access "++ T.unpack (CstrId.name cid) ++ " " ++ show p
-      ++ " (" ++ pshow vexp ++ ")"
+      = "is" ++ T.unpack (CstrId.name cid) ++ "(" ++ pshow vexp ++ ")"
+    pshow (Vaccess _cid n _p vexp)
+      =  T.unpack n ++ "(" ++ pshow vexp ++ ")"
     pshow (Vconst con)
       =  pshow con
     pshow (Vvar vid)
@@ -435,8 +451,13 @@ instance PShow Ident where
     pshow (IdMapper id) =  pshow id
     pshow (IdCnect  id) =  pshow id
 
+showUnid :: (a -> T.Text) -> (a -> Id) -> a -> String
+--showUnid f g x = T.unpack (f x) ++ "@" ++ show (g x)
+showUnid f _g = T.unpack . f
+
 instance PShow ChanId where
-  pshow = T.unpack . ChanId.name
+  -- pshow = T.unpack . ChanId.name
+  pshow = showUnid ChanId.name ChanId.unid
 
 instance PShow CstrId where
   pshow = T.unpack . CstrId.name
@@ -448,7 +469,8 @@ instance PShow GoalId where
   pshow = T.unpack . GoalId.name
 
 instance PShow ProcId where
-  pshow = T.unpack . ProcId.name
+  -- pshow = T.unpack . ProcId.name
+  pshow = showUnid ProcId.name ProcId.unid
 
 instance PShow PurpId where
   pshow = T.unpack . PurpId.name
@@ -460,10 +482,12 @@ instance PShow StatId where
   pshow = T.unpack . StatId.name
 
 instance PShow VarId where
-  pshow = T.unpack . VarId.name
+  -- pshow = T.unpack . VarId.name
+  pshow = showUnid VarId.name VarId.unid
 
 instance PShow ModelId where
-  pshow = T.unpack . ModelId.name
+  -- pshow = T.unpack . ModelId.name
+  pshow = showUnid ModelId.name ModelId.unid
 
 instance PShow MapperId where
   pshow = T.unpack . MapperId.name

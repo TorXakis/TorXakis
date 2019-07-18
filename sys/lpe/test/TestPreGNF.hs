@@ -17,11 +17,11 @@ import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.Text         as T
-import VarId
 
+import VarId
+import SortId
 import TxsDefs
 import ValExpr
-
 import LPEfunc
 import TestDefinitions
 
@@ -73,7 +73,7 @@ testActPref3 = TestCase $
 
 
       varIdQpre1X :: VarId
-      varIdQpre1X = VarId (T.pack "Q$pre1$x") 33 intSort
+      varIdQpre1X = VarId (T.pack "Q$pre1$x") 33 sortIdInt
 
       procIdQpre1 = procIdGen "Q$pre1" [chanIdA] [varIdQpre1X]
       procDefQ' = ProcDef [chanIdA] [] (actionPref actOfferAx (procInst procIdQpre1 [chanIdA] [vexprX]))
@@ -156,7 +156,7 @@ testChoice4 = TestCase $
 
 
       varIdPpre2X :: VarId
-      varIdPpre2X = VarId (T.pack "P$pre2$x") 33 intSort
+      varIdPpre2X = VarId (T.pack "P$pre2$x") 33 sortIdInt
       
       procIdPpre2 = procIdGen "P$pre2" [chanIdA] [varIdPpre2X]
       procInstPpre2 = procInst procIdPpre2 [chanIdA] [vexprX]
@@ -209,9 +209,9 @@ testChoice5 = TestCase $
 
 
       varIdPpre1pre1X :: VarId
-      varIdPpre1pre1X = VarId (T.pack "P$pre1$pre1$P$pre1$x") 33 intSort
+      varIdPpre1pre1X = VarId (T.pack "P$pre1$pre1$P$pre1$x") 33 sortIdInt
       varIdPpre1pre1Y :: VarId
-      varIdPpre1pre1Y = VarId (T.pack "P$pre1$pre1$y") 33 intSort
+      varIdPpre1pre1Y = VarId (T.pack "P$pre1$pre1$y") 33 sortIdInt
       
       procIdPpre1 = procIdGen "P$pre1" [chanIdA, chanIdB] [varIdPpre1X]
       procIdPpre1pre1 = procIdGen "P$pre1$pre1" [chanIdA, chanIdB] [varIdPpre1pre1X, varIdPpre1pre1Y]
@@ -309,8 +309,8 @@ testGuardChoice = TestCase $
 --                                                     ( parallel Set.empty [stop, stop])))]
 
 
---             varIdOp1pcPpre1op1 = VarId (T.pack "op1$pc$P$pre1$op1") 0 intSort
---             varIdOp1pcPpre1op2 = VarId (T.pack "op1$pc$P$pre1$op2") 0 intSort
+--             varIdOp1pcPpre1op1 = VarId (T.pack "op1$pc$P$pre1$op1") 0 sortIdInt
+--             varIdOp1pcPpre1op2 = VarId (T.pack "op1$pc$P$pre1$op2") 0 sortIdInt
 
 --             -- vexprOp1pcPpre1op1 = cstrVar varIdOp1pcPpre1op1
 

@@ -1,0 +1,191 @@
+%% Based on a TeXnicCenter-Template by Gyorgy SZEIDL.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------
+%
+\documentclass{report}%
+%
+%----------------------------------------------------------
+% This is a sample document for the standard LaTeX Report Class
+% Class options
+%       --  Body text point size:
+%                        10pt (default), 11pt, 12pt
+%       --  Paper size:  letterpaper (8.5x11 inch, default)
+%                        a4paper, a5paper, b5paper,
+%                       legalpaper, executivepaper
+%       --  Orientation (portrait is the default):
+%                       landscape
+%       --  Printside:  oneside (default), twoside
+%       --  Quality:    final (default), draft
+%       --  Title page: titlepage, notitlepage
+%       --  Columns:    onecolumn (default), twocolumn
+%       --  Start chapter on left:
+%                       openright(no), openany (default)
+%       --  Equation numbering (equation numbers on right is the default)
+%                       leqno
+%       --  Displayed equations (centered is the default)
+%                       fleqn (flush left)
+%       --  Open bibliography style (closed bibliography is the default)
+%                       openbib
+% For instance the command
+%          \documentclass[a4paper,12p,leqno]{report}
+% ensures that the paper size is a4, fonts are typeset at the size 12p
+% and the equation numbers are on the left side.
+%
+\usepackage{amsmath}%
+\usepackage{amsfonts}%
+\usepackage{amssymb}%
+\usepackage{graphicx}
+%----------------------------------------------------------
+\usepackage{url}
+\usepackage{tabularx}
+%\usepackage{tablefootnote}
+\usepackage[square,sort,comma,numbers]{natbib}
+\usepackage{chapterbib}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{doi}
+\usepackage{listings}
+\usepackage{color}
+%----------------------------------------------------------
+% Define colors:
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+% Define language
+\lstdefinelanguage{torxakis}
+{
+  % list of keywords
+  morekeywords={
+    PROCDEF,
+    FUNCDEF
+  },
+  sensitive=false, % keywords are not case-sensitive
+  morecomment=[l]{//}, % l is for line comment
+  morecomment=[s]{/*}{*/}, % s is for start and end delimiter
+  morestring=[b]" % defines that strings are enclosed in double quotes
+}
+% Define environment:
+\lstset{frame=tb,
+  language=torxakis,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+%----------------------------------------------------------
+\usepackage{hyperref}
+
+\usepackage{multicol}
+\usepackage[shortlabels]{enumitem}
+
+\usepackage{mathtools}
+\usepackage[all,cmtip]{xy}
+
+\usepackage{tabularx}
+\def\tabularxcolumn#1{m{#1}}
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+%----------------------------------------------------------
+\newcommand{\txs}{TorXakis}
+\newcommand{\lpeq}{LPEQ}
+\newcommand{\pedi}{Parallel / Enable / Disable / Interrupt}
+\newcommand{\choice}{\texttt{\#\#} / Choice}
+\newcommand{\txsChoice}[2]{#1\;\texttt{\#\#}\;#2}
+\newcommand{\txsExit}{\texttt{EXIT}}
+\newcommand{\txsEnable}[2]{#1\;\texttt{>>>}\;#2}
+\newcommand{\txsDisable}[2]{#1\;\texttt{[>>}\;#2}
+\newcommand{\txsInterrupt}[2]{#1\;\texttt{[><}\;#2}
+
+\newcommand{\mcrl}{mCRL2}
+\newcommand{\inlinecode}[1]{{\lstinline[language=torxakis]{#1}}}
+\newcommand{\istep}{\texttt{ISTEP}}
+\newcommand{\cistep}{\texttt{CISTEP}}
+\newcommand{\true}{\textbf{true}}
+\newcommand{\false}{\textbf{false}}
+\newcommand{\comma}{,\;}
+\newcommand{\labeledas}[1]{labeled as `#1'}
+\newcommand{\labeledaseither}[2]{labeled as `#1' or `#2'}
+\newcommand{\removelabelfrom}[1]{remove the label `#1' from}
+\newcommand{\varsof}[1]{\text{vars}(#1)}
+\newcommand{\sortof}[1]{\text{sort}(#1)}
+\newcommand{\flsortof}[1]{\text{fl}(\sortof{#1})}
+
+\newcommand{\primed}[1]{{#1}^\prime}
+\newcommand{\pair}[2]{(#1\comma #2)}
+\newcommand{\triple}[3]{(#1\comma #2\comma #3)}
+\newcommand{\fourTuple}[4]{(#1\comma #2\comma #3\comma #4)}
+\newcommand{\fiveTuple}[5]{(#1\comma #2\comma #3\comma #4\comma #5)}
+\newcommand{\set}[1]{\{\;#1\;\}}
+\newcommand{\setcomp}[2]{\{\;#1\;|\;#2\;\}}
+\newcommand{\listcomp}[2]{[\;#1\;|\;#2\;]}
+\newcommand{\qdot}{\; .\;}
+\newcommand{\angleset}[1]{\langle\;#1\;\rangle}
+
+\newcommand{\summandList}[1]{\textsc{smds}(#1)}
+\newcommand{\starterSummands}[1]{\textsc{starters}(#1)}
+\newcommand{\filteredStarterSummands}[2]{\textsc{starters}_{#1}(#2)}
+\newcommand{\possibleSuccessors}[1]{\textsc{psuccs}(#1)}
+\newcommand{\possiblePredecessors}[1]{\textsc{ppreds}(#1)}
+\newcommand{\filteredPossibleSuccessors}[2]{\textsc{psuccs}_{#1}(#2)}
+\newcommand{\nonDetSummands}[1]{\textsc{nondet}(#1)}
+\newcommand{\enabledStarterSignature}[1]{\textsc{ESS}(#1)}
+\newcommand{\enabledSuccessorSignature}[1]{\textsc{ESS}(#1)}
+\newcommand{\nextESS}[1]{\textsc{next}(#1)}
+\newcommand{\flattenESSs}[1]{\textsc{flatten}(#1)}
+\newcommand{\dataParId}[2]{\textsc{pids}_#2(#1)}
+\newcommand{\dataParIds}[0]{\textsc{pids}}
+%----------------------------------------------------------
+\setlength\parindent{0pt}
+%----------------------------------------------------------
+%\makeatletter
+%\newcommand\footnoteref[1]{\protected@xdef\@thefnmark{\ref*{#1}}\@footnotemark}
+%\makeatother
+%----------------------------------------------------------
+\newtheorem{theorem}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+\newtheorem{algorithm}[theorem]{Algorithm}
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{conclusion}[theorem]{Conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+\newenvironment{proof}[1][Proof]{\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+%----------------------------------------------------------
+\begin{document}
+
+\title{LPEQ\\\large{A linearization algorithm for \txs{}}}
+\author{Djurre van der Wal}
+\date{\today}
+\maketitle
+\tableofcontents
+
+\input{introduction}
+\input{main-algorithm}
+\input{nlbranch-flows}
+
+\bibliographystyle{plainnat}
+\bibliography{biblio}
+
+\end{document}

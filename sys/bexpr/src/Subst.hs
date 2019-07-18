@@ -53,10 +53,12 @@ instance Subst BExpr where
     
 subst' :: VEnv -> Map.Map FuncId (FuncDef VarId) -> BExprView -> BExpr
 subst' ve fdefs (ActionPref (ActOffer offs hidvars cnrs) bexp) =
-    actionPref (ActOffer (subst ve fdefs offs)
-                         hidvars
-                         (subst ve fdefs cnrs))
-               (subst ve fdefs bexp)
+    if any (`Set.member` hidvars) (Map.keys ve)
+    then error ("Substitution not applied to hidden variables.\nhidvars = " ++ show hidvars ++ "\nvenv = " ++ show ve)
+    else actionPref (ActOffer (subst ve fdefs offs)
+                              hidvars
+                              (subst ve fdefs cnrs))
+                    (subst ve fdefs bexp)
 
 subst' ve fdefs (Guard cnrs bexp) =
     guard (subst ve fdefs cnrs) (subst ve fdefs bexp)

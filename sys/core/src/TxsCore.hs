@@ -116,6 +116,14 @@ module TxsCore
   -- * LPE transformation
 , txsLPE
 
+  -- * LPEQ transformation
+, txsLPEQ
+
+  -- * LPE manipulation
+, txsLPEOp
+
+  -- * LPE manipulation
+, txsMerge
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -154,6 +162,7 @@ import           Relabel             (relabel)
 -- import from behave(defs)
 import qualified Behave
 import qualified BTree
+import qualified BehExprDefs
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -179,10 +188,13 @@ import qualified SMTData
 import qualified Eval
 
 -- import from lpe
--- import qualified LPE
 import qualified LPE
+import qualified LPEOps
+import qualified LPEQ
+import ModelIdFactory
 
 -- import from valexpr
+import qualified ModelId
 import qualified SortId
 import qualified SortOf
 import Constant
@@ -234,6 +246,7 @@ txsInit tdefs sigs putMsgs  =  do
                (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions (SMTData.EnvDefs (TxsDefs.sortDefs tdefs) (TxsDefs.cstrDefs tdefs) (Set.foldr Map.delete (TxsDefs.funcDefs tdefs) (allENDECfuncs tdefs)))) smtEnv'
                putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver " ++ show (Config.solverId (Config.selectedSolver cfg)) ++ " initialized : " ++ info
                        , EnvData.TXS_CORE_USER_INFO   "TxsCore initialized"
+                       , EnvData.TXS_CORE_USER_INFO   (" LPEOps version " ++ LPEOps.lpeOpsVersion)
                        ]
                put envc {
                  IOC.state =
@@ -932,8 +945,8 @@ txsShow item nm  = do
        let defs = [ (id2ident id', id2def def) | (id', def) <- Map.toList iddefs
                                               , TxsDefs.name (id2ident id') == T.pack nm' ]
        in case defs of
-            [(ident,txsdef)] -> TxsShow.fshow (ident,txsdef)
-            _                -> "no (uniquely) defined item to be shown: " ++ nm' ++ "\n"
+            [_] -> TxsShow.fshow $ TxsDefs.fromList defs
+            _   -> "no (uniquely) defined item to be shown: " ++ nm' ++ "\n"
 
 -- | Go to state with the provided state number.
 -- core action.
@@ -1116,16 +1129,15 @@ txsLPE (Left bexpr)  =  do
     IOC.Initing {IOC.tdefs = tdefs}
       -> do lpe <- LPE.lpeTransform bexpr (TxsDefs.procDefs tdefs)
             case lpe of
-              Just (procinst'@(TxsDefs.view -> TxsDefs.ProcInst procid' _ _), procdef')
+              Just (procInst'@(TxsDefs.view -> TxsDefs.ProcInst procid' _ _), procdef')
                 -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
                      Nothing
                        -> do let tdefs' = tdefs { TxsDefs.procDefs = Map.insert
                                                     procid' procdef' (TxsDefs.procDefs tdefs)
                                                 }
                              IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
-                             return $ Just (Left procinst')
-                     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                           "LPE: generated process id already exists" ]
+                             return $ Just (Left procInst')
+                     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "LPE: generated process id already exists" ]
                              return Nothing
               _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: transformation failed" ]
                       return Nothing
@@ -1142,14 +1154,12 @@ txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
                    lift $ hPrint stderr lpe'
                    case lpe' of
                      Just (Left procinst'@(TxsDefs.view -> TxsDefs.ProcInst{}))
-                       -> do uid'   <- IOC.newUnid
-                             tdefs' <- gets (IOC.tdefs . IOC.state)
-                             let modelid' = TxsDefs.ModelId ("LPE_"<>modname) uid'
-                                 modeldef'= TxsDefs.ModelDef insyncs outsyncs splsyncs procinst'
-                                 tdefs''  = tdefs'
-                                   { TxsDefs.modelDefs = Map.insert modelid' modeldef'
-                                                                    (TxsDefs.modelDefs tdefs')
-                                   }
+                       -> do tdefs' <- gets (IOC.tdefs . IOC.state)
+                             --uid'   <- IOC.newUnid
+                             --let modelid' = TxsDefs.ModelId ("LPE_"<>modname) uid'
+                             modelid' <- getModelIdFromName ("LPE_"<>modname)
+                             let modeldef' = TxsDefs.ModelDef insyncs outsyncs splsyncs procinst'
+                             let tdefs'' = tdefs' { TxsDefs.modelDefs = Map.insert modelid' modeldef' (TxsDefs.modelDefs tdefs') }
                              IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs'' }
                              return $ Just (Right modelid')
                      _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "LPE: " ++
@@ -1160,6 +1170,58 @@ txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: only allowed if initialized" ]
             return Nothing
 
+-- ----------------------------------------------------------------------------------------- --
+
+txsLPEQ :: String -> String -> IOC.IOC [String]
+txsLPEQ inName outName = do
+    msgsOrInModel <- getMsgOrModelFromName (T.pack inName)
+    case msgsOrInModel of
+      Left msg -> return [msg]
+      Right (modelId, modelDef) -> do r <- LPEQ.lpeq modelId modelDef outName
+                                      case r of
+                                        Left msgs -> return msgs
+                                        Right (mid, _) -> do return ["LPEQ transformation complete; result saved to model " ++ T.unpack (ModelId.name mid)]
+-- txsLPEQ
+
+-- ----------------------------------------------------------------------------------------- --
+
+txsLPEOp :: String -> String -> String -> TxsDefs.VExpr -> IOC.IOC [String]
+txsLPEOp opChain inName outName invariant = do
+    msgsOrInModel <- getMsgOrModelFromName (T.pack inName)
+    case msgsOrInModel of
+      Left msg -> return [msg]
+      Right (modelId, _modelDef) ->
+        case LPEOps.getLPEOperations opChain of
+          Left msgs -> return msgs
+          Right ops -> do
+            msgsOrOutModel <- LPEOps.lpeOperations ops modelId outName invariant
+            case msgsOrOutModel of
+              Left msgs -> return msgs
+              Right outModelId -> return ["LPE transformation complete; result saved to model " ++ T.unpack (ModelId.name outModelId)]
+--txsLPEOp
+
+-- ----------------------------------------------------------------------------------------- --
+txsMerge :: String -> String -> String -> IOC.IOC [String]
+txsMerge firstName secondName outputName = do
+    msgsOrFirstModel <- getMsgOrModelFromName (T.pack firstName)
+    case msgsOrFirstModel of
+      Left msg -> return [msg]
+      Right (_, TxsDefs.ModelDef insyncs1 outsyncs1 splsyncs1 bexpr1) ->
+        do msgsOrSecondModel <- getMsgOrModelFromName (T.pack secondName)
+           case msgsOrSecondModel of
+             Left msg -> return [msg]
+             Right (_, TxsDefs.ModelDef insyncs2 outsyncs2 splsyncs2 bexpr2) ->
+               do outputModelId <- getModelIdFromName (T.pack outputName)
+                  let newInsyncs = Set.toList (Set.fromList (insyncs1 ++ insyncs2))
+                  let newOutsyncs = Set.toList (Set.fromList (outsyncs1 ++ outsyncs2))
+                  let newSplsyncs = Set.toList (Set.fromList (splsyncs1 ++ splsyncs2))
+                  let newProcInst = BehExprDefs.parallel (Set.unions (newInsyncs ++ newOutsyncs ++ newSplsyncs)) [bexpr1, bexpr2]
+                  let newModelDef = TxsDefs.ModelDef newInsyncs newOutsyncs newSplsyncs newProcInst
+                  tdefs' <- gets (IOC.tdefs . IOC.state)
+                  let tdefs'' = tdefs' { TxsDefs.modelDefs = Map.insert outputModelId newModelDef (TxsDefs.modelDefs tdefs') }
+                  IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs'' }
+                  return ["Models merged; result saved to model " ++ TxsShow.fshow outputModelId]
+-- txsMerge
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

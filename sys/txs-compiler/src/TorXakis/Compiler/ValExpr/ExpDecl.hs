@@ -26,8 +26,9 @@ module TorXakis.Compiler.ValExpr.ExpDecl
     )
 where
 
-import           Control.Monad                (foldM)
-import           Control.Monad.Error.Class    (catchError)
+import           Control.Monad                (foldM, unless)
+import           Control.Monad.Error.Class    (catchError, throwError)
+import           Data.List.Unique             (repeated)
 import           Data.Map                     (Map)
 import qualified Data.Map                     as Map
 import           Data.Semigroup               ((<>))
@@ -95,61 +96,77 @@ instance HasVarReferences ProcDecl where
     mapRefToDecls mm pd = do
         checkUnique (getErrorLoc pd, Variable, "Process variable parameter")
                     (varName <$> procDeclParams pd)
+        pNtoD <- mkVdMap (procDeclParams pd)
         mapRefToDecls (pNtoD <.+> mm) (procDeclBody pd)
-        where
-          pNtoD = mkVdMap (procDeclParams pd)
 
--- | Make a map from variable names to variable the location in which a
--- variable with that name is declared.
+-- | Make a map from variable names to the location in which a variable with
+-- that name is declared.
+--
+-- If a variable name in the given list is duplicated, then an error is
+-- returned per-each occurrence of the duplicated variable name.
 mkVdMap :: (IsVariable v, HasLoc v VarDeclE)
-        => [v] -> Map Text (Loc VarDeclE)
-mkVdMap vs =
-    Map.fromList $ zip (varName <$> vs) (getLoc <$> vs)
+        => [v] -> CompilerM (Map Text (Loc VarDeclE))
+mkVdMap vs = do
+    let rs = repeated . fmap varName $ vs
+        mkErr v =
+          Error (MultipleDefinitions Variable)
+                (getErrorLoc . getLoc $ v)
+                ("Duplicated variable declaration for " <> varName v)
+    unless (null rs) $  throwError
+                     $  Errors
+                     $  mkErr
+                    <$> filter ((`elem` rs) . varName) vs
+    return $ Map.fromList $ zip (varName <$> vs) (getLoc <$> vs)
 
 instance HasVarReferences BExpDecl where
-    mapRefToDecls _ Stop                = return []
-    mapRefToDecls mm (ActPref _ ao be)    =
+    mapRefToDecls _ Stop               = return []
+
+    mapRefToDecls mm (ActPref _ ao be) = do
+        -- An action offer introduces new variables in the case of actions of
+        -- the form 'Ch ? v':
+        aoVds <- mkVdMap (actOfferDecls ao)
         (++) <$> mapRefToDecls mm ao <*> mapRefToDecls (aoVds <.+> mm) be
-        where
-          -- An action offer introduces new variables in the case of actions of
-          -- the form 'Ch ? v':
-          aoVds = mkVdMap (actOfferDecls ao)
+
     mapRefToDecls mm (LetBExp vss be) = do
         (mm', letRefs) <- foldM letRefToDecls (mm, []) (toList <$> vss)
         subExRefs      <- mapRefToDecls mm' be
         return $ letRefs ++ subExRefs
-        -- let letVds = mkVdMap vss
-        --     (++) <$> mapRefToDecls mm (varDeclExp <$> vs)
-        --          <*> mapRefToDecls (letVds <.+> mm) be
+
     mapRefToDecls mm (Pappl _ _ _ exs)  =
         mapRefToDecls mm exs
+
     mapRefToDecls mm (Par _ _ be0 be1)  =
         (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
+
     mapRefToDecls mm (Enable _ be0 be1) =
         (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
-    mapRefToDecls mm (Accept _ ofrs be) =
+
+    mapRefToDecls mm (Accept _ ofrs be) = do
+        ovVds <- mkVdMap (concatMap chanOfferDecls ofrs)
         (++) <$> mapRefToDecls mm ofrs
              <*> mapRefToDecls (ovVds <.+> mm) be
-        where
-          ovVds = mkVdMap (concatMap chanOfferDecls ofrs)
+
     mapRefToDecls mm (Disable _ be0 be1) =
         (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
+
     mapRefToDecls mm (Interrupt _ be0 be1) =
         (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
+
     mapRefToDecls mm (Choice _ be0 be1) =
         (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
+
     mapRefToDecls mm (Guard ex be) =
         (++) <$> mapRefToDecls mm ex <*> mapRefToDecls mm be
+
     mapRefToDecls mm (Hide _ _ be) =
         mapRefToDecls mm be
 
 instance HasVarReferences ActOfferDecl where
-    mapRefToDecls mm ao@(ActOfferDecl os mc) =
+    mapRefToDecls mm ao@(ActOfferDecl os mc) = do
+        --  Variables introduced in the action offer (by means of actions of
+        --  the form 'Ch ? v') are available at the constraint.
+        aoVds <- mkVdMap (actOfferDecls ao)
         (++) <$> mapRefToDecls mm os <*> mapRefToDecls (aoVds <.+> mm) mc
-        where
-          --  Variables introduced in the action offer (by means of actions of
-          --  the form 'Ch ? v') are available at the constraint.
-          aoVds = mkVdMap (actOfferDecls ao)
 
 instance HasVarReferences e => HasVarReferences (Maybe e) where
     mapRefToDecls mm = maybe (return []) (mapRefToDecls mm)
@@ -183,7 +200,7 @@ letRefToDecls :: ( MapsTo Text (Loc VarDeclE) mm
               -> [LetVarDecl]
               -> CompilerM (mm, [(Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE])])
 letRefToDecls (mm, xs) vs = do
-    let letVds = mkVdMap vs
+    letVds <- mkVdMap vs
     -- The expressions of the let variable declarations cannot contain a
     -- variable declared in 'vs', therefore the map 'mm' does not have to be
     -- augmented.
@@ -205,7 +222,8 @@ instance HasVarReferences FuncDecl where
     mapRefToDecls mm f = do
         checkUnique (getErrorLoc f, Variable, "Function variable parameter")
                     (varName <$> funcParams f)
-        mapRefToDecls (mkVdMap (funcParams f) <.+> mm) (funcBody f)
+        fparamsVDecls <- mkVdMap (funcParams f)
+        mapRefToDecls (fparamsVDecls <.+> mm) (funcBody f)
 
 instance HasVarReferences ModelDecl where
     mapRefToDecls mm = mapRefToDecls mm . modelBExp
@@ -214,12 +232,12 @@ instance HasVarReferences MapperDecl where
     mapRefToDecls mm = mapRefToDecls mm . mapperBExp
 
 instance HasVarReferences StautDecl where
-    mapRefToDecls mm staut = mapRefToDecls (stautVarDecls <.+> mm) (stautDeclComps staut)
-        where
-          paramVarDecls = mkVdMap (stautDeclParams staut)
-          innerVarDecls = mkVdMap (stautDeclInnerVars staut)
-          -- We give the inner variables precedence over the state automaton parameters.
-          stautVarDecls = innerVarDecls <> paramVarDecls
+    mapRefToDecls mm staut = do
+        paramVarDecls <- mkVdMap (stautDeclParams staut)
+        innerVarDecls <- mkVdMap (stautDeclInnerVars staut)
+        -- We give the inner variables precedence over the state automaton parameters.
+        let stautVarDecls = innerVarDecls <> paramVarDecls
+        mapRefToDecls (stautVarDecls <.+> mm) (stautDeclComps staut)
 
 instance HasVarReferences StautItem where
     mapRefToDecls _  (States _)                        = return []
@@ -241,10 +259,9 @@ instance HasVarReferences VarRef where
         return [(rLoc, dLoc)]
 
 instance HasVarReferences Transition where
-    mapRefToDecls mm (Transition _ offr uds _) =
+    mapRefToDecls mm (Transition _ offr uds _) = do
+        aoVds <- mkVdMap (actOfferDecls offr)
         (++) <$> mapRefToDecls mm offr <*> mapRefToDecls (aoVds <.+> mm) uds
-         where
-           aoVds = mkVdMap (actOfferDecls offr)
 
 instance HasVarReferences PurpDecl where
     mapRefToDecls mm = mapRefToDecls mm . purpDeclGoals
@@ -256,15 +273,13 @@ instance HasVarReferences CnectDecl where
     mapRefToDecls mm cd = mapRefToDecls mm (cnectDeclCodecs cd)
 
 instance HasVarReferences CodecItem where
-    mapRefToDecls mm (CodecItem offr chOffr Decode) =
+    mapRefToDecls mm (CodecItem offr chOffr Decode) = do
+        chOffrVd <- mkVdMap (chanOfferDecls chOffr)
         (++) <$> mapRefToDecls (chOffrVd <.+> mm) offr <*> mapRefToDecls mm chOffr
-        where
-          chOffrVd = mkVdMap (chanOfferDecls chOffr)
 
-    mapRefToDecls mm (CodecItem offr chOffr Encode) =
+    mapRefToDecls mm (CodecItem offr chOffr Encode) = do
+        offrVd <- mkVdMap (offerDecls offr)
         (++) <$> mapRefToDecls mm offr <*> mapRefToDecls (offrVd <.+> mm) chOffr
-        where
-          offrVd = mkVdMap (offerDecls offr)
 
 instance HasVarReferences VarDecl where
     mapRefToDecls _ vd = return [(asVarReflLoc . getLoc $ vd, Left . getLoc $ vd)]
