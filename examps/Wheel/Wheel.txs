@@ -107,8 +107,10 @@ TYPEDEF MotorData ::= MotorData { extendMotor :: ExtendMotor
 ENDDEF
 
 PROCDEF extendMotor [ Command :: MotorData
-                    ; Response :: MotorData ]
-                    ( current :: MotorData ) ::=
+                    ; Response :: MotorData
+                    ]
+                    ( current :: MotorData 
+                    ) ::=
         ( [[ isNeutral(state(current)) ]]   =>> Command ? next [[ (extendMotor(current) == extendMotor(next)) /\ isExtend(state(next)) ]]
                                             >-> Response ! next
                                             >-> extendMotor [Command, Response] (next) )
@@ -138,76 +140,94 @@ PROCDEF rotationMotor [ Command; Response :: Int ] (state :: Int) ::=
 ENDDEF
 
 -----------------------------------------------------------------------------------------------------------------
--- Provide items with incrementing value to the wheel
-PROCDEF itemProvider [ Info :: Item ] ( current :: Int) ::=
-    Info ! Item(current) >-> itemProvider [Info] (current +1)
-ENDDEF
-
-PROCDEF blockWheelUntilReleased [ ReleaseWheel ] (n :: Int) EXIT ::=
-    ReleaseWheel >-> (   [[ n == 1 ]] =>> EXIT
-                     ##  [[ n > 1 ]] =>> blockWheelUntilReleased [ ReleaseWheel ] ( n-1 )
-                     )
-ENDDEF
-
 PROCDEF grab [ GrabInfo :: GrabData
              ; ItemInfo :: Item
              ; Command :: MotorData
              ; Response :: MotorData
-             ; ReleaseWheel
+             ; Acquire
+             ; Release
              ; GrabResult :: MaybeItem
-             ] ( ) EXIT ::=
+             ] 
+             ( ) ::=
     HIDE [ LocalResults :: Item # Bool ] IN
             LocalResults ? d ? b | GrabResult ? md [[ IF b THEN md == Just(d) ELSE md == Nothing FI ]] >-> EXIT
         |[ LocalResults ]|
             ItemInfo ? d >-> LocalResults ! d ? b >-> EXIT
         |[ LocalResults ]|
             (   GrabInfo ? gd
-            >-> Command  ! MotorData(extendMotor(gd), Extend (grabber(gd)))
-            >-> Response ! MotorData(extendMotor(gd), Extend (grabber(gd)))
-            >-> Command  ! MotorData(extendMotor(gd), TouchDown (grabber(gd)))
-            >-> Response ! MotorData(extendMotor(gd), TouchDown (grabber(gd)))
-            >-> (
-                    (   LocalResults ? d ? b
-                    >-> EXIT
-                    )
-                |||
-                    (   Command  ! MotorData(extendMotor(gd), Neutral)
-                    >-> Response ! MotorData(extendMotor(gd), Neutral)
-                    >-> ReleaseWheel
-                    >-> EXIT
-                    )
+            >-> Acquire
+            >-> grabItem [ Command, Response, LocalResults ] (gd)
+            >>> (   Release
+                >-> EXIT
                 )
             )
     NI
+    >>> grab [GrabInfo, ItemInfo, Command, Response, Acquire, Release, GrabResult] ()
 ENDDEF
 
-PROCDEF check [ CheckInfo :: CheckData; ReleaseWheel; CheckResult :: Pair ] ( ) EXIT ::=
-        CheckInfo ? cd
-    >-> ReleaseWheel
-    >-> (   [[ isNothing (maybeItem(cd)) ]] =>> CheckResult ! Pair(maybeItem(cd), Nothing) >-> EXIT
-        ##  [[ isJust (maybeItem(cd)) ]] =>> CheckResult ? x [[ (maybeItem(x) == maybeItem(cd))
-                                                             /\ isJust(maybeQuality(x))
-                                                             ]] >-> EXIT
+PROCDEF grabItem [ Command :: MotorData
+                 ; Response :: MotorData
+                 ; ItemResult :: Item # Bool
+                 ]
+                 ( gd :: GrabData )
+                 EXIT ::=
+        Command  ! MotorData(extendMotor(gd), Extend (grabber(gd)))
+    >-> Response ! MotorData(extendMotor(gd), Extend (grabber(gd)))
+    >-> Command  ! MotorData(extendMotor(gd), TouchDown (grabber(gd)))
+    >-> Response ! MotorData(extendMotor(gd), TouchDown (grabber(gd)))
+    >-> (
+            (   ItemResult ? d ? b
+            >-> EXIT
+            )
+        |||
+            (   Command  ! MotorData(extendMotor(gd), Neutral)
+            >-> Response ! MotorData(extendMotor(gd), Neutral)
+            >-> EXIT
+            )
         )
+ENDDEF
+
+PROCDEF check [ CheckInfo :: CheckData
+              ; Acquire
+              ; Release
+              ; CheckResult :: Pair
+              ] 
+              ( ) ::=
+        CheckInfo ? cd
+    >-> Acquire 
+    >-> Release
+    >-> (   [[ isNothing (maybeItem(cd)) ]] =>>     CheckResult ! Pair(maybeItem(cd), Nothing) 
+                                                >-> EXIT
+        ##  [[ isJust    (maybeItem(cd)) ]] =>>     CheckResult ? x [[ (maybeItem(x) == maybeItem(cd))
+                                                                    /\ isJust(maybeQuality(x))
+                                                                ]]
+                                                >-> EXIT
+        )
+    >>> check [ CheckInfo, Acquire, Release, CheckResult] ()
 ENDDEF
 
 PROCDEF release [ ReleaseInfo :: ReleaseData
                 ; Command :: MotorData
                 ; Response :: MotorData
-                ; ReleaseWheel
-                ] ( ) EXIT ::=
+                ; Acquire
+                ; Release
+                ] ( ) ::=
         ReleaseInfo ? releaseData
-        -- Only release item with good quality
-    >-> (   [[ IF isJust(maybeQuality(releaseData)) THEN not (toBool (quality (maybeQuality(releaseData)))) ELSE True FI ]]
-                =>> ReleaseWheel >-> EXIT
+    >-> Acquire
+    >-> -- Only release item with good quality
+        (   [[ IF isJust(maybeQuality(releaseData)) THEN not (toBool (quality (maybeQuality(releaseData)))) ELSE True FI ]]
+                =>> EXIT
         ##  [[ IF isJust(maybeQuality(releaseData)) THEN toBool (quality (maybeQuality(releaseData))) ELSE False FI ]]
-                =>> releaseItem [ Command, Response, ReleaseWheel ] (GrabData(extendMotor(releaseData), grabber(releaseData)))
+                =>> releaseItem [ Command, Response ] (GrabData(extendMotor(releaseData), grabber(releaseData)))
+        )
+    >>> (   Release 
+        >-> release [ReleaseInfo, Command, Response, Acquire, Release] ()
         )
 ENDDEF
 
 PROCDEF releaseItem [ Command :: MotorData
                     ; Response :: MotorData
-                    ; ReleaseWheel ]
+                    ]
                     ( gd :: GrabData )
                     EXIT ::=
         Command  ! MotorData(extendMotor(gd), Extend (grabber(gd)))
@@ -216,38 +236,33 @@ PROCDEF releaseItem [ Command :: MotorData
     >-> Response ! MotorData(extendMotor(gd), TouchDown (grabber(gd)))
     >-> Command  ! MotorData(extendMotor(gd), Neutral)
     >-> Response ! MotorData(extendMotor(gd), Neutral)
-    >-> ReleaseWheel
     >-> EXIT
 ENDDEF
 
-PROCDEF wheelControl [ CommandExtendMotor :: MotorData
-                     ; ResponseExtendMotor :: MotorData
-                     ; CommandRotationMotor
+PROCDEF wheelControl [ CommandRotationMotor
                      ; ResponseRotationMotor :: Int
-                     ; ItemInfo :: Item
-                     ; GrabInfo :: GrabData
-                     ; CheckInfo :: CheckData
-                     ; ReleaseInfo :: ReleaseData
+                     ; AcquireEast
+                     ; ReleaseEast
+                     ; AcquireNorth
+                     ; ReleaseNorth
+                     ; AcquireSouth
+                     ; ReleaseSouth
                      ; Index
-                     ; GrabResult :: MaybeItem
-                     ; CheckResult :: Pair
                      ] () ::=
-    HIDE [ ReleaseWheel ] IN
-            (   grab [ GrabInfo, ItemInfo, CommandExtendMotor, ResponseExtendMotor, ReleaseWheel, GrabResult ] ()
-            ||| check [ CheckInfo, ReleaseWheel, CheckResult ]()
-            ||| release [ ReleaseInfo, CommandExtendMotor, ResponseExtendMotor, ReleaseWheel ]()
-            )
-        |[ ReleaseWheel ]|
-            (   blockWheelUntilReleased [ ReleaseWheel ] (3)
-            >>> (   Index >-> EXIT
-                ||| CommandRotationMotor >-> ResponseRotationMotor ?x >-> EXIT
-                )
-            >>> wheelControl [ CommandExtendMotor, ResponseExtendMotor, CommandRotationMotor, ResponseRotationMotor
-                             , ItemInfo, GrabInfo, CheckInfo, ReleaseInfo
-                             , Index
-                             , GrabResult, CheckResult]()
-            )
-    NI
+        (   AcquireEast  >-> ReleaseEast  >-> EXIT
+        ||| AcquireNorth >-> ReleaseNorth >-> EXIT
+        ||| AcquireSouth >-> ReleaseSouth >-> EXIT
+        ) 
+    >>> (   Index >-> EXIT
+        ||| CommandRotationMotor >-> ResponseRotationMotor ?x >-> EXIT
+        )
+    >>> wheelControl [ CommandRotationMotor, ResponseRotationMotor
+                     , AcquireEast, ReleaseEast
+                     , AcquireNorth, ReleaseNorth
+                     , AcquireSouth, ReleaseSouth
+                     , Index
+                     ]
+                     ()
 ENDDEF
 
 PROCDEF stateDatabase [ NorthInfo :: CheckData
@@ -366,12 +381,33 @@ PROCDEF wheel [ CommandExtendMotor, ResponseExtendMotor :: MotorData
                 ||| rotationMotor [CommandRotationMotor, ResponseRotationMotor](0)
             )
         |[ CommandExtendMotor, ResponseExtendMotor, CommandRotationMotor, ResponseRotationMotor ]|
-                    wheelControl [ CommandExtendMotor, ResponseExtendMotor, CommandRotationMotor, ResponseRotationMotor
-                                 , ItemInfo, GrabInfo, CheckInfo, ReleaseInfo
+            HIDE [ AcquireEast, ReleaseEast
+                 , AcquireNorth, ReleaseNorth
+                 , AcquireSouth, ReleaseSouth
+                 ] 
+            IN
+                    (   grab [ GrabInfo, ItemInfo, CommandExtendMotor, ResponseExtendMotor, AcquireEast, ReleaseEast, GrabResult ] ()
+                    ||| check [ CheckInfo, AcquireNorth, ReleaseNorth, CheckResult ]()
+                    ||| release [ ReleaseInfo, CommandExtendMotor, ResponseExtendMotor, AcquireSouth, ReleaseSouth ]()
+                    )
+                |[ AcquireEast, ReleaseEast
+                 , AcquireNorth, ReleaseNorth
+                 , AcquireSouth, ReleaseSouth
+                ]|
+                    wheelControl [ CommandRotationMotor, ResponseRotationMotor
+                                 , AcquireEast, ReleaseEast
+                                 , AcquireNorth, ReleaseNorth
+                                 , AcquireSouth, ReleaseSouth
                                  , Index
-                                 , GrabResult, CheckResult]()
-                |[ CheckInfo, GrabInfo, ReleaseInfo, Index, GrabResult, CheckResult ]|
+                                 ]()
+            NI
+        |[ CheckInfo, GrabInfo, ReleaseInfo, Index, GrabResult, CheckResult ]|
                     stateDatabase [ CheckInfo, GrabInfo, ReleaseInfo, Index, GrabResult, CheckResult ] ()
+ENDDEF
+
+-- Provide items with incrementing value to the wheel
+PROCDEF itemProvider [ Info :: Item ] ( current :: Int) ::=
+    Info ! Item(current) >-> itemProvider [Info] (current +1)
 ENDDEF
 
 CHANDEF Channels ::= CommandExtendMotor, ResponseExtendMotor :: MotorData
