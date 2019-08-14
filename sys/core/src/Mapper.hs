@@ -64,8 +64,8 @@ mapperMap act@(TxsDDefs.Act acts)  =  do
                                                                   (cstrConst wal)
                                                       | BTree.CToffer chan choffs <- Set.toList btoffs
                                                       , (chid, wals)              <- Set.toList acts
-                                                      , (ivar, wal)               <- zip choffs wals
                                                       , chan == chid
+                                                      , (ivar, wal)               <- zip choffs wals
                                                       ]
                                                     )
                                                )
