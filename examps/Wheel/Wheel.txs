@@ -14,18 +14,22 @@ See LICENSE at root directory of this repository.
 -- and Counter clockwise rotation
 -------------------------------------------------------------------------
 
+-- improve: either Index synchronization + multiple times access to data
+--          or     No Index synchronization + single time access to data <==> just sequential data access
+-- improve: minimize state explosion by using the synchronization requirements smartly
+
 -- A item
 TYPEDEF Item ::= Item { toInt :: Int }
 ENDDEF
 
 -- Maybe of Item
 TYPEDEF MaybeItem ::= Nothing
-                   | Just { item :: Item }
+                    | Just { item :: Item }
 ENDDEF
 
 -- List of MaybeItems
 TYPEDEF ListMaybeItem ::= Nil
-                       | Cstr { head :: MaybeItem; tail :: ListMaybeItem }
+                        | Cstr { head :: MaybeItem; tail :: ListMaybeItem }
 ENDDEF
 
 -- add to end of List
@@ -117,7 +121,7 @@ PROCDEF extendMotor [ Command :: MotorData
     ##
         ( [[ isExtend(state(current)) ]]    =>> Command ? next [[ (extendMotor(current) == extendMotor(next))
                                                                /\ IF isTouchDown(state(next)) THEN extendGrabber(state(current)) == touchDownGrabber(state(next))
-                                                                                               ELSE False
+                                                                                              ELSE False
                                                                   FI
                                                                ]]
                                             >-> Response ! next
@@ -187,6 +191,7 @@ PROCDEF grabItem [ Command :: MotorData
         )
 ENDDEF
 
+-- improve: add Command and Response MotorData interface
 PROCDEF check [ CheckInfo :: CheckData
               ; Acquire
               ; Release
@@ -272,37 +277,33 @@ PROCDEF stateDatabase [ NorthInfo :: CheckData
                       ; ItemInfo :: MaybeItem
                       ; QualityInfo :: Pair
                       ] () ::=
-    HIDE [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor :: ExtendMotor
-         ; NorthGrabber, EastGrabber, SouthGrabber :: Grabber
-         ; NorthItem :: MaybeItem
-         ; SouthQuality :: Pair
-         ] IN
-            (
-                    extendMotorInfo [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor, Index ] (ExtendMotor(1), ExtendMotor(2), ExtendMotor(1), ExtendMotor(2)) -- move to params stateDatabase???
-                |[ Index ]|
+    HIDE [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor :: ExtendMotor ] IN
+            extendMotorInfo [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor, Index ] (ExtendMotor(1), ExtendMotor(2), ExtendMotor(1), ExtendMotor(2)) -- move to params stateDatabase???
+        |[ NorthExtendMotor, EastExtendMotor, SouthExtendMotor, Index ]|
+            HIDE [ NorthGrabber, EastGrabber, SouthGrabber :: Grabber ] IN
                     grabberInfo [ NorthGrabber, EastGrabber, SouthGrabber, Index ] (Grabber(1), Grabber(1), Grabber(2), Grabber(2))
-                |||
-                    itemList [ ItemInfo, NorthItem ] (Cstr(Nothing, Nil))
-                |||
-                    qualityList [ QualityInfo, SouthQuality ] ( Cstr(Pair(Nothing,Nothing)
-                                                              , Cstr(Pair(Nothing,Nothing)
-                                                              , Cstr(Pair(Nothing,Nothing)
-                                                              , Nil)))
-                                                              )
-            )
-        |[ NorthExtendMotor, EastExtendMotor, SouthExtendMotor
-         , NorthGrabber, EastGrabber, SouthGrabber
-         , NorthItem
-         , SouthQuality
-         ]|
-            combineInfo [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor
-                        , NorthGrabber, EastGrabber, SouthGrabber
-                        , NorthItem
-                        , SouthQuality
-                        , NorthInfo
-                        , EastInfo
-                        , SouthInfo
-                        ]()
+                |[ NorthGrabber, EastGrabber, SouthGrabber ]|
+                    HIDE [ NorthItem :: MaybeItem ] IN
+                            itemList [ ItemInfo, NorthItem ] (Cstr(Nothing, Nil))
+                        |[ NorthItem ]|
+                            HIDE [ SouthQuality :: Pair ] IN
+                                    qualityList [ QualityInfo, SouthQuality ] ( Cstr(Pair(Nothing,Nothing)
+                                                                              , Cstr(Pair(Nothing,Nothing)
+                                                                              , Cstr(Pair(Nothing,Nothing)
+                                                                              , Nil)))
+                                                                              )
+                                |[ SouthQuality ]|
+                                    combineInfo [ NorthExtendMotor, EastExtendMotor, SouthExtendMotor
+                                                , NorthGrabber, EastGrabber, SouthGrabber
+                                                , NorthItem
+                                                , SouthQuality
+                                                , NorthInfo
+                                                , EastInfo
+                                                , SouthInfo
+                                                ]()
+                            NI
+                    NI
+            NI
     NI
 ENDDEF
 
@@ -376,33 +377,35 @@ PROCDEF wheel [ CommandExtendMotor, ResponseExtendMotor :: MotorData
               ; GrabInfo  :: GrabData
               ; ReleaseInfo :: ReleaseData
               ] () ::=
-            (       extendMotor [CommandExtendMotor, ResponseExtendMotor] (MotorData(ExtendMotor(1), Neutral))
-                ||| extendMotor [CommandExtendMotor, ResponseExtendMotor] (MotorData(ExtendMotor(2), Neutral))
-                ||| rotationMotor [CommandRotationMotor, ResponseRotationMotor](0)
+        stateDatabase [ CheckInfo, GrabInfo, ReleaseInfo, Index, GrabResult, CheckResult ] ()
+    |[ CheckInfo, GrabInfo, ReleaseInfo, Index, GrabResult, CheckResult ]|
+        (
+            (   extendMotor [CommandExtendMotor, ResponseExtendMotor] (MotorData(ExtendMotor(1), Neutral))
+            ||| extendMotor [CommandExtendMotor, ResponseExtendMotor] (MotorData(ExtendMotor(2), Neutral))
             )
-        |[ CommandExtendMotor, ResponseExtendMotor, CommandRotationMotor, ResponseRotationMotor ]|
-            HIDE [ AcquireEast, ReleaseEast
-                 , AcquireNorth, ReleaseNorth
-                 , AcquireSouth, ReleaseSouth
-                 ] 
-            IN
-                    (   grab [ GrabInfo, ItemInfo, CommandExtendMotor, ResponseExtendMotor, AcquireEast, ReleaseEast, GrabResult ] ()
-                    ||| check [ CheckInfo, AcquireNorth, ReleaseNorth, CheckResult ]()
-                    ||| release [ ReleaseInfo, CommandExtendMotor, ResponseExtendMotor, AcquireSouth, ReleaseSouth ]()
-                    )
-                |[ AcquireEast, ReleaseEast
-                 , AcquireNorth, ReleaseNorth
-                 , AcquireSouth, ReleaseSouth
-                ]|
-                    wheelControl [ CommandRotationMotor, ResponseRotationMotor
-                                 , AcquireEast, ReleaseEast
-                                 , AcquireNorth, ReleaseNorth
-                                 , AcquireSouth, ReleaseSouth
-                                 , Index
-                                 ]()
+        |[ CommandExtendMotor, ResponseExtendMotor ]|
+            HIDE [ AcquireSouth, ReleaseSouth ] IN
+                    release [ ReleaseInfo, CommandExtendMotor, ResponseExtendMotor, AcquireSouth, ReleaseSouth ]()
+                |[ AcquireSouth, ReleaseSouth ]|
+                    HIDE [ AcquireNorth, ReleaseNorth ] IN
+                            check [ CheckInfo, AcquireNorth, ReleaseNorth, CheckResult ]()
+                        |[ AcquireNorth, ReleaseNorth ]|
+                            HIDE [ AcquireEast, ReleaseEast ] IN
+                                    grab [ GrabInfo, ItemInfo, CommandExtendMotor, ResponseExtendMotor, AcquireEast, ReleaseEast, GrabResult ] ()
+                                |[ AcquireEast, ReleaseEast ]|
+                                    (   wheelControl [ CommandRotationMotor, ResponseRotationMotor
+                                                     , AcquireEast, ReleaseEast
+                                                     , AcquireNorth, ReleaseNorth
+                                                     , AcquireSouth, ReleaseSouth
+                                                     , Index
+                                                     ]()
+                                    |[ CommandRotationMotor, ResponseRotationMotor ]|
+                                        rotationMotor [CommandRotationMotor, ResponseRotationMotor](0)
+                                    )
+                            NI
+                    NI
             NI
-        |[ CheckInfo, GrabInfo, ReleaseInfo, Index, GrabResult, CheckResult ]|
-                    stateDatabase [ CheckInfo, GrabInfo, ReleaseInfo, Index, GrabResult, CheckResult ] ()
+        )
 ENDDEF
 
 -- Provide items with incrementing value to the wheel
