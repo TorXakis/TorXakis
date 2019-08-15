@@ -216,19 +216,19 @@ unsafeAnd ps = case partitionEithers (Set.toList ps) of
                 let s' :: Set.Set ValExpression
                     s' = Set.delete trueValExpr can in
                         if Set.member falseValExpr s'
-                            then Right falseValExpr
-                            else case Set.toList s' of
-                                    []  -> Right trueValExpr
-                                    [h] -> Right h
-                                    _   -> -- Simplification: not(x) and x <==> False
-                                           let nots = filterNot (Set.toList s') in
-                                                if any (contains s') nots
+                        then Right falseValExpr
+                        else case Set.toList s' of
+                                []  -> Right trueValExpr
+                                [h] -> Right h
+                                _   -> -- Simplification: not(x) and x <==> False
+                                       let nots = filterNot (Set.toList s') in
+                                            if any (contains s') nots
+                                            then Right falseValExpr
+                                            else -- Simplification: isX(x) and isY(x) <==> False  -- x is constructed by only one constructor
+                                                let ts = isCstrTuples (Set.toList s') in
+                                                    if sameValExpr ts
                                                     then Right falseValExpr
-                                                    else -- Simplification: isX(x) and isY(x) <==> False  -- x is constructed by only one constructor
-                                                        let ts = isCstrTuples (Set.toList s') in
-                                                            if sameValExpr ts
-                                                            then Right falseValExpr
-                                                            else Right $ ValExpression (Vand s')
+                                                    else Right $ ValExpression (Vand s')
                 )
             where
                 mergeConditionals :: Set.Set ValExpression -> Either Error (Set.Set ValExpression)
@@ -275,7 +275,8 @@ unsafeAnd ps = case partitionEithers (Set.toList ps) of
                                        ->  Bool
                         containValExpr _          []              = False
                         containValExpr (a1,c1,x1) ((a2,c2,x2):ts) = if x1 == x2
-                                                                        then assert ( (a1 == a2) && (c1 /= c2) ) True
+                                                                        then assert (a1 == a2)
+                                                                                    (assert (c1 /= c2) True)
                                                                         else containValExpr (a1,c1,x1) ts
 
 unsafeUnaryMinus :: Either Error ValExpression -> Either Error ValExpression
