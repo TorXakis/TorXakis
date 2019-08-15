@@ -273,7 +273,7 @@ unsafeAnd ps = case partitionEithers (Set.toList ps) of
                         containValExpr :: (RefByName ADTDef, RefByName ConstructorDef, ValExpression)
                                        -> [(RefByName ADTDef, RefByName ConstructorDef, ValExpression)]
                                        ->  Bool
-                        containValExpr _      []             = False
+                        containValExpr _          []              = False
                         containValExpr (a1,c1,x1) ((a2,c2,x2):ts) = if x1 == x2
                                                                         then assert ( (a1 == a2) && (c1 /= c2) ) True
                                                                         else containValExpr (a1,c1,x1) ts
