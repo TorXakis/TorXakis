@@ -115,22 +115,19 @@ PROCDEF extendMotor [ Command :: MotorData
                     ]
                     ( current :: MotorData 
                     ) ::=
-        ( [[ isNeutral(state(current)) ]]   =>> Command ? next [[ (extendMotor(current) == extendMotor(next)) /\ isExtend(state(next)) ]]
-                                            >-> Response ! next
-                                            >-> extendMotor [Command, Response] (next) )
-    ##
-        ( [[ isExtend(state(current)) ]]    =>> Command ? next [[ (extendMotor(current) == extendMotor(next))
-                                                               /\ IF isTouchDown(state(next)) THEN extendGrabber(state(current)) == touchDownGrabber(state(next))
-                                                                                              ELSE False
-                                                                  FI
-                                                               ]]
-                                            >-> Response ! next
-                                            >-> extendMotor [Command, Response] (next)
-        )
-    ##
-        ( [[ isTouchDown(state(current)) ]] =>> Command ? next [[ (extendMotor(current) == extendMotor(next)) /\ isNeutral(state(next)) ]]
-                                            >-> Response ! next
-                                            >-> extendMotor [Command, Response] (next) )
+    (   [[ isNeutral(state(current)) ]]   =>> Command ? next | EXIT ? next2 :: MotorData [[ (extendMotor(current) == extendMotor(next)) /\ isExtend(state(next)) /\ (next == next2) ]]
+    ##  [[ isExtend(state(current)) ]]    =>> Command ? next | EXIT ? next2 :: MotorData [[ (extendMotor(current) == extendMotor(next))
+                                                                                         /\ IF isTouchDown(state(next)) THEN extendGrabber(state(current)) == touchDownGrabber(state(next))
+                                                                                                                        ELSE False
+                                                                                             FI
+                                                                                         /\ (next == next2)
+                                                                                         ]]
+    ##  [[ isTouchDown(state(current)) ]] =>> Command ? next | EXIT ? next2 :: MotorData [[ (extendMotor(current) == extendMotor(next)) /\ isNeutral(state(next)) /\ (next == next2) ]]
+    )
+    >>> ACCEPT ? next :: MotorData IN
+            Response ! next
+        >-> extendMotor [Command, Response] (next)
+    NI                    
 ENDDEF
 
 
