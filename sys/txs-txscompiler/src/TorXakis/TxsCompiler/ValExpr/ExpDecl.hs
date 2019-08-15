@@ -7,7 +7,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 --------------------------------------------------------------------------------
 -- |
 -- Module      :  TorXakis.TxsCompiler.ValExpr.ExpDecl

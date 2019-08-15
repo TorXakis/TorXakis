@@ -16,8 +16,6 @@ See LICENSE at root directory of this repository.
 -- Core Module TorXakis API:
 -- API for TorXakis core functionality.
 -----------------------------------------------------------------------------
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ViewPatterns        #-}
 module TorXakis.TxsCore
 ( -- * run TorXakis core
   runTxsCore
@@ -69,12 +67,9 @@ txsInit tdefs  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
-         -> do
-               put envc {
-                 IOC.state =
-                     IOC.Initing { IOC.tdefs   = tdefs
-                                 }
-                 }
+         -> put envc { IOC.state = IOC.Initing { IOC.tdefs = tdefs
+                                               }
+                     }
        _ -> do txsTermit
                txsInit tdefs 
 
@@ -85,8 +80,7 @@ txsTermit  =  do
      case IOC.state envc of
        IOC.Noning
          -> return ()
-       _ -> do
-               put envc { IOC.state = IOC.Noning }
+       _ -> put envc { IOC.state = IOC.Noning }
 
 
 --   Only possible when txscore is initialized.

@@ -46,12 +46,13 @@ module TorXakis.ValExpr.Unsafe
 , toMaybeValues
 )
 where
-import           Data.Either     (partitionEithers)
-import           Data.List       (intercalate)
-import qualified Data.Map        as Map
+import           Control.Exception  (assert)
+import           Data.Either        (partitionEithers)
+import           Data.List          (intercalate)
+import qualified Data.Map           as Map
 import           Data.Maybe
-import qualified Data.Set        as Set
-import qualified Data.Text       as T
+import qualified Data.Set           as Set
+import qualified Data.Text          as T
 import           Text.Regex.TDFA
 
 import           TorXakis.Error
@@ -144,7 +145,7 @@ unsafeITE b (Right tb) (Right fb) | tb == trueValExpr && fb == falseValExpr = b
 -- Simplification: if c then False else True <==> not c
 unsafeITE b (Right tb) (Right fb) | tb == falseValExpr && fb == trueValExpr = unsafeNot b
 -- Simplification: if c then not (tb) else not (fb) <==>  not (if c then tb else fb)
-unsafeITE b (Right (TorXakis.ValExpr.ValExpr.view -> Vnot tb)) (Right (TorXakis.ValExpr.ValExpr.view -> Vnot fb)) 
+unsafeITE b (Right (TorXakis.ValExpr.ValExpr.view -> Vnot tb)) (Right (TorXakis.ValExpr.ValExpr.view -> Vnot fb))
                                                                             = unsafeNot (unsafeITE b (Right tb) (Right fb))
 -- Due to conditional evaluation is the following NOT a simplification:
 -- if q then p else False fi <==> q /\ p : where p is boolean expression (otherwise different sorts in branches)
@@ -201,7 +202,7 @@ unsafeAnd ps = case partitionEithers (Set.toList ps) of
     where
         flattenAnd :: Set.Set ValExpression -> Set.Set ValExpression
         flattenAnd = Set.unions . map fromValExpression . Set.toList
-        
+
         fromValExpression :: ValExpression -> Set.Set ValExpression
         fromValExpression (TorXakis.ValExpr.ValExpr.view -> Vand a) = a
         fromValExpression x                                         = Set.singleton x
@@ -223,11 +224,15 @@ unsafeAnd ps = case partitionEithers (Set.toList ps) of
                                            let nots = filterNot (Set.toList s') in
                                                 if any (contains s') nots
                                                     then Right falseValExpr
-                                                    else Right $ ValExpression (Vand s')
+                                                    else -- Simplification: isX(x) and isY(x) <==> False  -- x is constructed by only one constructor
+                                                        let ts = isCstrTuples (Set.toList s') in
+                                                            if sameValExpr ts
+                                                            then Right falseValExpr
+                                                            else Right $ ValExpression (Vand s')
                 )
             where
                 mergeConditionals :: Set.Set ValExpression -> Either Error (Set.Set ValExpression)
-                mergeConditionals s' = Set.foldr mergeConditional (Right (Set.empty, Set.empty, Set.empty)) s' >>= 
+                mergeConditionals s' = Set.foldr mergeConditional (Right (Set.empty, Set.empty, Set.empty)) s' >>=
                                         (\(s'', cs, ds) -> case Set.toList cs of
                                                             (_:_:_) -> -- at least two items to merge
                                                                         case unsafeITE (unsafeAnd' cs) (unsafeAnd' ds) (Right falseValExpr) of
@@ -237,7 +242,7 @@ unsafeAnd ps = case partitionEithers (Set.toList ps) of
                                                                         Right s'
                                         )
 
-                mergeConditional :: ValExpression 
+                mergeConditional :: ValExpression
                                  -> Either Error (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
                                  -> Either Error (Set.Set ValExpression, Set.Set ValExpression, Set.Set ValExpression)
                 mergeConditional _                                               (Left e)                                  = Left e
@@ -254,6 +259,24 @@ unsafeAnd ps = case partitionEithers (Set.toList ps) of
                 contains :: Set.Set ValExpression -> ValExpression -> Bool
                 contains set (TorXakis.ValExpr.ValExpr.view -> Vand a) = all (`Set.member` set) (Set.toList a)
                 contains set a                                         = Set.member a set
+
+                isCstrTuples :: [ValExpression] -> [(RefByName ADTDef, RefByName ConstructorDef, ValExpression)]
+                isCstrTuples [] = []
+                isCstrTuples (x:xs) = case view x of
+                                        Viscstr a c v -> (a,c,v) : isCstrTuples xs
+                                        _             ->           isCstrTuples xs
+
+                sameValExpr :: [(RefByName ADTDef, RefByName ConstructorDef, ValExpression)] ->  Bool
+                sameValExpr []     = False
+                sameValExpr (x:xs) = containValExpr x xs
+                    where
+                        containValExpr :: (RefByName ADTDef, RefByName ConstructorDef, ValExpression)
+                                       -> [(RefByName ADTDef, RefByName ConstructorDef, ValExpression)]
+                                       ->  Bool
+                        containValExpr _      []             = False
+                        containValExpr (a1,c1,x1) ((a2,c2,x2):ts) = if x1 == x2
+                                                                        then assert ( (a1 == a2) && (c1 /= c2) ) True
+                                                                        else containValExpr (a1,c1,x1) ts
 
 unsafeUnaryMinus :: Either Error ValExpression -> Either Error ValExpression
 unsafeUnaryMinus (Left e)                                          = Left $ Error ("Unary Minus Error " ++ show e)
@@ -315,7 +338,7 @@ unsafeSumFactor ps = case partitionEitherTuples ps of
     where
         flattenSum :: [(ValExpression,Integer)] -> Map.Map ValExpression Integer
         flattenSum = Map.filter (0 /=) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
-        
+
         fromValExpr :: (ValExpression, Integer) -> Map.Map ValExpression Integer
         fromValExpr (x                                      , 0) = error ("Factor of Sum is equal to zero: violates invariant - " ++ show x)
         fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vsum m, i) = Map.map (*i) m
@@ -428,9 +451,9 @@ unsafeAt' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExp
 unsafeAt' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i))                                         = unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
 unsafeAt' (TorXakis.ValExpr.ValExpr.view -> Vconcat ((TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)):xs)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) =
     let lengthS = Prelude.toInteger (T.length s) in
-        if i < lengthS 
+        if i < lengthS
             then unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))
-            else unsafeConcat' xs >>= (\nc -> 
+            else unsafeConcat' xs >>= (\nc ->
                     unsafeConst (Cint (i - lengthS)) >>=
                         unsafeAt' nc)
 unsafeAt' ves vei = Right $ ValExpression (Vat ves vei)
@@ -457,8 +480,8 @@ unsafeConcat' l = case (mergeVals . flatten . filter (stringEmptyValExpr /= ) ) 
     mergeVals :: [ValExpression] -> [ValExpression]
     mergeVals []            = []
     mergeVals [x]           = [x]
-    mergeVals ( (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s1)) 
-              : (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s2)) 
+    mergeVals ( (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s1))
+              : (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s2))
               : xs)         = case unsafeConst (Cstring (T.append s1 s2)) of
                                     Right x -> mergeVals (x:xs)
                                     Left e  -> error ("Unexpected error in mergeVals of Concat" ++ show e)
@@ -478,7 +501,7 @@ unsafeStrInRe _         (Left e2) = Left $ Error ("StrInRe Error 1" ++          
 unsafeStrInRe (Right s) (Right p) = unsafeStrInRe' s p
 
 unsafeStrInRe' :: ValExpression -> ValExpression -> Either Error ValExpression
-unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) 
+unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s))
                (TorXakis.ValExpr.ValExpr.view -> Vconst (Cregex r))  = unsafeConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
 unsafeStrInRe' s r                                                   = Right $ ValExpression (Vstrinre s r)
 
@@ -518,12 +541,12 @@ unsafeAccess aName cName pos (Right v) = unsafeAccess' aName cName pos v
 
 unsafeAccess' :: RefByName ADTDef -> RefByName ConstructorDef -> RefByIndex FieldDef -> ValExpression -> Either Error ValExpression
 -- Note: different sort is impossible so aName for both the same
-unsafeAccess' _ cName pos (TorXakis.ValExpr.ValExpr.view -> Vcstr _ c fs) = 
+unsafeAccess' _ cName pos (TorXakis.ValExpr.ValExpr.view -> Vcstr _ c fs) =
     if cName == c
         then Right $ fs !! toIndex pos
         else Left $ Error (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on instance from constructor " ++ show c
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
-unsafeAccess' _ cName pos (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr _ c fs)) = 
+unsafeAccess' _ cName pos (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr _ c fs)) =
     if cName == c
         then unsafeConst $ fs !! toIndex pos
         else Left $ Error (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on value from constructor " ++ show c

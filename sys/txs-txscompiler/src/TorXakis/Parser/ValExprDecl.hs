@@ -56,7 +56,7 @@ valExpP =  buildExpressionParser table termP
           return (le, lr, opN)
       bop = do
           (le, lr, opN) <- opP
-          return $ \ex0 ex1 -> (mkFappl le lr opN [ex0, ex1])
+          return $ \ex0 ex1 -> mkFappl le lr opN [ex0, ex1]
 
 -- | Terms of the TorXakis value expressions.
 termP :: TxsParser ExpDecl
