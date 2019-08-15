@@ -11,7 +11,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# OPTIONS_GHC -Wno-missing-monadfail-instances #-}
 -- We don't want a warning for the line '[se0s, se1s, se2s] <- traverse (inferExpTypes mm) [e0, e1, e2]'
