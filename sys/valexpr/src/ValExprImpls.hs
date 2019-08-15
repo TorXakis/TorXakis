@@ -76,17 +76,18 @@ module ValExprImpls
 )
 where
 
-import           Control.Arrow   (first)
-import qualified Data.Map        as Map
-import           Data.Maybe      (fromMaybe)
-import           Data.Monoid     ((<>))
-import qualified Data.Set        as Set
-import qualified Data.Text       as T
+import           Control.Arrow      (first)
+import           Control.Exception  (assert)
+import qualified Data.Map           as Map
+import           Data.Maybe         (fromMaybe)
+import           Data.Monoid        ((<>))
+import qualified Data.Set           as Set
+import qualified Data.Text          as T
 import           Text.Regex.TDFA
 
 import           Constant
 import           CstrId
-import qualified FreeMonoidX     as FMX
+import qualified FreeMonoidX        as FMX
 import           FuncDef
 import           FuncId
 import           Product
@@ -246,7 +247,10 @@ cstrAnd' s =
                             let nots = filterNot (Set.toList s') in
                                 if any (contains s') nots
                                     then cstrConst (Cbool False)
-                                    else ValExpr (Vand s')
+                                    else let ts = isCstrTuples (Set.toList s') in
+                                            if sameValExpr ts
+                                                then cstrConst (Cbool False)
+                                                else ValExpr (Vand s')
     where
         filterNot :: [ValExpr v] -> [ValExpr v]
         filterNot [] = []
@@ -254,10 +258,25 @@ cstrAnd' s =
                             Vnot n -> n : filterNot xs
                             _      ->     filterNot xs
         
-        contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
+        contains :: Ord v => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
 
+        isCstrTuples :: [ValExpr v] -> [(CstrId, ValExpr v)]
+        isCstrTuples [] = []
+        isCstrTuples (x:xs) = case view x of
+                                Viscstr c v -> (c,v) : isCstrTuples xs
+                                _           ->         isCstrTuples xs
+
+        sameValExpr :: Ord v => [(CstrId, ValExpr v)] ->  Bool
+        sameValExpr []     = False
+        sameValExpr (x:xs) = containValExpr x xs
+            where
+                containValExpr :: Ord v => (CstrId, ValExpr v) -> [(CstrId, ValExpr v)] ->  Bool
+                containValExpr _      []             = False
+                containValExpr (c1,x1) ((c2,x2):cxs) = if x1 == x2 
+                                                        then assert (c1 /= c2) True
+                                                        else containValExpr (c1,x1) cxs
 -- * Sum
 
 -- | Is ValExpr a Sum Expression?
