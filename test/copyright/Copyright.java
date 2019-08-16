@@ -16,7 +16,7 @@ public class Copyright {
     public static String optionalShebang  = "(#!\\p{Graph}+" + lineBreakMatcher + ")?"; // [^\R] is not accepted: Illegal/unsupported escape sequence near index 8
 
     public static void main(String[] args) {
-        if (args.length == 0) {
+        if (args.length != 1) {
             System.err.println("Usage: copyright <path>");
             System.exit(-1);
         }
