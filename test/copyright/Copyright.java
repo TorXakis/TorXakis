@@ -80,8 +80,11 @@ public class Copyright {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
             for (Path entry : stream) {
                 if (Files.isDirectory(entry)) {
-                    if (!entry.endsWith(".stack-work"))    // skip stack folders
-                        walkFiles(entry);
+                    if (entry.getNameCount() > 0) {
+                        String name = entry.getName(entry.getNameCount()-1).toString();
+                        if (!name.startsWith(".")) // skip cache folders
+                            walkFiles(entry);
+                        }
                 } else {
                     assert Files.isRegularFile(entry) : "Not a directory is a file";
 
