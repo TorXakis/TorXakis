@@ -622,7 +622,7 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
           isValidStep :: Set.Set ChanId -> BExpr -> Bool
           isValidStep syncChans' (TxsDefs.view -> ActionPref ActOffer{offers=os} _) =
             let -- extract all chanIds from the offers in the ActOffer
-                chanIds = Set.foldl (\accu offer -> (chanid offer : accu)) [] os in
+                chanIds = Set.foldl (\accu offer -> chanid offer : accu) [] os in
             -- if there are no common channels with the synchronisation channels: return true
             Set.null $ Set.intersection syncChans' (Set.fromList chanIds)
           isValidStep _ _ = error "only allowed with ActionPref"
@@ -631,8 +631,8 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
           isValidStepCombination :: Set.Set ChanId -> (BExpr, BExpr) -> Bool
           isValidStepCombination syncChansSet (TxsDefs.view -> ActionPref ActOffer{offers=offersL} _, TxsDefs.view -> ActionPref ActOffer{offers=offersR} _) =
             let -- extract all chanIds from the offers in the ActOffer
-                chanIdsLSet = Set.fromList $ Set.foldl (\accu offer -> (chanid offer : accu)) [] offersL
-                chanIdsRSet = Set.fromList $ Set.foldl (\accu offer -> (chanid offer : accu)) [] offersR
+                chanIdsLSet = Set.fromList $ Set.foldl (\accu offer -> chanid offer : accu) [] offersL
+                chanIdsRSet = Set.fromList $ Set.foldl (\accu offer -> chanid offer : accu) [] offersR
                 
                 intersectionLR = Set.intersection chanIdsLSet chanIdsRSet
                 intersectionLsyncChans = Set.intersection chanIdsLSet syncChansSet

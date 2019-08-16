@@ -16,12 +16,14 @@ import qualified Examples.ControlLoop       as ControlLoop
 import qualified Examples.CustomersOrders   as CustomersOrders
 import qualified Examples.DispatchProcess   as DispatchProcess
 import qualified Examples.Echo              as Echo
+import qualified Examples.Fibonacci         as Fibonacci
 import qualified Examples.LuckyPeople       as LuckyPeople
 import qualified Examples.MovingArms        as MovingArms
 import qualified Examples.Point             as Point
-import qualified Examples.ReadWriteConflict as ReadWriteConflict
 import qualified Examples.Queue             as Queue
+import qualified Examples.ReadWriteConflict as ReadWriteConflict
 import qualified Examples.StimulusResponse  as StimulusResponse
+import qualified Examples.Wheel             as Wheel
 import           Sqatt
 
 allExamples :: [TxsExampleSet]
@@ -30,10 +32,12 @@ allExamples = [ Adder.exampleSet
               , CustomersOrders.exampleSet
               , DispatchProcess.exampleSet
               , Echo.exampleSet
+              , Fibonacci.exampleSet
               , LuckyPeople.exampleSet
               , MovingArms.exampleSet
               , Point.exampleSet
               , ReadWriteConflict.exampleSet
               , Queue.exampleSet
               , StimulusResponse.exampleSet
+              , Wheel.exampleSet
               ]

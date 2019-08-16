@@ -101,11 +101,34 @@ by running:
 ```sh
 export MAKEFLAGS=" -j1 "
 stack setup
-stack install 
+stack install
 ```
 
 Note that the `MAKEFLAGS` variable does not affect the parallelism within
 `stack` itself.
+
+### Developing
+
+By default, several compiler warnings are treated as errors. While developing
+we'd like to avoid this: removing warnings requires some extra time. Some parts
+of the code might not make it when submitting a pull request. Therefore, before
+a new feature or fix is ready, it doesn't make sense to try to remove warnings
+on code that will be deleted in the end. So to have the build system avoid
+treating warnings as errors use the flag `develop` as follows:
+
+```sh
+stack <STACK ARGS> --flag '*:develop'
+```
+
+For instance:
+
+```sh
+stack test --stack-yaml stack_linux.yaml --file-watch txs-compiler  --ta "-m wrong" --flag '*:develop'
+```
+
+Note that currently only the package `txs-compiler` supports this flag. If you
+find yourself needing this flag for other packages feel free to submit an
+issue or pull request.
 
 ### Testing
 
@@ -188,3 +211,8 @@ See the README files in each folders to get a more detailed explanation.
 [11]: https://github.com/TorXakis/TorXakis/issues/40
 [13]: https://github.com/TorXakis/TorXakis/releases
 [15]: https://git-lfs.github.com/
+
+## Acknowledgements
+Part of the research and development of TorXakis is carried out 
+* as part of the NWO-TTW project 13859: SUMBAT: Supersizing Model-Based Testing.
+* as part of the Enable-S3 program under the responsibility of ESI (TNO) with Philips as the carrying industrial partner. The Enable-S3 research is supported by the Netherlands Ministry of Economic Affairs (Toeslag voor Topconsortia voor Kennis en Innovatie).

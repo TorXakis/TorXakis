@@ -53,6 +53,7 @@ import qualified IfServer            as IFS
 import qualified BuildInfo
 import qualified TxsCore
 import qualified VersionInfo
+import qualified EnvCore as IOC
 
 -- import from defs
 import qualified TxsDDefs
@@ -60,6 +61,11 @@ import qualified TxsDefs
 import qualified TxsShow
 import qualified Utils
 import qualified VarId
+import qualified ModelId
+
+-- import from bexpr
+import qualified ProcId
+import qualified ChanId
 
 -- imports added for changes to cmdLPE
 import qualified EnvCore as IOC
@@ -998,7 +1004,6 @@ cmdLPE args = do
                                          ]
      case mids of
        [ (_, TxsDefs.ModelDef chins chouts spls body) ]
-       -- [ (modelId, _) ]
          -> do -- Create a new model and process:
                -- - The new model instantiates the new process;
                -- - The new process uses the body of the old model.

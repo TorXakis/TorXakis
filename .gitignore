@@ -46,3 +46,7 @@ sys/txs-sort/txs-sort.cabal
 
 # RPM package.
 *.rpm
+
+# Linux package builder
+.package-build/
+**/.torxakis-hist.txt
