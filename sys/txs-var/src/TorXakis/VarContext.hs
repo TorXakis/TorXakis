@@ -63,7 +63,7 @@ conceptualErrorAddVars vs ctx | not $ null nuVarDefs        = Just $ Error ("Non
                               | not $ null undefinedSorts   = Just $ Error ("List of variable definitions with undefined sorts: " ++ show undefinedSorts)
                               | otherwise                   = Nothing
     where
-            -- | non unique Variable Definitions (i.e. duplicate names)
+        -- | non unique Variable Definitions (i.e. duplicate names)
         nuVarDefs :: [VarDef]
         nuVarDefs = repeatedByName vs
 

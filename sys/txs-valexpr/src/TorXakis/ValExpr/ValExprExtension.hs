@@ -133,7 +133,7 @@ mkLE ctx   _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of LE
 -- a <= b <==> 0 <= b - a
 mkLE ctx a b                        = mkMinus ctx b a >>= mkGEZ ctx
 
--- | Apply operator Less Equal (>=) on the provided value expressions.
+-- | Apply operator Greater Equal (>=) on the provided value expressions.
 mkGE :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkGE ctx   a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of GE is not of expected sort Int but " ++ show (getSort ctx a))
 mkGE ctx   _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of GE is not of expected sort Int but " ++ show (getSort ctx b))

@@ -20,10 +20,10 @@ module TorXakis.ProblemSolver
 ( Solution (..)
 , SolvableProblem (..)
 , SolveProblem (..)
+, KindOfProblem (..)
 , ProblemSolver (..)
 , negateSolution
 )
-
 where
 
 import           Data.Either
@@ -64,20 +64,24 @@ data KindOfProblem = NoSolution
 -- | The Problem Solver class.
 class ProblemSolver p where
     -- | Add Sorts
+    -- precondition: `depth` == 0
     addSorts :: [Sort] -> p ()
     -- | Add Functions
+    -- precondition: `depth` == 0
     addFunctions :: [FuncDef] -> p ()
-    
-    -- | push
-    -- return new level
+
+    -- | depth of nested contexts
+    depth :: p Integer
+    -- | push: add new nested context
+    -- return new depth
     push :: p Integer
-    -- | pop
-    -- return new level
-    pop :: p Integer
+    -- | pop: remove deepest nested context
+    -- return new depth
+    pop :: p depth
     
-    -- | Declare Variables
+    -- | Declare Variables to current nested context.
     declareVariables :: [VarDef] -> p ()
-    -- | add Assertions
+    -- | add Assertions to current nested context.
     addAssertions :: Assertions -> p()
     
     -- | is Problem Solvable?

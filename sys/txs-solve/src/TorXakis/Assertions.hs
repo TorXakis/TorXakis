@@ -23,11 +23,8 @@ module TorXakis.Assertions
 , empty
 , add
 )
-
--- ----------------------------------------------------------------------------------------- --
--- import
-
 where
+
 import qualified Data.Set  as Set
 
 import           TorXakis.Error
