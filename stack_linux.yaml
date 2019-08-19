@@ -55,6 +55,7 @@ packages:
 - sys/txs-prettyprint-gen
 - sys/txs-server
 - sys/txs-serverstate
+- sys/txs-solve
 - sys/txs-sort
 - sys/txs-sort-gen
 - sys/txs-txscompiler
