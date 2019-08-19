@@ -21,6 +21,7 @@ library:
   - containers
   - hashmap
   - txs-basics
+  - txs-solve
   - txs-sort
   - txs-valexpr
   - txs-value

@@ -87,7 +87,7 @@ class ProblemSolver p where
     -- | is Problem Solvable?
     solvable :: p SolvableProblem
     -- | solve Problem.
-    solve    :: p SolveProblem
+    solve :: p SolveProblem
     -- | What is the kind of problem?
     kindOfProblem :: p KindOfProblem
     

@@ -4,15 +4,19 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
--- ----------------------------------------------------------------------------------------- --
-module SMT
--- ----------------------------------------------------------------------------------------- --
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.SMT
+-- Copyright   :  (c) 2015-2017 TNO and Radboud University
+-- License     :  BSD3 (see the file LICENSE)
 --
--- SMT: open a connection to SMT, send constraints, and retrieve a model
+-- Maintainer  :  Pierre van de Laar <pierre.vandelaar@tno.nl>
+-- Stability   :  provisional
+-- Portability :  portable
 --
--- ----------------------------------------------------------------------------------------- --
--- export
-
+-- This module provides the SMT implementation of the ProblemSolver class.
+-----------------------------------------------------------------------------
+module TorXakis.SMT
 ( createSMTEnv
 , openSolver
 , close
@@ -27,10 +31,6 @@ module SMT
 , putT
 , valExprToString
 )
-
--- ----------------------------------------------------------------------------------------- --
--- import
-
 where
 
 import           SMTInternal
