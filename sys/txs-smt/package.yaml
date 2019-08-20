@@ -15,17 +15,13 @@ extra-source-files:
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.SMT
+  - TorXakis.SmtM
   dependencies:
   - base >= 4.7 && < 5
-  - containers
-  - hashmap
+  - mtl
+  - process
   - txs-basics
   - txs-solve
-  - txs-sort
-  - txs-valexpr
-  - txs-value
-  - txs-var
   build-tools:
   - alex
   - happy

@@ -30,7 +30,6 @@ import           Data.Either
 import           Data.HashMap
 import           Data.List
 
-import           TorXakis.Assertions
 import           TorXakis.ContextValExpr
 import           TorXakis.Value
 import           TorXakis.ValExpr
@@ -71,18 +70,20 @@ class ProblemSolver p where
     addFunctions :: [FuncDef] -> p ()
 
     -- | depth of nested contexts
+    -- postcondition: `depth` >= 0
     depth :: p Integer
     -- | push: add new nested context
     -- return new depth
     push :: p Integer
     -- | pop: remove deepest nested context
+    -- precondition: `depth` > 0
     -- return new depth
     pop :: p depth
     
     -- | Declare Variables to current nested context.
     declareVariables :: [VarDef] -> p ()
     -- | add Assertions to current nested context.
-    addAssertions :: Assertions -> p()
+    addAssertions :: [ValExpression] -> p()
     
     -- | is Problem Solvable?
     solvable :: p SolvableProblem
