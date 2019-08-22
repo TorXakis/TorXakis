@@ -24,7 +24,7 @@ See LICENSE at root directory of this repository.
 --  * SMT reprentation see http://cvc4.cs.stanford.edu/wiki/Strings#Symbolic_Regular_Expression
 -----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}  
-module RegexXSD2SMT
+module TorXakis.RegexXSD2SMT
 ( xsd2smt
 )
 where

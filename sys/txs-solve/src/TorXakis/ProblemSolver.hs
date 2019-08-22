@@ -40,12 +40,13 @@ import           TorXakis.Var
 
 -- | Is Problem Solvable? i.e. does a solution exist?
 newtype SolvableProblem = SolvableProblem { -- | to Maybe Bool: `Nothing` to handle limitations of the problem solver.
-                                            toMaybeBool :: Maybe Bool }
+                                            toMaybeBool :: Maybe Bool
+                                          } deriving (Eq, Ord, Read, Show)
 
 -- | Solution
 newtype  Solution = Solution { -- | to Map from Variable Name and Value
-                               toMap :: Map (RefByName VarDef) Value }
-    deriving (Eq, Ord, Read, Show)
+                               toMap :: Map (RefByName VarDef) Value
+                             } deriving (Eq, Ord, Read, Show)
 
 -- | Solve Problem, i.e. give a solution
 -- Include `UnableToSolve` to enable for limitation of the problem solver.
@@ -54,14 +55,21 @@ data  SolveProblem = Solved Solution
                    | UnableToSolve
      deriving (Eq, Ord, Read, Show)
 
--- | Kind of problem
-data KindOfProblem = NoSolution
-                   | UniqueSolution
-                   | MultipleSolutions
+-- | Kind of solution
+data KindOfSolution = NoSolution
+                    | UniqueSolution
+                    | MultipleSolutions
      deriving (Eq, Ord, Read, Show)
-
+     
+-- | Kind of problem
+newtype KindOfProblem = KindOfProblem { -- | to Maybe 
+                                        toMaybeKindOfSolution :: Maybe KindOfSolution
+                                      } deriving (Eq, Ord, Read, Show)
 -- | The Problem Solver class.
 class ProblemSolver p where
+    -- | Info on Problem Solver
+    info :: p String
+    
     -- | Add Sorts
     -- precondition: `depth` == 0
     addSorts :: [Sort] -> p ()
@@ -78,7 +86,7 @@ class ProblemSolver p where
     -- | pop: remove deepest nested context
     -- precondition: `depth` > 0
     -- return new depth
-    pop :: p depth
+    pop :: p Integer
     
     -- | Declare Variables to current nested context.
     declareVariables :: [VarDef] -> p ()

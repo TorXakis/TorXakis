@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE OverloadedStrings #-}
-module SMT2TXS
+module TorXakis.SMT2TXS
 
 -- ----------------------------------------------------------------------------------------- --
 --

@@ -10,40 +10,83 @@ testPushPopList
 )
 where
 
-import           Control.Arrow       ((&&&))
+--import           Control.Arrow       ((&&&))
+import           Control.Monad.Except
 import           Control.Monad.State
-import qualified Data.Map            as Map
-import           Data.Maybe
-import qualified Data.Text           as T
+--import qualified Data.Map            as Map
+--import           Data.Maybe
+--import qualifid Data.Text           as T
 import           Test.HUnit
 
-import           Constant
-import           SortId
-import           ValExpr
-import           VarId
+-- import           TorXakis.Value
+-- import           SortId
+-- import           ValExpr
+-- import           VarId
 
-import           SMT
-import           SMTData
-import           SolveDefs
+-- import           SMT
+-- import           SMTData
+-- import           SolveDefs
 import           TestSolvers
+
+import           TorXakis.Error
+import           TorXakis.ProblemSolver
+import           TorXakis.SmtM
 
 testPushPopList :: Test
 testPushPopList =
-    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do smtEnv <- createSMTEnv s False
-                                                                             evalStateT (snd e) smtEnv )
+    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do 
+                                                                            r <- runExceptT $ runStateT (runSmt (do
+                                                                                                                    uncurry openSmtSolver s False
+                                                                                                                    snd e
+                                                                                                                    closeSmtSolver
+                                                                                                                )
+                                                                                                        )
+                                                                                                        initSmtState
+                                                                            case r of
+                                                                                Left err -> error (show err)
+                                                                                Right _  -> return ()
+                                    )
                                     labelTestList
                          )
                          defaultSMTProcs
 
-labelTestList :: [(String, SMT())]
-labelTestList = [
-        ("Push",                                        testPush),
-        ("Push Assertion",                              testPushAssertion),
-        ("Push Assertion Pop",                          testPushAssertionPop),
-        ("Push Assertion Pop Assertion",                testPushAssertionPopAssertion),
-        ("Nested Pusp Pop",                             testNestedRanges)
+labelTestList :: [(String, SmtM ())]
+labelTestList = [ ("Nothing",                                     testNothing)
+                , ("Push",                                        testPush)
+                , ("Pop",                                         testPop)
+                , ("Pop Illegal",                                 testPopIllegal)
+      --  ("Push Assertion",                              testPushAssertion),
+      --  ("Push Assertion Pop",                          testPushAssertionPop),
+      --  ("Push Assertion Pop Assertion",                testPushAssertionPopAssertion),
+      --  ("Nested Pusp Pop",                             testNestedRanges)
         ]
 
+testNothing :: SmtM ()
+testNothing = return ()
+
+testPush :: SmtM ()
+testPush = do
+    currentDepth <- depth
+    newDepth <- push
+    liftIO $ assertEqual "push increases depth" newDepth (currentDepth+1)
+
+testPop :: SmtM ()
+testPop = do
+    pushDepth <- push
+    popDepth <- pop
+    liftIO $ assertEqual "pop decreases depth" popDepth (pushDepth-1)
+
+testPopIllegal :: SmtM ()
+testPopIllegal =
+        do
+            _ <- pop
+            liftIO $ assertFailure "pop not allowed in initial state - depth == 0"
+        `catchError` handler
+    where
+        handler :: Error -> SmtM ()
+        handler _ = return ()
+    
+{-
 -----------------------------------------------------
 -- Helper function
 -----------------------------------------------------
@@ -183,3 +226,4 @@ testNestedRanges = testNestedPushPopTemplate (EnvDefs Map.empty Map.empty Map.em
             Cint x  -> lift $ assertBool ("expected pattern:\nx = " ++ show x ++ "\ny = " ++ show y ++ "\nn= " ++ show n) (y-n < x && x < y+n)
             _       -> lift $ assertBool "unexpected pattern" False
         checkAssert _ _       = error "One variable in problem"
+-}

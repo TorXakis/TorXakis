@@ -16,7 +16,6 @@ import TestSMTValue
 import TestSortDefToSMT
 import TestVexprToSMT
 
-
 testSmtList :: Test
 testSmtList = TestList [
         TestLabel "External"                testExternalList,
@@ -28,7 +27,6 @@ testSmtList = TestList [
         TestLabel "VexprToSmt"              testVexprToSMTList
     ]
 
-        
 main :: IO ()
 main = do
     Counts  _c _t e f <- runTestTT testSmtList

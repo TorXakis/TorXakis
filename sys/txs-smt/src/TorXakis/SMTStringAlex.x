@@ -15,7 +15,7 @@
 -- Tokenize SMT String.
 -----------------------------------------------------------------------------
 
-module SMTStringAlex
+module TorXakis.SMTStringAlex
 ( Token(..)                  -- exporting
 , smtStringLexer             -- txsStringLexer :: String -> [Token]
 )

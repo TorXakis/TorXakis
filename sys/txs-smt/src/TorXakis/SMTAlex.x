@@ -14,7 +14,7 @@
 --
 -- Tokenize SMT response.
 -----------------------------------------------------------------------------
-module SMTAlex
+module TorXakis.SMTAlex
 ( Token(..)                  -- exporting
 , smtLexer                   -- txsLexer :: String -> [Token]
 )

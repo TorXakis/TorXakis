@@ -11,28 +11,34 @@ See LICENSE at root directory of this repository.
 -- See: https://github.com/TorXakis/TorXakis/issues/197
 module TestSolvers where
 
-import           System.Process
-
--- | The  should be re-written to avoid this hardcoded SMT processes.
-defaultSMTProcs :: [CreateProcess]
+-- | The tests should be re-written to avoid this hardcoded SMT processes.
+-- a raw command with arguments: see http://hackage.haskell.org/package/process/docs/System-Process.html#v:proc for more info
+defaultSMTProcs :: [(FilePath,[String])]
 defaultSMTProcs =
   [ cmdCVC4
   , cmdZ3
+  , cmdZ3Str3
   ]
 
-cmdCVC4 :: CreateProcess
-cmdCVC4 = proc "cvc4"
-                ["--lang=smt2.5"
-                , "--incremental"
-                , "--strings-exp"
-                , "--fmf-fun-rlv"
-                , "--uf-ss-fair"
-                , "--no-strings-print-ascii"
-                ]
+cmdCVC4 :: (FilePath,[String])
+cmdCVC4 = ("cvc4", [ "--lang=smt2.5"
+                 , "--incremental"
+                 , "--strings-exp"
+                 , "--fmf-fun-rlv"
+                 , "--uf-ss-fair"
+                 , "--no-strings-print-ascii"
+                 ]
+          )
 
-cmdZ3 :: CreateProcess
-cmdZ3 = proc    "z3"
-                ["-smt2"
-                ,"-in"
-                ]
+cmdZ3 :: (FilePath,[String])
+cmdZ3 = ("z3", [ "-smt2"
+               , "-in"
+               ]
+        )
 
+cmdZ3Str3 :: (FilePath,[String])
+cmdZ3Str3 = ("z3", [ "-smt2"
+                   , "-in"
+                   , "smt.string_solver=z3str3"
+                   ]
+            )

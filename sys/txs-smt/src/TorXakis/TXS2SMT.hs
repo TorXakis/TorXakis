@@ -4,20 +4,23 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
--- ----------------------------------------------------------------------------------------- --
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.TXS2SMT
+-- Copyright   :  (c) 2015-2017 TNO and Radboud University
+-- License     :  BSD3 (see the file LICENSE)
+--
+-- Maintainer  :  Pierre van de Laar <pierre.vandelaar@tno.nl>
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- This module translates torxakis statements into SMT.
+-----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
-module TXS2SMT
-
--- ----------------------------------------------------------------------------------------- --
---
--- Translate TorXakis definitions, declarations, and assertions into SMT
---
--- ----------------------------------------------------------------------------------------- --
--- export
-
-( initialEnvNames    
+module TorXakis.TXS2SMT
+( put
+, initialEnvNames    
 , insertSort
 , insertCstr
 , insertFunc

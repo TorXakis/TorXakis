@@ -20,7 +20,7 @@ See LICENSE at root directory of this repository.
 --
 -- Parse SMT response.
 -----------------------------------------------------------------------------
-module SMTHappy
+module TorXakis.SMTHappy
 ( smtParser
 , SMTValue(..)
 )

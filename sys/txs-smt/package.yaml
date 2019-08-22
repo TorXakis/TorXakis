@@ -12,22 +12,41 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 extra-source-files:
 - README.md
 
+dependencies:
+- base >= 4.7 && < 5
+- mtl
+- process
+
+- txs-basics
+- txs-solve
+
 library:
   source-dirs: src
   exposed-modules:
   - TorXakis.SmtM
   dependencies:
-  - base >= 4.7 && < 5
-  - mtl
-  - process
-  - txs-basics
-  - txs-solve
+  - MissingH
+  - text
+  - time
   build-tools:
   - alex
   - happy
 
+tests:
+    txs-smt-test:
+        main : TestMainBlackBox.hs
+        source-dirs: test
+        ghc-options:
+        - -threaded
+        - -rtsopts
+        - -with-rtsopts=-N
+        dependencies:
+        - HUnit
+        - txs-smt
+
 ghc-options:
 - -O
+- -fno-ignore-asserts       # must be after -O otherwise optimization turns asserts off again
 - -Werror
 - -Wall
 - -Widentities
