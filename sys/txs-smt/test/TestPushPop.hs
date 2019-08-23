@@ -39,7 +39,7 @@ testPushPopList =
                                                                             case es of
                                                                                 Left err -> error (show err)
                                                                                 Right ss -> do
-                                                                                            r <- runExceptT $ execStateT (runSmt (snd e)) ss
+                                                                                            r <- runExceptT $ execStateT (toStateT (snd e)) ss
                                                                                             case r of
                                                                                                 Left err  -> error (show err)
                                                                                                 Right ss' -> do

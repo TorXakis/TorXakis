@@ -75,6 +75,7 @@ data SmtState = SmtState { inHandle       :: Handle
                          }
 
 -- | mkSmtState - make Smt State
+--
 -- * open Smt Solver
 --
 -- * handle input, output and errors from Smt Solver
@@ -112,7 +113,7 @@ mkSmtState fp as lgFlag = do
 
         _ <-  forkIO (showErrors herr "SMT WARN >> ")
 
-        es <- runExceptT $ execStateT ( runSmt (do
+        es <- runExceptT $ execStateT ( toStateT (do
                                                     smtPut "(set-option :produce-models true)"
                                                     smtPut "(set-logic ALL)"
                                                     smtPut "(set-info :smt-lib-version 2.5)"
@@ -138,13 +139,13 @@ mkSmtState fp as lgFlag = do
             Right s  -> return $ Right s
 
 -- | destroySmtState
+--
 -- * exit Smt Solver, and check its exit code
 --
 -- * close log file
--- ----------------------------------------------------------------------------------------- --
 destroySmtState :: SmtState -> IO (Maybe Error)
 destroySmtState s = do
-    response <- runExceptT $ runStateT ( runSmt (smtPut "(exit)") ) s
+    response <- runExceptT $ runStateT ( toStateT (smtPut "(exit)") ) s
     case logFileMHandle s of
         Nothing -> return ()
         Just h  -> hClose h
@@ -158,8 +159,8 @@ destroySmtState s = do
 
 
 -- | Smt Monad
-newtype SmtM a = SmtM { -- | Run the Smt solver
-                        runSmt :: StateT SmtState (ExceptT Error IO) a
+newtype SmtM a = SmtM { -- | to `StateT`
+                        toStateT :: StateT SmtState (ExceptT Error IO) a
                       }
                       deriving (Functor, Applicative, Monad, MonadState SmtState, MonadIO, MonadError Error)
 
