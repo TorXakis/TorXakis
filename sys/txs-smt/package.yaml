@@ -25,9 +25,17 @@ library:
   exposed-modules:
   - TorXakis.SmtM
   dependencies:
+  - bimap
+  - hashmap
   - MissingH
+  - Stack
   - text
   - time
+  
+  - txs-name
+  - txs-valexpr
+  - txs-var
+  - txs-sort
   build-tools:
   - alex
   - happy
@@ -47,7 +55,7 @@ tests:
 ghc-options:
 - -O
 - -fno-ignore-asserts       # must be after -O otherwise optimization turns asserts off again
-- -Werror
+#- -Werror
 - -Wall
 - -Widentities
 - -Wincomplete-uni-patterns

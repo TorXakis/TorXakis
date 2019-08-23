@@ -19,17 +19,16 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
 module TorXakis.TXS2SMT
-( put
-, initialEnvNames    
+( initialEnvNames
 , insertSort
 , insertCstr
 , insertFunc
 , basicDefinitionsSMT
-, sortdefsToSMT      
-, funcdefsToSMT      
-, assertionsToSMT    
-, declarationsToSMT          
-, valexprToSMT       
+, sortdefsToSMT
+, funcdefsToSMT
+, assertionsToSMT
+, declarationsToSMT
+, valexprToSMT
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -103,7 +102,7 @@ insertCstr (cd, CstrDef c fs) enames
        else foldr ( \(f,p) enames' -> enames' { funcNames = Map.insert f (toFieldName cd p) (funcNames enames') } )
                   ( enames { funcNames = Map.insert c (toIsCstrName cd) (funcNames enames)
                            , cstrNames = Map.insert cd (toCstrName cd) (cstrNames enames)
-                           } 
+                           }
                   )
                   (zip fs [0..])
 
@@ -113,7 +112,7 @@ insertFunc (funcId, FuncDef x y) enames
        then error $ "TXS TXS2SMT insertMap: Function  (" ++ show funcId ++ ", FuncDef " ++
                     show x ++ " " ++ show y ++  ") already defined\n"
        else enames { funcNames = Map.insert funcId (toFuncName funcId) (funcNames enames) }
-       
+
 -- ----------------------------------------------------------------------------------------- --
 -- basic definitions for SMT
 -- native Torxakis functions that are not natively supported in SMT
@@ -139,7 +138,7 @@ sortdefsToSMT enames edefs =
         -- convert the given constructor to a SMT constructor declaration
         cstrToSMT :: (CstrId, CstrDef) -> Text
         cstrToSMT (cstrId', CstrDef _ fields) = " (" <> justLookupCstr cstrId' enames
-                                                     <> cstrFieldsToSMT cstrId' fields 
+                                                     <> cstrFieldsToSMT cstrId' fields
                                                      <> ")"
 
         -- convert the given constructor fields to a SMT constructor declaration
@@ -164,7 +163,7 @@ funcdefsToSMT enames fdefs =
 
     toDT :: (FuncId, FuncDef VarId) -> (Text, Text)
     toDT (funcId, FuncDef vs expr)  = ("(" <> justLookupFunc funcId enames
-                                           <> "(" <> T.intercalate " " (map (\v -> "(" <> vname v <> " " <> justLookupSort (varsort v) enames <> ")") vs) <> ") " 
+                                           <> "(" <> T.intercalate " " (map (\v -> "(" <> vname v <> " " <> justLookupSort (varsort v) enames <> ")") vs) <> ") "
                                            <> justLookupSort (funcsort funcId) enames
                                            <> ")"
                                       , valexprToSMT enames expr
@@ -273,7 +272,7 @@ declarationsToSMT enames vs  =
       declarationToSMT :: (Variable v) => v -> Text
       declarationToSMT v  =  "(declare-fun " <> vname v <> "() " <> justLookupSort (vsort v) enames <> ")"
 
--- ------------------------------                                                                 
+-- ------------------------------
 
 justLookupCstr :: CstrId -> EnvNames -> Text
 justLookupCstr cd enames = fromMaybe (error $ "CstrId " ++ show cd ++ " not found in mapping with keys: " ++ show (Map.keys (cstrNames enames)) ++ "\n") (Map.lookup cd (cstrNames enames))

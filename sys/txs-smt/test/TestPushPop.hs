@@ -34,17 +34,19 @@ import           TorXakis.SmtM
 
 testPushPopList :: Test
 testPushPopList =
-    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do 
-                                                                            r <- runExceptT $ runStateT (runSmt (do
-                                                                                                                    uncurry openSmtSolver s False
-                                                                                                                    snd e
-                                                                                                                    closeSmtSolver
-                                                                                                                )
-                                                                                                        )
-                                                                                                        initSmtState
-                                                                            case r of
+    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do
+                                                                            es <- uncurry mkSmtState s False
+                                                                            case es of
                                                                                 Left err -> error (show err)
-                                                                                Right _  -> return ()
+                                                                                Right ss -> do
+                                                                                            r <- runExceptT $ execStateT (runSmt (snd e)) ss
+                                                                                            case r of
+                                                                                                Left err  -> error (show err)
+                                                                                                Right ss' -> do
+                                                                                                                me <- destroySmtState ss'
+                                                                                                                case me of
+                                                                                                                    Just err -> error (show err)
+                                                                                                                    Nothing  -> return ()
                                     )
                                     labelTestList
                          )
@@ -52,6 +54,7 @@ testPushPopList =
 
 labelTestList :: [(String, SmtM ())]
 labelTestList = [ ("Nothing",                                     testNothing)
+                , ("Solve True",                                  testSolveTrue)
                 , ("Push",                                        testPush)
                 , ("Pop",                                         testPop)
                 , ("Pop Illegal",                                 testPopIllegal)
@@ -63,6 +66,11 @@ labelTestList = [ ("Nothing",                                     testNothing)
 
 testNothing :: SmtM ()
 testNothing = return ()
+
+testSolveTrue :: SmtM ()
+testSolveTrue = do
+                    s <- solvable
+                    liftIO $ assertEqual "solvable expected" (SolvableProblem (Just True)) s
 
 testPush :: SmtM ()
 testPush = do

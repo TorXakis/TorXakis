@@ -70,9 +70,9 @@ class ProblemSolver p where
     -- | Info on Problem Solver
     info :: p String
     
-    -- | Add Sorts
+    -- | Add ADTDefs
     -- precondition: `depth` == 0
-    addSorts :: [Sort] -> p ()
+    addADTs :: [ADTDef] -> p ()
     -- | Add Functions
     -- precondition: `depth` == 0
     addFunctions :: [FuncDef] -> p ()

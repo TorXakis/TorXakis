@@ -21,38 +21,141 @@ See LICENSE at root directory of this repository.
 module TorXakis.SmtM
 ( SmtM (..)
 , SmtState
-, initSmtState
-, openSmtSolver
-, closeSmtSolver
+, mkSmtState
+, destroySmtState
 )
 where
 import           Control.Concurrent
 import           Control.Exception
 import           Control.Monad.State
 import           Control.Monad.Except
+import           Data.Bimap
+import           Data.HashMap
 import           Data.List
+import           Data.Stack
 import           Data.String.Utils
+import qualified Data.Text as T
 import           Data.Time
+import           Numeric
 import           System.Exit
 import           System.IO
 import           System.Process
 
+import           TorXakis.ContextFunc
 import           TorXakis.Error
+import           TorXakis.FuncSignature
+import           TorXakis.Name
+import           TorXakis.NameMap
 import           TorXakis.ProblemSolver
+import           TorXakis.Sort
+import           TorXakis.Var
 
-data ActiveSmtState = ActiveSmtState { inHandle       :: Handle
-                                     , outHandle      :: Handle
-                                     , processHandle  :: ProcessHandle
-                                     , logFileMHandle :: Maybe Handle
-                                     , depth          :: Integer
-                                     }
+type ADTMap  = Data.HashMap.Map (RefByName ADTDef) T.Text
+type FuncMap = Data.HashMap.Map RefByFuncSignature T.Text
+type VarMap  = Data.Bimap.Bimap (RefByName VarDef) T.Text
+type CstrMap = Data.Bimap.Bimap (RefByName ADTDef, RefByName ConstructorDef) T.Text
+
 -- | Smt State
-newtype SmtState = SmtState { mActive :: Maybe ActiveSmtState
-                            }
+data SmtState = SmtState { inHandle       :: Handle
+                         , outHandle      :: Handle
+                         , processHandle  :: ProcessHandle
+                         , logFileMHandle :: Maybe Handle
+                         , depth          :: Integer
+                         -- defined definitions
+                         , funcContext :: ContextFunc
+                         , varDefs     :: Stack (NameMap VarDef)
+                         -- translation to SMT (and from SMT when necessary)
+                         , adtId     :: Integer
+                         , adtToSmt  :: ADTMap -- `a + show adtId`
+                         , funcId    :: Integer
+                         , funcToSmt :: FuncMap -- `f + show funcId`
+                         , varId     :: Integer
+                         , varToSmt  :: VarMap -- `v + show varId`
+                         , cstrToSmt :: CstrMap  -- `c + show adtId + $ + show (local cstrId)`
+                         }
 
--- | initSmtState constructor
-initSmtState :: SmtState
-initSmtState = SmtState Nothing
+-- | mkSmtState - make Smt State
+-- * open Smt Solver
+--
+-- * handle input, output and errors from Smt Solver
+--
+-- * when wanted, log Smt commands
+--
+-- * Bring Smt Solver to desired initial state
+mkSmtState :: FilePath -> [String] -> Bool -> IO (Either Error SmtState)
+mkSmtState fp as lgFlag = do
+        -- start smt solver process
+        (Just hin, Just hout, Just herr, ph) <-  createProcess (proc fp as) { std_in  = CreatePipe
+                                                                            , std_out = CreatePipe
+                                                                            , std_err = CreatePipe
+                                                                            }
+        hSetBuffering hin  NoBuffering
+        hSetBuffering hout NoBuffering
+        hSetBuffering herr NoBuffering
+
+        hSetEncoding hin  latin1
+        hSetEncoding hout latin1
+        hSetEncoding herr latin1
+
+        -- open SMT logging file
+        mlg <- if lgFlag
+                then do timeZone <- getCurrentTimeZone
+                        startTime <- getCurrentTime
+                        let timeString = replace ":" "-" $
+                                         replace " " "-" $
+                                         show (utcToLocalTime timeZone startTime) in do
+                            h <-  openFile ("logSMT." ++ timeString ++ ".smt2") WriteMode
+                            hSetBuffering h NoBuffering
+                            hSetEncoding h latin1
+                            return $ Just h
+                else return Nothing
+
+        _ <-  forkIO (showErrors herr "SMT WARN >> ")
+
+        es <- runExceptT $ execStateT ( runSmt (do
+                                                    smtPut "(set-option :produce-models true)"
+                                                    smtPut "(set-logic ALL)"
+                                                    smtPut "(set-info :smt-lib-version 2.5)"
+                                                )
+                                      )
+                                      ( SmtState hin
+                                                 hout
+                                                 ph
+                                                 mlg
+                                                 0
+                                                 TorXakis.ContextFunc.empty
+                                                 stackNew
+                                                 0
+                                                 Data.HashMap.empty
+                                                 0
+                                                 Data.HashMap.empty
+                                                 0
+                                                 Data.Bimap.empty
+                                                 Data.Bimap.empty
+                                      )
+        case es of
+            Left err -> return $ Left err
+            Right s  -> return $ Right s
+
+-- | destroySmtState
+-- * exit Smt Solver, and check its exit code
+--
+-- * close log file
+-- ----------------------------------------------------------------------------------------- --
+destroySmtState :: SmtState -> IO (Maybe Error)
+destroySmtState s = do
+    response <- runExceptT $ runStateT ( runSmt (smtPut "(exit)") ) s
+    case logFileMHandle s of
+        Nothing -> return ()
+        Just h  -> hClose h
+    case response of
+            Left err -> return $ Just err
+            Right _  -> do
+                            ec <- waitForProcess (processHandle s)
+                            case ec of
+                                ExitSuccess   -> return Nothing
+                                ExitFailure c -> return $ Just (Error ("Smt Solver exited with error code " ++ show c))
+
 
 -- | Smt Monad
 newtype SmtM a = SmtM { -- | Run the Smt solver
@@ -60,45 +163,118 @@ newtype SmtM a = SmtM { -- | Run the Smt solver
                       }
                       deriving (Functor, Applicative, Monad, MonadState SmtState, MonadIO, MonadError Error)
 
+
 instance ProblemSolver SmtM where
     info = do
                 n <- getInfo "name"
                 v <- getInfo "version"
                 return $ "SMT solver using " ++ n ++ " [" ++ v ++ "]"
 
-    addSorts = undefined
-    addFunctions = undefined
+    addADTs as =
+            do
+                st <- get
+                if TorXakis.SmtM.depth st > 0
+                then throwError $ Error "AddADTs only a depth 0. Depth is controlled by push and pop."
+                else case as of
+                        [] -> return ()
+                        _ -> case TorXakis.ContextFunc.addADTs as (TorXakis.SmtM.funcContext st) of
+                                Left e -> throwError $ Error ("Smt ProblemSolver - addADTs failed due to " ++ show e)
+                                Right funcContext' ->
+                                    let aId = adtId st
+                                        aId' = aId + toInteger (length as)
+                                        cTs = cstrToSmt st
+                                        aTs = adtToSmt st
+                                        (aTs', cTs') = foldl insertADT (aTs, cTs) $ zip as [aId ..]
+                                        in do
+                                            put $ st{ TorXakis.SmtM.funcContext = funcContext'
+                                                    , TorXakis.SmtM.adtId       = aId'
+                                                    , TorXakis.SmtM.adtToSmt    = aTs'
+                                                    , TorXakis.SmtM.cstrToSmt   = cTs'
+                                                    }
+        where
+            insertADT :: (ADTMap, CstrMap) -> (ADTDef, Integer) -> (ADTMap, CstrMap)
+            insertADT (am, cm) (a, i) =
+                    ( Data.HashMap.insert aRef toSmtAdtText am
+                    , foldl (flip (uncurry Data.Bimap.insert)) cm $ zip (fmap toRefTuple (elemsConstructor a)) (fmap toSmtCstrText [0..])
+                    )
+                where
+                    aRef :: RefByName ADTDef
+                    aRef = RefByName (adtName a)
+
+                    iText :: T.Text
+                    iText = T.pack (showHex i "")
+
+                    toSmtAdtText :: T.Text
+                    toSmtAdtText = T.append (T.singleton 'a') iText
+
+                    toRefTuple :: ConstructorDef -> (RefByName ADTDef, RefByName ConstructorDef)
+                    toRefTuple cd = (aRef, RefByName (constructorName cd))
+
+                    toSmtCstrText :: Integer -> T.Text
+                    toSmtCstrText c = T.concat [ T.singleton 'c'
+                                               , iText
+                                               , T.singleton '$'
+                                               , T.pack (showHex c "")
+                                               ]
+
+{-(fmap
+                                            -- | convert sort definitions to SMT type declarations (as multiple lines of commands)
+sortdefsToSMT :: EnvNames -> EnvDefs -> Text
+sortdefsToSMT enames edefs =
+    let sorts = Map.keys (sortDefs edefs) in
+        case sorts of
+            []      -> ""
+            _       -> "(declare-datatypes () (\n"
+                       <> foldMap (\s -> "    (" <> justLookupSort s enames <> foldMap cstrToSMT (getCstrs s) <> ")\n" )
+                                  sorts
+                       <> ") )\n"
+    where
+        -- get the constructors of an ADT
+        getCstrs :: SortId -> [(CstrId, CstrDef)]
+        getCstrs s = [(cstrId', cstrDef) | (cstrId', cstrDef) <- Map.toList (cstrDefs edefs), cstrsort cstrId' == s]
+
+        -- convert the given constructor to a SMT constructor declaration
+        cstrToSMT :: (CstrId, CstrDef) -> Text
+        cstrToSMT (cstrId', CstrDef _ fields) = " (" <> justLookupCstr cstrId' enames
+                                                     <> cstrFieldsToSMT cstrId' fields
+                                                     <> ")"
+
+        -- convert the given constructor fields to a SMT constructor declaration
+        cstrFieldsToSMT :: CstrId -> [FuncId] -> Text
+        cstrFieldsToSMT cstrId' fields =
+            case fields of
+                []  -> ""
+                _   -> " (" <> T.intercalate ") (" (map (\(f,p) -> toFieldName cstrId' p <> " " <> justLookupSort (funcsort f) enames)
+                                                        (zip fields [0..]) ) <> ")"
+-}
+
+
+
+
+
+    addFunctions _ = undefined
 
     push = do
             smtPut "(push 1)"
             -- update depth (not returned by smt solver)
             st <- get
-            case mActive st of
-                Nothing     -> throwError $ Error "No Smt Solver is open for push cmd"
-                Just active -> let newDepth = succ (TorXakis.SmtM.depth active)
-                                in do
-                                    put $ SmtState (Just active{ TorXakis.SmtM.depth = newDepth })
-                                    return newDepth
+            let newDepth = succ (TorXakis.SmtM.depth st)
+                in do
+                    put $ st { TorXakis.SmtM.depth = newDepth }
+                    return newDepth
 
     pop = do
             st <- get
-            case mActive st of
-                Nothing     -> throwError $ Error "No Smt Solver is open for pop cmd"
-                Just active -> let d = TorXakis.SmtM.depth active
-                                in
-                                    if d > 0
-                                    then let newDepth = pred d
-                                            in do
-                                                smtPut "(pop 1)"
-                                                put $ SmtState (Just active{ TorXakis.SmtM.depth = newDepth })
-                                                return newDepth
-                                    else throwError $ Error "Attempt to pop while the stack is empty."
+            let d = TorXakis.SmtM.depth st in
+                if d > 0
+                then let newDepth = pred d
+                        in do
+                            smtPut "(pop 1)"
+                            put $ st{ TorXakis.SmtM.depth = newDepth }
+                            return newDepth
+                else throwError $ Error "Attempt to pop while the stack is empty."
 
-    depth = do
-                st <- get
-                case mActive st of
-                    Nothing     -> throwError $ Error "No Smt Solver is open for depth"
-                    Just active -> return (TorXakis.SmtM.depth active)
+    depth = gets TorXakis.SmtM.depth
 
     declareVariables = undefined
     addAssertions = undefined
@@ -115,66 +291,6 @@ instance ProblemSolver SmtM where
     solve = undefined
     kindOfProblem = undefined
     toValExprContext = undefined
-
--- | open Smt Solver
-openSmtSolver :: FilePath -> [String] -> Bool -> SmtM ()
-openSmtSolver fp args lgFlag = do
-    st <- get
-    case mActive st of
-        Just _ -> throwError $ Error "A Smt Solver is already open"
-        Nothing -> do
-            -- start smt solver process
-            (Just hin, Just hout, Just herr, ph) <- liftIO $ createProcess (proc fp args) { std_in  = CreatePipe
-                                                                                          , std_out = CreatePipe
-                                                                                          , std_err = CreatePipe
-                                                                                          }
-            liftIO $ hSetBuffering hin  NoBuffering
-            liftIO $ hSetBuffering hout NoBuffering
-            liftIO $ hSetBuffering herr NoBuffering
-
-            liftIO $ hSetEncoding hin  latin1
-            liftIO $ hSetEncoding hout latin1
-            liftIO $ hSetEncoding herr latin1
-
-            -- open SMT logging file
-            mlg <- if lgFlag
-                    then do timeZone <- liftIO getCurrentTimeZone
-                            startTime <- liftIO getCurrentTime
-                            let timeString = replace ":" "-" $
-                                             replace " " "-" $
-                                             show (utcToLocalTime timeZone startTime) in do
-                                h <- liftIO $ openFile ("logSMT." ++ timeString ++ ".smt2") WriteMode
-                                liftIO $ hSetBuffering h NoBuffering
-                                liftIO $ hSetEncoding h latin1
-                                return $ Just h
-                    else return Nothing
-
-            _ <- liftIO $ forkIO (showErrors herr "SMT WARN >> ")
-
-            put $ SmtState (Just (ActiveSmtState hin hout ph mlg 0))
-
-            --smtPut "(set-option :produce-models true)"
-            --smtPut "(set-logic ALL)"
-            --smtPut "(set-info :smt-lib-version 2.5)"
-
--- | close Smt Solver
--- ----------------------------------------------------------------------------------------- --
-closeSmtSolver :: SmtM ()
-closeSmtSolver = do
-    st <- get
-    case mActive st of
-        Nothing     -> throwError $ Error "No Smt Solver is open to close"
-        Just active -> do
-                    smtPut "(exit)"
-                    case logFileMHandle active of
-                        Nothing -> return ()
-                        Just h  -> liftIO $ hClose h
-                    ec <- liftIO $ waitForProcess (processHandle active)
-                    case ec of
-                        ExitSuccess   -> return ()
-                        ExitFailure c -> throwError $ Error ("Smt Solver exited with error code " ++ show c)
-                    put $ SmtState Nothing
-
 
 -- | get Info of SMT Solver
 getInfo :: String -> SmtM String
@@ -196,11 +312,8 @@ getInfo topic = do
 smtPut :: String -> SmtM ()
 smtPut cmds  = do
         st <- get
-        case mActive st of
-            Nothing     -> throwError $ Error "No Smt Solver is open for put cmd"
-            Just active -> do
-                            liftIO $ maybeLog (logFileMHandle active)
-                            liftIO $ hPutStrLn (inHandle active) cmds
+        liftIO $ maybeLog (logFileMHandle st)
+        liftIO $ hPutStrLn (inHandle st) cmds
     where
         -- | write string to Log-file when available
         maybeLog :: Maybe Handle -> IO ()
@@ -221,13 +334,11 @@ showErrors h prefix = do
 
 smtGet :: SmtM String
 smtGet = do
-        st <- get
-        case mActive st of
-            Nothing     -> throwError $ Error "No Smt Solver is open for put cmd"
-            Just active -> let hout = outHandle active
-                               ph = processHandle active
-                            in
-                                liftIO $ getResponse hout `onException` exitWithError ph
+            st <- get
+            let hout = outHandle st
+                ph = processHandle st
+             in
+                liftIO $ getResponse hout `onException` exitWithError ph
     where
         exitWithError :: ProcessHandle -> IO ()
         exitWithError procHandle = do

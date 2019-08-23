@@ -18,6 +18,8 @@ defaultSMTProcs =
   [ cmdCVC4
   , cmdZ3
   , cmdZ3Str3
+  , cmdYices
+  , cmdMathSAT
   ]
 
 cmdCVC4 :: (FilePath,[String])
@@ -41,4 +43,14 @@ cmdZ3Str3 = ("z3", [ "-smt2"
                    , "-in"
                    , "smt.string_solver=z3str3"
                    ]
+            )
+
+cmdYices :: (FilePath,[String])
+cmdYices = ("yices-smt2", [ "--incremental"
+                          ]
+            )
+
+cmdMathSAT :: (FilePath,[String])
+cmdMathSAT = ("mathsat", [
+                         ]
             )
