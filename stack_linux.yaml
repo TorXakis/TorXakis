@@ -50,6 +50,9 @@ packages:
 - sys/defs
 - sys/lexregexxsd
 - sys/lpe
+- sys/lpeops
+- sys/lpeq
+- sys/lpeutils
 - sys/server
 - sys/serverenv
 - sys/solve

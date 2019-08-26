@@ -1,0 +1,153 @@
+name:                   lpeops
+version:                0.1
+synopsis:               LPE for TorXakis
+license:                BSD3
+license-file:           license.txt
+author:                 Djurre van der Wal
+
+maintainer:             djurrevanderwal@gmail.com
+copyright:              TNO?
+category:               Web
+build-type:             Simple
+cabal-version:          >=1.10
+
+library
+  hs-source-dirs:       src
+                      , src/core
+                      , src/utils
+                      , src/mcrl2
+
+  exposed-modules:    BlindSubst
+                    , LPEOps
+                    , LPEValidity
+                    , LPEDeterminism
+                    , LPEContexts
+                    , LPEContextIds
+                    , LPEClean
+                    , LPEChanMap
+                    , LPEConstElm
+                    , LPEParElm
+                    -- , LPEIStepElm
+                    , LPEDataReset
+                    , LPEParReset
+                    , LPETypes
+                    , LPEConversion
+                    , LPEEquivalence
+                    -- , LPEUGuards
+                    , LPEBlindSubst
+                    , LPEConfCheck
+                    , LPEIsDet
+                    -- , LPEAngelic
+                    -- , LPEDeterminize
+                    , LPE2MCRL2
+                    , LPEParRemoval
+                    , LPEParUsage
+                    , LPEPrettyPrint
+                    , LPESuccessors
+                    , LPEStepper
+                    , LPEStepper2
+                    , LPEInfo
+                    , Satisfiability
+                    , ValExprVisitor
+                    , ChanAlphabet
+                    , MCRL2Defs
+                    , MCRL2Env
+                    , MCRL2PrettyPrint
+
+  other-modules:      
+
+  ghc-options:        -Werror -Wall -O2 -optc-O3 -optc-ffast-math
+
+  build-depends:        base
+                      , containers
+                      , mtl
+                      , text
+                      , behave
+                      , behaveenv
+                      , coreenv
+                      , deepseq
+                      , random
+                      , solve
+                      , defs
+                      , bexpr
+                      , valexpr
+                      , value
+                      , lpeutils
+
+  default-language:     Haskell2010
+
+test-suite lpeops-test
+  type:                 exitcode-stdio-1.0
+  hs-source-dirs:       src
+                      , src/core
+                      , src/utils
+                      , src/mcrl2
+                      , test
+
+  main-is:              TestMain.hs
+
+  other-modules:        BlindSubst
+                      , LPEOps
+                      , LPEValidity
+                      , LPEDeterminism
+                      , LPEContexts
+                      , LPEContextIds
+                      , LPEClean
+                      , LPEChanMap
+                      , LPEConstElm
+                      , LPEParElm
+                      -- , LPEIStepElm
+                      , LPEDataReset
+                      , LPEParReset
+                      , LPETypes
+                      , LPEConversion
+                      , LPEEquivalence
+                      , LPEBlindSubst
+                      -- , LPEUGuards
+                      , LPEConfCheck
+                      , LPEIsDet
+                      , LPEInfo
+                      -- , LPEAngelic
+                      -- , LPEDeterminize
+                      , LPE2MCRL2
+                      , LPEParRemoval
+                      , LPEParUsage
+                      , LPEPrettyPrint
+                      , LPESuccessors
+                      , LPEStepper
+                      , LPEStepper2
+                      , Satisfiability
+                      , ValExprVisitor
+                      , ChanAlphabet
+                      , MCRL2Defs
+                      , MCRL2Env
+                      , MCRL2PrettyPrint
+                      , TestUtils
+                      , TestClean
+                      , TestConstElm
+                      , TestParElm
+                      , TestParReset
+                      , TestDataReset
+                      , TestConfCheck
+                      -- , TestUGuard
+
+  ghc-options:       -Werror -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
+
+  build-depends:       base
+                     , containers
+                     , mtl
+                     , text
+                     , HUnit
+                     , MissingH
+                     , behave
+                     , coreenv
+                     , deepseq
+                     , random
+                     , solve
+                     , defs
+                     , bexpr
+                     , valexpr
+                     , value
+                     , lpeutils
+
+  default-language:    Haskell2010

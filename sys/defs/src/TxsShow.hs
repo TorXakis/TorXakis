@@ -44,6 +44,7 @@ import           Sum
 import           TxsDefs
 import           ValExpr
 import           VarId
+import           Id
 
 specialOpChars :: String
 specialOpChars  =  "=+-*/\\^<>|@&%"                 -- must be equal to $special in TxsAlex
@@ -121,22 +122,25 @@ instance PShow TxsDefs where
              Exit xsrts -> "EXIT " ++ Utils.join " # " (map pshow xsrts) ++ " \n"
              Hit        -> "HIT\n"
         ++ "  ::=\n" ++ pshow bexp ++  "\nENDDEF\n"
-      showElem s (IdModel (ModelId nm _), DefModel (ModelDef chins chouts _ bexp) ) =
+      showElem s (IdModel (ModelId nm _), DefModel (ModelDef chins chouts chsyncs bexp) ) =
         s ++ "\nMODELDEF " ++ T.unpack nm ++"  ::=\n"
         ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
+        ++ "  SYNC  " ++ Utils.join "," (map showMultiChannel chsyncs) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
         ++ "ENDDEF\n"
-      showElem s (IdPurp (PurpId nm _), DefPurp (PurpDef chins chouts _ goals) ) =
+      showElem s (IdPurp (PurpId nm _), DefPurp (PurpDef chins chouts chsyncs goals) ) =
         s ++ "\nPURPDEF " ++ T.unpack nm ++"  ::=\n"
         ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
+        ++ "  SYNC  " ++ Utils.join "," (map showMultiChannel chsyncs) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow goals   ++ "\n"
         ++ "ENDDEF\n"
-      showElem s (IdMapper (MapperId nm _), DefMapper (MapperDef chins chouts _ bexp) ) =
+      showElem s (IdMapper (MapperId nm _), DefMapper (MapperDef chins chouts chsyncs bexp) ) =
         s ++ "\nMAPPERDEF " ++ T.unpack nm ++"  ::=\n"
         ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
+        ++ "  SYNC  " ++ Utils.join "," (map showMultiChannel chsyncs) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
         ++ "ENDDEF\n"
       showElem s (IdCnect (CnectId nm _), DefCnect (CnectDef cnecttype conndefs) ) =
@@ -146,6 +150,9 @@ instance PShow TxsDefs where
         ++ "ENDDEF\n"
       showElem _ _ =
         error "illegal list"
+
+showMultiChannel :: Set.Set ChanId -> String
+showMultiChannel cids = "{" ++ List.intercalate "|" (map (T.unpack . ChanId.name) (Set.toList cids)) ++ "}"
 
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: BExpr
@@ -220,7 +227,6 @@ instance PShow BExprView
     pshow (StAut init' ve trns)
       =  "STAUT " ++ pshow init' ++ "\n"  ++ pshow ve ++ "\n"
            ++ Utils.join ";\n" (map pshow trns)
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: ActOffer
@@ -445,8 +451,13 @@ instance PShow Ident where
     pshow (IdMapper id) =  pshow id
     pshow (IdCnect  id) =  pshow id
 
+showUnid :: (a -> T.Text) -> (a -> Id) -> a -> String
+--showUnid f g x = T.unpack (f x) ++ "@" ++ show (g x)
+showUnid f _g = T.unpack . f
+
 instance PShow ChanId where
-  pshow = T.unpack . ChanId.name
+  -- pshow = T.unpack . ChanId.name
+  pshow = showUnid ChanId.name ChanId.unid
 
 instance PShow CstrId where
   pshow = T.unpack . CstrId.name
@@ -458,7 +469,8 @@ instance PShow GoalId where
   pshow = T.unpack . GoalId.name
 
 instance PShow ProcId where
-  pshow = T.unpack . ProcId.name
+  -- pshow = T.unpack . ProcId.name
+  pshow = showUnid ProcId.name ProcId.unid
 
 instance PShow PurpId where
   pshow = T.unpack . PurpId.name
@@ -470,10 +482,12 @@ instance PShow StatId where
   pshow = T.unpack . StatId.name
 
 instance PShow VarId where
-  pshow = T.unpack . VarId.name
+  -- pshow = T.unpack . VarId.name
+  pshow = showUnid VarId.name VarId.unid
 
 instance PShow ModelId where
-  pshow = T.unpack . ModelId.name
+  -- pshow = T.unpack . ModelId.name
+  pshow = showUnid ModelId.name ModelId.unid
 
 instance PShow MapperId where
   pshow = T.unpack . MapperId.name

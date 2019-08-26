@@ -305,6 +305,9 @@ cmdIntpr cmdname args  =
          ; "map"           -> cmdMap        args
          ; "ncomp"         -> cmdNComp      args
          ; "lpe"           -> cmdLPE        args
+         ; "lpeop"         -> cmdLPEOp      args
+         ; "lpeq"          -> cmdLPEQ       args
+         ; "merge"         -> cmdMerge      args
 -- ---------------------------------------------------------------------------------- system --
          ; "systart"       -> cmdSyStart    args
          ; "systop"        -> cmdSyStop     args
@@ -587,6 +590,26 @@ cmdNComp args  =  do
 cmdLPE :: String -> UIO ()
 cmdLPE args  =  do
      doCmd "LPE" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdLPEOp :: String -> UIO ()
+cmdLPEOp args  =  do
+     doCmd "LPEOP" args
+     cmdsIntpr
+-- ----------------------------------------------------------------------------------------- --
+
+cmdLPEQ :: String -> UIO ()
+cmdLPEQ args  =  do
+     doCmd "LPEQ" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdMerge :: String -> UIO ()
+cmdMerge args  =  do
+     doCmd "MERGE" args
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --

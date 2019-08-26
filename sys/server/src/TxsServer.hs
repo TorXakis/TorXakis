@@ -67,6 +67,12 @@ import qualified ModelId
 import qualified ProcId
 import qualified ChanId
 
+-- imports added for changes to cmdLPE
+import qualified EnvCore as IOC
+import qualified ProcId
+import qualified ChanId
+import ModelIdFactory
+
 -- import from valexpr
 import qualified Constant
 import           Id
@@ -193,8 +199,13 @@ cmdsIntpr = do
        "NCOMP"     | not $ IOS.isInited   modus ->  cmdNoop      cmd
        "LPE"       |       IOS.isInited   modus ->  cmdLPE       args
        "LPE"       | not $ IOS.isInited   modus ->  cmdNoop      cmd
+       "LPEOP"     |       IOS.isInited   modus ->  cmdLPEOp     args
+       "LPEOP"     | not $ IOS.isInited   modus ->  cmdNoop      cmd
+       "LPEQ"      |       IOS.isInited   modus ->  cmdLPEQ      args
+       "LPEQ"      | not $ IOS.isInited   modus ->  cmdNoop      cmd
+       "MERGE"     |       IOS.isInited   modus ->  cmdMerge     args
+       "MERGE"     | not $ IOS.isInited   modus ->  cmdNoop      cmd
        _                                        ->  cmdUnknown   cmd
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis server individual command processing
@@ -992,8 +1003,7 @@ cmdLPE args = do
                                            <- Map.toList mdefs
                                          ]
      case mids of
-       [ (modelId, TxsDefs.ModelDef chins chouts spls body) ]
-       -- [ (modelId, _) ]
+       [ (_, TxsDefs.ModelDef chins chouts spls body) ]
          -> do -- Create a new model and process:
                -- - The new model instantiates the new process;
                -- - The new process uses the body of the old model.
@@ -1007,10 +1017,7 @@ cmdLPE args = do
                                               , ProcId.procexit = ProcId.NoExit }
                let newProcDef = TxsDefs.ProcDef chids [] body
                let newProcInit = TxsDefs.procInst newProcId chids []
-               newModelUnid <- lift IOC.newUnid
-               let newModelId = modelId { ModelId.name = T.pack "proxyModel"
-                                        , ModelId.unid = newModelUnid
-                                        }
+               newModelId <- lift $ getModelIdFromName "proxyModel"
                let newModelDef = TxsDefs.ModelDef chins chouts spls newProcInit
                let tdefs' = tdefs { TxsDefs.procDefs = Map.insert newProcId newProcDef (TxsDefs.procDefs tdefs)
                                   , TxsDefs.modelDefs = Map.insert newModelId newModelDef (TxsDefs.modelDefs tdefs)
@@ -1036,9 +1043,55 @@ cmdLPE args = do
                  _                     -> do IFS.nack "LPE" [ "Could not generate LPE" ]
                                              cmdsIntpr
 
+-- ----------------------------------------------------------------------------------------- --
+
+cmdLPEQ :: String -> IOS.IOS ()
+cmdLPEQ args = do
+    let (inName, outName) = cutAfterSpace args
+    msgs <- lift $ TxsCore.txsLPEQ inName outName
+    IFS.pack "LPEQ" msgs
+    cmdsIntpr
+  where
+    cutAfterSpace :: String -> (String, String)
+    cutAfterSpace "" = ("", "")
+    cutAfterSpace (' ':xs) = ("", xs)
+    cutAfterSpace (x:xs) = let (s1, s2) = cutAfterSpace xs in (x:s1, s2)
+-- cmdLPEQ
 
 -- ----------------------------------------------------------------------------------------- --
---
+
+cmdLPEOp :: String -> IOS.IOS ()
+cmdLPEOp args = do
+    let (opChain, namesAndInvariant) = cutAfterSpace args
+    let (inName, outNameAndInvariant) = cutAfterSpace namesAndInvariant
+    let (outName, invariantText) = cutAfterSpace outNameAndInvariant
+    invariant <- readVExpr invariantText
+    msgs <- lift $ TxsCore.txsLPEOp opChain inName outName invariant
+    IFS.pack "LPEOP" msgs
+    cmdsIntpr
+  where
+    cutAfterSpace :: String -> (String, String)
+    cutAfterSpace "" = ("", "")
+    cutAfterSpace (' ':xs) = ("", xs)
+    cutAfterSpace (x:xs) = let (s1, s2) = cutAfterSpace xs in (x:s1, s2)
+-- cmdLPEOp
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdMerge :: String -> IOS.IOS ()
+cmdMerge args = do
+    let (firstName, secondNameAndOutputName) = cutAfterSpace args
+    let (secondName, outputName) = cutAfterSpace secondNameAndOutputName
+    msgs <- lift $ TxsCore.txsMerge firstName secondName outputName
+    IFS.pack "MERGE" msgs
+    cmdsIntpr
+  where
+    cutAfterSpace :: String -> (String, String)
+    cutAfterSpace "" = ("", "")
+    cutAfterSpace (' ':xs) = ("", xs)
+    cutAfterSpace (x:xs) = let (s1, s2) = cutAfterSpace xs in (x:s1, s2)
+-- cmdMerge
+
 -- Helper Functions
 --
 -- ----------------------------------------------------------------------------------------- --
@@ -1117,3 +1170,28 @@ readBExpr chids args = do
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
 
+readVExpr :: String -> IOS.IOS TxsDefs.VExpr
+readVExpr args =
+     if args == ""
+     then return (ValExpr.cstrConst (Constant.Cbool True))
+     else do env              <- get
+             let uid           = IOS.uid env
+                 sigs          = IOS.sigs env
+                 --vals          = IOS.locvals env
+             --tdefs            <- lift TxsCore.txsGetTDefs
+
+             ((_uid',vexp'),e) <- lift $ lift $ catch
+                                   ( let (i,p) = compileUnsafe $
+                                                 compileValExpr sigs [] (_id uid + 1) args
+                                      in return $!! ((i, Just p),"")
+                                   )
+                                   ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
+
+             case vexp' of
+              Just vexp'' -> return vexp''
+              Nothing -> do IFS.nack "ERROR" [ "incorrect value expression: " ++ e ]
+                            return (ValExpr.cstrConst (Constant.Cbool False))
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
+-- ----------------------------------------------------------------------------------------- --

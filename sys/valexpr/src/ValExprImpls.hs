@@ -500,7 +500,7 @@ compSubst' :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w
            => Map.Map v (ValExpr w) -> Map.Map FuncId (FuncDef v) -> ValExprView v -> ValExpr w
 compSubst' _  _   (Vconst const')          = cstrConst const'
 compSubst' ve _   (Vvar vid)               = fromMaybe
-                                                    (error "TXS Subst compSubst: incomplete")
+                                                    (error ("TXS Subst compSubst: incomplete (vid = " ++ show vid ++ "; map = " ++ show ve ++ ")"))
                                                     (Map.lookup vid ve)
 compSubst' ve fis (Vfunc fid vexps)        = cstrFunc fis fid (map (compSubst' ve fis . view) vexps)
 compSubst' ve fis (Vcstr cid vexps)        = cstrCstr cid (map (compSubst' ve fis . view) vexps)

@@ -46,5 +46,8 @@ library
                       , valexpr
                       , value
                       , lpe
+                      , lpeops
+                      , lpeq
+                      , lpeutils
                       
   default-language:     Haskell2010
