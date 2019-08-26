@@ -120,7 +120,7 @@ doDetIteration invariant lpe = do
         let guard3 = ValExpr.cstrAnd (Set.fromList [disableGuard, guard1'', guard2''])
         let vars3 = Set.union (Set.fromList chanVars3) (Set.fromList (FreeVar.freeVars guard3))
         let newSummand3 = LPESummand { lpeSmdVars = (vars3 Set.\\ lpeParams lpe) Set.\\ Set.insert nonDetFlagVar params
-                                     , lpeSmdOffers = Map.map (map (\v -> chanVar3PerChanVar1 Map.! v)) (lpeSmdOffers summand1)
+                                     , lpeSmdOffers = Map.map (map (chanVar3PerChanVar1 Map.!)) (lpeSmdOffers summand1)
                                      , lpeSmdGuard = guard3
                                      , lpeSmdEqs =
                                          Map.union
