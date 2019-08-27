@@ -1,4 +1,4 @@
-  {-
+{-
 TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and University of Twente
 See LICENSE at root directory of this repository.
