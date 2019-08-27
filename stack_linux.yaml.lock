@@ -6,8 +6,8 @@
 packages:
 - completed:
     cabal-file:
-      size: 2957
-      sha256: 86721de77129c198aa3f033c79c0f7aaebce16615e6e4ea73cefb3d9771e5a94
+      size: 2956
+      sha256: 9da5461d379734adabacb3e9dbdac70a2bb4b19307155f0b9309fe2f851798f5
     name: text-via-sockets
     version: 0.1.0.0
     git: https://github.com/TorXakis/text-via-sockets.git
