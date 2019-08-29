@@ -89,6 +89,7 @@ class ProblemSolver p where
     pop :: p Integer
     
     -- | Declare Variables to current nested context.
+    -- precondition: `depth` > 0
     declareVariables :: [VarDef] -> p ()
     -- | add Assertions to current nested context.
     addAssertions :: [ValExpression] -> p()

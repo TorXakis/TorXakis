@@ -20,7 +20,10 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric         #-}
 module TorXakis.Language
 ( -- * TorXakis representation
-  TxsString (..)
+  TxsString
+, fromText
+, fromString
+, toText
 , toString
   -- * TxsString operators
 , TorXakis.Language.empty
@@ -158,8 +161,19 @@ newtype TxsString = TxsString { -- | To Text conversion
                               }
     deriving (Eq, Ord, Read, Generic, NFData, Data)
 
+instance Show TxsString where
+    show (TxsString x) = T.unpack x
+
 instance Hashable TxsString where
     hashWithSalt s = hashWithSalt s . toText
+
+-- | From Text constructor
+fromText :: T.Text -> TxsString
+fromText = TxsString
+
+-- | From String constructor
+fromString :: String -> TxsString
+fromString = TxsString . T.pack
 
 -- | To String conversion
 toString :: TxsString -> String
@@ -199,9 +213,6 @@ append a b = TxsString (T.append (toText a) (toText b))
 -- | indentation
 indent :: TxsString -> TxsString -> TxsString
 indent i t = intercalate (append txsNewLine i) (TorXakis.Language.lines t)
-
-instance Show TxsString where
-    show (TxsString x) = T.unpack x
 
 -- | TorXakis Predefined Sorts
 txsPredefinedSorts :: [TxsString]

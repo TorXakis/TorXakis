@@ -25,15 +25,19 @@ library:
   exposed-modules:
   - TorXakis.SmtM
   dependencies:
+  - array # for Happy
   - bimap
+  - deepseq
+  - hashable
   - hashmap
   - MissingH
-  - Stack
   - text
   - time
   
+  - txs-lex-regex-xsd
   - txs-name
   - txs-valexpr
+  - txs-value
   - txs-var
   - txs-sort
   build-tools:
@@ -42,7 +46,7 @@ library:
 
 tests:
     txs-smt-test:
-        main : TestMainBlackBox.hs
+        main : TestMain.hs
         source-dirs: test
         ghc-options:
         - -threaded

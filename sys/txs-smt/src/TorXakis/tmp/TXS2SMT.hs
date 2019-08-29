@@ -16,49 +16,18 @@ See LICENSE at root directory of this repository.
 --
 -- This module translates torxakis statements into SMT.
 -----------------------------------------------------------------------------
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns      #-}
 module TorXakis.TXS2SMT
-( initialEnvNames
-, insertSort
-, insertCstr
-, insertFunc
-, basicDefinitionsSMT
-, sortdefsToSMT
-, funcdefsToSMT
-, assertionsToSMT
-, declarationsToSMT
-, valexprToSMT
+( sortToSmt
+, funcRefToSmt
+, cstrRefToSmt
+, fieldRefToSmt
 )
-
--- ----------------------------------------------------------------------------------------- --
---import
-
 where
+import       TorXakis.SmtLanguage
 
-import qualified Data.Map      as Map
-import           Data.Maybe
-import           Data.Monoid
-import qualified Data.Set      as Set
-import           Data.Text     (Text)
-import qualified Data.Text     as T
 
-import           Constant
-import           CstrDef
-import           CstrId
-import           FreeMonoidX
-import           FuncDef
-import           FuncId
-import           RegexXSD2SMT
-import           SMTData
-import           SMTString
-import           SortDef
-import           SortId
-import           ValExpr
-import           Variable
-import           VarId
 
--- ----------------------------------------------------------------------------------------- --
+----------------------------------------------------------------------------------------- --
 -- initialEnvNames
 
 initialEnvNames :: EnvNames
@@ -179,22 +148,6 @@ assertionsToSMT enames assertions =
         assertionToSMT expr = "(assert " <> valexprToSMT enames expr <> ")"
 
 
-integer2smt :: Integer -> Text
-integer2smt n | n < 0 = "(- " <> (T.pack . show) (abs n) <> ")"
-integer2smt n = (T.pack . show) n
--- ----------------------------------------------------------------------------------------- --
--- constToSMT: translate a constant to a SMT text
--- ----------------------------------------------------------------------------------------- --
-constToSMT :: EnvNames -> Constant -> Text
-constToSMT _      (Cbool b)        = if b
-                                       then "true"
-                                       else "false"
-constToSMT _      (Cint n)         = integer2smt n
-constToSMT _      (Cstring s)      =  "\"" <> stringToSMT s <> "\""
-constToSMT _      (Cregex r)       =  xsd2smt r
-constToSMT enames (Ccstr cd [])    =        justLookupCstr cd enames
-constToSMT enames (Ccstr cd args') = "(" <> justLookupCstr cd enames <> " " <> T.intercalate " " (map (constToSMT enames) args') <> ")"
-constToSMT _      x                = error ("Illegal input constToSMT - " <> show x)
 
 -- ----------------------------------------------------------------------------------------- --
 -- valexprToSMT: translate a ValExpr to a SMT constraint

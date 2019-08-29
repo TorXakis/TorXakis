@@ -15,6 +15,9 @@ See LICENSE at root directory of this repository.
 -- Portability :  portable
 --
 -- This module provides the SMT ProblemSolver instance.
+-- The user should make an initial SmtState with `mkSmtState`.
+-- Use the `SmtM` monad to solve the problems incrementally.
+-- And when done, destroy the SmtState with `destroySmtState`.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -32,9 +35,9 @@ import           Control.Monad.Except
 import           Data.Bimap
 import           Data.HashMap
 import           Data.List
-import           Data.Stack
+import           Data.Maybe (fromMaybe)
 import           Data.String.Utils
-import qualified Data.Text as T
+import qualified Data.Text
 import           Data.Time
 import           Numeric
 import           System.Exit
@@ -42,18 +45,22 @@ import           System.IO
 import           System.Process
 
 import           TorXakis.ContextFunc
+import           TorXakis.ContextValExpr
 import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.NameMap
 import           TorXakis.ProblemSolver
+import           TorXakis.RefByIndex
+import           TorXakis.SmtLanguage
 import           TorXakis.Sort
+import           TorXakis.Value
 import           TorXakis.Var
 
-type ADTMap  = Data.HashMap.Map (RefByName ADTDef) T.Text
-type FuncMap = Data.HashMap.Map RefByFuncSignature T.Text
-type VarMap  = Data.Bimap.Bimap (RefByName VarDef) T.Text
-type CstrMap = Data.Bimap.Bimap (RefByName ADTDef, RefByName ConstructorDef) T.Text
+type ADTMap  = Data.HashMap.Map (RefByName ADTDef) SmtString
+type FuncMap = Data.HashMap.Map RefByFuncSignature SmtString
+type VarMap  = Data.Bimap.Bimap (RefByName VarDef) SmtString
+type CstrMap = Data.Bimap.Bimap (RefByName ADTDef, RefByName ConstructorDef) SmtString
 
 -- | Smt State
 data SmtState = SmtState { inHandle       :: Handle
@@ -62,8 +69,8 @@ data SmtState = SmtState { inHandle       :: Handle
                          , logFileMHandle :: Maybe Handle
                          , depth          :: Integer
                          -- defined definitions
-                         , funcContext :: ContextFunc
-                         , varDefs     :: Stack (NameMap VarDef)
+                         , funcContext  :: ContextFunc
+                         , varDefsStack :: [NameMap VarDef]
                          -- translation to SMT (and from SMT when necessary)
                          , adtId     :: Integer
                          , adtToSmt  :: ADTMap -- `a + show adtId`
@@ -111,12 +118,19 @@ mkSmtState fp as lgFlag = do
                             return $ Just h
                 else return Nothing
 
+        -- handle warning messages of Smt Solver (over herr)
+        -- note: errors in SMT are reported over hout with the response "(error <string>)"
         _ <-  forkIO (showErrors herr "SMT WARN >> ")
 
+        -- initialize the smt solver
+        -- To reuse the smtPut function (to ensure e.g. consistent logging) we have to run it in the `SmtM` monad.
+        -- Note: putting the `mkSmtState` completely in the `SmtM` monad,
+        --       would require a more complicate SmtState (that reflects whether the Smt Solver is started)
+        --       and checking on the state in all `SmtM` Monadic functions.
         es <- runExceptT $ execStateT ( toStateT (do
-                                                    smtPut "(set-option :produce-models true)"
-                                                    smtPut "(set-logic ALL)"
-                                                    smtPut "(set-info :smt-lib-version 2.5)"
+                                                    smtPut $ fromString "(set-info :smt-lib-version 2.5)"
+                                                    smtPut $ fromString "(set-option :produce-models true)"
+                                                    smtPut $ fromString "(set-logic ALL)"
                                                 )
                                       )
                                       ( SmtState hin
@@ -125,7 +139,7 @@ mkSmtState fp as lgFlag = do
                                                  mlg
                                                  0
                                                  TorXakis.ContextFunc.empty
-                                                 stackNew
+                                                 []
                                                  0
                                                  Data.HashMap.empty
                                                  0
@@ -145,10 +159,13 @@ mkSmtState fp as lgFlag = do
 -- * close log file
 destroySmtState :: SmtState -> IO (Maybe Error)
 destroySmtState s = do
-    response <- runExceptT $ runStateT ( toStateT (smtPut "(exit)") ) s
-    case logFileMHandle s of
-        Nothing -> return ()
-        Just h  -> hClose h
+    -- destroy / exit the smt solver
+    -- To reuse the smtPut function (to ensure e.g. consistent logging) we have to run it in the `SmtM` monad.
+    -- Note: putting the `destroySmtState` completely in the `SmtM` monad,
+    --       would require a more complicate SmtState (that reflects whether the Smt Solver is started)
+    --       and checking on the state in all `SmtM` Monadic functions.
+    response <- runExceptT $ runStateT ( toStateT (smtPut smtExit) ) s
+    mapM_ hClose (logFileMHandle s)
     case response of
             Left err -> return $ Just err
             Right _  -> do
@@ -175,14 +192,14 @@ instance ProblemSolver SmtM where
             do
                 st <- get
                 if TorXakis.SmtM.depth st > 0
-                then throwError $ Error "AddADTs only a depth 0. Depth is controlled by push and pop."
+                then throwError $ Error "AddADTs only at depth 0. Depth is controlled by push and pop."
                 else case as of
                         [] -> return ()
                         _ -> case TorXakis.ContextFunc.addADTs as (TorXakis.SmtM.funcContext st) of
                                 Left e -> throwError $ Error ("Smt ProblemSolver - addADTs failed due to " ++ show e)
                                 Right funcContext' ->
                                     let aId = adtId st
-                                        aId' = aId + toInteger (length as)
+                                        aId' = aId + toInteger (Data.List.length as)
                                         cTs = cstrToSmt st
                                         aTs = adtToSmt st
                                         (aTs', cTs') = foldl insertADT (aTs, cTs) $ zip as [aId ..]
@@ -192,6 +209,24 @@ instance ProblemSolver SmtM where
                                                     , TorXakis.SmtM.adtToSmt    = aTs'
                                                     , TorXakis.SmtM.cstrToSmt   = cTs'
                                                     }
+                                            ddts <- mapM (\a -> let ar :: RefByName ADTDef
+                                                                    ar = RefByName (adtName a) in do
+                                                                    sa <- adtRefToSmt ar
+                                                                    cs <- mapM (\c -> let cr :: RefByName ConstructorDef
+                                                                                          cr = RefByName (constructorName c) in do
+                                                                                        sc <- cstrRefToSmt ar cr
+                                                                                        fs <- mapM (\(s,p) -> let fp :: RefByIndex FieldDef
+                                                                                                                  fp = RefByIndex p in do
+                                                                                                                sf <- fieldRefToSmt ar cr fp
+                                                                                                                ss <- sortToSmt s
+                                                                                                                return $ smtDeclareField sf ss
+                                                                                                   )
+                                                                                                   (zip (Data.List.map TorXakis.Sort.sort (elemsField c)) [0..])
+                                                                                        return $ smtDeclareConstructor sc fs
+                                                                               ) (elemsConstructor a)
+                                                                    return $ smtDeclareDatatype sa cs
+                                                         ) as
+                                            smtPut $ smtDeclareDatatypes ddts
         where
             insertADT :: (ADTMap, CstrMap) -> (ADTDef, Integer) -> (ADTMap, CstrMap)
             insertADT (am, cm) (a, i) =
@@ -202,101 +237,134 @@ instance ProblemSolver SmtM where
                     aRef :: RefByName ADTDef
                     aRef = RefByName (adtName a)
 
-                    iText :: T.Text
-                    iText = T.pack (showHex i "")
+                    iText :: SmtString
+                    iText = fromString (showHex i "")
 
-                    toSmtAdtText :: T.Text
-                    toSmtAdtText = T.append (T.singleton 'a') iText
+                    toSmtAdtText :: SmtString
+                    toSmtAdtText = append (TorXakis.SmtLanguage.singleton 'a') iText
 
                     toRefTuple :: ConstructorDef -> (RefByName ADTDef, RefByName ConstructorDef)
                     toRefTuple cd = (aRef, RefByName (constructorName cd))
 
-                    toSmtCstrText :: Integer -> T.Text
-                    toSmtCstrText c = T.concat [ T.singleton 'c'
-                                               , iText
-                                               , T.singleton '$'
-                                               , T.pack (showHex c "")
-                                               ]
-
-{-(fmap
-                                            -- | convert sort definitions to SMT type declarations (as multiple lines of commands)
-sortdefsToSMT :: EnvNames -> EnvDefs -> Text
-sortdefsToSMT enames edefs =
-    let sorts = Map.keys (sortDefs edefs) in
-        case sorts of
-            []      -> ""
-            _       -> "(declare-datatypes () (\n"
-                       <> foldMap (\s -> "    (" <> justLookupSort s enames <> foldMap cstrToSMT (getCstrs s) <> ")\n" )
-                                  sorts
-                       <> ") )\n"
-    where
-        -- get the constructors of an ADT
-        getCstrs :: SortId -> [(CstrId, CstrDef)]
-        getCstrs s = [(cstrId', cstrDef) | (cstrId', cstrDef) <- Map.toList (cstrDefs edefs), cstrsort cstrId' == s]
-
-        -- convert the given constructor to a SMT constructor declaration
-        cstrToSMT :: (CstrId, CstrDef) -> Text
-        cstrToSMT (cstrId', CstrDef _ fields) = " (" <> justLookupCstr cstrId' enames
-                                                     <> cstrFieldsToSMT cstrId' fields
-                                                     <> ")"
-
-        -- convert the given constructor fields to a SMT constructor declaration
-        cstrFieldsToSMT :: CstrId -> [FuncId] -> Text
-        cstrFieldsToSMT cstrId' fields =
-            case fields of
-                []  -> ""
-                _   -> " (" <> T.intercalate ") (" (map (\(f,p) -> toFieldName cstrId' p <> " " <> justLookupSort (funcsort f) enames)
-                                                        (zip fields [0..]) ) <> ")"
--}
-
-
-
+                    toSmtCstrText :: Integer -> SmtString
+                    toSmtCstrText c = TorXakis.SmtLanguage.concat
+                                            [ TorXakis.SmtLanguage.singleton 'c'
+                                            , iText
+                                            , TorXakis.SmtLanguage.singleton '$'
+                                            , fromString (showHex c "")
+                                            ]
 
 
     addFunctions _ = undefined
 
     push = do
-            smtPut "(push 1)"
-            -- update depth (not returned by smt solver)
+            smtPut smtPush
+            -- update depth (not returned by smt solver) and add new variables on stack
             st <- get
-            let newDepth = succ (TorXakis.SmtM.depth st)
-                in do
-                    put $ st { TorXakis.SmtM.depth = newDepth }
+            let newStack = (TorXakis.NameMap.empty : TorXakis.SmtM.varDefsStack st)
+                newDepth = succ (TorXakis.SmtM.depth st) in do
+                    put $ st { TorXakis.SmtM.depth = newDepth
+                             , TorXakis.SmtM.varDefsStack = newStack
+                             }
                     return newDepth
 
     pop = do
             st <- get
             let d = TorXakis.SmtM.depth st in
                 if d > 0
-                then let newDepth = pred d
-                        in do
-                            smtPut "(pop 1)"
-                            put $ st{ TorXakis.SmtM.depth = newDepth }
-                            return newDepth
-                else throwError $ Error "Attempt to pop while the stack is empty."
+                then case TorXakis.SmtM.varDefsStack st of
+                        []     -> error "Pop - Stack unexpectedly is empty"
+                        (_:tl) -> let newDepth = pred d in do
+                                    smtPut smtPop
+                                    put $ st{ TorXakis.SmtM.depth = newDepth
+                                            , TorXakis.SmtM.varDefsStack = tl
+                                            }
+                                    return newDepth
+                else throwError $ Error ("Pop - Depth is not larger than 0, but " ++ show d ++ ". Did you push before?")
 
     depth = gets TorXakis.SmtM.depth
 
-    declareVariables = undefined
+    declareVariables vs = do
+            st <- get
+            let d = TorXakis.SmtM.depth st
+                stack = TorXakis.SmtM.varDefsStack st
+                varDefs = TorXakis.NameMap.unions stack in
+                if d > 0
+                then case repeatedByNameIncremental (TorXakis.NameMap.elems varDefs) vs of
+                            [] -> let vI = TorXakis.SmtM.varId st
+                                      vTs = TorXakis.SmtM.varToSmt st
+                                      vI' = vI + toInteger (Data.List.length vs)
+                                      vTs' = foldl insertVar vTs $ zip vs [vI ..] in
+                                      case stack of
+                                          []     -> error "declareVariables - Stack unexpectedly is empty"
+                                          (hd:tl) -> put st { TorXakis.SmtM.varDefsStack = ( TorXakis.NameMap.union (toNameMap vs) hd : tl )
+                                                            , TorXakis.SmtM.varId = vI'
+                                                            , TorXakis.SmtM.varToSmt = vTs'
+                                                            }
+                            ds -> throwError $ Error ("declareVariables - declaration impossible due to non unique variables: "++ show ds)
+                else throwError $ Error ("declareVariables - Precondition depth is larger than 0 is not satisfied since depth is " ++ show d ++ ". Did you push before?")
+        where
+            insertVar :: VarMap -> (VarDef, Integer) -> VarMap
+            insertVar m (v,i) = Data.Bimap.insert (RefByName (name v)) (append (TorXakis.SmtLanguage.singleton 'v') iText) m
+                where
+                    iText :: SmtString
+                    iText = fromString (showHex i "")
+
+
+
     addAssertions = undefined
 
     solvable = do
-                smtPut "(check-sat)"
+                smtPut smtCheckSat
                 s <- smtGet
                 case s of
                     "sat"        -> return $ SolvableProblem (Just True)
                     "unsat"      -> return $ SolvableProblem (Just False)
                     "unknown"    -> return $ SolvableProblem Nothing
-                    _            -> throwError $ Error ("solvable - Unexpected result by smt check-sat '"++ s ++ "'")
+                    _            -> error ("solvable - Unexpected result by smt check-sat '"++ s ++ "'")
 
-    solve = undefined
+    solve = do
+                st <- get
+                let stack = TorXakis.SmtM.varDefsStack st
+                    varDefs = TorXakis.NameMap.unions stack in
+                    case TorXakis.NameMap.elems varDefs of
+                        [] -> return $ Solved (Solution Data.HashMap.empty)
+                        _  -> undefined
+                                       --     smtPut $ smtGetValues
+                                        
+                                        {-
+    getSolution []    = return Map.empty
+getSolution vs    = do
+    putT ("(get-value (" <> T.intercalate " " (map vname vs) <>"))")
+    s <- getSMTresponse
+    let vnameSMTValueMap = Map.mapKeys T.pack . smtParser . smtLexer $ s
+    edefs <- gets envDefs
+    return $ Map.fromList (map (toConst edefs vnameSMTValueMap) vs)
+  where
+    toConst :: (Variable v) => EnvDefs -> Map.Map Text SMTValue -> v -> (v, Constant)
+    toConst edefs mp v = case Map.lookup (vname v) mp of
+                            Just smtValue   -> case smtValueToValExpr smtValue (cstrDefs edefs) (vsort v) of
+                                                    Left t -> error $ "getSolution - SMT parse error:\n" ++ t
+                                                    Right val -> (v,val)
+                            Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
+
+-}
+
     kindOfProblem = undefined
-    toValExprContext = undefined
+
+    toValExprContext = do
+            st <- get
+            let fc = funcContext st
+                stack = TorXakis.SmtM.varDefsStack st
+                varDefs = TorXakis.NameMap.unions stack in
+                case addVars (TorXakis.NameMap.elems varDefs) (fromFuncContext fc) of
+                     Left e    -> error ("toValExprContext - Addition of variables to function context unexpectedly failed with the following error:\n" ++ show e)
+                     Right fc' -> return fc'
 
 -- | get Info of SMT Solver
 getInfo :: String -> SmtM String
 getInfo topic = do
-    smtPut ("(get-info :" ++ topic ++ ")")
+    smtPut $ smtGetInfo topic
     s <- smtGet
     let list = strip s in
         if startswith "(" list && endswith ")" list
@@ -305,21 +373,24 @@ getInfo topic = do
                    Just res -> let str = strip res in
                                if startswith "\"" str && endswith "\"" str
                                then return $ init . tail $ str
-                               else throwError $ Error ("SMT response violates quotes in pattern.\nExpected (:" ++ topic ++ " \"<name>\")\nActual "++ list)
-                   Nothing -> throwError $ Error ("SMT response violates topic in pattern.\nExpected (:" ++ topic ++ " \"<name>\")\nActual "++ list)
-        else throwError $ Error ("SMT response violates brackets in pattern.\nExpected (:" ++ topic ++ " \"<name>\")\nActual "++ list)
+                               else error ("SMT response violates quotes in pattern.\nExpected (:" ++ topic ++ " \"<name>\")\nActual "++ list)
+                   Nothing -> error ("SMT response violates topic in pattern.\nExpected (:" ++ topic ++ " \"<name>\")\nActual "++ list)
+        else error ("SMT response violates brackets in pattern.\nExpected (:" ++ topic ++ " \"<name>\")\nActual "++ list)
 
 -- | execute the SMT commands given as a string
-smtPut :: String -> SmtM ()
+smtPut :: SmtString -> SmtM ()
 smtPut cmds  = do
         st <- get
         liftIO $ maybeLog (logFileMHandle st)
-        liftIO $ hPutStrLn (inHandle st) cmds
+        liftIO $ hPutStrLn (inHandle st) stringRep
     where
+        stringRep :: String
+        stringRep = TorXakis.SmtLanguage.toString cmds
+
         -- | write string to Log-file when available
         maybeLog :: Maybe Handle -> IO ()
         maybeLog Nothing  = return ()
-        maybeLog (Just h) = liftIO $ hPutStrLn h cmds
+        maybeLog (Just h) = liftIO $ hPutStrLn h stringRep
 
 -- | show errors
 --   The given prefix is prepended to every error line.
@@ -380,6 +451,70 @@ getResponse h = getResponseCount 0
         countBracket (')':xs) = -1 + countBracket xs
         countBracket (_:xs)   = countBracket xs
         countBracket []       = 0
+
+-- ------------
+-- TXS 2 SMT
+-- ------------
+-- | sort to Smt
+sortToSmt :: Sort -> SmtM SmtString
+sortToSmt SortBool     = return smtBoolean
+sortToSmt SortInt      = return smtInteger
+sortToSmt SortChar     = error "Not yet implemented"
+sortToSmt SortString   = return smtString
+sortToSmt SortRegex    = error "Regex is not defined in SMT"
+sortToSmt (SortADT ar) = adtRefToSmt ar
+
+-- | adt Ref To Smt
+adtRefToSmt :: RefByName ADTDef-> SmtM SmtString
+adtRefToSmt ar = do
+                        m <- gets adtToSmt
+                        return $ fromMaybe (error ("adtref (" ++ show ar ++ ") unexpectly not present in mapping."))
+                                           (Data.HashMap.lookup ar m)
+
+-- | cstr Ref To Smt
+cstrRefToSmt :: RefByName ADTDef-> RefByName ConstructorDef -> SmtM SmtString
+cstrRefToSmt ar cr = do
+                        m <- gets cstrToSmt
+                        return $ fromMaybe (error ("tuple (" ++ show ar ++ ", " ++ show cr ++ ") unexpectly not present in mapping."))
+                                           (Data.Bimap.lookup (ar,cr) m)
+
+-- | field Ref To Smt
+fieldRefToSmt :: RefByName ADTDef-> RefByName ConstructorDef -> RefByIndex FieldDef -> SmtM SmtString
+fieldRefToSmt ar cr fr = do
+                            m <- gets cstrToSmt
+                            case Data.Bimap.lookup (ar,cr) m of
+                                Nothing -> error ("tuple (" ++ show ar ++ ", " ++ show cr ++ ") unexpectly not present in mapping.")
+                                Just s  -> return $ TorXakis.SmtLanguage.concat
+                                                            [ s
+                                                            , TorXakis.SmtLanguage.singleton '$'
+                                                            , fromString (showHex (toIndex fr) "")
+                                                            ]
+
+-- | value to smt
+valueToSmt :: Value -> SmtM SmtString
+valueToSmt (Cbool True)     = return smtTrue
+valueToSmt (Cbool False)    = return smtFalse
+valueToSmt (Cint n)         = return $ integerToSmt n
+valueToSmt (Cstring s)      = return $ TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.singleton '"'
+                                                                   , stringToSmt s
+                                                                   , TorXakis.SmtLanguage.singleton '"'
+                                                                   ]
+valueToSmt (Cregex r)       = return $ xsdToSmt r
+valueToSmt (Ccstr ar cr []) = cstrRefToSmt ar cr
+valueToSmt (Ccstr ar cr as) = do
+                                 sc <- cstrRefToSmt ar cr
+                                 sas <- mapM valueToSmt as
+                                 return $ TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.singleton '('
+                                                                      , sc
+                                                                      , TorXakis.SmtLanguage.singleton ' '
+                                                                      , TorXakis.SmtLanguage.intercalate (TorXakis.SmtLanguage.singleton ' ') sas
+                                                                      , TorXakis.SmtLanguage.singleton ')'
+                                                                      ]
+valueToSmt x                = error ("Illegal input valueToSmt - " ++ show x)
+
+-- ------------
+-- SMT 2 TXS
+-- ------------
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

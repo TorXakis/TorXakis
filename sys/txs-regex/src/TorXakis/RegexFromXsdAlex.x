@@ -6,7 +6,7 @@
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  RegexAlex
+-- Module      :  TorXakis.RegexFromXsdAlex
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -17,16 +17,13 @@
 -- Tokenize regular expressions according to the XSD standard.
 -- See http://www.w3.org/TR/xmlschema11-2/#regexs
 -----------------------------------------------------------------------------
-module TorXakis.RegexAlex
+module TorXakis.RegexFromXsdAlex
 ( Token(..)
-, regexLexer
+, regexFromXsdLexer
 )
 
 where
 
-import Data.Text (Text)
-import qualified Data.Text as T
-  
 }
 -- ----------------------------------------------------------------------------------------- --
 %wrapper "posn"
@@ -56,18 +53,16 @@ tokens :-                                          -- Each right-hand side has t
    \\                        { tok ( \p _s -> Tesc p ) }
    \|                        { tok ( \p _s -> Tunion p ) }
    \^                        { tok ( \p _s -> Ttop p ) }
-   $digit                    { tokT ( \p s -> Tdigit p s ) }
-   $quantifier               { tokT ( \p s -> Tquantifier p s ) }
-   $formatEsc                { tokT ( \p s -> Tformatesc p s ) }
-   $normal                   { tokT ( \p s -> Tnormal p s ) }
+   $digit                    { tok ( \p s -> Tdigit p s ) }
+   $quantifier               { tok ( \p s -> Tquantifier p s ) }
+   $formatEsc                { tok ( \p s -> Tformatesc p s ) }
+   $normal                   { tok ( \p s -> Tnormal p s ) }
 
 -- ----------------------------------------------------------------------------------------- --
 
 {
 -- Some action helpers:
 tok f p s = f p s
-
-tokT f p s = f p (T.pack s)
 
 -- | Tokens for regular expressions.
 data  Token  = Tcomma AlexPosn
@@ -82,14 +77,14 @@ data  Token  = Tcomma AlexPosn
              | Tesc AlexPosn
              | Tunion AlexPosn
              | Ttop AlexPosn
-             | Tdigit AlexPosn Text
-             | Tquantifier AlexPosn Text
-             | Tformatesc AlexPosn Text
-             | Tnormal AlexPosn Text
+             | Tdigit AlexPosn String
+             | Tquantifier AlexPosn String
+             | Tformatesc AlexPosn String
+             | Tnormal AlexPosn String
    deriving (Eq, Show)
 
 -- | Lexer for regular expressions.
-regexLexer :: String -> [Token]
-regexLexer = alexScanTokens
+regexFromXsdLexer :: String -> [Token]
+regexFromXsdLexer = alexScanTokens
 }
 -- ----------------------------------------------------------------------------------------- --

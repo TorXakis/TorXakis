@@ -9,37 +9,29 @@ See LICENSE at root directory of this repository.
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  RegexXSD2SMT
+-- Module      :  TorXakis.RegexXSD2SMT
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
 --
 -- Transcribe Regular Expression from XSD into SMT format.
--- 
+--
 -- For more info on
 --  * XSD representation see http://www.w3.org/TR/xmlschema11-2/#regexs
 --  * SMT reprentation see http://cvc4.cs.stanford.edu/wiki/Strings#Symbolic_Regular_Expression
 -----------------------------------------------------------------------------
-{-# LANGUAGE OverloadedStrings #-}  
 module TorXakis.RegexXSD2SMT
-( xsd2smt
+( xsdToSmt
 )
 where
 
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Monoid
-import Data.Foldable
-
-import RegexAlex                        -- importing
-                                        -- data Token(..), AlexPosn(..)
-                                        -- regexLexer :: String --> [Token]
-import SMTString
+import TorXakis.RegexAlex
+import TorXakis.SmtLanguage
 }
-    
+
 -- ----------------------------------------------------------------------------------------- --
 --  happy preamble
 %name regexSMTParser       RegExp           -- regexSMTParser       :: [Token] -> String
@@ -76,145 +68,140 @@ import SMTString
 -- See https://www.haskell.org/happy/doc/html/sec-sequences.html
 -- The only reason we used left recursion is that Happy is more efficient at parsing left-recursive rules
 
-Digits  :: { Text }
+Digits  :: { SmtString }
         : digit
-            { $1 }
+            { fromString $1 }
         | Digits digit
-            { $1 <> $2 }
-            
-Normal  :: { Text }
-        -- everything that is included in ~[.\\?*+{}()|[\]]
-        -- include CommaChar | DashChar | TopChar | DigitChar | FormatEscChar | NormalChar                
-        : ","
-            { "," }
-        | "-"
-            { "-" }
-        | "^"
-            { "^" }
-        | digit
-            { $1 }
-        | formatEsc
-            { $1 }
-        | normal
-            { stringToSMT $1 }
+            { append $1 (fromString $2) }
 
-SingleCharNoEsc :: { Text }
+Normal  :: { SmtString }
+        -- everything that is included in ~[.\\?*+{}()|[\]]
+        -- include CommaChar | DashChar | TopChar | DigitChar | FormatEscChar | NormalChar
+        : ","
+            { smtStringLiteral "," }
+        | "-"
+            { smtStringLiteral "-" }
+        | "^"
+            { smtStringLiteral "^" }
+        | digit
+            { smtStringLiteral $1 }
+        | formatEsc
+            { smtStringLiteral $1 }
+        | normal
+            { smtStringLiteral $1 }
+
+SingleCharNoEsc :: { SmtString }
                 -- everything that is included in ~[\\[\]]
                 : ","
-                    { "," }
+                    { smtStringLiteral "," }
                 | "."
-                    { "." }
+                    { smtStringLiteral "." }
                 | "-"
-                    { "-" }
+                    { smtStringLiteral "-" }
                 | "("
-                    { "(" }
+                    { smtStringLiteral "(" }
                 | ")"
-                    { ")" }
+                    { smtStringLiteral ")" }
                 | "{"
-                    { "{" }
+                    { smtStringLiteral "{" }
                 | "}"
-                    { "}" }
+                    { smtStringLiteral "}" }
                 | "|"
-                    { "|" }
+                    { smtStringLiteral "|" }
                 | "^"
-                    { "^" }
+                    { smtStringLiteral "^" }
                 | digit
-                    { $1 }
+                    { smtStringLiteral $1 }
                 | quantifier
-                    { $1 }
+                    { smtStringLiteral $1 }
                 | formatEsc
-                    { $1 }
+                    { smtStringLiteral $1 }
                 | normal
-                    { stringToSMT $1 }
+                    { smtStringLiteral $1 }
 
 
-SingleCharEscChar   :: { Text }
+SingleCharEscChar   :: { SmtString }
                     -- everything that is included in [\.\\\?\*\+\{\}\(\)\[\]\|\-\^]
                     : "."
-                        { "." }
+                        { smtStringLiteral "." }
                     | "\\"
-                        { "\\" }
+                        { smtStringLiteral "\\" }
                     | quantifier
-                        { $1 }
+                        { smtStringLiteral $1 }
                     | "{"
-                        { "{" }
+                        { smtStringLiteral "{" }
                     | "}"
-                        { "}" }
+                        { smtStringLiteral "}" }
                     | "("
-                        { "(" }
+                        { smtStringLiteral "(" }
                     | ")"
-                        { ")" }
+                        { smtStringLiteral ")" }
                     | "["
-                        { "[" }
+                        { smtStringLiteral "[" }
                     | "]"
-                        { "]" }
+                        { smtStringLiteral "]" }
                     | "|"
-                        { "|" }
+                        { smtStringLiteral "|" }
                     | "-"
-                        { "-" }
+                        { smtStringLiteral "-" }
                     | "^"
-                        { "^" }
-                    
-RegExp  :: { Text }
-        : Branches
-            { case $1 of
-               [x] -> x
-               list -> "(re.union " <> fold list <> ") "
-            }
+                        { smtStringLiteral "^" }
 
-Branches    :: { [Text] }
-            : Branches "|" Branch 
+RegExp  :: { SmtString }
+        : Branches
+            { smtRegExpUnion $1 }
+
+Branches    :: { [SmtString] }
+            : Branches "|" Branch
                 { $1 ++ [$3] }
             | Branch
                 { [$1] }
-                
-Branch  :: { Text }
-        : 
-            { "(str.to.re \"\") " } 
+
+Branch  :: { SmtString }
+        :
+            { smtRegExpConcat [] }
         | NeBranch
-            { case $1 of
-               [x] -> x
-               list -> "(re.++ " <> fold list <> ") "
+            { smtRegExpConcat $1
             }
-            
-NeBranch    :: { [Text] }
+
+NeBranch    :: { [SmtString] }
             : NeBranch Piece
                 { $1 ++ [$2] }
             | Piece
                 { [$1] }
-                
-Piece   :: { Text }
+
+Piece   :: { SmtString }
         : Atom
             { $1 }
         | Atom Quantifier
-            { "(" <> $2 <> " " <> $1 <> ") "}
+            { $2 $1 }
         | Atom "{" Quantity "}"
-            { "(re.loop " <> $1 <> $3 <> ") " }
-                
-Quantifier  :: { Text }
+            { uncurry (smtRegExpLoop $1) $3 }
+
+Quantifier  :: { SmtString -> SmtString }
             : quantifier
                 { case $1 of
-                    "*" -> "re.*"
-                    "+" -> "re.+"
-                    "?" -> "re.opt"
+                    "*" -> smtRegExpKleeneStar
+                    "+" -> smtRegExpKleeneCross
+                    "?" -> smtRegExpOptional
                 }
-                    
-Quantity    :: { Text }
+
+Quantity    :: { (Integer, Maybe Integer) }
             : Digits "," Digits                  -- QuantRange
-                { $1 <> " " <> $3 }
+                { ( read $1, Just (read $3) ) }
             | Digits ","                         -- QuantMin
-                { $1 }
+                { ( read $1, Nothing ) }
             | Digits                             -- QuantExact
-                { $1 <> " " <> $1 }
+                { let b = read $1 in (b,Just b) }
 
 Atom    :: { Text }
         : "(" RegExp ")"                        -- Precedence
             { $2 }
         | Normal
-            { "(str.to.re \"" <> $1 <> "\") " }
+            { "(str.to.re " <> $1 <> ") " }
         | CharClass
             { $1 }
-            
+
 CharClass   :: { Text }
             : "[" CharGroup "]"        -- charClassExpr
                 { $2 }
@@ -222,12 +209,12 @@ CharClass   :: { Text }
                 { "(str.to.re \"" <> $1 <> "\") " }
             | "."                      -- wildcardEsc
                 -- UTF8 - extended ascii 256 characters
-                -- from \x00 till \xFF                    
+                -- from \x00 till \xFF
                 -- exclude \n == \xA
                 --         \r == \xD
-                { "(re.union (re.range \"\\x00\" \"\\x09\") (re.range \"\\x0B\" \"\\x0C\") (re.range \"\\x0E\" \"\\xFF\") ) " }     
-            --  | charClassEsc   
-                
+                { "(re.union (re.range \"\\x00\" \"\\x09\") (re.range \"\\x0B\" \"\\x0C\") (re.range \"\\x0E\" \"\\xFF\") ) " }
+            --  | charClassEsc
+
 CharGroup   :: { Text }
             : PosCharGroup          -- simplified from ( posCharGroup | negCharGroup ) ( DashChar charClassExpr )?
                 { case $1 of
@@ -235,29 +222,29 @@ CharGroup   :: { Text }
                    list -> "(re.union " <> fold list <> ") "
                 }
 
-PosCharGroup    :: { [Text] }                
-                : PosCharGroup CharGroupPart 
+PosCharGroup    :: { [Text] }
+                : PosCharGroup CharGroupPart
                     { $1 ++ $2 }
                 | CharGroupPart
                     { $1 }
 
-CharGroupPart   :: { [Text] } 
+CharGroupPart   :: { [Text] }
                 : SingleChar "-" SingleChar
-                    { ["(re.range \"" <> $1 <> "\" \"" <> $3 <> "\") "] }
+                    { ["(re.range " <> $1 <> " " <> $3 <> ") "] }
                 | SingleChar "-"
-                    { ["(str.to.re \"" <> $1 <> "\") ",
+                    { ["(str.to.re " <> $1 <> ") ",
                        "(str.to.re \"-\") "] }
                 | SingleChar
-                    { ["(str.to.re \"" <> $1 <> "\") "] }
-                --  | charClassEsc   
+                    { ["(str.to.re " <> $1 <> ") "] }
+                --  | charClassEsc
 
-SingleChar  :: { Text } 
-            : SingleCharNoEsc              
-                {  $1 }
+SingleChar  :: { SmtString }
+            : SingleCharNoEsc
+                { $1 }
             | SingleCharEsc
                 { $1 }
-            
-SingleCharEsc   :: { Text } 
+
+SingleCharEsc   :: { SmtString }
                 : "\\" formatEsc
                     { "\\" <> $2 }
                 | "\\" SingleCharEscChar
@@ -267,8 +254,8 @@ SingleCharEsc   :: { Text }
 {
 
 -- | Transcribe regular expression in XSD to SmtLib representation.
-xsd2smt :: Text -> Text
-xsd2smt = regexSMTParser . regexLexer . T.unpack
+xsdToSmt :: Text -> SmtString
+xsdToSmt = regexSMTParser . regexLexer . T.unpack
 
 -- ----------------------------------------------------------------------------------------- --
 -- error handling

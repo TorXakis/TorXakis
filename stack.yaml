@@ -42,11 +42,11 @@ packages:
 - sys/txs-corestate
 - sys/txs-defs
 - sys/txs-language
-- sys/txs-lex-regex-xsd
 - sys/txs-name
 - sys/txs-name-gen
 - sys/txs-prettyprint
 - sys/txs-prettyprint-gen
+- sys/txs-regex
 - sys/txs-server
 - sys/txs-serverstate
 - sys/txs-smt
@@ -64,7 +64,6 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- Stack-0.3.2
 
 # Override default flag values for local packages and extra-deps
 flags:
