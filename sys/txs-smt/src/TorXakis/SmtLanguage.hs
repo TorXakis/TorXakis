@@ -34,10 +34,12 @@ module TorXakis.SmtLanguage
 , append
   -- * Smt Commands
 , smtExit
+, smtAssert
 , smtCheckSat
 , smtPush
 , smtPop
 , smtGetInfo
+, smtDeclareVariable
 , smtGetValues
 , smtDeclareDatatypes
 , smtDeclareDatatype
@@ -140,7 +142,7 @@ smtFalse = fromString "false"
 
 -- | integer literal to smt
 smtIntegerLiteral :: Integer -> SmtString
-smtIntegerLiteral n | n < 0 = TorXakis.SmtLanguage.concat [ fromString "(- " 
+smtIntegerLiteral n | n < 0 = TorXakis.SmtLanguage.concat [ fromString "(- "
                                                           , fromString (show (abs n))
                                                           , singleton ')'
                                                           ]
@@ -151,7 +153,7 @@ smtIntegerLiteral n = fromString (show (abs n))
 --
 --   According to smt-lib-version 2.5 standard (http://smtlib.cs.uiowa.edu/papers/smt-lib-reference-v2.5-r2015-06-28.pdf),
 --   quote and escape characters are escaped.
---   
+--
 --   Furthermore, prevent CVC4 Parse Error "Extended/unprintable characters are not part of SMT-LIB, and they must be encoded as escape sequences"
 smtStringLiteral :: String -> SmtString
 smtStringLiteral t = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( singleton '"' : Data.List.map charToSmt t ) )
@@ -168,7 +170,7 @@ smtStringLiteral t = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat (
 --
 --   According to smt-lib-version 2.5 standard (http://smtlib.cs.uiowa.edu/papers/smt-lib-reference-v2.5-r2015-06-28.pdf),
 --   quote and escape characters are escaped.
---   
+--
 --   Furthermore, prevent CVC4 Parse Error "Extended/unprintable characters are not part of SMT-LIB, and they must be encoded as escape sequences"
 smtTextLiteral :: T.Text -> SmtString
 smtTextLiteral = smtStringLiteral . T.unpack
@@ -183,7 +185,7 @@ smtRegexLiteral = smtRegexViewLiteral . view
                                                                                       , smtTextLiteral t
                                                                                       , singleton ')'
                                                                                       ]
-        smtRegexViewLiteral (RegexConcat cs)            = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.++ " : map smtRegexLiteral cs ) ) 
+        smtRegexViewLiteral (RegexConcat cs)            = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.++ " : map smtRegexLiteral cs ) )
                                                                                       ( singleton ')' )
         smtRegexViewLiteral (RegexUnion us)             =  TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.union " : map smtRegexLiteral (Data.Set.toList us) ) )
                                                                                       ( singleton ')' )
@@ -212,6 +214,14 @@ smtRegexLiteral = smtRegexViewLiteral . view
 smtExit :: SmtString
 smtExit = fromString "(exit)"
 
+-- | The Smt Assert command with assertion
+smtAssert :: SmtString -- ^ topic
+           -> SmtString
+smtAssert boolExpr = TorXakis.SmtLanguage.concat [ fromString "(assert "
+                                                 , boolExpr
+                                                 , singleton ')'
+                                                 ]
+
 -- | The Smt Check Sat command
 smtCheckSat :: SmtString
 smtCheckSat = fromString "(check-sat)"
@@ -232,13 +242,26 @@ smtGetInfo topic = TorXakis.SmtLanguage.concat [ fromString "(get-info : "
                                                , singleton ')'
                                                ]
 
+-- | The Smt Declare Variable command for a variable with a sort
+smtDeclareVariable :: SmtString -- ^ variable
+                   -> SmtString -- ^ sort
+                   -> SmtString
+smtDeclareVariable nm srt = TorXakis.SmtLanguage.concat [ fromString "(declare-fun "
+                                                        , nm
+                                                        , fromString "() "
+                                                        , srt
+                                                        , TorXakis.SmtLanguage.singleton ')'
+                                                        ]
+
 -- | The Smt Get Values command for a list of variables
+-- TODO: replace by get-model (see issue https://github.com/Z3Prover/z3/issues/2502)
 smtGetValues :: [SmtString] -- ^ variables
              -> SmtString
 smtGetValues vs = TorXakis.SmtLanguage.concat [ fromString "(get-value ("
                                               , TorXakis.SmtLanguage.intercalate (singleton ' ') vs
                                               , fromString "))"
                                               ]
+
 
 -- | The Smt Declare Datatypes command with a list of Datatypes
 -- Note: data type declarations can be recursive

@@ -19,7 +19,6 @@ defaultSMTProcs =
   , cmdZ3
   , cmdZ3Str3
   , cmdYices
-  , cmdMathSAT
   ]
 
 cmdCVC4 :: (FilePath,[String])
@@ -50,7 +49,9 @@ cmdYices = ("yices-smt2", [ "--incremental"
                           ]
             )
 
+{- MathSat occasionally unexplainably hangs: https://github.com/TorXakis/TorXakis/issues/419
 cmdMathSAT :: (FilePath,[String])
 cmdMathSAT = ("mathsat", [
                          ]
             )
+-}

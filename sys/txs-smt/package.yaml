@@ -14,11 +14,17 @@ extra-source-files:
 
 dependencies:
 - base >= 4.7 && < 5
+- hashmap
 - mtl
 - process
 
 - txs-basics
+- txs-name
 - txs-solve
+- txs-sort
+- txs-valexpr
+- txs-value
+- txs-var
 
 library:
   source-dirs: src
@@ -30,18 +36,12 @@ library:
   - containers
   - deepseq
   - hashable
-  - hashmap
   - MissingH
   - regex-tdfa
   - text
   - time
   
-  - txs-name
   - txs-regex
-  - txs-valexpr
-  - txs-value
-  - txs-var
-  - txs-sort
   build-tools:
   - alex
   - happy

@@ -55,6 +55,7 @@ mismatchesSort ctx = HashMap.filterWithKey mismatch
 -- For example, substitution of a variable by zero can cause a division by zero error
 -- TODO: should we check the replacing val expressions? And the valExpression we get to work on?
 -- TODO: should we support context shrinking, since by replacing the variable a by 10, the variable a might no longer be relevant in the context (and thus be removed)?
+-- TODO: should we support two contexts, in which we can replace variables?
 subst :: ValExprContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 subst ctx mp ve | HashMap.null mp               = Right ve
                 | not (HashMap.null mismatches) = Left $ Error (T.pack ("Sort mismatches in map : " ++ show mismatches))

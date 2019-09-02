@@ -18,14 +18,6 @@ import           Control.Monad.State
 --import qualifid Data.Text           as T
 import           Test.HUnit
 
--- import           TorXakis.Value
--- import           SortId
--- import           ValExpr
--- import           VarId
-
--- import           SMT
--- import           SMTData
--- import           SolveDefs
 import           TestSolvers
 
 import           TorXakis.Error

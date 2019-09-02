@@ -10,53 +10,48 @@ testConstraintList
 )
 where
 -- general Haskell imports
+import           Control.Monad.Except
 import           Control.Monad.State
-import           Data.Char
-import qualified Data.Map            as Map
-import           Data.Maybe
-import           Data.Text           (Text)
-import qualified Data.Text           as T
-import           System.Process      (CreateProcess)
-import           Text.Regex.TDFA
+import           Data.HashMap
+--import           Text.Regex.TDFA
 
 -- test specific Haskell imports
 import           Test.HUnit
 
--- general Torxakis imports
-import           Constant
-import           CstrDef
-import           CstrId
-import           FreeMonoidX
-import           FuncDef
-import           FuncId
-import           RegexXSD2Posix
-import           SortDef
-import           SortId
-import           ValExpr
-import           VarId
+import           TorXakis.ContextVar
+import           TorXakis.FuncDef
+import           TorXakis.Name
+import           TorXakis.ProblemSolver
+import           TorXakis.SmtM
+import           TorXakis.Sort
+import           TorXakis.ValExpr
+import           TorXakis.Value
+import           TorXakis.Var
 
--- specific SMT imports
-import           SMT
-import           SMTData
-import           SolveDefs
 import           TestSolvers
-
-
--- ----------------------------------------------------------------------------
-smtSolvers :: [(String, CreateProcess)]
-smtSolvers =  [ ("CVC4", cmdCVC4)
-              , ("Z3", cmdZ3)
-              ]
 
 testConstraintList :: Test
 testConstraintList =
-    TestList $ concatMap (\(l,s) -> map (\e -> TestLabel (l ++ " " ++ fst e) $ TestCase $ do smtEnv <- createSMTEnv s False
-                                                                                             evalStateT (snd e) smtEnv )
-                                        labelTestList
+    TestList $ concatMap (\s -> Prelude.map (\e -> TestLabel (fst e) $ TestCase $ do
+                                                                            es <- uncurry mkSmtState s False
+                                                                            case es of
+                                                                                Left err -> error (show err)
+                                                                                Right ss -> do
+                                                                                            r <- runExceptT $ execStateT (toStateT (snd e)) ss
+                                                                                            case r of
+                                                                                                Left err  -> error (show err)
+                                                                                                Right ss' -> do
+                                                                                                                me <- destroySmtState ss'
+                                                                                                                case me of
+                                                                                                                    Just err -> error (show err)
+                                                                                                                    Nothing  -> return ()
+                                    )
+                                    labelTestList
                          )
-                         smtSolvers
+                         defaultSMTProcs
 
-labelTestList :: [(String, SMT())]
+
+labelTestList :: [(String, SmtM ())]
 labelTestList = [
         ("None",                                        testNone),
         ("Negative of Negative Is Identity",            testNegativeNegativeIsIdentity),
@@ -66,7 +61,7 @@ labelTestList = [
         ("Bool False",                                  testBoolFalse),
         ("Bool True",                                   testBoolTrue),
         ("Int",                                         testInt),
-        ("Int Negative",                                testIntNegative),
+        ("Int Negative",                                testIntNegative) {-,
         ("Conditional Int Datatype",                    testConditionalInt),
         ("Conditional Int IsAbsent",                    testConditionalIntIsAbsent),
         ("Conditional Int IsPresent",                   testConditionalIntIsPresent),
@@ -75,8 +70,8 @@ labelTestList = [
         ("Nested Constructor",                          testNestedConstructor),
         ("Functions",                                   testFunctions),
         ("Just String",                                 testString)
-        ]
-    ++
+   -}     ]
+  {-  ++
        ioeTestStringEquals
     ++
         ioeTestStringLength
@@ -124,117 +119,123 @@ ioeTestRegex = [
         ("Regex mixed small",               testRegex "(ab+)|(p)"),
         ("Regex mixed large",               testRegex "(ab+c*d?)|(ef{2}g{3,6}h{3,})|(p)")
     ]
-
+-}
 -----------------------------------------------------
 -- Helper function
 -----------------------------------------------------
-testTemplateSat :: [ValExpr VarId] -> SMT()
+testTemplateSat :: [ValExpression] -> SmtM()
 testTemplateSat createAssertions = do
-    _ <- SMT.openSolver
     addAssertions createAssertions
-    resp <- getSolvable
-    lift $ assertEqual "sat" Sat resp
-    SMT.close
+    resp <- solvable
+    liftIO $ assertEqual "sat" (SolvableProblem (Just True)) resp
 
-testTemplateValue :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId]) -> ([Constant] -> SMT()) -> SMT()
-testTemplateValue envDefs' types createAssertions check = do
-    _ <- SMT.openSolver
-    addDefinitions envDefs'
-    let v = map (\(x,t) -> VarId (T.pack ("i" ++ show x)) x t) (zip [1000..] types)
-    addDeclarations v
-    addAssertions (createAssertions v)
-    resp <- getSolvable
-    lift $ assertEqual "sat" Sat resp
-    sol <- getSolution v
-    let mValues = map (`Map.lookup` sol) v
-    lift $ assertBool "Is Just" (all isJust mValues)
-    let values = map fromJust mValues
---    Trace.trace ("values = " ++ (show values)) $ do
-    check values
-    SMT.close
-
+testTemplateValue :: [ADTDef] -> [FuncDef] -> [VarDef] -> [ValExpression] -> SmtM ()
+testTemplateValue as fs vs es = do
+    TorXakis.ProblemSolver.addADTs as
+    addFunctions fs
+    _ <- push
+    declareVariables vs
+    ctx <- toValExprContext
+    addAssertions es
+    resp <- solve
+    _ <- pop
+    let Solved (Solution solution) = resp
+        Right andExpr = mkAnd ctx es
+        Right answer = subst ctx (Data.HashMap.map (\v -> case mkConst ctx v of
+                                                               Right ve -> ve
+                                                               Left e   -> error ("mkConst failed unexpectedly on constant " ++ show v ++ " with error " ++ show e)
+                                                   )
+                                                   solution
+                                  )
+                                  andExpr
+      in do
+        liftIO $ assertEqual "length" (length vs) (Data.HashMap.size solution)
+        case view answer of
+            Vconst (Cbool b) -> liftIO $ assertBool "Is valid solution" b
+            _                -> error ("Answer of and is unexpectedly not a constant boolean, but " ++ show answer)
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
 
-testNone :: SMT()
+testNone :: SmtM ()
 testNone = testTemplateSat []
 
-testNegativeNegativeIsIdentity :: SMT()
-testNegativeNegativeIsIdentity = testTemplateSat [cstrEqual ie (cstrUnaryMinus (cstrUnaryMinus ie))]
-    where
-        ie = cstrConst (Cint 3) :: ValExpr VarId
+testNegativeNegativeIsIdentity :: SmtM ()
+testNegativeNegativeIsIdentity = 
+    let ctx             = TorXakis.ContextVar.empty 
+        Right x         = mkConst ctx (Cint 3)
+        Right minX      = mkUnaryMinus ctx x
+        Right minMinX   = mkUnaryMinus ctx minX
+        Right equal     = mkEqual ctx x minMinX
+     in
+        testTemplateSat [equal]
 
-testAdd :: SMT()
-testAdd = testTemplateSat [cstrEqual (cstrConst (Cint 12)) (cstrSum (fromListT [cstrConst (Cint 3), cstrConst (Cint 9)]))]
+testAdd :: SmtM()
+testAdd =
+    let ctx          = TorXakis.ContextVar.empty 
+        Right a      = mkConst ctx (Cint 4)
+        Right b      = mkConst ctx (Cint 9)
+        Right add    = mkSum ctx [a,b]
+        Right answer = mkConst ctx (Cint 13)
+        Right equal  = mkEqual ctx answer add
+      in
+        testTemplateSat [equal]
 
 -- --------------------------------------------------------------------------------------------------------------------
-testNoVariables :: SMT()
-testNoVariables = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [] (const []) check
-    where
-        check :: [Constant] -> SMT()
-        check [] = lift $ assertBool "expected pattern" True
-        check _  = error "No variable in problem"
+testNoVariables :: SmtM()
+testNoVariables = testTemplateValue [] [] [] []
 
-testBool :: SMT()
-testBool = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdBool] (const []) check
-    where
-        check :: [Constant] -> SMT()
-        check [value]   = case value of
-            Cbool _b -> lift $ assertBool "expected pattern" True
-            _        -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
+testBool :: SmtM()
+testBool = 
+    let Right nm = mkName "var"
+        Right boolVar = mkVarDef TorXakis.ContextVar.empty nm SortBool
+      in
+        testTemplateValue [] [] [boolVar] []
 
-testBoolTrue :: SMT()
-testBoolTrue = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdBool] createAssertions check
-    where
-        createAssertions :: [VarId] -> [ValExpr VarId]
-        createAssertions [v] = [cstrVar v]
-        createAssertions _   = error "One variable in problem"
+testBoolTrue :: SmtM()
+testBoolTrue = 
+    let Right nm = mkName "var"
+        Right boolVar = mkVarDef TorXakis.ContextVar.empty nm SortBool
+        Right ctx = addVars [boolVar] TorXakis.ContextVar.empty
+        ref :: RefByName VarDef
+        ref = (RefByName nm)
+        Right boolExpr = mkVar ctx ref
+      in
+        testTemplateValue [] [] [boolVar] [boolExpr]
 
-        check :: [Constant] -> SMT()
-        check [value] = case value of
-            Cbool b -> lift $ assertBool "expected pattern" b
-            _       -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
+testBoolFalse :: SmtM()
+testBoolFalse = 
+    let Right nm = mkName "var"
+        Right boolVar = mkVarDef TorXakis.ContextVar.empty nm SortBool
+        Right ctx = addVars [boolVar] TorXakis.ContextVar.empty
+        ref :: RefByName VarDef
+        ref = (RefByName nm)
+        Right boolExpr = mkVar ctx ref
+        Right notExpr = mkNot ctx boolExpr
+      in
+        testTemplateValue [] [] [boolVar] [notExpr]
 
-testBoolFalse :: SMT()
-testBoolFalse = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdBool] createAssertions check
-    where
-        createAssertions :: [VarId] -> [ValExpr VarId]
-        createAssertions [v] = [cstrNot (cstrVar v)]
-        createAssertions _   = error "One variable in problem"
+testInt :: SmtM()
+testInt = 
+    let Right nm = mkName "var"
+        Right intVar = mkVarDef TorXakis.ContextVar.empty nm SortInt
+      in
+        testTemplateValue [] [] [intVar] []
 
-        check :: [Constant] -> SMT()
-        check [value] = case value of
-            Cbool b -> lift $ assertBool "expected pattern" (not b)
-            _       -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
+testIntNegative :: SmtM()
+testIntNegative = 
+    let Right nm = mkName "var"
+        Right intVar = mkVarDef TorXakis.ContextVar.empty nm SortInt
+        Right ctx = addVars [intVar] TorXakis.ContextVar.empty
+        ref :: RefByName VarDef
+        ref = (RefByName nm)
+        Right intExpr = mkVar ctx ref
+        Right constExpr = mkConst ctx (Cint 0)
+        Right boolExpr = mkLT ctx intExpr constExpr
+      in
+        testTemplateValue [] [] [intVar] [boolExpr]
 
-
-testInt :: SMT()
-testInt = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdInt] (const []) check
-    where
-        check :: [Constant] -> SMT()
-        check [value] = case value of
-                            Cint _  -> lift $ assertBool "expected pattern" True
-                            _       -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
-
-
-
-testIntNegative :: SMT()
-testIntNegative = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdInt] createAssertions check
-    where
-        createAssertions :: [VarId] -> [ValExpr VarId]
-        createAssertions [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
-        createAssertions _   = error "One variable in problem"
-
-        check :: [Constant] -> SMT()
-        check [value]   = case value of
-                            Cint x  -> lift $ assertBool ("expected pattern" ++ show x) (x < 0)
-                            _       -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
+        {-
 
 conditionalIntSortId :: SortId
 conditionalIntSortId = SortId "conditionalInt" 234
@@ -348,7 +349,7 @@ testNestedConstructor = do
                                           (Map.fromList [ (pairCstrId, CstrDef (FuncId "ignore" 9875 [] pairSortId) [FuncId "x" 6565 [] sortIdInt, FuncId "y" 6666 [] sortIdInt])
                                                         , (absentPairCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalPairSortId) [])
                                                         , (presentPairCstrId, CstrDef (FuncId "ignore" 9877 [] conditionalPairSortId) [FuncId "value" 6767 [] pairSortId])
-                                                        ])        
+                                                        ])
                                           Map.empty
 
         testTemplateValue   conditionalPairDefs
@@ -447,3 +448,4 @@ testRegex regexStr = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [
                                                                   (T.unpack s =~ T.unpack haskellRegex)
                             _                  -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
+-}

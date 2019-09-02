@@ -53,9 +53,11 @@ import           TorXakis.Name
 import           TorXakis.NameMap
 import           TorXakis.ProblemSolver
 import           TorXakis.RefByIndex
+import           TorXakis.SMTAlex
 import           TorXakis.SMTHappy
 import           TorXakis.SmtLanguage
 import           TorXakis.Sort
+import           TorXakis.ValExpr
 import           TorXakis.Value
 import           TorXakis.Var
 
@@ -257,6 +259,7 @@ instance ProblemSolver SmtM where
                                             ]
 
 
+    addFunctions [] = return ()
     addFunctions _ = undefined
 
     push = do
@@ -299,10 +302,12 @@ instance ProblemSolver SmtM where
                                       vTs' = foldl insertVar vTs $ zip vs [vI ..] in
                                       case stack of
                                           []     -> error "declareVariables - Stack unexpectedly is empty"
-                                          (hd:tl) -> put st { TorXakis.SmtM.varDefsStack = ( TorXakis.NameMap.union (toNameMap vs) hd : tl )
-                                                            , TorXakis.SmtM.varId = vI'
-                                                            , TorXakis.SmtM.varToSmt = vTs'
-                                                            }
+                                          (hd:tl) -> do
+                                                        put st { TorXakis.SmtM.varDefsStack = ( TorXakis.NameMap.union (toNameMap vs) hd : tl )
+                                                               , TorXakis.SmtM.varId = vI'
+                                                               , TorXakis.SmtM.varToSmt = vTs'
+                                                               }
+                                                        mapM_ toSmtVarDecl vs
                             ds -> throwError $ Error ("declareVariables - declaration impossible due to non unique variables: "++ show ds)
                 else throwError $ Error ("declareVariables - Precondition depth is larger than 0 is not satisfied since depth is " ++ show d ++ ". Did you push before?")
         where
@@ -311,10 +316,14 @@ instance ProblemSolver SmtM where
                 where
                     iText :: SmtString
                     iText = fromString (showHex i "")
+            
+            toSmtVarDecl :: VarDef -> SmtM ()
+            toSmtVarDecl v = do
+                ref <- varRefToSmt (RefByName (name v))
+                srt <- sortToSmt (TorXakis.Var.sort v)
+                smtPut $ smtDeclareVariable ref srt
 
-
-
-    addAssertions = undefined
+    addAssertions = mapM_ (\e -> valExprToSmt e >>= smtPut . smtAssert)
 
     solvable = do
                 smtPut smtCheckSat
@@ -328,19 +337,22 @@ instance ProblemSolver SmtM where
     solve = do
                 st <- get
                 let stack = TorXakis.SmtM.varDefsStack st
-                    varDefs = TorXakis.NameMap.unions stack in do   -- note (assert False) is always unsolvable even when no variables are present
-                        smtPut smtCheckSat 
+                    varDefs = TorXakis.NameMap.unions stack
+                    varRefsTxs = Data.List.map (RefByName . name) (TorXakis.NameMap.elems varDefs) in do   -- note (assert False) is always unsolvable even when no variables are present
+                        smtPut smtCheckSat
                         s <- smtGet
                         case s of
-                            "sat"        -> do
-                                                varRefs <- Prelude.map varRefToSmt (TorXakis.NameMap.elems varDefs)
-                                                smtPut $ smtGetValues varRefs
-                                                sv <- smtGet
-                                                let mp = mapKeys TorXakis.SmtLanguage.fromString . smtParser . smtLexer $ sv in
-                                                    assert (Data.Set.fromList (Data.List.map (RefByName . name) (TorXakis.NameMap.elems varDefs)) == Data.Set.fromList (Data.Map.keys mp)) $
-                                                        do
-                                                            res <- mapM (decode varDefs) (Data.HashMap.toList mp)
-                                                            return $ Solved (Solution (Data.HashMap.fromList res))
+                            "sat"        -> case varRefsTxs of
+                                                 [] -> return $ Solved (Solution (Data.HashMap.empty))
+                                                 _  -> do
+                                                        varRefsSmt <- mapM varRefToSmt varRefsTxs
+                                                        smtPut $ smtGetValues varRefsSmt   -- TODO: replace by get-model (see issue https://github.com/Z3Prover/z3/issues/2502)
+                                                        sv <- smtGet
+                                                        let mp = Data.Map.mapKeys TorXakis.SmtLanguage.fromString . smtParser . smtLexer $ sv in
+                                                            assert (Data.Set.fromList varRefsSmt == Data.Set.fromList (Data.Map.keys mp)) $
+                                                                do
+                                                                    res <- mapM (decode varDefs) (Data.Map.toList mp)
+                                                                    return $ Solved (Solution (Data.HashMap.fromList res))
                             "unsat"      -> return $ Unsolvable
                             "unknown"    -> return $ UnableToSolve
                             _            -> error ("solvable - Unexpected result by smt check-sat '"++ s ++ "'")
@@ -523,40 +535,102 @@ valueToSmt (Ccstr ar cr as) = do
                                                                       ]
 valueToSmt x                = error ("Illegal input valueToSmt - " ++ show x)
 
+-- | valExpr to Smt
+valExprToSmt :: ValExpression -> SmtM SmtString
+valExprToSmt = valExprViewToSmt . view
+
+-- | valExprView to Smt
+valExprViewToSmt :: ValExpressionView -> SmtM SmtString
+valExprViewToSmt (Vconst c)        = valueToSmt c
+valExprViewToSmt (Vvar v)          = varRefToSmt v
+valExprViewToSmt (Vequal v1 v2)    = mapM valExprToSmt [v1,v2] >>= return . operatorToSmt (TorXakis.SmtLanguage.singleton '=')
+valExprViewToSmt (Vite c t f)      = mapM valExprToSmt [c,t,f] >>= return . operatorToSmt (fromString "(ite")
+valExprViewToSmt (Vfunc fr args)   = undefined
+valExprViewToSmt (Vpredef fr _)    = error ("predefined function should not be passed to SMT solver: " ++ show fr)
+valExprViewToSmt (Vnot e)          = valExprToSmt e >>= return . unaryOperatorToSmt (fromString "not")
+valExprViewToSmt (Vand es)         = mapM valExprToSmt (Data.Set.toList es) >>= return . operatorToSmt (fromString "and")
+valExprViewToSmt (Vdivide v1 v2)   = mapM valExprToSmt [v1,v2] >>= return . operatorToSmt (fromString "div")
+valExprViewToSmt (Vmodulo v1 v2)   = mapM valExprToSmt [v1,v2] >>= return . operatorToSmt (fromString "mod")
+valExprViewToSmt (Vsum s)          = let ol = Data.Map.toList s in
+                                        case ol of
+                                            [o] -> arg2smt o
+                                            _   -> mapM arg2smt ol >>= return . operatorToSmt (TorXakis.SmtLanguage.singleton '+')
+                                     where
+                                        arg2smt :: (ValExpression, Integer) -> SmtM SmtString
+                                        arg2smt (vexpr, 1)                            = valExprToSmt vexpr
+                                        arg2smt (vexpr, -1)                           = valExprToSmt vexpr >>= return . unaryOperatorToSmt (TorXakis.SmtLanguage.singleton '-')
+                                        arg2smt (vexpr, multiplier) | multiplier /= 0 = valExprToSmt vexpr >>= return . binaryOperatorToSmt (TorXakis.SmtLanguage.singleton '*') (smtIntegerLiteral multiplier)
+                                        arg2smt (_    , multiplier)                   = error ("valExprToSmt - illegal multiplier " ++ show multiplier)
+valExprViewToSmt (Vproduct p)          = let ol = Data.Map.toList p in
+                                        case ol of
+                                            [o] -> arg2smt o
+                                            _   -> mapM arg2smt ol >>= return . operatorToSmt (TorXakis.SmtLanguage.singleton '*')
+                                     where
+                                        arg2smt :: (ValExpression, Integer) -> SmtM SmtString
+                                        arg2smt (vexpr, 1)                 = valExprToSmt vexpr
+                                        arg2smt (vexpr, power) | power > 0 = valExprToSmt vexpr >>= return . flip (binaryOperatorToSmt (TorXakis.SmtLanguage.singleton '^')) (smtIntegerLiteral power)
+                                        arg2smt (_    , power)             = error ("valExprToSmt - illegal power " ++ show power)
+valExprViewToSmt (Vgez e)          = valExprToSmt e >>= return . unaryOperatorToSmt (fromString "<= 0")
+valExprViewToSmt (Vlength e)       = valExprToSmt e >>= return . unaryOperatorToSmt (fromString "str.len")
+valExprViewToSmt (Vat v1 v2)       = mapM valExprToSmt [v1,v2] >>= return . operatorToSmt (fromString "str.at")
+valExprViewToSmt (Vconcat es)      = mapM valExprToSmt es >>= return . operatorToSmt (fromString "str.++")
+valExprViewToSmt (Vstrinre v1 v2)  = mapM valExprToSmt [v1,v2] >>= return . operatorToSmt (fromString "str.in.re")
+valExprViewToSmt (Vcstr ar cr es)  = do
+                                        cs <- cstrRefToSmt ar cr
+                                        as <- mapM valExprToSmt es
+                                        return $ operatorToSmt cs as
+valExprViewToSmt (Viscstr ar cr e) = do
+                                        cs <- cstrRefToSmt ar cr
+                                        arg <- valExprToSmt e
+                                        return $ unaryOperatorToSmt (toSmtIsCstr cs) arg
+                                    where
+                                        toSmtIsCstr :: SmtString -> SmtString
+                                        toSmtIsCstr s = TorXakis.SmtLanguage.append (fromString "is-") s
+valExprViewToSmt (Vaccess ar cr p e) = do
+                                        f <- fieldRefToSmt ar cr p
+                                        arg <- valExprToSmt e
+                                        return $ unaryOperatorToSmt f arg
+
+
+-- | unary smt operator
+unaryOperatorToSmt :: SmtString -> SmtString -> SmtString
+unaryOperatorToSmt operator arg = operatorToSmt operator [arg]
+
+-- | binary smt operator
+binaryOperatorToSmt :: SmtString -> SmtString -> SmtString -> SmtString
+binaryOperatorToSmt operator arg1 arg2 = operatorToSmt operator [arg1, arg2]
+
+-- list smt operator
+operatorToSmt :: SmtString -> [SmtString] -> SmtString
+operatorToSmt operator as = TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.singleton '('
+                                                        , TorXakis.SmtLanguage.intercalate (TorXakis.SmtLanguage.singleton ' ') (operator:as)
+                                                        , TorXakis.SmtLanguage.singleton ')'
+                                                        ]
 
 -- ------------
 -- SMT 2 TXS
 -- ------------
 -- | convert an SMT value to a torxakis Value.
+-- TODO: check that compiler indeed removes all calculations related to checking sort (2nd parameter is only used within asserts)
+-- TODO: discuss Jan is this wanted/desired?
 smtValueToTxsValue :: SMTValue -> Sort -> SmtM Value
-smtValueToTxsValue (SMTBool b)                      SortBool     = return $ Cbool b
-smtValueToTxsValue (SMTBool _)                      srt          = error ("TXS SMT2TXS smtValueToTxsValue: Type mismatch - Bool expected, got " ++ show srt)
-smtValueToTxsValue (SMTInt i)                       SortInt      = return $ Cint i
-smtValueToTxsValue (SMTInt _)                       srt          = error ("TXS SMT2TXS smtValueToTxsValue: Type mismatch - Int expected, got " ++ show srt)
-smtValueToTxsValue (SMTString s)                    SortString   = return $ Cstring s
-smtValueToTxsValue (SMTString _)                    srt          = error ("TXS SMT2TXS smtValueToTxsValue: Type mismatch - String expected, got " ++ show srt)
-smtValueToTxsValue (SMTConstructor cname argValues) (SortADT ar) = do
-    st <- get 
+smtValueToTxsValue (SMTBool b)                      srt          = assert (srt == SortBool)   $ return (Cbool b)
+smtValueToTxsValue (SMTInt i)                       srt          = assert (srt == SortInt)    $ return (Cint i)
+smtValueToTxsValue (SMTString s)                    srt          = assert (srt == SortString) $ return (Cstring s)
+smtValueToTxsValue (SMTConstructor cname argValues) srt          = do
+    st <- get
     let m = cstrToSmt st
-        fc = funcContext st
-        (ar', cr) = fromMaybe (error ("TXS SMT2TXS smtValueToTxsValue: constructor (" ++ show cname ++ ") unexpectedly not present in map"))
-                              (Data.Bimap.lookupR (fromText cname) m) in
-        if ar == ar'
-        then let ad = fromMaybe (error ("TXS SMT2TXS smtValueToTxsValue: adt (" ++ show ar ++ ") unexpectedly not present in map"))
+        (ar, cr) = fromMaybe (error ("TXS SMT2TXS smtValueToTxsValue: constructor (" ++ show cname ++ ") unexpectedly not present in map"))
+                             (Data.Bimap.lookupR (fromText cname) m) in
+        assert (srt == (SortADT ar)) $
+             let fc = funcContext st
+                 ad = fromMaybe (error ("TXS SMT2TXS smtValueToTxsValue: adt (" ++ show ar ++ ") unexpectedly not present in map"))
                                 (lookupADT (toName ar) fc)
                  cd = fromMaybe (error ("TXS SMT2TXS smtValueToTxsValue: constructor (" ++ show cr ++ ") unexpectedly not present in adt (" ++ show ar ++ ")"))
-                                (lookupConstructor (toName cr) ad) 
+                                (lookupConstructor (toName cr) ad)
                  fields = elemsField cd in
-                 if Data.List.length fields == Data.List.length argValues
-                 then do
-                        txsValues <- mapM (uncurry smtValueToTxsValue) (zip argValues (Data.List.map TorXakis.Sort.sort fields))
-                        return $ Ccstr ar cr txsValues
-                 else throwError $ Error $ "TXS SMT2TXS smtValueToTxsValue: Number of arguments mismatch " ++
-                                           "in constructor " ++ show cr ++ " of adt " ++ show ar ++
-                                           " : definition " ++ show (Data.List.length fields) ++
-                                           " vs actual " ++ show (Data.List.length argValues)
-        else throwError $ Error ("TXS SMT2TXS smtValueToTxsValue: Type mismatch - ADT expected (" ++ show ar ++ "), got " ++ show ar')
-smtValueToTxsValue (SMTConstructor ar _)            srt          = throwError $ Error ("TXS SMT2TXS smtValueToTxsValue: Type mismatch - ADT expected (" ++ show ar ++ "), got " ++ show srt)
+                    assert (Data.List.length fields == Data.List.length argValues) $
+                        mapM (uncurry smtValueToTxsValue) (zip argValues (Data.List.map TorXakis.Sort.sort fields)) >>= return . Ccstr ar cr
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

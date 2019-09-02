@@ -210,22 +210,22 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                             Just vDef   -> fromText (TorXakis.Name.toText (name vDef))
   prettyPrint o ctx (Vequal a b)        = infixOperator o ctx txsOperatorEqual [a,b]
   prettyPrint o ctx (Vite c tb fb)      = concat [ txsKeywordIf
-                                                   , txsSpace
-                                                   , indent (replicate (1 + length txsKeywordIf) txsSpace)
-                                                              (prettyPrint o ctx c)
-                                                   , separator o
-                                                   , txsKeywordThen
-                                                   , txsSpace
-                                                   , indent (replicate (1 + length txsKeywordThen) txsSpace)
-                                                              (prettyPrint o ctx tb)
-                                                   , separator o
-                                                   , txsKeywordElse
-                                                   , txsSpace
-                                                   , indent (replicate (1 + length txsKeywordElse) txsSpace)
-                                                              (prettyPrint o ctx fb)
-                                                   , separator o
-                                                   , txsKeywordFi
-                                                   ]
+                                                 , txsSpace
+                                                 , indent (replicate (1 + length txsKeywordIf) txsSpace)
+                                                          (prettyPrint o ctx c)
+                                                 , separator o
+                                                 , txsKeywordThen
+                                                 , txsSpace
+                                                 , indent (replicate (1 + length txsKeywordThen) txsSpace)
+                                                          (prettyPrint o ctx tb)
+                                                 , separator o
+                                                 , txsKeywordElse
+                                                 , txsSpace
+                                                 , indent (replicate (1 + length txsKeywordElse) txsSpace)
+                                                          (prettyPrint o ctx fb)
+                                                 , separator o
+                                                 , txsKeywordFi
+                                                 ]
   prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx (fromText (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
   prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx (fromText (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
   prettyPrint o ctx (Vnot x)            = funcInst o ctx txsFunctionNot [x]
