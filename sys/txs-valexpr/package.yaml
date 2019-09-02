@@ -43,7 +43,7 @@ library:
   - txs-var
 
 ghc-options:
-#- -O
+- -O
 - -Werror
 - -Wall
 - -Widentities

@@ -27,6 +27,7 @@ module TorXakis.NameMap
 , elems
 , insert
 , union
+, unions
 , toNameMap
 )
 where
@@ -67,6 +68,14 @@ insert v (NameMap m) = NameMap (HashMap.insert (getName v) v m)
 -- | The (left-biased) union of two maps. It prefers the first map when duplicate keys are encountered.
 union :: NameMap a -> NameMap a -> NameMap a
 union (NameMap a) (NameMap b) = NameMap (HashMap.union a b)
+
+-- | The union of a list of `NameMap`s.
+unions :: HasName a => [NameMap a] -> NameMap a
+unions ns = NameMap (HashMap.unions (map toHashMap ns))
+    where
+        toHashMap :: NameMap a -> HashMap.Map Name a
+        toHashMap (NameMap a) = a
+
 
 -- | Create a map from a list of named objects.
 toNameMap :: HasName a => [a] -> NameMap a

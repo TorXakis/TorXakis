@@ -30,9 +30,9 @@ import TorXakis.ContextValExpr
 
 type  IOC  = StateT EnvC IO
 
-data EnvC = EnvC
-  { state  :: CoreState        -- ^ State specific information.
-  }
+newtype EnvC = EnvC
+                { state  :: CoreState        -- ^ State specific information.
+                }
 
 data CoreState = Noning
              | Initing  { tdefs   :: ContextValExpr                 -- TorXakis definitions

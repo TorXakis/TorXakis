@@ -33,30 +33,33 @@ ghc-variant: integersimple
 # non-dependency (i.e. a user package), and its test suites and benchmarks
 # will not be run. This is useful for tweaking upstream packages.
 packages:
-- location: sys/txs-basics
-- location: sys/txs-basics-gen
-- location: sys/txs-chan
-- location: sys/txs-compiler
-- location: sys/txs-defs
-- location: sys/txs-language
-- location: sys/txs-name
-- location: sys/txs-name-gen
-- location: sys/txs-prettyprint
-- location: sys/txs-prettyprint-gen
-- location: sys/txs-sort
-- location: sys/txs-sort-gen
-- location: sys/txs-value
-- location: sys/txs-value-gen
-- location: sys/txs-lex-regex-xsd
-- location: sys/txs-valexpr
-- location: sys/txs-valexpr-gen
-- location: sys/txs-var
-- location: sys/txs-var-gen
-- location: sys/txs-bexpr
-- location: sys/txs-core
-- location: sys/txs-corestate
-- location: sys/txs-server
-- location: sys/txs-serverstate
+- sys/txs-basics
+- sys/txs-basics-gen
+- sys/txs-bexpr
+- sys/txs-chan
+- sys/txs-compiler
+- sys/txs-core
+- sys/txs-corestate
+- sys/txs-defs
+- sys/txs-language
+- sys/txs-name
+- sys/txs-name-gen
+- sys/txs-prettyprint
+- sys/txs-prettyprint-gen
+- sys/txs-regex
+- sys/txs-server
+- sys/txs-serverstate
+- sys/txs-smt
+- sys/txs-solve
+- sys/txs-sort
+- sys/txs-sort-gen
+- sys/txs-txscompiler
+- sys/txs-value
+- sys/txs-value-gen
+- sys/txs-valexpr
+- sys/txs-valexpr-gen
+- sys/txs-var
+- sys/txs-var-gen
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)

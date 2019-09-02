@@ -1,0 +1,41 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+name:                txs-regex
+version:             0.1.0.0
+github:              "TorXakis/TorXakis"
+license:             BSD3
+author:              "Pierre van de Laar"
+maintainer:          "pierre.vandelaar@tno.nl"
+copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
+
+extra-source-files:
+- README.md
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - TorXakis.Regex
+  build-tools:
+  - alex
+  - happy
+  dependencies:
+  - array                   # for alex
+  - base >= 4.7 && < 5
+  - containers
+  - deepseq
+  - text
+  
+  - txs-basics
+
+ghc-options:
+- -O
+- -Werror
+- -Wall
+- -Widentities
+- -Wincomplete-record-updates
+#- -Wincomplete-uni-patterns
+- -Wmissing-home-modules
+#- -Wmissing-local-signatures
+#- -Wmonomorphism-restriction
+- -Wredundant-constraints

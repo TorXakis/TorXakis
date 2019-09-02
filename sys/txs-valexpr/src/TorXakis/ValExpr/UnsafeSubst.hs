@@ -37,6 +37,9 @@ import           TorXakis.ValExpr.Unsafe
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.Var
 
+-- | unsafe Substitution
+-- only for usage within the ValExpr package.
+-- This function should not be exported.
 unsafeSubst :: FuncContext c => c -> HashMap.Map (RefByName VarDef) ValExpression -> ValExpression -> Either Error ValExpression
 unsafeSubst ctx  mp = unsafeSubstView . view
   where

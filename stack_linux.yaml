@@ -40,24 +40,32 @@ resolver: lts-11.22
 # non-dependency (i.e. a user package), and its test suites and benchmarks
 # will not be run. This is useful for tweaking upstream packages.
 packages:
-- location: sys/behave
-- location: sys/behavedefs
-- location: sys/behaveenv
-- location: sys/bexpr
-- location: sys/cnect
-- location: sys/core
-- location: sys/coreenv
-- location: sys/defs
-- location: sys/lexregexxsd
-- location: sys/lpe
-- location: sys/server
-- location: sys/serverenv
-- location: sys/solve
-- location: sys/testsel
-- location: sys/ui
-- location: sys/value
-- location: sys/valexpr
-- location: sys/txs-compiler
+- sys/txs-basics
+- sys/txs-basics-gen
+- sys/txs-bexpr
+- sys/txs-chan
+- sys/txs-core
+- sys/txs-corestate
+- sys/txs-defs
+- sys/txs-language
+- sys/txs-name
+- sys/txs-name-gen
+- sys/txs-prettyprint
+- sys/txs-prettyprint-gen
+- sys/txs-regex
+- sys/txs-server
+- sys/txs-serverstate
+- sys/txs-smt
+- sys/txs-solve
+- sys/txs-sort
+- sys/txs-sort-gen
+- sys/txs-txscompiler
+- sys/txs-value
+- sys/txs-value-gen
+- sys/txs-valexpr
+- sys/txs-valexpr-gen
+- sys/txs-var
+- sys/txs-var-gen
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)

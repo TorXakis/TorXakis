@@ -40,7 +40,7 @@ empty :: ContextSort
 empty = ContextSort TorXakis.NameMap.empty
 
 instance SortContext ContextSort where
-    memberSort (SortADT a) = member (toName a) . adtDefs
+    memberSort (SortADT a) = memberADT (toName a)
     memberSort _           = const True
 
     memberADT adtRef = member adtRef . adtDefs

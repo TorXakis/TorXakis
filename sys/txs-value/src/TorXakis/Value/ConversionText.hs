@@ -82,7 +82,7 @@ decodeString s = replaceMatches (getAllMatches (s =~ "&#[0-9]{1,3};")) escapedCh
         escapedCharToString = (: []) . chr . read . init . drop 2
 
 -- | 'TorXakis.Value.Value' to 'Data.Text.Text' conversion.
-valueToText :: SortContext c => c -> Value -> Text       -- Usage of SortContext is prevented since reference by Name is exploited
+valueToText :: SortContext c => c -> Value -> Text
 valueToText _   (Cbool True)   = T.pack "True"
 valueToText _   (Cbool False)  = T.pack "False"
 valueToText _   (Cint i)       = T.pack (show i)

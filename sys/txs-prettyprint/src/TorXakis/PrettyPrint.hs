@@ -84,10 +84,10 @@ instance PrettyPrint a Sort where
     prettyPrint _ _ SortChar     = txsCharacter
     prettyPrint _ _ SortString   = txsString
     prettyPrint _ _ SortRegex    = txsRegularExpression
-    prettyPrint _ _ (SortADT a)  = (TxsString . TorXakis.Name.toText . toName) a
+    prettyPrint _ _ (SortADT a)  = (fromText . TorXakis.Name.toText . toName) a
 
 instance PrettyPrint c FieldDef where
-    prettyPrint o c fd = concat [ TxsString (TorXakis.Name.toText (fieldName fd))
+    prettyPrint o c fd = concat [ fromText (TorXakis.Name.toText (fieldName fd))
                                 , txsSpace
                                 , txsOperatorOfSort
                                 , txsSpace
@@ -101,7 +101,7 @@ instance PrettyPrint c ConstructorDef where
                                     (True, x:xs) -> concat [ txsSpace
                                                            , txsOpenScopeConstructor
                                                            , txsSpace
-                                                           , TxsString (TorXakis.Name.toText (fieldName x))
+                                                           , fromText (TorXakis.Name.toText (fieldName x))
                                                            , shorten (TorXakis.Sort.sort x) xs
                                                            , wsField
                                                            , txsCloseScopeConstructor
@@ -116,7 +116,7 @@ instance PrettyPrint c ConstructorDef where
                                                            ]
                                 )
         where cName :: TxsString
-              cName = TxsString (TorXakis.Name.toText (constructorName cv))
+              cName = fromText (TorXakis.Name.toText (constructorName cv))
               
               wsField :: TxsString
               wsField = if multiline o then append txsNewLine (replicate (2+ length cName + length txsOpenScopeConstructor) txsSpace)
@@ -126,14 +126,14 @@ instance PrettyPrint c ConstructorDef where
               shorten s []                                 = addSort s
               shorten s (x:xs) | TorXakis.Sort.sort x == s = concat [ txsSeparatorElements
                                                                     , txsSpace
-                                                                    , TxsString (TorXakis.Name.toText (fieldName x))
+                                                                    , fromText (TorXakis.Name.toText (fieldName x))
                                                                     , shorten s xs
                                                                     ]
               shorten s (x:xs)                             = concat [ addSort s
                                                                     , wsField
                                                                     , txsSeparatorLists
                                                                     , txsSpace
-                                                                    , TxsString (TorXakis.Name.toText (fieldName x))
+                                                                    , fromText (TorXakis.Name.toText (fieldName x))
                                                                     , shorten (TorXakis.Sort.sort x) xs
                                                                     ]
 
@@ -156,7 +156,7 @@ instance PrettyPrint c ADTDef where
         where defLine :: TxsString
               defLine = concat [ txsKeywordSortDef
                                , txsSpace
-                               , TxsString (TorXakis.Name.toText (adtName av))
+                               , fromText (TorXakis.Name.toText (adtName av))
                                , txsSpace
                                , txsOperatorDef
                                ]
@@ -171,7 +171,7 @@ instance PrettyPrint c ADTDef where
 -- Variable
 -------------------------------------------------------------------------
 instance PrettyPrint c VarDef where
-    prettyPrint o c v = concat [ TxsString (TorXakis.Name.toText (name v))
+    prettyPrint o c v = concat [ fromText (TorXakis.Name.toText (name v))
                                , txsSpace
                                , txsOperatorOfSort
                                , txsSpace
@@ -214,7 +214,7 @@ instance VarContext c => PrettyPrint c ValExpressionView where
   prettyPrint o ctx (Vconst c)          = prettyPrint o ctx c
   prettyPrint _ ctx (Vvar v)            = case lookupVar (toName v) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined var " ++ show v)
-                                            Just vDef   -> TxsString (TorXakis.Name.toText (name vDef))
+                                            Just vDef   -> fromText (TorXakis.Name.toText (name vDef))
   prettyPrint o ctx (Vequal a b)        = infixOperator o ctx txsOperatorEqual [a,b]
   prettyPrint o ctx (Vite c tb fb)      = concat [ txsKeywordIf
                                                    , txsSpace
@@ -233,8 +233,8 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                                    , separator o
                                                    , txsKeywordFi
                                                    ]
-  prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
-  prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx (TxsString (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
+  prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx (fromText (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
+  prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx (fromText (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
   prettyPrint o ctx (Vnot x)            = funcInst o ctx txsFunctionNot [x]
   prettyPrint o ctx (Vand s)            = infixOperator o ctx txsOperatorAnd (Set.toList s)
   prettyPrint o ctx (Vdivide t n)       = infixOperator o ctx txsOperatorDivide [t,n]
@@ -341,7 +341,7 @@ instance SortContext c => PrettyPrint c FuncDef where
     prettyPrint o c fd = 
         concat [ txsKeywordFuncDef
                , txsSpace
-               , TxsString (TorXakis.FunctionName.toText (TorXakis.FuncDef.funcName fd))
+               , fromText (TorXakis.FunctionName.toText (TorXakis.FuncDef.funcName fd))
                , separator o
                , indent (replicate 3 txsSpace) (prettyPrint o c (paramDefs fd))
                , txsSpace
