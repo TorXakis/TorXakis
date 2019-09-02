@@ -3,6 +3,9 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -37,12 +40,18 @@ import           Control.Monad.State
 import           Network
 import           System.IO
 
-import qualified Data.Map            as Map
+import qualified Data.HashMap        as Map
+import qualified Data.Text           as T
 
 import qualified TorXakis.CoreState             as IOC
 
+import           TorXakis.Language
+import           TorXakis.Name
+import           TorXakis.SortContext
 import           TorXakis.Var
+import           TorXakis.ContextValExpr
 import           TorXakis.Value
+import           TorXakis.PrettyPrint
 
 -- ----------------------------------------------------------------------------------------- --
 -- IOS :  torxakis server main state monad transformer
@@ -55,24 +64,37 @@ type IOS a = StateT EnvS IOC.IOC a
 -- torxakis server state type definitions
 
 
-data EnvS  = EnvS { host    :: String                    -- ^ host of server client
-                  , portNr  :: PortNumber                -- ^ port number of server client
-                  , servhs  :: Handle                    -- ^ server socket handle
-                  , modus   :: TxsModus                  -- ^ current modus of TXS operation
-                  , locvars :: VEnv                      -- ^ local variables
+data EnvS  = EnvS { host       :: String                    -- ^ host of server client
+                  , portNr     :: PortNumber                -- ^ port number of server client
+                  , servhs     :: Handle                    -- ^ server socket handle
+                  , modus      :: TxsModus                  -- ^ current modus of TXS operation
+                  , locVexpCtx :: ContextValExpr            -- ^ local ValExprContext
+                  , locVarVals :: VEnv                      -- ^ local variables with values
                   }
 
 
 envsNone    :: EnvS
-envsNone   = EnvS { host      = ""
-                  , portNr    = 0
-                  , servhs    = stderr
-                  , modus     = Noned
-                  , locvars   = Map.empty
+envsNone   = EnvS { host         = ""
+                  , portNr       = 0
+                  , servhs       = stderr
+                  , modus        = Noned
+                  , locVexpCtx   = TorXakis.ContextValExpr.empty
+                  , locVarVals   = VEnv Map.empty
                   }
 
 
-type VEnv = Map.Map VarDef (Maybe Value)
+newtype VEnv = VEnv { toMap :: Map.Map (RefByName VarDef) Value }
+
+instance SortContext c => PrettyPrint c VEnv
+  where
+     prettyPrint o c a  =  intercalate (TxsString (T.pack "\n"))
+                                       (map ppElem (Map.toList $ toMap a))
+       where
+          ppElem :: (RefByName VarDef,Value) -> TxsString
+          ppElem (nm,val)  =  TorXakis.Language.concat [ TxsString $ TorXakis.Name.toText $ toName nm
+                                                       , TxsString (T.pack " = ")
+                                                       , prettyPrint o c val
+                                                       ]
 
 
 -- ----------------------------------------------------------------------------------------- --

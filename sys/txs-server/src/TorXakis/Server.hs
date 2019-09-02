@@ -6,6 +6,7 @@ See LICENSE at root directory of this repository.
 
 {-# LANGUAGE OverloadedStrings #-}
 
+
 module TorXakis.Server
 
 -- ----------------------------------------------------------------------------------------- --
@@ -25,36 +26,38 @@ module TorXakis.Server
 
 where
 
---import           Control.Concurrent
+import           Control.Concurrent
 --import           Control.DeepSeq
---import           Control.Exception
---import           Control.Monad.State
+import           Control.Exception
+import           Control.Monad.State
 --import qualified Data.Char           as Char
 --import qualified Data.Either         as Either
---import qualified Data.List           as List
---import qualified Data.Map            as Map
+import qualified Data.List           as List
+import qualified Data.Map            as Map
 --import qualified Data.Set            as Set
 --import qualified Data.String.Utils   as Utils
 --import qualified Data.Text           as T
---import           Network             hiding (socketPort)
---import           Network.Socket      hiding (accept, sClose)
---import           System.IO
---
+import           Network             hiding (socketPort)
+import           Network.Socket      hiding (accept, sClose)
+import           System.IO
+
+import           TorXakis.Language
+
 ---- import from local
---import           CmdLineParser
+import           TorXakis.CmdLineParser
 --import           ToProcdef
-import qualified TorXakis.ServerConfig     as SC
+--import qualified TorXakis.ServerConfig     as SC
 
 ---- import from serverenv
---import qualified EnvServer           as IOS
---import qualified IfServer            as IFS
---
+import qualified TorXakis.ServerState         as IOS
+import qualified TorXakis.IfServer            as IFS
+
 ---- import from core
---import qualified BuildInfo
---import qualified TxsCore
---import qualified VersionInfo
---import qualified EnvCore as IOC
---
+import           TorXakis.BuildInfo
+import           TorXakis.TxsCore
+import           TorXakis.VersionInfo
+import qualified TorXakis.CoreState as IOC
+
 ---- import from defs
 --import qualified TxsDDefs
 --import qualified TxsDefs
@@ -70,8 +73,10 @@ import qualified TorXakis.ServerConfig     as SC
 ---- import from valexpr
 --import qualified Constant
 --import           Id
---import qualified ValExpr
---
+import           TorXakis.ContextValExpr
+import           TorXakis.ValExpr
+import           TorXakis.Var
+
 ---- import from cnect
 --import qualified SocketWorld         as World
 --
@@ -81,16 +86,16 @@ import qualified TorXakis.ServerConfig     as SC
 
 main :: IO ()
 main = withSocketsDo $ do
-  hSetBuffering stderr NoBuffering     -- alt: LineBuffering
-  hSetBuffering stdout LineBuffering
-  uConfig <- SC.loadConfig
+      hSetBuffering stderr NoBuffering     -- alt: LineBuffering
+      hSetBuffering stdout LineBuffering
+  --uConfig <- SC.loadConfig
 
-  case SC.interpretConfig uConfig of
-    Left xs -> do
-      hPutStrLn stderr "Errors found while loading the configuration"
-      hPrint stderr xs
-    Right config -> do
-      (portNr, sock) <- txsListenOn $ (clPortNumber . SC.cmdLineCfg) uConfig
+--  case SC.interpretConfig uConfig of
+--    Left xs -> do
+--      hPutStrLn stderr "Errors found while loading the configuration"
+--      hPrint stderr xs
+--    Right config -> do
+      (portNr, sock) <- txsListenOn Nothing --  (clPortNumber . SC.cmdLineCfg) uConfig
       (hs, host, _) <- accept sock
       hSetBuffering hs LineBuffering
       hSetEncoding hs latin1
@@ -99,12 +104,12 @@ main = withSocketsDo $ do
               { IOS.host   = host
               , IOS.portNr = portNr
               , IOS.servhs = hs
-              , IOS.params = SC.updateParamVals -- updating parameters...
-                              (IOS.params IOS.envsNone) -- ...defined in ServerEnv
-                              $ SC.configuredParameters config
+--            , IOS.params = SC.updateParamVals -- updating parameters...
+--                            (IOS.params IOS.envsNone) -- ...defined in ServerEnv
+--                            $ SC.configuredParameters config
               }
-          coreConfig = config
-      TxsCore.runTxsCore coreConfig cmdsIntpr initS
+--          coreConfig = config
+      runTxsCore cmdsIntpr initS
       threadDelay 1000000    -- 1 sec delay on closing
       sClose sock
       hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
@@ -128,7 +133,7 @@ txsListenOn (Just portNr) = do
 
 cmdsIntpr :: IOS.IOS ()
 cmdsIntpr = do
-     modus      <- gets IOS.modus
+     modus       <- gets IOS.modus
      (cmd, args) <- IFS.getCmd
      case cmd of
 -- ----------------------------------------------------------------------------------- modus --
@@ -194,24 +199,19 @@ cmdQuit _ = do
 cmdInit :: String -> IOS.IOS ()
 cmdInit args = do
      servhs             <- gets IOS.servhs
-     unid               <- gets IOS.uid
-     tdefs              <- lift TxsCore.txsGetTDefs
-     sigs               <- gets IOS.sigs
      srctxts            <- lift $ lift $ mapM readFile (read args :: [String])
      let srctxt          = List.intercalate "\n\n" srctxts
-     ((unid',tdefs', sigs'),e) <- lift $ lift $ catch
-                             ( let parsing = compileLegacy srctxt
-                                in return $!! (parsing, "")
-                             )
-                             ( \e -> return ((unid, tdefs, sigs), show (e::ErrorCall)))
+     r                  <- lift $ lift $ compileString srctxt
+     let (txsctx,e) = case r of
+                        Left  e'            -> ( TorXakis.ContextValExpr.empty, e' )
+                        Right (_,txsctx',_) -> ( txsctx'                      , "" )
      if e /= ""
        then do IFS.nack "INIT" [e]
                cmdsIntpr
-       else do modify $ \env -> env { IOS.modus  = IOS.Inited
-                                    , IOS.uid    = unid'
-                                    , IOS.sigs   = sigs'
+       else do modify $ \env -> env { IOS.modus      = IOS.Inited
+                                    , IOS.locVexpCtx = fromFuncContext txsctx
                                     }
-               lift $ TxsCore.txsInit tdefs' sigs' ( IFS.hmack servhs . map TxsShow.pshow )
+               lift $ txsInit txsctx
                IFS.pack "INIT" ["input files parsed:", args]
                cmdsIntpr
 
@@ -220,10 +220,10 @@ cmdInit args = do
 cmdTermit :: String -> IOS.IOS ()
 cmdTermit _ = do
      modify $ \env -> env { IOS.modus  = IOS.Idled
-                          , IOS.tow    = ( Nothing, Nothing, [] )
-                          , IOS.frow   = ( Nothing, [],      [] )
+                          -- , IOS.tow    = ( Nothing, Nothing, [] )
+                          -- , IOS.frow   = ( Nothing, [],      [] )
                           }
-     lift TxsCore.txsTermit
+     lift txsTermit
      IFS.pack "TERMIT" []
      cmdsIntpr
 
@@ -231,8 +231,8 @@ cmdTermit _ = do
 
 cmdInfo :: String -> IOS.IOS ()
 cmdInfo _ = do
-     IFS.pack "INFO" [ "TorXakis version    : " ++ VersionInfo.version
-                     , "Build time          : " ++ BuildInfo.buildTime
+     IFS.pack "INFO" [ "TorXakis version    : " ++ version
+                     , "Build time          : " ++ buildTime
                      ]
      cmdsIntpr
 
@@ -240,118 +240,110 @@ cmdInfo _ = do
 
 cmdVar :: String -> IOS.IOS ()
 cmdVar args = do
-     env              <- get
-     let uid          = IOS.uid env
-         sigs         = IOS.sigs env
-         vars         = IOS.locvars env
-         vals         = IOS.locvals env
+     env            <- get
+     let locVexpCtx  = IOS.locVexpCtx env
+         locVarVals  = IOS.locVarVals env
      if  args == ""
        then do
-         IFS.pack "VAR" [ TxsShow.fshow vars ]
+         IFS.pack "VAR" [ toString $ map (prettyPrint Options(False,True) locVexpCtx) (elemsVar locVexpCtx) ]
          cmdsIntpr
        else do
-
-         ((uid',vars'),e) <- lift $ lift $ catch
-                               ( let p = compileUnsafe $
-                                         compileVarDecls sigs (_id uid + 1) args
+         (vars',e) <- lift $ lift $ catch
+                               ( let p = compileUnsafe $ compileVarDecls locVexpCtx args
                                   in return $!! (p,"")
                                )
-                               ( \e -> return ((uid,[]),show (e::ErrorCall)))
-
+                               ( \e -> return ([],show (e::ErrorCall)))
          if  e /= ""
            then do
-             modify $ \env' -> env' { IOS.uid = uid' }
              IFS.nack "VAR" [ e ]
              cmdsIntpr
            else
-             if  let newnames = map VarId.name vars'
-                  in null ( newnames `List.intersect` map VarId.name vars ) &&
-                     null ( newnames `List.intersect` map VarId.name (Map.keys vals))
-               then do
-                 modify $ \env' -> env' { IOS.locvars = vars ++ vars'
-                                        , IOS.uid  = uid'
-                                        }
-                 IFS.pack "VAR" [ TxsShow.fshow vars' ]
-                 cmdsIntpr
-               else do
-                 modify $ \env' -> env' { IOS.uid = uid' }
-                 IFS.nack "VAR" [ "double variable names: " ++ TxsShow.fshow vars' ]
-                 cmdsIntpr
+             let newnames = map TorXakis.Var.name vars'
+                 doublenames = newnames `List.intersect` map TorXakis.Var.name (Map.keys vars)
+              in if null doublenames
+                   then do
+                          modify $ \env' -> env' { IOS.locVexpCtx = addVars locVexpCtx vars' } 
+                          IFS.pack "VAR" [ toString $ map (prettyPrint Options(False,True) locVexpCtx) vars' ]
+                          cmdsIntpr
+                   else do
+                          IFS.nack "VAR" [ "double variable names: " ++ toString $ map (prettyPrint Options(False,True) locVexpCtx) doublenames ]
+                          cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdVal :: String -> IOS.IOS ()
 cmdVal args = do
-     env              <- get
-     let uid          = IOS.uid env
-         sigs         = IOS.sigs env
-         vars         = IOS.locvars env
-         vals         = IOS.locvals env
+     env            <- get
+     let locVexpCtx  = IOS.locVexpCtx env
+         locVarVals  = IOS.locVarVals env
      if  args == ""
        then do
-         IFS.pack "VAL" [ TxsShow.fshow vals ]
+         IFS.pack "VAL" [ toString $ prettyPrint Options(False,True) locVexpCtx locVarVals ]
          cmdsIntpr
        else do
-
-         ((uid',venv'),e) <- lift $ lift $ catch
-                               ( let p = compileUnsafe $
-                                         compileValDefs sigs [] (_id uid + 1) args
+         (venv',e) <- lift $ lift $ catch
+                               ( let p = compileUnsafe $ compileValDefs locVexpCtx args
                                  in return $!! (p,"")
                                )
-                               ( \e -> return ((uid,Map.empty),show (e::ErrorCall)))
-
+                               ( \e -> return (Map.empty,show (e::ErrorCall)))
          if  e /= ""
            then do
-             modify $ \env' -> env' { IOS.uid = uid' }
              IFS.nack "VAL" [ e ]
              cmdsIntpr
            else
-             if let newnames = map VarId.name (Map.keys venv')
-                 in null (newnames `List.intersect` map VarId.name vars) &&
-                    null (newnames `List.intersect` map VarId.name (Map.keys vals))
-               then do
-                 modify $ \env' -> env' { IOS.locvals = vals `Map.union` venv'
-                                        , IOS.uid     = uid'
-                                        }
-                 IFS.pack "VAL" [ TxsShow.fshow venv' ]
+             let newvars     = Map.keys venv'
+                 newnames    = map TorXakis.Var.name newvars
+                 oldvars     = elemsVar locVexpCtx
+                 oldnames    = map TorXakis.Var.name oldvars
+                 doublenames = newnames `List.intersect` oldnames
+                 
+              in if null doublenames
+                   then do
+                     let locVexpCtx' = addVars locVexpCtx newvars
+                         substMap    = Map.fromList [ (toRef(TorXakis.Var.name vardef), vexp)
+                                                    | (vardef,vexp) <- toList venv'
+                                                    ]
+                          locVarVals' = Map.union locVarVals
+                                          Map.fromList [ (varref, case subst locVexpCtx' substMap vexp of
+                                                                    Left e  -> error e
+                                                                    Right x -> eval x
+                                                       |  (varref,vexp) <- toList substMap
+                                                       ]
+                     modify $ \env' -> env' { IOS.locVexpCtx = locVexpCtx'
+                                            , IOS.locVarVals = locVarVals'
+                     IFS.pack "VAL" [ toString $ map (prettyPrint Options(False,True) locVexpCtx')  (VEnv venv') ]
                  cmdsIntpr
                else do
-                 modify $ \env' -> env' { IOS.uid = uid' }
-                 IFS.nack "VAR" [ "double value names: " ++ TxsShow.fshow venv' ]
+                 IFS.nack "VAL" [ "double variable names: " ++ toString $ map (prettyPrint Options(False,True) tdefs) doublenames ]
                  cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdEval :: String -> IOS.IOS ()
 cmdEval args = do
-     env              <- get
-     let uid           = IOS.uid env
-         sigs          = IOS.sigs env
-         vals          = IOS.locvals env
-         vars          = IOS.locvars env
-     tdefs            <- lift TxsCore.txsGetTDefs
-
-     ((uid',vexp'),e) <- lift $ lift $ catch
-                           ( let (i,p) = compileUnsafe $
-                                         compileValExpr sigs (Map.keys vals ++ vars) (_id uid + 1) args
-                              in return $!! ((i, Just p),"")
+     env            <- get
+     let locVexpCtx  = IOS.locVexpCtx env
+         locVarVals  = IOS.locVarVals env
+     (vexp,e) <- lift $ lift $ catch
+                          ( let p = compileUnsafe $ compileValExpr tdefs (Map.keys $ toMap vars) args
+                              in return $!! (Just p,"")
                            )
-                           ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
+                           ( \e -> return (Nothing,show (e::ErrorCall)))
 
      case vexp' of
        Just vexp'' -> do
-                        modify $ \env' -> env' { IOS.uid = uid' }
-                        mwalue <- lift $ TxsCore.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp'')
+                        -- modify $ \env' -> env' { IOS.uid = uid' }
+                        mwalue <- lift $ txsEval (subst vars tdefs vexp'')
                         case mwalue of
                             Right walue -> do
-                                            IFS.pack "EVAL" [ TxsShow.fshow walue ]
+                                            IFS.pack "EVAL" [ toString $ prettyPrint Options(False,True) tdefs walue ]
                                             cmdsIntpr
+
                             Left t      -> do
                                             IFS.nack "EVAL" [ "eval 2 - " ++ t ]
                                             cmdsIntpr
 
        Nothing -> do
-                    modify $ \env' -> env' { IOS.uid = uid' }
                     IFS.nack "EVAL" [ "eval 1 - " ++ e ]
                     cmdsIntpr
 

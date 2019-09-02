@@ -20,10 +20,16 @@ executable:
   source-dirs: src
   main: TorXakis.Server
   dependencies:
+  - containers
+  - mtl
   - network
   - optparse-applicative
-  - txs-basics
+  - txs-core
+  - txs-corestate
+  - txs-language
+  - txs-serverstate
   - txs-valexpr
+  - txs-var
 
 ghc-options:
 - -O
