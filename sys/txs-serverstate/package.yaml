@@ -20,11 +20,17 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.ServerState
+  - TorXakis.IfServer
   dependencies:
   - containers
+  - hashmap
   - mtl
   - network
   - txs-corestate
+  - txs-language
+  - txs-name
+  - txs-prettyprint
+  - txs-sort
   - txs-var
   - txs-value
   - txs-valexpr

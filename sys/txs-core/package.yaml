@@ -19,7 +19,9 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
+  - TorXakis.BuildInfo
   - TorXakis.TxsCore
+  - TorXakis.VersionInfo
   dependencies:
   - mtl
   - txs-corestate

@@ -1,0 +1,15 @@
+PROCDEF replayProc [Action :: Operation; Result :: Int]() HIT
+::=
+Action ! Plus(-7059,-2147474793)
+>-> Result ! -2147481852
+>-> Action ! Minus(-2147477795,-2147475550)
+>-> Result ! -2245
+>-> Action ! Minus(-2147477365,-2147474702)
+>-> Result ! -2663
+>-> Action ! Minus(-2147481995,-2147477744)
+>-> Result ! -4251
+>-> Action ! Plus(-7450,-2147473923)
+>-> Result ! -2147481373
+>-> HIT
+ENDDEF
+

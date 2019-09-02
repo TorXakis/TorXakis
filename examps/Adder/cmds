@@ -1,0 +1,9 @@
+info
+# systart sut xterm -e java Adder 7890
+# delay 10
+# info
+tester Adder SutConnection
+test 20
+trace $> xx
+quit
+

@@ -190,6 +190,13 @@ instance PrettyPrint c VarsDecl where
                                      else txsCloseScopeArguments
 
 ---------------------------------------------------------
+-- Value
+---------------------------------------------------------
+
+instance SortContext c => PrettyPrint c Value where
+  prettyPrint _ ctx c  =  TxsString (valueToText ctx c)
+
+---------------------------------------------------------
 -- ValExpr
 ---------------------------------------------------------
 -- | Generic Pretty Printer for all instance of 'TorXakis.FuncContext'.
@@ -204,7 +211,7 @@ instance VarContext c => PrettyPrint c ValExpression where
   prettyPrint o c = prettyPrint o c . view
 
 instance VarContext c => PrettyPrint c ValExpressionView where
-  prettyPrint _ ctx (Vconst c)          = fromText (valueToText ctx c)
+  prettyPrint o ctx (Vconst c)          = prettyPrint o ctx c
   prettyPrint _ ctx (Vvar v)            = case lookupVar (toName v) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined var " ++ show v)
                                             Just vDef   -> fromText (TorXakis.Name.toText (name vDef))
