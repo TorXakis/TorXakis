@@ -36,8 +36,8 @@ library:
   - Unique
   # TorXakis dependencies
   - txs-basics
-  - txs-lex-regex-xsd
   - txs-name
+  - txs-regex
   - txs-sort
   - txs-value
   - txs-var

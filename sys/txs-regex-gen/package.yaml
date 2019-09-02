@@ -1,7 +1,7 @@
 # TorXakis - Model Based Testing
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
-name:                txs-value-gen
+name:                txs-regex-gen
 version:             0.1.0.0
 github:              "TorXakis/TorXakis"
 license:             BSD3
@@ -9,25 +9,40 @@ author:              "Pierre van de Laar"
 maintainer:          "pierre.vandelaar@tno.nl"
 copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
+extra-source-files:
+- README.md
+
 dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
-- txs-sort
-- txs-value
-- txs-sort-gen
+- text
+- txs-basics-gen
+- txs-regex
 
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.ValueGen
+  - TorXakis.RegexGen
   dependencies:
-    - text
-    - txs-name
-    - txs-basics-gen
-    - txs-regex-gen
+  - base >= 4.7 && < 5
+  - deepseq
 
-extra-source-files:
-- README.md
+tests:
+    txs-regex-gen-test:
+        main : Spec.hs
+        source-dirs: test
+        ghc-options:
+        - -threaded
+        - -rtsopts
+        - -with-rtsopts=-N
+        dependencies:
+        - containers
+        - hspec
+        - regex-tdfa
+        
+        - txs-basics
+        - txs-regex
+        - txs-regex-gen
 
 ghc-options:
 - -Werror
@@ -40,15 +55,3 @@ ghc-options:
 - -Wmissing-local-signatures
 - -Wmonomorphism-restriction
 - -Wredundant-constraints
-
-tests:
-    txs-value-gen-test:
-        main : Spec.hs
-        source-dirs: test
-        ghc-options:
-        - -threaded
-        - -rtsopts
-        - -with-rtsopts=-N
-        dependencies:
-        - hspec
-        - txs-value-gen

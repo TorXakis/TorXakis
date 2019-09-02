@@ -9,7 +9,7 @@ See LICENSE at root directory of this repository.
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.RegexXSD2SMT
+-- Module      :  TorXakis.Regex.RegexFromXsdHappy
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -17,27 +17,33 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Transcribe Regular Expression from XSD into SMT format.
+-- Read Rgex from XSD format into internal representation.
 --
 -- For more info on
---  * XSD representation see http://www.w3.org/TR/xmlschema11-2/#regexs
---  * SMT reprentation see http://cvc4.cs.stanford.edu/wiki/Strings#Symbolic_Regular_Expression
+-- XSD representation see http://www.w3.org/TR/xmlschema11-2/#regexs
 -----------------------------------------------------------------------------
-module TorXakis.RegexXSD2SMT
-( xsdToSmt
-)
+{-# LANGUAGE OverloadedStrings #-}
+module TorXakis.Regex.RegexFromXsdHappy
+( fromXsd )
 where
 
-import TorXakis.RegexAlex
-import TorXakis.SmtLanguage
+import           Data.Either
+import           Data.Text (Text)
+import qualified Data.Text as T
+import           Data.Monoid
+
+import           TorXakis.Error
+import           TorXakis.Regex.Regex
+import           TorXakis.Regex.RegexFromXsdAlex (Token(..), regexFromXsdLexer)
 }
 
 -- ----------------------------------------------------------------------------------------- --
 --  happy preamble
-%name regexSMTParser       RegExp           -- regexSMTParser       :: [Token] -> String
 
+%name regexParser       RegExp
 %tokentype { Token }
 %error { parseError }
+%monad { Either Error }
 
 -- ----------------------------------------------------------------------------------------- --
 -- tokens
@@ -68,199 +74,213 @@ import TorXakis.SmtLanguage
 -- See https://www.haskell.org/happy/doc/html/sec-sequences.html
 -- The only reason we used left recursion is that Happy is more efficient at parsing left-recursive rules
 
-Digits  :: { SmtString }
-        : digit
-            { fromString $1 }
-        | Digits digit
-            { append $1 (fromString $2) }
+Digits      :: { Text }
+            : digit
+                { T.pack $1 }
+            | Digits digit
+                { $1 <> T.pack $2 }
 
-Normal  :: { SmtString }
-        -- everything that is included in ~[.\\?*+{}()|[\]]
-        -- include CommaChar | DashChar | TopChar | DigitChar | FormatEscChar | NormalChar
-        : ","
-            { smtStringLiteral "," }
-        | "-"
-            { smtStringLiteral "-" }
-        | "^"
-            { smtStringLiteral "^" }
-        | digit
-            { smtStringLiteral $1 }
-        | formatEsc
-            { smtStringLiteral $1 }
-        | normal
-            { smtStringLiteral $1 }
+            -- everything that is included in ~[.\\?*+{}()|[\]]
+            -- include CommaChar | DashChar | TopChar | DigitChar | FormatEscChar | NormalChar
+Normal      :: { Text }
+            : ","
+                { "," }
+            | "-"
+                { "-" }
+            | "^"
+                { "^" }
+            | digit
+                { T.pack $1 }
+            | formatEsc
+                { T.pack $1 }
+            | normal
+                { T.pack $1 }
 
-SingleCharNoEsc :: { SmtString }
                 -- everything that is included in ~[\\[\]]
+SingleCharNoEsc :: { Text }
                 : ","
-                    { smtStringLiteral "," }
+                    { "," }
                 | "."
-                    { smtStringLiteral "." }
+                    { "." }
                 | "-"
-                    { smtStringLiteral "-" }
+                    { "-" }
                 | "("
-                    { smtStringLiteral "(" }
+                    { "(" }
                 | ")"
-                    { smtStringLiteral ")" }
+                    { ")" }
                 | "{"
-                    { smtStringLiteral "{" }
+                    { "{" }
                 | "}"
-                    { smtStringLiteral "}" }
+                    { "}" }
                 | "|"
-                    { smtStringLiteral "|" }
+                    { "|" }
                 | "^"
-                    { smtStringLiteral "^" }
+                    { "^" }
                 | digit
-                    { smtStringLiteral $1 }
+                    { T.pack $1 }
                 | quantifier
-                    { smtStringLiteral $1 }
+                    { T.pack $1 }
                 | formatEsc
-                    { smtStringLiteral $1 }
+                    { T.pack $1 }
                 | normal
-                    { smtStringLiteral $1 }
+                    { T.pack $1 }
 
-
-SingleCharEscChar   :: { SmtString }
                     -- everything that is included in [\.\\\?\*\+\{\}\(\)\[\]\|\-\^]
+SingleCharEscChar   :: { Text }
                     : "."
-                        { smtStringLiteral "." }
+                        { "." }
                     | "\\"
-                        { smtStringLiteral "\\" }
+                        { "\\" }
                     | quantifier
-                        { smtStringLiteral $1 }
+                        { T.pack $1 }
                     | "{"
-                        { smtStringLiteral "{" }
+                        { "{" }
                     | "}"
-                        { smtStringLiteral "}" }
+                        { "}" }
                     | "("
-                        { smtStringLiteral "(" }
+                        { "(" }
                     | ")"
-                        { smtStringLiteral ")" }
+                        { ")" }
                     | "["
-                        { smtStringLiteral "[" }
+                        { "[" }
                     | "]"
-                        { smtStringLiteral "]" }
+                        { "]" }
                     | "|"
-                        { smtStringLiteral "|" }
+                        { "|" }
                     | "-"
-                        { smtStringLiteral "-" }
+                        { "-" }
                     | "^"
-                        { smtStringLiteral "^" }
+                        { "^" }
 
-RegExp  :: { SmtString }
+RegExp  :: { Regex }
+        : RegExp1
+            { $1 }
+
+RegExp1 :: { Regex }
         : Branches
-            { smtRegExpUnion $1 }
+            {% mkRegexUnion $1 }
 
-Branches    :: { [SmtString] }
+Branches    :: { [Regex] }
             : Branches "|" Branch
-                { $1 ++ [$3] }
+                { ($3:$1) }
             | Branch
                 { [$1] }
 
-Branch  :: { SmtString }
-        :
-            { smtRegExpConcat [] }
+Branch  :: { Regex }
+        : {- empty -}
+            { mkRegexEmpty }
         | NeBranch
-            { smtRegExpConcat $1
-            }
+            { mkRegexConcat $1 }
 
-NeBranch    :: { [SmtString] }
+
+NeBranch    :: { [Regex] }
             : NeBranch Piece
-                { $1 ++ [$2] }
+               { $1 ++ [$2] }
             | Piece
                 { [$1] }
 
-Piece   :: { SmtString }
-        : Atom
-            { $1 }
-        | Atom Quantifier
-            { $2 $1 }
-        | Atom "{" Quantity "}"
-            { uncurry (smtRegExpLoop $1) $3 }
+Piece       :: { Regex }
+            : Atom
+                { $1 }
+            | Atom Quantifier
+                { $2 $1 }
+            | Atom "{" Quantity "}"
+                {% uncurry (mkRegexLoop $1) $3 }
 
-Quantifier  :: { SmtString -> SmtString }
+Quantifier  :: { Regex -> Regex }
             : quantifier
                 { case $1 of
-                    "*" -> smtRegExpKleeneStar
-                    "+" -> smtRegExpKleeneCross
-                    "?" -> smtRegExpOptional
+                    "?" -> mkRegexOptional
+                    "*" -> mkRegexKleeneStar
+                    "+" -> mkRegexKleeneCross
                 }
 
 Quantity    :: { (Integer, Maybe Integer) }
             : Digits "," Digits                  -- QuantRange
-                { ( read $1, Just (read $3) ) }
+                { ( read (T.unpack $1), Just (read (T.unpack $3)) ) }
             | Digits ","                         -- QuantMin
-                { ( read $1, Nothing ) }
+                { ( read (T.unpack $1), Nothing )}
             | Digits                             -- QuantExact
-                { let b = read $1 in (b,Just b) }
+                { let b = read (T.unpack $1) in (b , Just b)  }
 
-Atom    :: { Text }
+Atom    :: { Regex }
         : "(" RegExp ")"                        -- Precedence
             { $2 }
         | Normal
-            { "(str.to.re " <> $1 <> ") " }
+            { mkRegexStringLiteral $1 }
         | CharClass
             { $1 }
 
-CharClass   :: { Text }
+CharClass   :: { Regex }
             : "[" CharGroup "]"        -- charClassExpr
                 { $2 }
             | SingleCharEsc
-                { "(str.to.re \"" <> $1 <> "\") " }
+                { mkRegexStringLiteral $1 }
             | "."                      -- wildcardEsc
                 -- UTF8 - extended ascii 256 characters
                 -- from \x00 till \xFF
                 -- exclude \n == \xA
                 --         \r == \xD
-                { "(re.union (re.range \"\\x00\" \"\\x09\") (re.range \"\\x0B\" \"\\x0C\") (re.range \"\\x0E\" \"\\xFF\") ) " }
+                { mkRegexDot }
             --  | charClassEsc
 
-CharGroup   :: { Text }
+CharGroup   :: { Regex }
             : PosCharGroup          -- simplified from ( posCharGroup | negCharGroup ) ( DashChar charClassExpr )?
-                { case $1 of
-                   [x] -> x
-                   list -> "(re.union " <> fold list <> ") "
-                }
+                {% mkRegexUnion $1 }
 
-PosCharGroup    :: { [Text] }
+PosCharGroup    :: { [Regex] }
                 : PosCharGroup CharGroupPart
-                    { $1 ++ $2 }
+                    { ($2:$1) }
                 | CharGroupPart
-                    { $1 }
+                    { [$1] }
 
-CharGroupPart   :: { [Text] }
+CharGroupPart   :: { Regex }
                 : SingleChar "-" SingleChar
-                    { ["(re.range " <> $1 <> " " <> $3 <> ") "] }
+                    {% case (T.unpack $1, T.unpack $3) of
+                         ([c1],[c3]) -> mkRegexRange c1 c3
+                         (_,_)       -> error ("Expected single character strings, yet got (" ++ show $1 ++ ", " ++ show $3 ++ ")")
+                    }
                 | SingleChar "-"
-                    { ["(str.to.re " <> $1 <> ") ",
-                       "(str.to.re \"-\") "] }
+                    {% case T.unpack $1 of
+                        [c1] -> mkRegexUnion [ mkRegexStringLiteral $1
+                                             , mkRegexStringLiteral "-"
+                                             ]
+                        _    -> error ("Expected single character string, yet got " ++ show $1)
+                    }
                 | SingleChar
-                    { ["(str.to.re " <> $1 <> ") "] }
+                    { case T.unpack $1 of
+                        [c1] -> mkRegexStringLiteral $1
+                        _    -> error ("Expected single character string, yet got " ++ show $1)
+                    }
                 --  | charClassEsc
 
-SingleChar  :: { SmtString }
+SingleChar  :: { Text }
             : SingleCharNoEsc
                 { $1 }
             | SingleCharEsc
                 { $1 }
 
-SingleCharEsc   :: { SmtString }
+SingleCharEsc   :: { Text }
                 : "\\" formatEsc
-                    { "\\" <> $2 }
+                    { case $2 of
+                        "n"     -> "\n"
+                        "r"     -> "\r"
+                        "t"     -> "\t"
+                    }
                 | "\\" SingleCharEscChar
-                    { if $2=="\\" then "\\\\" else $2 }
+                    { $2 }
 -- ----------------------------------------------------------------------------------------- --
 -- uninterpreted haskell postamble
 {
 
--- | Transcribe regular expression in XSD to SmtLib representation.
-xsdToSmt :: Text -> SmtString
-xsdToSmt = regexSMTParser . regexLexer . T.unpack
+-- | Transcribe regular expression in XSD to internal Regex representation.
+fromXsd :: Text -> Either Error Regex
+fromXsd = regexParser . regexFromXsdLexer . T.unpack
 
 -- ----------------------------------------------------------------------------------------- --
 -- error handling
-parseError :: [Token] -> a
-parseError _ = error "Parse Error"
+parseError :: [Token] -> Either Error a
+parseError t = Left $ Error ("Parse Error on token " ++ show t)
 
 noerror = ()
 

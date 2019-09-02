@@ -4,7 +4,7 @@
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  SMTAlex
+-- Module      :  TorXakis.SMTAlex
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 

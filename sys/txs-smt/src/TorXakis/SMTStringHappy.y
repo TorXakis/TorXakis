@@ -10,10 +10,10 @@ See LICENSE at root directory of this repository.
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  SMTStringHappy
+-- Module      :  TorXakis.SMTStringHappy
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
@@ -25,11 +25,11 @@ module TorXakis.SMTStringHappy
 )
 where
 
-import SMTStringAlex (Token(..), smtStringLexer)
+import TorXakis.SMTStringAlex (Token(..), smtStringLexer)
 
 import Numeric
 import Data.Char
-import Data.Tuple                                           
+import Data.Tuple
 }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -53,7 +53,7 @@ import Data.Tuple
 -- happy grammar for SMT string according to smtlib 2.5 standard
 
 StringValue :: { String }
-            : 
+            :
                 {
                     ""
                 }
@@ -64,7 +64,7 @@ StringValue :: { String }
 
 CharValue   :: { String }
             : escSequence
-                {  
+                {
                     case (length $1) of
                     {   4 -> [chr (fst (head (readHex (drop 2 $1))))]
                     ;   2 -> case (tail $1) of

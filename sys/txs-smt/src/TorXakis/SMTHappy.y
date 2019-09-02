@@ -25,17 +25,18 @@ module TorXakis.SMTHappy
 , SMTValue(..)
 )
 where
-import SMTAlex (Token(..), smtLexer)
-import Data.Text (Text)
-import qualified Data.Text as T
-import qualified SMTString as SMTString    -- Parse SMT string according to smtlib 2.5 standard
-                                        
 import qualified Data.Map    as Map
-import Data.String.Utils
+import           Data.String.Utils
+import           Data.Text (Text)
+import qualified Data.Text as T
+import           Text.Regex.TDFA
 
-import Text.Regex.TDFA
+import           TorXakis.SMTAlex (Token(..), smtLexer)
+import           TorXakis.Error
+import qualified TorXakis.SMTString as SMTString    -- Parse SMT string according to smtlib 2.5 standard
+
 }
-    
+
 -- ----------------------------------------------------------------------------------------- --
 --  happy preamble
 
@@ -188,7 +189,7 @@ RuleExpression -- :: { SMTValue }
 -- ----------------------------------------------------------------------------------------- --
 -- error handling
 parseError :: [Token] -> a
-parseError _ = error "Parse Error"
+parseError t = error ("Parse Error on token " ++ show t)
 
 noerror = ()
 
@@ -204,7 +205,7 @@ smtParser :: [Token] -> Map.Map String SMTValue
 smtParser = happySmt
 
 cstrRegex :: String
-cstrRegex = "[A-Z][A-Za-z0-9_$]*"
+cstrRegex = "c[0-9A-F]+$[0-9A-F]+"
 }
 -- ----------------------------------------------------------------------------------------- --
 -- end uninterpreted haskell postamble

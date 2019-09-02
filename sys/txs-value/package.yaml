@@ -31,8 +31,10 @@ library:
   - deepseq
   - hexpat
   - regex-tdfa
+  
   - txs-basics
   - txs-name
+  - txs-regex
 
 tests:
     txs-value-test:

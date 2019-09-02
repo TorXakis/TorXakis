@@ -27,11 +27,12 @@ import           Test.QuickCheck
 
 import TorXakis.Distribute
 import TorXakis.Name
+import TorXakis.RegexGen
 import TorXakis.Sort
 import TorXakis.SortContext
-import TorXakis.Value
-import TorXakis.TestSortContext
 import TorXakis.SortGenContext
+import TorXakis.TestSortContext
+import TorXakis.Value
 
 -- | TODO: decide on name (generator versus arbitrary instance)
 -- First Sort and then context or vice versa?
@@ -63,8 +64,8 @@ arbitraryValueOfSort _   SortString =
         return $ Cstring (T.pack s)
 arbitraryValueOfSort _   SortRegex = 
     do
-        s <- listOf arbitraryChar
-        return $ Cregex (T.pack s)
+        rg <- arbitrary :: Gen RegexGen
+        return $ Cregex (unRegexGen rg)
 arbitraryValueOfSort ctx (SortADT a) = 
     do
         n <- getSize

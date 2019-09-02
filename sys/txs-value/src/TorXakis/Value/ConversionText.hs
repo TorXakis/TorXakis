@@ -33,6 +33,7 @@ import           Text.Regex.TDFA
 
 import           TorXakis.Error
 import           TorXakis.Name
+import           TorXakis.Regex
 import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.Value.Value
@@ -88,7 +89,7 @@ valueToText _   (Cbool False)  = T.pack "False"
 valueToText _   (Cint i)       = T.pack (show i)
 valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar '\'' c ++ "'")
 valueToText _   (Cstring s)    = T.pack ("\"" ++ encodeString '"' (T.unpack s) ++ "\"")
-valueToText _   (Cregex r)     = T.pack ("`" ++ encodeString '`' (T.unpack r) ++ "`")
+valueToText _   (Cregex r)     = T.pack ("`" ++ encodeString '`' (T.unpack (toXsd r)) ++ "`")
 valueToText _   (Ccstr _ c []) = TorXakis.Name.toText (toName c)
 valueToText ctx (Ccstr _ c as) =
         let cNode = (TorXakis.Name.toText . toName) c
@@ -113,7 +114,10 @@ valueFromText ctx s t =
         fromParseValue SortInt     (Pint b)     = Right $ Cint b
         fromParseValue SortChar    (Pchar c)    = Right $ Cchar (decodeChar c)
         fromParseValue SortString  (Pstring s') = Right $ Cstring (T.pack (decodeString s'))
-        fromParseValue SortRegex   (Pregex r)   = Right $ Cregex (T.pack (decodeString r))
+        fromParseValue SortRegex   (Pregex sr)  = let dr = T.pack (decodeString sr) in
+                                                    case fromXsd dr of
+                                                        Left e  -> Left $ Error ("Unable to parse regular expression (" ++ show dr ++ ") in ValueFromText due to " ++ show e)
+                                                        Right r -> Right $ Cregex r
         fromParseValue (SortADT a) (Pcstr ctext ps) =
             case mkName ctext of
                 Left e      -> Left $ Error ("Illegal name " ++ show ctext ++ "\n" ++ show e)

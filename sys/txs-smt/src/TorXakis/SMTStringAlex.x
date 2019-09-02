@@ -4,7 +4,7 @@
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  SMTStringAlex
+-- Module      :  TorXakis.SMTStringAlex
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 

@@ -6,7 +6,7 @@
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.RegexFromXsdAlex
+-- Module      :  TorXakis.Regex.RegexFromXsdAlex
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -17,7 +17,7 @@
 -- Tokenize regular expressions according to the XSD standard.
 -- See http://www.w3.org/TR/xmlschema11-2/#regexs
 -----------------------------------------------------------------------------
-module TorXakis.RegexFromXsdAlex
+module TorXakis.Regex.RegexFromXsdAlex
 ( Token(..)
 , regexFromXsdLexer
 )

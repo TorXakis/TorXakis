@@ -27,15 +27,17 @@ library:
   dependencies:
   - array # for Happy
   - bimap
+  - containers
   - deepseq
   - hashable
   - hashmap
   - MissingH
+  - regex-tdfa
   - text
   - time
   
-  - txs-lex-regex-xsd
   - txs-name
+  - txs-regex
   - txs-valexpr
   - txs-value
   - txs-var
@@ -62,9 +64,9 @@ ghc-options:
 #- -Werror
 - -Wall
 - -Widentities
-- -Wincomplete-uni-patterns
+#- -Wincomplete-uni-patterns
 - -Wincomplete-record-updates
 - -Wmissing-home-modules
-- -Wmissing-local-signatures
-- -Wmonomorphism-restriction
+#- -Wmissing-local-signatures
+#- -Wmonomorphism-restriction
 - -Wredundant-constraints

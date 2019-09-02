@@ -12,6 +12,9 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 extra-source-files:
 - README.md
 
+dependencies:
+  - base >= 4.7 && < 5
+
 library:
   source-dirs: src
   exposed-modules:
@@ -21,12 +24,24 @@ library:
   - happy
   dependencies:
   - array                   # for alex
-  - base >= 4.7 && < 5
   - containers
   - deepseq
   - text
   
   - txs-basics
+
+tests:
+    txs-regex-test:
+        main : Spec.hs
+        source-dirs: test
+        ghc-options:
+        - -threaded
+        - -rtsopts
+        - -with-rtsopts=-N
+        dependencies:
+        - hspec
+        - QuickCheck
+        - regex-tdfa
 
 ghc-options:
 - -O

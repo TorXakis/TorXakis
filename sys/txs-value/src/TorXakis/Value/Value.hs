@@ -33,9 +33,10 @@ import qualified Data.Set        as Set
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
+import           TorXakis.Name
+import           TorXakis.Regex
 import           TorXakis.Sort
 import           TorXakis.SortContext
-import           TorXakis.Name
 
 -- | Union of Boolean, Integer, Char, String, and AlgebraicDataType value values.
 data Value = -- | Constructor of Boolean value.
@@ -46,9 +47,8 @@ data Value = -- | Constructor of Boolean value.
            | Cchar Char
              -- | Constructor of String value.
            | Cstring Text
-             -- | Constructor of Regular Expression value (in XSD format).
-           | Cregex Text                 -- PvdL: performance gain: translate only once,
-                                         --       storing SMT string as well
+             -- | Constructor of Regular Expression value.
+           | Cregex Regex
              -- | Constructor of constructor value (value of ADT).
            | Ccstr (RefByName ADTDef) (RefByName ConstructorDef) [Value]
              -- | Constructor of ANY value - temporary hack : don't use.

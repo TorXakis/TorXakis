@@ -58,7 +58,7 @@ arbitraryField isCstrs ss n = do
   where
     -- | prevent signature clashes between field access (with sort Bool) and is-made-by-constructor functions.
     availableSort :: [Sort]
-    availableSort = if L.TxsString (TorXakis.Name.toText n) `elem` isCstrs
+    availableSort = if L.fromText (TorXakis.Name.toText n) `elem` isCstrs
                         then Data.List.delete SortBool ss
                         else ss
 
@@ -79,7 +79,7 @@ arbitraryConstructors defined add =
     where
         mkConstructorDefs :: [Name] -> [Name] -> Gen [ConstructorDef]
         mkConstructorDefs cs =
-            mkConstructorDefs' (map (L.append L.prefixIsConstructor . L.TxsString . TorXakis.Name.toText) cs) cs
+            mkConstructorDefs' (map (L.append L.prefixIsConstructor . L.fromText . TorXakis.Name.toText) cs) cs
 
         mkConstructorDefs' :: [L.TxsString] -> [Name] -> [Name] -> Gen [ConstructorDef]
         mkConstructorDefs' _       []       _  = error "Non-empty list expected"

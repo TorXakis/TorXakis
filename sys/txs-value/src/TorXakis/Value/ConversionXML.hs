@@ -35,6 +35,7 @@ import           Text.XML.Expat.Tree
 
 import           TorXakis.Error
 import           TorXakis.Name
+import           TorXakis.Regex
 import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.Value.Value
@@ -46,12 +47,16 @@ import           TorXakis.Value.Value
 rootNodeName :: Text
 rootNodeName = "TorXakis"
 
+-- | char node Name
+-- for escaping not supported characted in Xml by using their value in a special node.
 charNodeName :: Text
 charNodeName = "char"
 
+-- | node Text To Xml
 nodeTextToXML :: Text -> Text -> Text
 nodeTextToXML n t = T.concat ["<", n, ">", t, "</", n, ">"]
 
+-- | valid Char
 -- Assumptions : Char in extended ASCII (i.e. ord c in [0..255]  { thus [0x0..0xFF] } )
 --               Use xml 1.0
 -- see http://www.w3.org/TR/xml/#charsets
@@ -65,6 +70,7 @@ validChar c = let i = ord c in
                         -- 0xD -> True   -- enable round tripping (\r changed in \n)
                         _   -> False
 
+-- | encode Char to Xml
 encodeChar :: Char -> Text
 encodeChar '&' = "&amp;"
 encodeChar '<' = "&lt;"
@@ -73,6 +79,7 @@ encodeChar  c  =
     then T.singleton c
     else nodeTextToXML charNodeName (T.pack (show (ord c)))
 
+-- | encode String to Xml
 encodeString :: Text -> Text
 encodeString = T.concatMap encodeChar
 
@@ -86,7 +93,7 @@ valueToXML ctx = pairToXML rootNodeName
         pairToXML node (Cint i)       = nodeTextToXML node (T.pack (show i))
         pairToXML node (Cchar c)      = nodeTextToXML node (encodeChar c)
         pairToXML node (Cstring s)    = nodeTextToXML node (encodeString s)
-        pairToXML node (Cregex r)     = nodeTextToXML node (encodeString r)
+        pairToXML node (Cregex r)     = nodeTextToXML node (encodeString (toXsd r))
         pairToXML node (Ccstr a c as) = 
             let adtDef = fromMaybe (error ("ADTDef " ++ show a ++ " not in context"))
                                    (lookupADT (toName a) ctx)
@@ -132,7 +139,10 @@ valueFromXML ctx s t =
         fromXML SortString n (Element nt [] list) | nt == n
                 = Right $ Cstring (stringFromList list)
         fromXML SortRegex  n (Element nt [] list) | nt == n
-                = Right $ Cregex (stringFromList list)
+                = let str = stringFromList list in
+                    case fromXsd str of
+                        Left e -> Left $ Error ("Unable to parse regex `" ++ show str ++ "` with error "++ show e)
+                        Right r -> Right $ Cregex r
         fromXML (SortADT a) n (Element nt [] [Element ctext [] list]) | nt == n
                 = case mkName ctext of
                     Left e      -> Left $ Error ("Illegal name " ++ show ctext ++ "\n" ++ show e)

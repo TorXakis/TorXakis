@@ -47,6 +47,7 @@ packages:
 - sys/txs-prettyprint
 - sys/txs-prettyprint-gen
 - sys/txs-regex
+- sys/txs-regex-gen
 - sys/txs-server
 - sys/txs-serverstate
 - sys/txs-smt

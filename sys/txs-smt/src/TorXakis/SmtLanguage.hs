@@ -53,12 +53,7 @@ module TorXakis.SmtLanguage
 , smtIntegerLiteral
 , smtStringLiteral
 , smtTextLiteral
-, smtRegExpUnion
-, smtRegExpConcat
-, smtRegExpOptional
-, smtRegExpKleeneStar
-, smtRegExpKleeneCross
-, smtRegExpLoop
+, smtRegexLiteral
 )
 where
 import           Control.DeepSeq     (NFData)
@@ -66,11 +61,12 @@ import           Data.Char           (ord)
 import           Data.Data           (Data)
 import           Data.List
 import           Data.Hashable       (Hashable(hashWithSalt))
+import qualified Data.Set
 import qualified Data.Text as T
 import           GHC.Generics        (Generic)
 import           Text.Printf
 
-import           TorXakis.Error
+import           TorXakis.Regex
 
 -- | The data type that represents content in the Smt language.
 -- The content can be output of e.g. a pretty printer or input for an smt solver.
@@ -177,50 +173,40 @@ smtStringLiteral t = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat (
 smtTextLiteral :: T.Text -> SmtString
 smtTextLiteral = smtStringLiteral . T.unpack
 
--- | The smt Regular Expression Union
-smtRegExpUnion :: [SmtString] -> SmtString
-smtRegExpUnion = smtListOperator (fromString "re.union") (fromString "re.nostr")
-
--- | The smt Regular Expression Concatenation
-smtRegExpConcat :: [SmtString] -> SmtString
-smtRegExpConcat = smtListOperator (fromString "re.++") (fromString "re.nostr")
-
--- | The smt Regular Expression optional (?)
-smtRegExpOptional :: SmtString -> SmtString
-smtRegExpOptional = smtUnaryOperator (fromString "re.opt")
-
--- | The smt Regular Expression Kleene Star (*)
-smtRegExpKleeneStar :: SmtString -> SmtString
-smtRegExpKleeneStar = smtUnaryOperator (fromString "re.*")
-
--- | The smt Regular Expression Kleene Cross (+)
-smtRegExpKleeneCross :: SmtString -> SmtString
-smtRegExpKleeneCross = smtUnaryOperator (fromString "re.+")
-
--- | The smt Regular Expression Loop
--- a regular expression that contains at least l repetitions of r and at most u repetitions of r.
--- preconditions: lowerbound >= 0
---                when present: upperbound >= lowerbound
-smtRegExpLoop :: SmtString     -- ^ regular expression
-              -> Integer       -- ^ lower bound
-              -> Maybe Integer -- ^ possible upperbound
-              -> Either Error SmtString
-smtRegExpLoop _ l _        | l < 0 = Left $ Error ("precondition violation: lowerbound (" ++ show l ++ ") is negative.")
-smtRegExpLoop _ l (Just u) | u < l = Left $ Error ("precondition violation: upperbound (" ++ show u ++ ") is smaller than lowerbound (" ++ show l ++ ").")
-smtRegExpLoop r l Nothing          = Right $ TorXakis.SmtLanguage.concat [ fromString "(re.loop "
-                                                                         , r
-                                                                         , singleton ' '
-                                                                         , smtIntegerLiteral l
-                                                                         , singleton ')'
-                                                                         ]
-smtRegExpLoop r l (Just u)         = Right $ TorXakis.SmtLanguage.concat [ fromString "(re.loop "
-                                                                         , r
-                                                                         , singleton ' '
-                                                                         , smtIntegerLiteral l
-                                                                         , singleton ' '
-                                                                         , smtIntegerLiteral u
-                                                                         , singleton ')'
-                                                                         ]
+smtRegexLiteral :: Regex -> SmtString
+smtRegexLiteral = smtRegexViewLiteral . view
+    where
+        -- all generated regexes contain brackets
+        -- (regexes like re.nostr and re.allchar are not used)
+        -- so intercalate with a space is NOT needed in case of concatenation
+        smtRegexViewLiteral (RegexStringLiteral t)      = TorXakis.SmtLanguage.concat [ fromString "(str.to.re "
+                                                                                      , smtTextLiteral t
+                                                                                      , singleton ')'
+                                                                                      ]
+        smtRegexViewLiteral (RegexConcat cs)            = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.++ " : map smtRegexLiteral cs ) ) 
+                                                                                      ( singleton ')' )
+        smtRegexViewLiteral (RegexUnion us)             =  TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.union " : map smtRegexLiteral (Data.Set.toList us) ) )
+                                                                                      ( singleton ')' )
+        smtRegexViewLiteral (RegexLoop r l Nothing)     = TorXakis.SmtLanguage.concat [ fromString "(re.loop "
+                                                                                      , smtRegexLiteral r
+                                                                                      , singleton ' '
+                                                                                      , smtIntegerLiteral l
+                                                                                      , singleton ')'
+                                                                                      ]
+        smtRegexViewLiteral (RegexLoop r l (Just u))    = TorXakis.SmtLanguage.concat [ fromString "(re.loop "
+                                                                                      , smtRegexLiteral r
+                                                                                      , singleton ' '
+                                                                                      , smtIntegerLiteral l
+                                                                                      , singleton ' '
+                                                                                      , smtIntegerLiteral u
+                                                                                      , singleton ')'
+                                                                                      ]
+        smtRegexViewLiteral (RegexRange l u)            = TorXakis.SmtLanguage.concat [ fromString "(re.range "
+                                                                                      , smtStringLiteral [l]
+                                                                                      , singleton ' '
+                                                                                      , smtStringLiteral [u]
+                                                                                      , singleton ')'
+                                                                                      ]
 
 -- | The Smt Exit command
 smtExit :: SmtString
@@ -289,24 +275,3 @@ smtDeclareField nm s = TorXakis.SmtLanguage.concat [ singleton '('
                                                    , s
                                                    , singleton ')'
                                                    ]
-
--- | smtUnaryOperator
-smtUnaryOperator :: SmtString -> SmtString -> SmtString
-smtUnaryOperator op s = TorXakis.SmtLanguage.concat [ singleton '('
-                                                    , op
-                                                    , singleton ' '
-                                                    , s
-                                                    , singleton ')'
-                                                    ]
-
--- | smtListOperator
-smtListOperator :: SmtString   -- ^ operator
-                -> SmtString   -- ^ result for empty lists
-                -> [SmtString] -- ^ list of operator arguments
-                -> SmtString
-smtListOperator _  e []  = e
-smtListOperator _  _ [x] = x
-smtListOperator op _ ls  = TorXakis.SmtLanguage.concat [ singleton '('
-                                                       , TorXakis.SmtLanguage.intercalate (singleton ' ') ( op : ls )
-                                                       , singleton ')'
-                                                       ]

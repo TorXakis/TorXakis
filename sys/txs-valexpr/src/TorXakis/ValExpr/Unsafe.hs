@@ -59,9 +59,9 @@ import           TorXakis.Error
 import           TorXakis.FunctionName
 import           TorXakis.FuncSignature
 import           TorXakis.RefByIndex
+import           TorXakis.Regex         (toPosix)
 import           TorXakis.Sort
 import           TorXakis.SortContext
-import           TorXakis.ValExpr.RegexXSD2Posix
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.Value
 import           TorXakis.Var
@@ -503,7 +503,7 @@ unsafeStrInRe (Right s) (Right p) = unsafeStrInRe' s p
 
 unsafeStrInRe' :: ValExpression -> ValExpression -> Either Error ValExpression
 unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s))
-               (TorXakis.ValExpr.ValExpr.view -> Vconst (Cregex r))  = unsafeConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
+               (TorXakis.ValExpr.ValExpr.view -> Vconst (Cregex r))  = unsafeConst (Cbool (T.unpack s =~ T.unpack (toPosix r) ) )
 unsafeStrInRe' s r                                                   = Right $ ValExpression (Vstrinre s r)
 
 -- | When all value expressions are constant values, return Just them otherwise return Nothing.
