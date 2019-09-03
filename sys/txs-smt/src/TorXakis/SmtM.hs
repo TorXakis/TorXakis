@@ -544,7 +544,7 @@ valExprViewToSmt :: ValExpressionView -> SmtM SmtString
 valExprViewToSmt (Vconst c)        = valueToSmt c
 valExprViewToSmt (Vvar v)          = varRefToSmt v
 valExprViewToSmt (Vequal v1 v2)    = mapM valExprToSmt [v1,v2] >>= return . operatorToSmt (TorXakis.SmtLanguage.singleton '=')
-valExprViewToSmt (Vite c t f)      = mapM valExprToSmt [c,t,f] >>= return . operatorToSmt (fromString "(ite")
+valExprViewToSmt (Vite c t f)      = mapM valExprToSmt [c,t,f] >>= return . operatorToSmt (fromString "ite")
 valExprViewToSmt (Vfunc fr args)   = undefined
 valExprViewToSmt (Vpredef fr _)    = error ("predefined function should not be passed to SMT solver: " ++ show fr)
 valExprViewToSmt (Vnot e)          = valExprToSmt e >>= return . unaryOperatorToSmt (fromString "not")

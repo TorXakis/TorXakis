@@ -17,6 +17,7 @@ dependencies:
 - hashmap
 - mtl
 - process
+- text
 
 - txs-basics
 - txs-name
@@ -38,7 +39,6 @@ library:
   - hashable
   - MissingH
   - regex-tdfa
-  - text
   - time
   
   - txs-regex

@@ -18,7 +18,6 @@ defaultSMTProcs =
   [ cmdCVC4
   , cmdZ3
   , cmdZ3Str3
-  , cmdYices
   ]
 
 cmdCVC4 :: (FilePath,[String])
@@ -44,10 +43,12 @@ cmdZ3Str3 = ("z3", [ "-smt2"
                    ]
             )
 
+{- Yices doesn't support declare-datatypes
 cmdYices :: (FilePath,[String])
 cmdYices = ("yices-smt2", [ "--incremental"
                           ]
             )
+-}
 
 {- MathSat occasionally unexplainably hangs: https://github.com/TorXakis/TorXakis/issues/419
 cmdMathSAT :: (FilePath,[String])

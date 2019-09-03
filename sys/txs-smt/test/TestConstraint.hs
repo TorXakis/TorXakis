@@ -13,6 +13,7 @@ where
 import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.HashMap
+import qualified Data.Text
 --import           Text.Regex.TDFA
 
 -- test specific Haskell imports
@@ -61,13 +62,13 @@ labelTestList = [
         ("Bool False",                                  testBoolFalse),
         ("Bool True",                                   testBoolTrue),
         ("Int",                                         testInt),
-        ("Int Negative",                                testIntNegative) {-,
+        ("Int Negative",                                testIntNegative),
         ("Conditional Int Datatype",                    testConditionalInt),
         ("Conditional Int IsAbsent",                    testConditionalIntIsAbsent),
         ("Conditional Int IsPresent",                   testConditionalIntIsPresent),
         ("Conditional Int Present Value",               testConditionalIntPresentValue),
         ("Conditional Int Instances",                   testConditionalIntInstances),
-        ("Nested Constructor",                          testNestedConstructor),
+        ("Nested Constructor",                          testNestedConstructor){-,
         ("Functions",                                   testFunctions),
         ("Just String",                                 testString)
    -}     ]
@@ -161,8 +162,8 @@ testNone :: SmtM ()
 testNone = testTemplateSat []
 
 testNegativeNegativeIsIdentity :: SmtM ()
-testNegativeNegativeIsIdentity = 
-    let ctx             = TorXakis.ContextVar.empty 
+testNegativeNegativeIsIdentity =
+    let ctx             = TorXakis.ContextVar.empty
         Right x         = mkConst ctx (Cint 3)
         Right minX      = mkUnaryMinus ctx x
         Right minMinX   = mkUnaryMinus ctx minX
@@ -172,7 +173,7 @@ testNegativeNegativeIsIdentity =
 
 testAdd :: SmtM()
 testAdd =
-    let ctx          = TorXakis.ContextVar.empty 
+    let ctx          = TorXakis.ContextVar.empty
         Right a      = mkConst ctx (Cint 4)
         Right b      = mkConst ctx (Cint 9)
         Right add    = mkSum ctx [a,b]
@@ -181,191 +182,121 @@ testAdd =
       in
         testTemplateSat [equal]
 
--- --------------------------------------------------------------------------------------------------------------------
 testNoVariables :: SmtM()
 testNoVariables = testTemplateValue [] [] [] []
 
 testBool :: SmtM()
-testBool = 
-    let Right nm = mkName "var"
-        Right boolVar = mkVarDef TorXakis.ContextVar.empty nm SortBool
+testBool =
+    let (_, [(boolVar, _)]) = makeVars TorXakis.ContextVar.empty [SortBool]
       in
         testTemplateValue [] [] [boolVar] []
 
 testBoolTrue :: SmtM()
-testBoolTrue = 
-    let Right nm = mkName "var"
-        Right boolVar = mkVarDef TorXakis.ContextVar.empty nm SortBool
-        Right ctx = addVars [boolVar] TorXakis.ContextVar.empty
-        ref :: RefByName VarDef
-        ref = (RefByName nm)
-        Right boolExpr = mkVar ctx ref
+testBoolTrue =
+    let (_, [(boolVar, boolExpr)]) = makeVars TorXakis.ContextVar.empty [SortBool]
       in
         testTemplateValue [] [] [boolVar] [boolExpr]
 
 testBoolFalse :: SmtM()
-testBoolFalse = 
-    let Right nm = mkName "var"
-        Right boolVar = mkVarDef TorXakis.ContextVar.empty nm SortBool
-        Right ctx = addVars [boolVar] TorXakis.ContextVar.empty
-        ref :: RefByName VarDef
-        ref = (RefByName nm)
-        Right boolExpr = mkVar ctx ref
+testBoolFalse =
+    let (ctx, [(boolVar, boolExpr)]) = makeVars TorXakis.ContextVar.empty [SortBool]
         Right notExpr = mkNot ctx boolExpr
       in
         testTemplateValue [] [] [boolVar] [notExpr]
 
 testInt :: SmtM()
-testInt = 
-    let Right nm = mkName "var"
-        Right intVar = mkVarDef TorXakis.ContextVar.empty nm SortInt
+testInt =
+    let (_, [(intVar, _)]) = makeVars TorXakis.ContextVar.empty [SortInt]
       in
         testTemplateValue [] [] [intVar] []
 
 testIntNegative :: SmtM()
-testIntNegative = 
-    let Right nm = mkName "var"
-        Right intVar = mkVarDef TorXakis.ContextVar.empty nm SortInt
-        Right ctx = addVars [intVar] TorXakis.ContextVar.empty
-        ref :: RefByName VarDef
-        ref = (RefByName nm)
-        Right intExpr = mkVar ctx ref
+testIntNegative =
+    let (ctx, [(intVar, intExpr)]) = makeVars TorXakis.ContextVar.empty [SortInt]
         Right constExpr = mkConst ctx (Cint 0)
         Right boolExpr = mkLT ctx intExpr constExpr
       in
         testTemplateValue [] [] [intVar] [boolExpr]
 
-        {-
 
-conditionalIntSortId :: SortId
-conditionalIntSortId = SortId "conditionalInt" 234
+testConditionalInt :: SmtM()
+testConditionalInt =
+    let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
+        (_, [(cIntVar, _)]) = makeVars ctx [conditionalIntSort]
+      in
+        testTemplateValue [conditionalInt] [] [cIntVar] []
 
-absentCstrId :: CstrId
-absentCstrId = CstrId "_absent" 2345 [] conditionalIntSortId
+testConditionalIntIsAbsent :: SmtM()
+testConditionalIntIsAbsent =
+    let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
+        (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
+        boolExpr = isCstrAbsent ctx' cIntExpr
+      in
+        testTemplateValue [conditionalInt] [] [cIntVar] [boolExpr]
 
-presentCstrId :: CstrId
-presentCstrId = CstrId "_present" 2346 [sortIdInt] conditionalIntSortId
+testConditionalIntIsPresent :: SmtM()
+testConditionalIntIsPresent =
+    let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
+        (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
+        boolExpr = isCstrPresent ctx' cIntExpr
+      in
+        testTemplateValue [conditionalInt] [] [cIntVar] [boolExpr]
 
-isAbsentCstrFunc :: FuncId
-isAbsentCstrFunc = FuncId "is_absent" 9876 [conditionalIntSortId] sortIdBool
+testConditionalIntPresentValue :: SmtM()
+testConditionalIntPresentValue =
+    let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
+        (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
+        condExpr = isCstrPresent ctx' cIntExpr
+        acessExpr = accessValue ctx' cIntExpr
+        Right constExpr = mkConst ctx' (Cint 4)
+        Right trueBranch = mkGT ctx' acessExpr constExpr
+        Right falseBranch = mkConst ctx' (Cbool False)
+        Right boolExpr = mkITE ctx' condExpr trueBranch falseBranch
+      in
+        testTemplateValue [conditionalInt] [] [cIntVar] [boolExpr]
 
-isPresentCstrFunc :: FuncId
-isPresentCstrFunc = FuncId "is_present" 9877 [conditionalIntSortId] sortIdBool
+testConditionalIntInstances :: SmtM()
+testConditionalIntInstances =
+    let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
+        (ctx', [ (cIntVar1, cIntExpr1)
+               , (cIntVar2, cIntExpr2)
+               , (cIntVar3, cIntExpr3)
+               ]) = makeVars ctx [ conditionalIntSort
+                                 , conditionalIntSort
+                                 , conditionalIntSort
+                                 ]
+        Right equal12 = mkEqual ctx' cIntExpr1 cIntExpr2
+        Right equal13 = mkEqual ctx' cIntExpr1 cIntExpr3
+        Right equal23 = mkEqual ctx' cIntExpr2 cIntExpr3
 
-valuePresentCstrFunc :: FuncId
-valuePresentCstrFunc = FuncId "value" 6565 [conditionalIntSortId] sortIdInt
-
-conditionalIntDef :: EnvDefs
-conditionalIntDef = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) (Map.fromList [(absentCstrId,CstrDef isAbsentCstrFunc []), (presentCstrId, CstrDef isPresentCstrFunc [valuePresentCstrFunc])]) Map.empty
-
-testConditionalInt :: SMT()
-testConditionalInt = testTemplateValue conditionalIntDef [conditionalIntSortId] (const []) check
-    where
-        check :: [Constant] -> SMT()
-        check [value] = case value of
-            Ccstr x []       | x == absentCstrId  -> lift $ assertBool "expected pattern" True
-            Ccstr x [Cint _] | x == presentCstrId -> lift $ assertBool "expected pattern" True
-            _                                     -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
-
-
-testConditionalIntIsAbsent :: SMT()
-testConditionalIntIsAbsent = testTemplateValue conditionalIntDef [conditionalIntSortId] createAssertions check
-    where
-        createAssertions :: [VarId] -> [ValExpr VarId]
-        createAssertions [v] = [cstrIsCstr absentCstrId (cstrVar v)]
-        createAssertions _   = error "One variable in problem"
-
-        check :: [Constant] -> SMT()
-        check [value]   = case value of
-            Ccstr x [] | x == absentCstrId  -> lift $ assertBool "expected pattern" True
-            _                               -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
-
-
-testConditionalIntIsPresent :: SMT()
-testConditionalIntIsPresent = testTemplateValue conditionalIntDef [conditionalIntSortId] createAssertions check
-    where
-        createAssertions :: [VarId] -> [ValExpr VarId]
-        createAssertions [v] = [cstrIsCstr presentCstrId (cstrVar v)]
-        createAssertions _   = error "One variable in problem"
-
-        check :: [Constant] -> SMT()
-        check [value] = case value of
-            Ccstr x [Cint _] | x == presentCstrId   -> lift $ assertBool "expected pattern" True
-            _                                       -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
+        Right not12 = mkNot ctx' equal12
+        Right not13 = mkNot ctx' equal13
+        Right not23 = mkNot ctx' equal23
+      in
+        testTemplateValue [conditionalInt] [] [cIntVar1, cIntVar2, cIntVar3] [not12, not13, not23]
 
 
-testConditionalIntPresentValue :: SMT()
-testConditionalIntPresentValue = testTemplateValue conditionalIntDef [conditionalIntSortId] createAssertions check
-    where
-        boundary :: Integer
-        boundary = 4
+testNestedConstructor :: SmtM()
+testNestedConstructor =
+    let Right ctx = TorXakis.ContextVar.addADTs [pair, conditionalPair] TorXakis.ContextVar.empty
+        (ctx', [ (var1, expr1)
+               , (var2, expr2)
+               , (var3, expr3)
+               ]) = makeVars ctx [ conditionalPairSort
+                                 , conditionalPairSort
+                                 , conditionalPairSort
+                                 ]
+        Right equal12 = mkEqual ctx' expr1 expr2
+        Right equal13 = mkEqual ctx' expr1 expr3
+        Right equal23 = mkEqual ctx' expr2 expr3
 
-        createAssertions :: [VarId] -> [ValExpr VarId]
-        createAssertions [v]    = [ cstrIsCstr presentCstrId (cstrVar v)
-                                  , cstrITE (cstrIsCstr presentCstrId (cstrVar v))
-                                            (cstrGT (cstrAccess presentCstrId "value" 0 (cstrVar v)) (cstrConst (Cint boundary)) )
-                                            (cstrConst (Cbool True))
-                                  ]
-        createAssertions _   = error "One variable in problem"
+        Right not12 = mkNot ctx' equal12
+        Right not13 = mkNot ctx' equal13
+        Right not23 = mkNot ctx' equal23
+      in
+        testTemplateValue [pair, conditionalPair] [] [var1, var2, var3] [not12, not13, not23]
 
-        check :: [Constant] -> SMT()
-        check [value] = case value of
-            Ccstr c [Cint x] | c == presentCstrId   -> lift $ assertBool "expected pattern" (x > boundary)
-            _                                       -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
-
-
-check3Different :: [Constant] -> SMT()
-check3Different [v1, v2, v3]    = do
-                                    lift $ assertBool "value1 != value2" (v1 /= v2)
-                                    lift $ assertBool "value1 != value3" (v1 /= v3)
-                                    lift $ assertBool "value2 != value3" (v2 /= v3)
-check3Different _               = error "Three variable in problem"
-
-testConditionalIntInstances :: SMT()
-testConditionalIntInstances = testTemplateValue conditionalIntDef
-                                                [conditionalIntSortId,conditionalIntSortId,conditionalIntSortId]
-                                                createAssertions
-                                                check3Different
-    where
-        createAssertions :: [VarId] -> [ValExpr VarId]
-        createAssertions [v1,v2,v3]    = [ cstrNot (cstrEqual (cstrVar v1) (cstrVar v2))
-                                         , cstrNot (cstrEqual (cstrVar v2) (cstrVar v3))
-                                         , cstrNot (cstrEqual (cstrVar v1) (cstrVar v3))
-                                         ]
-        createAssertions _   = error "Three variables in problem"
-
-
-testNestedConstructor :: SMT()
-testNestedConstructor = do
-        let pairSortId = SortId "Pair" 12345
-        let pairCstrId = CstrId "Pair" 2344 [sortIdInt,sortIdInt] pairSortId
-        let absentPairCstrId = CstrId "Absent" 2345 [] conditionalPairSortId
-        let presentPairCstrId = CstrId "Present" 2346 [pairSortId] conditionalPairSortId
-        let conditionalPairDefs = EnvDefs (Map.fromList [ (conditionalPairSortId, SortDef), (pairSortId, SortDef) ])
-                                          (Map.fromList [ (pairCstrId, CstrDef (FuncId "ignore" 9875 [] pairSortId) [FuncId "x" 6565 [] sortIdInt, FuncId "y" 6666 [] sortIdInt])
-                                                        , (absentPairCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalPairSortId) [])
-                                                        , (presentPairCstrId, CstrDef (FuncId "ignore" 9877 [] conditionalPairSortId) [FuncId "value" 6767 [] pairSortId])
-                                                        ])
-                                          Map.empty
-
-        testTemplateValue   conditionalPairDefs
-                            [conditionalPairSortId,conditionalPairSortId,conditionalPairSortId]
-                            createAssertions
-                            check3Different
-    where
-        conditionalPairSortId = SortId "ConditionalPair" 9630
-
-        createAssertions :: [VarId] -> [ValExpr VarId]
-        createAssertions [v1,v2,v3]    = [ cstrNot (cstrEqual (cstrVar v1) (cstrVar v2))
-                                         , cstrNot (cstrEqual (cstrVar v2) (cstrVar v3))
-                                         , cstrNot (cstrEqual (cstrVar v1) (cstrVar v3))
-                                         ]
-        createAssertions _   = error "Three variables in problem"
-
+{-
 testFunctions :: SMT()
 testFunctions = do
         let varX = VarId "x" 645421 sortIdBool
@@ -383,9 +314,9 @@ testFunctions = do
     where
         fid1 = FuncId "multipleArgsFunction" 123454321 [sortIdBool, sortIdBool] sortIdBool
         fid2 = FuncId "myConst" 12345678 [] sortIdInt
-        const2 = cstrConst (Cint 3) :: ValExpr VarId
+        const2 = cstrConst (Cint 3) :: ValExpression VarId
 
-        createAssertions :: [VarId] -> [ValExpr VarId]
+        createAssertions :: [VarId] -> [ValExpression VarId]
         createAssertions [b1,b2,i]    = [ cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) fid1 [cstrVar b1, cstrVar b2]
                                         , cstrEqual (cstrVar i) (cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) fid2 [])
                                         ]
@@ -409,7 +340,7 @@ testString = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdSt
 testStringEquals :: Text -> SMT()
 testStringEquals str = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
     where
-        createAssertions :: [VarId] -> [ValExpr VarId]
+        createAssertions :: [VarId] -> [ValExpression VarId]
         createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring str))]
         createAssertions _   = error "One variable in problem"
 
@@ -423,7 +354,7 @@ testStringEquals str = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty)
 testStringLength :: Int -> SMT()
 testStringLength n = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
     where
-        createAssertions :: [VarId] -> [ValExpr VarId]
+        createAssertions :: [VarId] -> [ValExpression VarId]
         createAssertions [v] = [cstrEqual (cstrConst (Cint (Prelude.toInteger n))) (cstrLength (cstrVar v))]
         createAssertions _   = error "One variable in problem"
 
@@ -437,7 +368,7 @@ testStringLength n = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [
 testRegex :: String -> SMT ()
 testRegex regexStr = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
     where
-        createAssertions :: [VarId] -> [ValExpr VarId]
+        createAssertions :: [VarId] -> [ValExpression VarId]
         createAssertions [v] = [cstrStrInRe (cstrVar v) (cstrConst (Cregex (T.pack regexStr)))]
         createAssertions _   = error "One variable in problem"
 
@@ -449,3 +380,136 @@ testRegex regexStr = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [
                             _                  -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 -}
+
+-- --------------------------------------------------------------------------------------------------------------------
+-- make Var and Expressions
+-- --------------------------------------------------------------------------------------------------------------------
+makeVars :: VarContext c => c -> [Sort] -> (c, [(VarDef, ValExpression)])
+makeVars ctx ss = foldl makeVar (ctx, []) (zip ss [1..])
+    where
+        makeVar :: VarContext c => (c, [(VarDef, ValExpression)]) -> (Sort, Integer) -> (c, [(VarDef, ValExpression)])
+        makeVar (ctxIn, vs) (s,i) =
+            let Right nm = mkName (Data.Text.append "var" (Data.Text.pack (show i)))
+                ref :: RefByName VarDef
+                ref = RefByName nm
+                Right varDecl = mkVarDef ctxIn nm s
+                Right ctxOut = addVars [varDecl] ctxIn
+                Right varExpr = mkVar ctxOut ref
+              in
+                ( ctxOut, ( (varDecl, varExpr) : vs ) )
+
+--------------------
+-- Conditional Int
+--------------------
+absentName :: Name
+absentName = case mkName "absent" of
+                Right nm -> nm
+                Left e -> error ("absentName failed with " ++ show e)
+
+absentCstrRef :: RefByName ConstructorDef
+absentCstrRef = RefByName absentName
+
+absentCstr :: ConstructorDef
+absentCstr = case mkConstructorDef absentName [] of
+                Right cstr -> cstr
+                Left e -> error ("absentCstr failed with " ++ show e)
+
+isCstrAbsent :: VarContext c => c -> ValExpression -> ValExpression
+isCstrAbsent ctx e = case mkIsCstr ctx conditionalIntRef absentCstrRef e of
+                            Right isCstr -> isCstr
+                            Left err -> error ("isCstrAbsent failed with " ++ show err)
+
+valueName :: Name
+valueName = case mkName "value" of
+                Right nm -> nm
+                Left e -> error ("valueName failed with " ++ show e)
+
+presentName :: Name
+presentName = case mkName "present" of
+                Right nm -> nm
+                Left e -> error ("presentName failed with " ++ show e)
+
+presentCstrRef :: RefByName ConstructorDef
+presentCstrRef = RefByName presentName
+
+presentCstr :: Sort -> ConstructorDef
+presentCstr str = case mkConstructorDef presentName [FieldDef valueName str] of
+                Right cstr -> cstr
+                Left e -> error ("presentCstr failed with " ++ show e)
+
+isCstrPresent :: VarContext c => c -> ValExpression -> ValExpression
+isCstrPresent ctx e = case mkIsCstr ctx conditionalIntRef presentCstrRef e of
+                            Right isCstr -> isCstr
+                            Left err -> error ("isCstrPresent failed with " ++ show err)
+
+accessValue :: VarContext c => c -> ValExpression -> ValExpression
+accessValue ctx e = case mkAccess ctx conditionalIntRef presentCstrRef (RefByName valueName) e of
+                            Right access -> access
+                            Left err -> error ("accessValue failed with " ++ show err)
+
+conditionalIntName :: Name
+conditionalIntName = case mkName "conditionalInt" of
+                Right nm -> nm
+                Left e -> error ("conditionalIntName failed with " ++ show e)
+
+conditionalIntRef :: RefByName ADTDef
+conditionalIntRef = RefByName conditionalIntName
+
+conditionalIntSort :: Sort
+conditionalIntSort = SortADT conditionalIntRef
+
+conditionalInt :: ADTDef
+conditionalInt = conditional conditionalIntName SortInt
+
+conditional :: Name -> Sort -> ADTDef
+conditional nm s = case mkADTDef nm [absentCstr, presentCstr s] of
+                        Right adt -> adt
+                        Left e -> error ("conditional failed with " ++ show e)
+
+-- --------------------
+-- Pair 
+-- --------------------
+pairName :: Name
+pairName = case mkName "pair" of
+                Right nm -> nm
+                Left e -> error ("pairName failed with " ++ show e)
+
+xName :: Name
+xName = case mkName "x" of
+                Right nm -> nm
+                Left e -> error ("xName failed with " ++ show e)
+
+yName :: Name
+yName = case mkName "y" of
+                Right nm -> nm
+                Left e -> error ("yName failed with " ++ show e)
+
+pairCstr :: ConstructorDef
+pairCstr = case mkConstructorDef pairName [FieldDef xName SortInt, FieldDef yName SortInt] of
+                Right cstr -> cstr
+                Left e -> error ("pairCstr failed with " ++ show e)
+
+pair :: ADTDef
+pair = case mkADTDef pairName [pairCstr] of
+                    Right adt -> adt
+                    Left e -> error ("pair failed with " ++ show e)
+
+pairRef :: RefByName ADTDef
+pairRef = RefByName pairName
+
+pairSort :: Sort
+pairSort = SortADT pairRef
+
+conditionalPairName :: Name
+conditionalPairName = case mkName "CONDITIONAL_PAIR" of
+                Right nm -> nm
+                Left e -> error ("conditionalPairName failed with " ++ show e)
+
+conditionalPair :: ADTDef
+conditionalPair = conditional conditionalPairName pairSort
+
+conditionalPairRef :: RefByName ADTDef
+conditionalPairRef = RefByName conditionalPairName
+
+conditionalPairSort :: Sort
+conditionalPairSort = SortADT conditionalPairRef
