@@ -66,7 +66,7 @@ newtype KindOfProblem = KindOfProblem { -- | to Maybe
                                         toMaybeKindOfSolution :: Maybe KindOfSolution
                                       } deriving (Eq, Ord, Read, Show)
 -- | The Problem Solver class.
-class ProblemSolver p where
+class Monad p => ProblemSolver p where
     -- | Info on Problem Solver
     info :: p String
     
@@ -100,7 +100,25 @@ class ProblemSolver p where
     solve :: p SolveProblem
     -- | What is the kind of problem?
     kindOfProblem :: p KindOfProblem
-    
+    kindOfProblem = do
+        s <- solve
+        case s of 
+            UnableToSolve -> return $ KindOfProblem Nothing
+            Unsolvable    -> return $ KindOfProblem (Just NoSolution)
+            Solved sol    -> do
+                                ctx <- toValExprContext
+                                case negateSolution ctx sol of
+                                    Left e          -> error ("negateSolution unexpectedly failed with " ++ show e)
+                                    Right assert    -> do
+                                                            _ <- push
+                                                            addAssertions [assert]
+                                                            s' <- solvable
+                                                            _ <- pop
+                                                            case toMaybeBool s' of
+                                                                Nothing    -> return $ KindOfProblem Nothing
+                                                                Just False -> return $ KindOfProblem (Just UniqueSolution)
+                                                                Just True  -> return $ KindOfProblem (Just MultipleSolutions)
+
     -- | conversion
     toValExprContext :: p ContextValExpr
 

@@ -22,6 +22,7 @@ See LICENSE at root directory of this repository.
 module TorXakis.NameMap
 ( NameMap
 , empty
+, TorXakis.NameMap.null
 , member
 , TorXakis.NameMap.lookup
 , elems
@@ -47,6 +48,10 @@ data NameMap a where
 -- | The empty map.
 empty :: HasName a => NameMap a
 empty = NameMap HashMap.empty
+
+-- | Is the map empty?
+null :: NameMap a -> Bool
+null (NameMap m) = HashMap.null m
 
 -- | Is an object with the provided name a member of the map?
 member :: Name -> NameMap a -> Bool

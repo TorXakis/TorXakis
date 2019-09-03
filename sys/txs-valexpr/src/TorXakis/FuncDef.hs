@@ -62,7 +62,7 @@ data FuncDef = FuncDef { -- | The name of the function (of type 'TorXakis.Name')
 toVarContext :: SortContext c => c -> VarsDecl -> ContextVar
 toVarContext ctx vs =
     case addVars (toList vs) (fromSortContext ctx) of
-        Left e      -> error ("toVarContext is unable to make new context" ++ show e)
+        Left e      -> error ("toVarContext is unable to make new context " ++ show e)
         Right vctx  -> vctx
 
 -- | Helper function for construction: check for undefined sorts per function definition

@@ -63,7 +63,7 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.NameMap
+import qualified TorXakis.NameMap
 -----------------------------------------------------------------------------
 -- Sort
 -----------------------------------------------------------------------------
@@ -154,7 +154,7 @@ data ADTDef = ADTDef
     { -- | Name of the ADT
       adtName      :: Name
       -- | Constructor definitions of the ADT
-    , constructors :: NameMap ConstructorDef
+    , constructors :: TorXakis.NameMap.NameMap ConstructorDef
     }
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
@@ -177,7 +177,7 @@ mkADTDef _ [] = Left $ Error "Empty Constructor List"
 mkADTDef m cs
     | not $ null nuCstrDefs                 = Left $ Error ("Non-unique constructor definitions: " ++ show nuCstrDefs)
     | not $ null nuFields                   = Left $ Error ("Non-unique field definitions: " ++ show nuFields)
-    | otherwise                             = Right $ ADTDef m (toNameMap cs)
+    | otherwise                             = Right $ ADTDef m (TorXakis.NameMap.toNameMap cs)
     where
         nuCstrDefs :: [ConstructorDef]
         nuCstrDefs   = repeatedByName cs
@@ -190,7 +190,7 @@ mkADTDef m cs
 
 -- | Refers the provided ConstructorDef name to a ConstructorDef in the given ADTDef?
 memberConstructor :: Name -> ADTDef -> Bool
-memberConstructor r a = member r (constructors a)
+memberConstructor r a = TorXakis.NameMap.member r (constructors a)
 
 -- | lookup ConstructorDef
 lookupConstructor :: Name -> ADTDef -> Maybe ConstructorDef
@@ -198,7 +198,7 @@ lookupConstructor r a = TorXakis.NameMap.lookup r (constructors a)
 
 -- | All ConstructorDefs of given ADTDef
 elemsConstructor :: ADTDef -> [ConstructorDef]
-elemsConstructor = elems . constructors
+elemsConstructor = TorXakis.NameMap.elems . constructors
 
 -- | Class for Used Sorts
 class UsedSorts c a where

@@ -41,6 +41,7 @@ module TorXakis.SmtLanguage
 , smtGetInfo
 , smtDeclareVariable
 , smtGetValues
+, smtDeclareFunctions
 , smtDeclareDatatypes
 , smtDeclareDatatype
 , smtDeclareConstructor
@@ -254,7 +255,7 @@ smtDeclareVariable nm srt = TorXakis.SmtLanguage.concat [ fromString "(declare-f
                                                         ]
 
 -- | The Smt Get Values command for a list of variables
--- TODO: replace by get-model (see issue https://github.com/Z3Prover/z3/issues/2502)
+-- TODO: replace by get-model? (see issue https://github.com/TorXakis/TorXakis/issues/932)
 smtGetValues :: [SmtString] -- ^ variables
              -> SmtString
 smtGetValues vs = TorXakis.SmtLanguage.concat [ fromString "(get-value ("
@@ -262,6 +263,17 @@ smtGetValues vs = TorXakis.SmtLanguage.concat [ fromString "(get-value ("
                                               , fromString "))"
                                               ]
 
+-- | The Smt Declare Functions command with a list of Tuples containing the function header and body
+-- Note: function declarations can be recursive
+smtDeclareFunctions :: [(SmtString,SmtString)] -- ^ list of tuples containing the header and body of the functions
+                    -> SmtString
+smtDeclareFunctions fs = let (hs,bs) = unzip fs in
+                            TorXakis.SmtLanguage.concat [ fromString "(define-funs-rec ("
+                                                        , TorXakis.SmtLanguage.concat hs
+                                                        , fromString ")("
+                                                        , TorXakis.SmtLanguage.intercalate (TorXakis.SmtLanguage.singleton ' ') bs      -- bodys can be just `1` or `true`, so separation is needed
+                                                        , fromString "))"
+                                                        ]
 
 -- | The Smt Declare Datatypes command with a list of Datatypes
 -- Note: data type declarations can be recursive
@@ -271,14 +283,14 @@ smtDeclareDatatypes ds = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.conc
                                                      ( fromString "))" )
 
 -- | An Smt Declare Datatype element
-smtDeclareDatatype :: SmtString -- ^ Datatype name
+smtDeclareDatatype :: SmtString   -- ^ Datatype name
                    -> [SmtString] -- ^ Constructors
                    -> SmtString
 smtDeclareDatatype nm cs = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat (singleton '(' : nm : cs) )
                                                        ( singleton ')' )
 
 -- | An Smt Declare Constructor element
-smtDeclareConstructor :: SmtString -- ^ Constructor name
+smtDeclareConstructor :: SmtString   -- ^ Constructor name
                       -> [SmtString] -- ^ Fields
                       -> SmtString
 smtDeclareConstructor nm [] = TorXakis.SmtLanguage.concat [ singleton '('

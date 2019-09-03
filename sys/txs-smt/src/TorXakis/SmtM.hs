@@ -48,6 +48,7 @@ import           System.Process
 import           TorXakis.ContextFunc
 import           TorXakis.ContextValExpr
 import           TorXakis.Error
+import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.NameMap
@@ -259,9 +260,70 @@ instance ProblemSolver SmtM where
                                             ]
 
 
-    addFunctions [] = return ()
-    addFunctions _ = undefined
+    addFunctions fs = do
+            st <- get
+            if TorXakis.SmtM.depth st > 0
+                then throwError $ Error "AddFunctions only at depth 0. Depth is controlled by push and pop."
+                else case fs of
+                        [] -> return ()
+                        _  -> case TorXakis.ContextFunc.addFuncs fs (TorXakis.SmtM.funcContext st) of
+                                Left e -> throwError $ Error ("Smt ProblemSolver - addFunctions failed due to " ++ show e)
+                                Right funcContext' ->
+                                    let fI = funcId st
+                                        fI' = fI + toInteger (Data.List.length fs)
+                                        fTs = funcToSmt st
+                                        fTs' = foldl (insertFunction funcContext') fTs $ zip fs [fI ..]
+                                      in do
+                                            put $ st{ TorXakis.SmtM.funcContext = funcContext'
+                                                    , TorXakis.SmtM.funcId      = fI'
+                                                    , TorXakis.SmtM.funcToSmt   = fTs'
+                                                    }
+                                            smtFuncs <- foldM addFunctionHeaderBodyTuple [] fs
+                                            smtPut $ smtDeclareFunctions smtFuncs
+        where
+            insertFunction :: SortContext c => c -> FuncMap -> (FuncDef, Integer) -> FuncMap
+            insertFunction ctx m (f,i) =
+                Data.HashMap.insert (RefByFuncSignature (getFuncSignature ctx f)) (toSmtFuncText i) m
 
+            toSmtFuncText :: Integer -> SmtString
+            toSmtFuncText i = TorXakis.SmtLanguage.append (TorXakis.SmtLanguage.singleton 'f')
+                                                          (fromString (showHex i ""))
+
+            addFunctionHeaderBodyTuple :: [(SmtString, SmtString)] -> FuncDef -> SmtM [(SmtString, SmtString)]
+            addFunctionHeaderBodyTuple ls f = do
+                st <- get
+                assert (TorXakis.NameMap.null (TorXakis.NameMap.unions (TorXakis.SmtM.varDefsStack st))) $ 
+                    let ps = TorXakis.Var.toList (paramDefs f) in do
+                        _ <- push
+                        declareVariables ps
+                        ctx <- toValExprContext
+                        let fr = getFuncSignature ctx f in do
+                            sfr <- funcRefToSmt (RefByFuncSignature fr)
+                            sps <- mapM toParameterSmt ps
+                            sr <- sortToSmt (returnSort fr)
+                            b <- valExprToSmt (body f)
+                            _ <- pop
+                            let h = TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.singleton '('
+                                                                , sfr
+                                                                , TorXakis.SmtLanguage.singleton '('
+                                                                , TorXakis.SmtLanguage.concat sps
+                                                                , TorXakis.SmtLanguage.singleton ')'
+                                                                , sr
+                                                                , TorXakis.SmtLanguage.singleton ')'
+                                                                ] in
+                                return ( (h,b) : ls )
+
+            toParameterSmt :: VarDef -> SmtM SmtString
+            toParameterSmt p = do
+                ref <- varRefToSmt (RefByName (name p))
+                srt <- sortToSmt (TorXakis.Var.sort p)
+                return $ TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.singleton '('
+                                                     , ref
+                                                     , TorXakis.SmtLanguage.singleton ' '
+                                                     , srt
+                                                     , TorXakis.SmtLanguage.singleton ')'
+                                                     ]
+            
     push = do
             smtPut smtPush
             -- update depth (not returned by smt solver) and add new variables on stack
@@ -316,7 +378,7 @@ instance ProblemSolver SmtM where
                 where
                     iText :: SmtString
                     iText = fromString (showHex i "")
-            
+
             toSmtVarDecl :: VarDef -> SmtM ()
             toSmtVarDecl v = do
                 ref <- varRefToSmt (RefByName (name v))
@@ -368,8 +430,6 @@ instance ProblemSolver SmtM where
                                                 (TorXakis.NameMap.lookup (toName tVarRef) varDefs) in do
                                 tVal <- smtValueToTxsValue sVal (TorXakis.Var.sort tVarDef)
                                 return (tVarRef, tVal)
-
-    kindOfProblem = undefined
 
     toValExprContext = do
             st <- get
@@ -516,6 +576,14 @@ varRefToSmt vr = do
                     return $ fromMaybe (error ("varref (" ++ show vr ++ ") unexpectly not present in mapping."))
                                        (Data.Bimap.lookup vr m)
 
+-- funcRef To Smt
+funcRefToSmt :: RefByFuncSignature -> SmtM SmtString
+funcRefToSmt fr = do
+                    m <- gets funcToSmt
+                    return $ fromMaybe (error ("funcref (" ++ show fr ++ ") unexpectly not present in mapping."))
+                                       (Data.HashMap.lookup fr m)
+
+
 -- | value to smt
 valueToSmt :: Value -> SmtM SmtString
 valueToSmt (Cbool True)     = return smtTrue
@@ -545,7 +613,11 @@ valExprViewToSmt (Vconst c)        = valueToSmt c
 valExprViewToSmt (Vvar v)          = varRefToSmt v
 valExprViewToSmt (Vequal v1 v2)    = mapM valExprToSmt [v1,v2] >>= return . operatorToSmt (TorXakis.SmtLanguage.singleton '=')
 valExprViewToSmt (Vite c t f)      = mapM valExprToSmt [c,t,f] >>= return . operatorToSmt (fromString "ite")
-valExprViewToSmt (Vfunc fr args)   = undefined
+valExprViewToSmt (Vfunc fr [])     = funcRefToSmt fr
+valExprViewToSmt (Vfunc fr ps)     = do
+                                        sf <- funcRefToSmt fr
+                                        sps <- mapM valExprToSmt ps
+                                        return $ operatorToSmt sf sps
 valExprViewToSmt (Vpredef fr _)    = error ("predefined function should not be passed to SMT solver: " ++ show fr)
 valExprViewToSmt (Vnot e)          = valExprToSmt e >>= return . unaryOperatorToSmt (fromString "not")
 valExprViewToSmt (Vand es)         = mapM valExprToSmt (Data.Set.toList es) >>= return . operatorToSmt (fromString "and")
@@ -575,6 +647,7 @@ valExprViewToSmt (Vlength e)       = valExprToSmt e >>= return . unaryOperatorTo
 valExprViewToSmt (Vat v1 v2)       = mapM valExprToSmt [v1,v2] >>= return . operatorToSmt (fromString "str.at")
 valExprViewToSmt (Vconcat es)      = mapM valExprToSmt es >>= return . operatorToSmt (fromString "str.++")
 valExprViewToSmt (Vstrinre v1 v2)  = mapM valExprToSmt [v1,v2] >>= return . operatorToSmt (fromString "str.in.re")
+valExprViewToSmt (Vcstr ar cr [])  = assert False $ cstrRefToSmt ar cr      -- A valExpr of a constructor with no parameters is expected to be rewritten to a constant value
 valExprViewToSmt (Vcstr ar cr es)  = do
                                         cs <- cstrRefToSmt ar cr
                                         as <- mapM valExprToSmt es
