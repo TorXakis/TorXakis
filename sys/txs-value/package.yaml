@@ -45,7 +45,8 @@ tests:
         - -rtsopts
         - -with-rtsopts=-N
         dependencies:
-        - txs-smt
+        - hspec
+        - txs-value
 
 ghc-options:
 - -Werror
