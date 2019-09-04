@@ -21,6 +21,7 @@ dependencies:
 
 - txs-basics
 - txs-name
+- txs-regex
 - txs-solve
 - txs-sort
 - txs-valexpr
@@ -40,8 +41,6 @@ library:
   - MissingH
   - regex-tdfa
   - time
-  
-  - txs-regex
   build-tools:
   - alex
   - happy

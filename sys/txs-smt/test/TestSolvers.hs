@@ -17,7 +17,6 @@ defaultSMTProcs :: [(FilePath,[String])]
 defaultSMTProcs =
   [ cmdCVC4
   , cmdZ3
-  , cmdZ3Str3
   ]
 
 cmdCVC4 :: (FilePath,[String])
@@ -36,12 +35,14 @@ cmdZ3 = ("z3", [ "-smt2"
                ]
         )
 
+{- See https://github.com/Z3Prover/z3/issues/2071
 cmdZ3Str3 :: (FilePath,[String])
 cmdZ3Str3 = ("z3", [ "-smt2"
                    , "-in"
                    , "smt.string_solver=z3str3"
                    ]
             )
+-}
 
 {- Yices doesn't support declare-datatypes
 cmdYices :: (FilePath,[String])

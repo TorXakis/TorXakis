@@ -9,17 +9,13 @@ import System.Exit
 import Test.HUnit
 
 import TestConstraint
---import TestMultipleInstances
 import TestPushPop
---import TestXSD2SMT
 
-
+-- | list of tests
 testSmtList :: Test
 testSmtList = TestList 
     [ TestLabel "Constraint"              testConstraintList
-    --, TestLabel "Multiple Instances"      testMultipleInstancesList
     , TestLabel "Push Pop"                testPushPopList
-    --, TestLabel "XSD 2 SMT"               testXSD2SMTList
     ]
 
 main :: IO ()

@@ -12,7 +12,8 @@ where
 -- general Haskell imports
 import           Control.Monad.Except
 import           Control.Monad.State
-import           Data.HashMap
+import qualified Data.Char
+import qualified Data.HashMap
 import qualified Data.Text
 --import           Text.Regex.TDFA
 
@@ -25,6 +26,7 @@ import           TorXakis.FunctionName
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.ProblemSolver
+import qualified TorXakis.Regex
 import           TorXakis.SmtM
 import           TorXakis.Sort
 import           TorXakis.SymbolicSolver
@@ -36,12 +38,13 @@ import           TestSolvers
 
 testConstraintList :: Test
 testConstraintList =
-    TestList $ concatMap (\s -> Prelude.map (\e -> TestLabel (fst e) $ TestCase $ do
+    TestList $ concatMap (\s -> Prelude.map (\e -> TestLabel (show s ++ ": " ++ (fst e))
+                                                             $ TestCase $ do
                                                                             es <- uncurry mkSmtState s False
                                                                             case es of
                                                                                 Left err -> error (show err)
                                                                                 Right ss -> do
-                                                                                            r <- runExceptT $ execStateT (TorXakis.SmtM.toStateT 
+                                                                                            r <- runExceptT $ execStateT (TorXakis.SmtM.toStateT
                                                                                                                                                  -- without symbolic solver
                                                                                                                                                   (snd e)
                                                                                                                                                  -- with symbolic solver
@@ -64,38 +67,40 @@ testConstraintList =
 
 
 labelTestList :: ProblemSolver p => [(String, p ())]
-labelTestList = [
-        ("None",                                        testNone),
-        ("True",                                        testTrue),
-        ("False",                                       testFalse),
-        ("Negative of Negative Is Identity",            testNegativeNegativeIsIdentity),
-        ("Add Equal sum = e1 + e2",                     testAdd),
-        ("No Variables",                                testNoVariables),
-        ("Bool",                                        testBool),
-        ("Bool False",                                  testBoolFalse),
-        ("Bool True",                                   testBoolTrue),
-        ("Int",                                         testInt),
-        ("Int Negative",                                testIntNegative),
-        ("Conditional Int Datatype",                    testConditionalInt),
-        ("Conditional Int IsAbsent",                    testConditionalIntIsAbsent),
-        ("Conditional Int IsPresent",                   testConditionalIntIsPresent),
-        ("Conditional Int Present Value",               testConditionalIntPresentValue),
-        ("Conditional Int Instances",                   testConditionalIntInstances),
-        ("Nested Constructor",                          testNestedConstructor),
-        ("Function Const",                              testFunctionConst),
-        ("Function Equal",                              testFunctionEqual),
-        ("Recursive length",                            testRecursiveLength),
-        ("Recursive sum",                               testRecursiveSum){-,
-        ("Just String",                                 testString)
-   -}     ]
-  {-  ++
+labelTestList =
+        [
+            ("None",                                        testNone),
+            ("True",                                        testTrue),
+            ("False",                                       testFalse),
+            ("Negative of Negative Is Identity",            testNegativeNegativeIsIdentity),
+            ("Add Equal sum = e1 + e2",                     testAdd),
+            ("No Variables",                                testNoVariables),
+            ("Bool",                                        testBool),
+            ("Bool False",                                  testBoolFalse),
+            ("Bool True",                                   testBoolTrue),
+            ("Int",                                         testInt),
+            ("Int Negative",                                testIntNegative),
+            ("Conditional Int Datatype",                    testConditionalInt),
+            ("Conditional Int Value",                       testConditionalIntValue),
+            ("Conditional Int IsAbsent",                    testConditionalIntIsAbsent),
+            ("Conditional Int IsPresent",                   testConditionalIntIsPresent),
+            ("Conditional Int Present Value",               testConditionalIntPresentValue),
+            ("Conditional Int Instances",                   testConditionalIntInstances),
+            ("Nested Constructor",                          testNestedConstructor),
+            ("Function Const",                              testFunctionConst),
+            ("Function Equal",                              testFunctionEqual),
+            ("Recursive length",                            testRecursiveLength),
+            ("Recursive sum",                               testRecursiveSum),
+            ("Just String",                                 testString)
+        ]
+    ++
        ioeTestStringEquals
     ++
         ioeTestStringLength
     ++
         ioeTestRegex
 
-ioeTestStringEquals :: [(String, SMT())]
+ioeTestStringEquals :: ProblemSolver p => [(String, p ())]
 ioeTestStringEquals = [
         ("String Equals Empty",                     testStringEquals ""),
         ("String Equals Alphabet",                  testStringEquals "abcdefghijklmnopqrstuvwxyz"),
@@ -103,11 +108,11 @@ ioeTestStringEquals = [
     ]
     ++ testStringEqualsChar
 
-testStringEqualsChar :: [(String , SMT())]
+testStringEqualsChar :: ProblemSolver p => [(String, p ())]
 testStringEqualsChar =
-    map (\i -> ("char = " ++ [chr i], testStringEquals (T.pack [chr i])))  [0..255]
+    map (\i -> ("char = " ++ [Data.Char.chr i], testStringEquals (Data.Text.pack [Data.Char.chr i])))  [0..255]
 
-ioeTestStringLength :: [(String, SMT())]
+ioeTestStringLength :: ProblemSolver p => [(String, p ())]
 ioeTestStringLength = [
         ("String Length    0",                     testStringLength    0),
         ("String Length   10",                     testStringLength   10),
@@ -115,7 +120,7 @@ ioeTestStringLength = [
         ("String Length 1000",                     testStringLength 1000)
     ]
 
-ioeTestRegex :: [(String, SMT())]
+ioeTestRegex :: ProblemSolver p => [(String, p ())]
 ioeTestRegex = [
         ("Regex char",                      testRegex "X"),
         ("Regex concat chars",              testRegex "Jan"),
@@ -126,6 +131,7 @@ ioeTestRegex = [
         ("Regex {n,}",                      testRegex "d{3,}"),
         ("Regex {n}",                       testRegex "r{3}"),
         ("Regex range",                     testRegex "[q-y]"),
+        ("Regex empty in choice",           testRegex "|a"),
         ("Regex 2 choices",                 testRegex "a|b"),
         ("Regex 3 choices",                 testRegex "a|b|c"),
         ("Regex group",                     testRegex "(a)"),
@@ -136,7 +142,7 @@ ioeTestRegex = [
         ("Regex mixed small",               testRegex "(ab+)|(p)"),
         ("Regex mixed large",               testRegex "(ab+c*d?)|(ef{2}g{3,6}h{3,})|(p)")
     ]
--}
+
 -----------------------------------------------------
 -- Helper function
 -----------------------------------------------------
@@ -178,14 +184,14 @@ testNone :: ProblemSolver p => p ()
 testNone = testTemplateSolvable [] True
 
 testTrue :: ProblemSolver p => p ()
-testTrue = 
+testTrue =
     let ctx             = TorXakis.ContextVar.empty
         Right x         = mkConst ctx (Cbool True)
     in
         testTemplateSolvable [x] True
 
 testFalse :: ProblemSolver p => p ()
-testFalse = 
+testFalse =
     let ctx             = TorXakis.ContextVar.empty
         Right x         = mkConst ctx (Cbool False)
     in
@@ -255,6 +261,16 @@ testConditionalInt =
         (_, [(cIntVar, _)]) = makeVars ctx [conditionalIntSort]
       in
         testTemplateSolution [conditionalInt] [] [cIntVar] []
+
+testConditionalIntValue :: ProblemSolver p => p ()
+testConditionalIntValue =
+    let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
+        (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
+        Right constExpr = mkConst ctx' (Cint 4)
+        Right cstrExpr = mkCstr ctx' conditionalIntRef presentCstrRef [constExpr]
+        Right boolExpr = mkEqual ctx' cIntExpr cstrExpr
+      in
+        testTemplateSolution [conditionalInt] [] [cIntVar] [boolExpr]
 
 testConditionalIntIsAbsent :: ProblemSolver p => p ()
 testConditionalIntIsAbsent =
@@ -328,7 +344,7 @@ testNestedConstructor =
 
 
 testFunctionConst :: ProblemSolver p => p ()
-testFunctionConst = 
+testFunctionConst =
         let (ctx, [ (iVar, iExpr)
                   ]) = makeVars TorXakis.ContextVar.empty [SortInt]
             Right fcall = mkFunc ctx functionConstRef []
@@ -337,7 +353,7 @@ testFunctionConst =
             testTemplateSolution [] [functionConst] [iVar] [equal]
 
 testFunctionEqual :: ProblemSolver p => p ()
-testFunctionEqual = 
+testFunctionEqual =
         let (ctx, [ (bVar1, bExpr1)
                   , (bVar2, bExpr2)
                   ]) = makeVars TorXakis.ContextVar.empty [SortBool, SortBool]
@@ -346,7 +362,7 @@ testFunctionEqual =
             testTemplateSolution [] [functionEqual] [bVar1, bVar2] [fcall]
 
 testRecursiveLength :: ProblemSolver p => p ()
-testRecursiveLength = 
+testRecursiveLength =
         let Right ctx = TorXakis.ContextVar.addADTs [listInt] TorXakis.ContextVar.empty
             (ctx', [(lVar, lExpr)]) = makeVars ctx [listIntSort]
             Right fcall = mkFunc ctx' functionLengthRef [lExpr]
@@ -356,67 +372,46 @@ testRecursiveLength =
             testTemplateSolution [listInt] [functionLength] [lVar] [bExpr]
 
 testRecursiveSum :: ProblemSolver p => p ()
-testRecursiveSum = 
+testRecursiveSum =
         let Right ctx = TorXakis.ContextVar.addADTs [listInt] TorXakis.ContextVar.empty
             (ctx', [(lVar, lExpr)]) = makeVars ctx [listIntSort]
             Right fcall = mkFunc ctx' functionSumRef [lExpr]
             Right twelve = mkConst ctx' (Cint 12)
-            Right bExpr = mkGE ctx' fcall twelve
+            Right bExpr = mkGT ctx' fcall twelve
          in
             testTemplateSolution [listInt] [functionSum] [lVar] [bExpr]
-{-
-testString :: SMT()
-testString = testTemplateSolution (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] (const []) check
-    where
-        check :: [Constant] -> SMT()
-        check [value]   = case value of
-                            Cstring _   -> lift $ assertBool "expected pattern" True
-                            _           -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
 
-testStringEquals :: Text -> SMT()
-testStringEquals str = testTemplateSolution (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
-    where
-        createAssertions :: [VarId] -> [ValExpression VarId]
-        createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring str))]
-        createAssertions _   = error "One variable in problem"
+testString :: ProblemSolver p => p ()
+testString =
+    let (_, [(stringVar, _)]) = makeVars TorXakis.ContextVar.empty [SortString]
+      in
+        testTemplateSolution [] [] [stringVar] []
 
-        check :: [Constant] -> SMT()
-        check [value] = case value of
-                            Cstring s   -> lift $ assertBool ("expected pattern s = " ++ T.unpack s)
-                                                             (s == str)
-                            _           -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
+testStringEquals :: ProblemSolver p => Text -> p ()
+testStringEquals txt =
+    let (ctx, [(stringVar, stringExpr)]) = makeVars TorXakis.ContextVar.empty [SortString]
+        Right val = mkConst ctx (Cstring txt)
+        Right equal = mkEqual ctx stringExpr val
+      in
+        testTemplateSolution [] [] [stringVar] [equal]
 
-testStringLength :: Int -> SMT()
-testStringLength n = testTemplateSolution (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
-    where
-        createAssertions :: [VarId] -> [ValExpression VarId]
-        createAssertions [v] = [cstrEqual (cstrConst (Cint (Prelude.toInteger n))) (cstrLength (cstrVar v))]
-        createAssertions _   = error "One variable in problem"
+testStringLength :: ProblemSolver p => Integer -> p ()
+testStringLength n =
+    let (ctx, [(stringVar, stringExpr)]) = makeVars TorXakis.ContextVar.empty [SortString]
+        Right val = mkConst ctx (Cint n)
+        Right lengthExpr = mkLength ctx stringExpr
+        Right equal = mkEqual ctx lengthExpr val
+      in
+        testTemplateSolution [] [] [stringVar] [equal]
 
-        check :: [Constant] -> SMT()
-        check [value] = case value of
-                            Cstring s   -> lift $ assertBool "expected pattern" (n == T.length s)
-                            _           -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
-
-
-testRegex :: String -> SMT ()
-testRegex regexStr = testTemplateSolution (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
-    where
-        createAssertions :: [VarId] -> [ValExpression VarId]
-        createAssertions [v] = [cstrStrInRe (cstrVar v) (cstrConst (Cregex (T.pack regexStr)))]
-        createAssertions _   = error "One variable in problem"
-
-        check :: [Constant] -> SMT()
-        check [value] = case value of
-                            Cstring s   -> let haskellRegex = xsd2posix . T.pack $ regexStr in
-                                                lift $ assertBool ("expected pattern: smt solution " ++ T.unpack s ++ "\nXSD pattern " ++ regexStr ++ "\nHaskell pattern " ++ T.unpack haskellRegex)
-                                                                  (T.unpack s =~ T.unpack haskellRegex)
-                            _                  -> lift $ assertBool "unexpected pattern" False
-        check _         = error "One variable in problem"
--}
+testRegex :: ProblemSolver p => Text -> p ()
+testRegex regexStr =
+    let (ctx, [(stringVar, stringExpr)]) = makeVars TorXakis.ContextVar.empty [SortString]
+        Right regex = TorXakis.Regex.fromXsd regexStr
+        Right val = mkConst ctx (Cregex regex)
+        Right strinre = mkStrInRe ctx stringExpr val
+      in
+        testTemplateSolution [] [] [stringVar] [strinre]
 
 -- --------------------------------------------------------------------------------------------------------------------
 -- make Var and Expressions
@@ -504,7 +499,7 @@ conditional nm s = case mkADTDef nm [absentCstr, presentCstr s] of
                         Left e -> error ("conditional failed with " ++ show e)
 
 -- --------------------
--- Pair 
+-- Pair
 -- --------------------
 pairName :: Name
 pairName = case mkName "pair" of
@@ -556,7 +551,7 @@ constName :: FunctionName
 constName = case mkFunctionName "const" of
                 Right nm -> nm
                 Left e -> error ("constName failed with " ++ show e)
-                
+
 functionConst :: FuncDef
 functionConst =
     let varContext = TorXakis.ContextVar.empty
@@ -574,7 +569,7 @@ equalName :: FunctionName
 equalName = case mkFunctionName "equal" of
                 Right nm -> nm
                 Left e -> error ("equalName failed with " ++ show e)
-                
+
 functionEqual :: FuncDef
 functionEqual =
     let varContext = TorXakis.ContextVar.empty
@@ -675,7 +670,7 @@ lengthName :: FunctionName
 lengthName = case mkFunctionName "length" of
                 Right nm -> nm
                 Left e -> error ("lengthName failed with " ++ show e)
-                
+
 functionLength :: FuncDef
 functionLength =
     let Right ctx = TorXakis.ContextVar.addADTs [ listInt ] TorXakis.ContextVar.empty
@@ -694,15 +689,15 @@ functionLength =
                 Left e -> error ("functionLength failed with " ++ show e)
 
 functionLengthRef :: RefByFuncSignature
-functionLengthRef = 
+functionLengthRef =
     let Right ctx = TorXakis.ContextVar.addADTs [ listInt ] TorXakis.ContextVar.empty in
             RefByFuncSignature (getFuncSignature ctx functionLength)
-            
+
 sumName :: FunctionName
 sumName = case mkFunctionName "sum" of
                 Right nm -> nm
                 Left e -> error ("sumName failed with " ++ show e)
-                
+
 functionSum :: FuncDef
 functionSum =
     let Right ctx = TorXakis.ContextVar.addADTs [ listInt ] TorXakis.ContextVar.empty
@@ -722,6 +717,6 @@ functionSum =
                 Left e -> error ("functionSum failed with " ++ show e)
 
 functionSumRef :: RefByFuncSignature
-functionSumRef = 
+functionSumRef =
     let Right ctx = TorXakis.ContextVar.addADTs [ listInt ] TorXakis.ContextVar.empty in
             RefByFuncSignature (getFuncSignature ctx functionSum)
