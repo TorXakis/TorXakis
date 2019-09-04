@@ -60,6 +60,7 @@ packages:
 - sys/txs-solve
 - sys/txs-sort
 - sys/txs-sort-gen
+- sys/txs-symbolic
 - sys/txs-txscompiler
 - sys/txs-value
 - sys/txs-value-gen

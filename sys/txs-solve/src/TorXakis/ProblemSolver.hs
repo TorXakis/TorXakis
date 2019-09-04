@@ -6,7 +6,7 @@ See LICENSE at root directory of this repository.
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Assertions
+-- Module      :  TorXakis.ProblemSolver
 -- Copyright   :  (c) 2015-2017 TNO and Radboud University
 -- License     :  BSD3 (see the file LICENSE)
 --

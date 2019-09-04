@@ -27,6 +27,7 @@ import           TorXakis.Name
 import           TorXakis.ProblemSolver
 import           TorXakis.SmtM
 import           TorXakis.Sort
+import           TorXakis.SymbolicSolver
 import           TorXakis.ValExpr
 import           TorXakis.Value
 import           TorXakis.Var
@@ -40,7 +41,15 @@ testConstraintList =
                                                                             case es of
                                                                                 Left err -> error (show err)
                                                                                 Right ss -> do
-                                                                                            r <- runExceptT $ execStateT (toStateT (snd e)) ss
+                                                                                            r <- runExceptT $ execStateT (TorXakis.SmtM.toStateT 
+                                                                                                                                                 -- without symbolic solver
+                                                                                                                                                  (snd e)
+                                                                                                                                                 -- with symbolic solver
+                                                                                                                                                 --(execStateT (TorXakis.SymbolicSolver.toStateT (snd e))
+                                                                                                                                                 --            mkSymbolicState
+                                                                                                                                                 --)
+                                                                                                                         )
+                                                                                                                         ss
                                                                                             case r of
                                                                                                 Left err  -> error (show err)
                                                                                                 Right ss' -> do
@@ -57,6 +66,8 @@ testConstraintList =
 labelTestList :: ProblemSolver p => [(String, p ())]
 labelTestList = [
         ("None",                                        testNone),
+        ("True",                                        testTrue),
+        ("False",                                       testFalse),
         ("Negative of Negative Is Identity",            testNegativeNegativeIsIdentity),
         ("Add Equal sum = e1 + e2",                     testAdd),
         ("No Variables",                                testNoVariables),
@@ -129,14 +140,14 @@ ioeTestRegex = [
 -----------------------------------------------------
 -- Helper function
 -----------------------------------------------------
-testTemplateSat :: ProblemSolver p => [ValExpression] -> p ()
-testTemplateSat createAssertions = do
+testTemplateSolvable :: ProblemSolver p => [ValExpression] -> Bool -> p ()
+testTemplateSolvable createAssertions b = do
     addAssertions createAssertions
     resp <- solvable
-    liftIO $ assertEqual "sat" (SolvableProblem (Just True)) resp
+    liftIO $ assertEqual "solvable problem" (SolvableProblem (Just b)) resp
 
-testTemplateValue :: ProblemSolver p => [ADTDef] -> [FuncDef] -> [VarDef] -> [ValExpression] -> p ()
-testTemplateValue as fs vs es = do
+testTemplateSolution :: ProblemSolver p => [ADTDef] -> [FuncDef] -> [VarDef] -> [ValExpression] -> p ()
+testTemplateSolution as fs vs es = do
     TorXakis.ProblemSolver.addADTs as
     addFunctions fs
     _ <- push
@@ -164,7 +175,21 @@ testTemplateValue as fs vs es = do
 ---------------------------------------------------------------------------
 
 testNone :: ProblemSolver p => p ()
-testNone = testTemplateSat []
+testNone = testTemplateSolvable [] True
+
+testTrue :: ProblemSolver p => p ()
+testTrue = 
+    let ctx             = TorXakis.ContextVar.empty
+        Right x         = mkConst ctx (Cbool True)
+    in
+        testTemplateSolvable [x] True
+
+testFalse :: ProblemSolver p => p ()
+testFalse = 
+    let ctx             = TorXakis.ContextVar.empty
+        Right x         = mkConst ctx (Cbool False)
+    in
+        testTemplateSolvable [x] False
 
 testNegativeNegativeIsIdentity :: ProblemSolver p => p ()
 testNegativeNegativeIsIdentity =
@@ -174,7 +199,7 @@ testNegativeNegativeIsIdentity =
         Right minMinX   = mkUnaryMinus ctx minX
         Right equal     = mkEqual ctx x minMinX
      in
-        testTemplateSat [equal]
+        testTemplateSolvable [equal] True
 
 testAdd :: ProblemSolver p => p ()
 testAdd =
@@ -185,35 +210,35 @@ testAdd =
         Right answer = mkConst ctx (Cint 13)
         Right equal  = mkEqual ctx answer add
       in
-        testTemplateSat [equal]
+        testTemplateSolvable [equal] True
 
 testNoVariables :: ProblemSolver p => p ()
-testNoVariables = testTemplateValue [] [] [] []
+testNoVariables = testTemplateSolution [] [] [] []
 
 testBool :: ProblemSolver p => p ()
 testBool =
     let (_, [(boolVar, _)]) = makeVars TorXakis.ContextVar.empty [SortBool]
       in
-        testTemplateValue [] [] [boolVar] []
+        testTemplateSolution [] [] [boolVar] []
 
 testBoolTrue :: ProblemSolver p => p ()
 testBoolTrue =
     let (_, [(boolVar, boolExpr)]) = makeVars TorXakis.ContextVar.empty [SortBool]
       in
-        testTemplateValue [] [] [boolVar] [boolExpr]
+        testTemplateSolution [] [] [boolVar] [boolExpr]
 
 testBoolFalse :: ProblemSolver p => p ()
 testBoolFalse =
     let (ctx, [(boolVar, boolExpr)]) = makeVars TorXakis.ContextVar.empty [SortBool]
         Right notExpr = mkNot ctx boolExpr
       in
-        testTemplateValue [] [] [boolVar] [notExpr]
+        testTemplateSolution [] [] [boolVar] [notExpr]
 
 testInt :: ProblemSolver p => p ()
 testInt =
     let (_, [(intVar, _)]) = makeVars TorXakis.ContextVar.empty [SortInt]
       in
-        testTemplateValue [] [] [intVar] []
+        testTemplateSolution [] [] [intVar] []
 
 testIntNegative :: ProblemSolver p => p ()
 testIntNegative =
@@ -221,7 +246,7 @@ testIntNegative =
         Right constExpr = mkConst ctx (Cint 0)
         Right boolExpr = mkLT ctx intExpr constExpr
       in
-        testTemplateValue [] [] [intVar] [boolExpr]
+        testTemplateSolution [] [] [intVar] [boolExpr]
 
 
 testConditionalInt :: ProblemSolver p => p ()
@@ -229,7 +254,7 @@ testConditionalInt =
     let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
         (_, [(cIntVar, _)]) = makeVars ctx [conditionalIntSort]
       in
-        testTemplateValue [conditionalInt] [] [cIntVar] []
+        testTemplateSolution [conditionalInt] [] [cIntVar] []
 
 testConditionalIntIsAbsent :: ProblemSolver p => p ()
 testConditionalIntIsAbsent =
@@ -237,7 +262,7 @@ testConditionalIntIsAbsent =
         (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
         boolExpr = isCstrAbsent ctx' cIntExpr
       in
-        testTemplateValue [conditionalInt] [] [cIntVar] [boolExpr]
+        testTemplateSolution [conditionalInt] [] [cIntVar] [boolExpr]
 
 testConditionalIntIsPresent :: ProblemSolver p => p ()
 testConditionalIntIsPresent =
@@ -245,7 +270,7 @@ testConditionalIntIsPresent =
         (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
         boolExpr = isCstrPresent ctx' cIntExpr
       in
-        testTemplateValue [conditionalInt] [] [cIntVar] [boolExpr]
+        testTemplateSolution [conditionalInt] [] [cIntVar] [boolExpr]
 
 testConditionalIntPresentValue :: ProblemSolver p => p ()
 testConditionalIntPresentValue =
@@ -258,7 +283,7 @@ testConditionalIntPresentValue =
         Right falseBranch = mkConst ctx' (Cbool False)
         Right boolExpr = mkITE ctx' condExpr trueBranch falseBranch
       in
-        testTemplateValue [conditionalInt] [] [cIntVar] [boolExpr]
+        testTemplateSolution [conditionalInt] [] [cIntVar] [boolExpr]
 
 testConditionalIntInstances :: ProblemSolver p => p ()
 testConditionalIntInstances =
@@ -278,7 +303,7 @@ testConditionalIntInstances =
         Right not13 = mkNot ctx' equal13
         Right not23 = mkNot ctx' equal23
       in
-        testTemplateValue [conditionalInt] [] [cIntVar1, cIntVar2, cIntVar3] [not12, not13, not23]
+        testTemplateSolution [conditionalInt] [] [cIntVar1, cIntVar2, cIntVar3] [not12, not13, not23]
 
 
 testNestedConstructor :: ProblemSolver p => p ()
@@ -299,7 +324,7 @@ testNestedConstructor =
         Right not13 = mkNot ctx' equal13
         Right not23 = mkNot ctx' equal23
       in
-        testTemplateValue [pair, conditionalPair] [] [var1, var2, var3] [not12, not13, not23]
+        testTemplateSolution [pair, conditionalPair] [] [var1, var2, var3] [not12, not13, not23]
 
 
 testFunctionConst :: ProblemSolver p => p ()
@@ -309,7 +334,7 @@ testFunctionConst =
             Right fcall = mkFunc ctx functionConstRef []
             Right equal = mkEqual ctx fcall iExpr
          in
-            testTemplateValue [] [functionConst] [iVar] [equal]
+            testTemplateSolution [] [functionConst] [iVar] [equal]
 
 testFunctionEqual :: ProblemSolver p => p ()
 testFunctionEqual = 
@@ -318,7 +343,7 @@ testFunctionEqual =
                   ]) = makeVars TorXakis.ContextVar.empty [SortBool, SortBool]
             Right fcall = mkFunc ctx functionEqualRef [bExpr1, bExpr2]
          in
-            testTemplateValue [] [functionEqual] [bVar1, bVar2] [fcall]
+            testTemplateSolution [] [functionEqual] [bVar1, bVar2] [fcall]
 
 testRecursiveLength :: ProblemSolver p => p ()
 testRecursiveLength = 
@@ -328,7 +353,7 @@ testRecursiveLength =
             Right one = mkConst ctx' (Cint 1)
             Right bExpr = mkGE ctx' fcall one
          in
-            testTemplateValue [listInt] [functionLength] [lVar] [bExpr]
+            testTemplateSolution [listInt] [functionLength] [lVar] [bExpr]
 
 testRecursiveSum :: ProblemSolver p => p ()
 testRecursiveSum = 
@@ -338,10 +363,10 @@ testRecursiveSum =
             Right twelve = mkConst ctx' (Cint 12)
             Right bExpr = mkGE ctx' fcall twelve
          in
-            testTemplateValue [listInt] [functionSum] [lVar] [bExpr]
+            testTemplateSolution [listInt] [functionSum] [lVar] [bExpr]
 {-
 testString :: SMT()
-testString = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] (const []) check
+testString = testTemplateSolution (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] (const []) check
     where
         check :: [Constant] -> SMT()
         check [value]   = case value of
@@ -350,7 +375,7 @@ testString = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdSt
         check _         = error "One variable in problem"
 
 testStringEquals :: Text -> SMT()
-testStringEquals str = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
+testStringEquals str = testTemplateSolution (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpression VarId]
         createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring str))]
@@ -364,7 +389,7 @@ testStringEquals str = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty)
         check _         = error "One variable in problem"
 
 testStringLength :: Int -> SMT()
-testStringLength n = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
+testStringLength n = testTemplateSolution (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpression VarId]
         createAssertions [v] = [cstrEqual (cstrConst (Cint (Prelude.toInteger n))) (cstrLength (cstrVar v))]
@@ -378,7 +403,7 @@ testStringLength n = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [
 
 
 testRegex :: String -> SMT ()
-testRegex regexStr = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
+testRegex regexStr = testTemplateSolution (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpression VarId]
         createAssertions [v] = [cstrStrInRe (cstrVar v) (cstrConst (Cregex (T.pack regexStr)))]

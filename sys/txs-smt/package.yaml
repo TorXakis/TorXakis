@@ -57,6 +57,7 @@ tests:
         dependencies:
         - HUnit
         - txs-smt
+        - txs-symbolic
 
 ghc-options:
 - -O
