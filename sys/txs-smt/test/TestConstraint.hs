@@ -36,7 +36,7 @@ import           TestSolvers
 testConstraintList :: Test
 testConstraintList =
     TestList $ concatMap (\s -> Prelude.map (\e -> TestLabel (fst e) $ TestCase $ do
-                                                                            es <- uncurry mkSmtState s True
+                                                                            es <- uncurry mkSmtState s False
                                                                             case es of
                                                                                 Left err -> error (show err)
                                                                                 Right ss -> do
@@ -54,7 +54,7 @@ testConstraintList =
                          defaultSMTProcs
 
 
-labelTestList :: [(String, SmtM ())]
+labelTestList :: ProblemSolver p => [(String, p ())]
 labelTestList = [
         ("None",                                        testNone),
         ("Negative of Negative Is Identity",            testNegativeNegativeIsIdentity),
@@ -129,13 +129,13 @@ ioeTestRegex = [
 -----------------------------------------------------
 -- Helper function
 -----------------------------------------------------
-testTemplateSat :: [ValExpression] -> SmtM()
+testTemplateSat :: ProblemSolver p => [ValExpression] -> p ()
 testTemplateSat createAssertions = do
     addAssertions createAssertions
     resp <- solvable
     liftIO $ assertEqual "sat" (SolvableProblem (Just True)) resp
 
-testTemplateValue :: [ADTDef] -> [FuncDef] -> [VarDef] -> [ValExpression] -> SmtM ()
+testTemplateValue :: ProblemSolver p => [ADTDef] -> [FuncDef] -> [VarDef] -> [ValExpression] -> p ()
 testTemplateValue as fs vs es = do
     TorXakis.ProblemSolver.addADTs as
     addFunctions fs
@@ -163,10 +163,10 @@ testTemplateValue as fs vs es = do
 -- Tests
 ---------------------------------------------------------------------------
 
-testNone :: SmtM ()
+testNone :: ProblemSolver p => p ()
 testNone = testTemplateSat []
 
-testNegativeNegativeIsIdentity :: SmtM ()
+testNegativeNegativeIsIdentity :: ProblemSolver p => p ()
 testNegativeNegativeIsIdentity =
     let ctx             = TorXakis.ContextVar.empty
         Right x         = mkConst ctx (Cint 3)
@@ -176,7 +176,7 @@ testNegativeNegativeIsIdentity =
      in
         testTemplateSat [equal]
 
-testAdd :: SmtM()
+testAdd :: ProblemSolver p => p ()
 testAdd =
     let ctx          = TorXakis.ContextVar.empty
         Right a      = mkConst ctx (Cint 4)
@@ -187,35 +187,35 @@ testAdd =
       in
         testTemplateSat [equal]
 
-testNoVariables :: SmtM()
+testNoVariables :: ProblemSolver p => p ()
 testNoVariables = testTemplateValue [] [] [] []
 
-testBool :: SmtM()
+testBool :: ProblemSolver p => p ()
 testBool =
     let (_, [(boolVar, _)]) = makeVars TorXakis.ContextVar.empty [SortBool]
       in
         testTemplateValue [] [] [boolVar] []
 
-testBoolTrue :: SmtM()
+testBoolTrue :: ProblemSolver p => p ()
 testBoolTrue =
     let (_, [(boolVar, boolExpr)]) = makeVars TorXakis.ContextVar.empty [SortBool]
       in
         testTemplateValue [] [] [boolVar] [boolExpr]
 
-testBoolFalse :: SmtM()
+testBoolFalse :: ProblemSolver p => p ()
 testBoolFalse =
     let (ctx, [(boolVar, boolExpr)]) = makeVars TorXakis.ContextVar.empty [SortBool]
         Right notExpr = mkNot ctx boolExpr
       in
         testTemplateValue [] [] [boolVar] [notExpr]
 
-testInt :: SmtM()
+testInt :: ProblemSolver p => p ()
 testInt =
     let (_, [(intVar, _)]) = makeVars TorXakis.ContextVar.empty [SortInt]
       in
         testTemplateValue [] [] [intVar] []
 
-testIntNegative :: SmtM()
+testIntNegative :: ProblemSolver p => p ()
 testIntNegative =
     let (ctx, [(intVar, intExpr)]) = makeVars TorXakis.ContextVar.empty [SortInt]
         Right constExpr = mkConst ctx (Cint 0)
@@ -224,14 +224,14 @@ testIntNegative =
         testTemplateValue [] [] [intVar] [boolExpr]
 
 
-testConditionalInt :: SmtM()
+testConditionalInt :: ProblemSolver p => p ()
 testConditionalInt =
     let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
         (_, [(cIntVar, _)]) = makeVars ctx [conditionalIntSort]
       in
         testTemplateValue [conditionalInt] [] [cIntVar] []
 
-testConditionalIntIsAbsent :: SmtM()
+testConditionalIntIsAbsent :: ProblemSolver p => p ()
 testConditionalIntIsAbsent =
     let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
         (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
@@ -239,7 +239,7 @@ testConditionalIntIsAbsent =
       in
         testTemplateValue [conditionalInt] [] [cIntVar] [boolExpr]
 
-testConditionalIntIsPresent :: SmtM()
+testConditionalIntIsPresent :: ProblemSolver p => p ()
 testConditionalIntIsPresent =
     let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
         (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
@@ -247,7 +247,7 @@ testConditionalIntIsPresent =
       in
         testTemplateValue [conditionalInt] [] [cIntVar] [boolExpr]
 
-testConditionalIntPresentValue :: SmtM()
+testConditionalIntPresentValue :: ProblemSolver p => p ()
 testConditionalIntPresentValue =
     let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
         (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
@@ -260,7 +260,7 @@ testConditionalIntPresentValue =
       in
         testTemplateValue [conditionalInt] [] [cIntVar] [boolExpr]
 
-testConditionalIntInstances :: SmtM()
+testConditionalIntInstances :: ProblemSolver p => p ()
 testConditionalIntInstances =
     let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
         (ctx', [ (cIntVar1, cIntExpr1)
@@ -281,7 +281,7 @@ testConditionalIntInstances =
         testTemplateValue [conditionalInt] [] [cIntVar1, cIntVar2, cIntVar3] [not12, not13, not23]
 
 
-testNestedConstructor :: SmtM()
+testNestedConstructor :: ProblemSolver p => p ()
 testNestedConstructor =
     let Right ctx = TorXakis.ContextVar.addADTs [pair, conditionalPair] TorXakis.ContextVar.empty
         (ctx', [ (var1, expr1)
@@ -302,7 +302,7 @@ testNestedConstructor =
         testTemplateValue [pair, conditionalPair] [] [var1, var2, var3] [not12, not13, not23]
 
 
-testFunctionConst :: SmtM()
+testFunctionConst :: ProblemSolver p => p ()
 testFunctionConst = 
         let (ctx, [ (iVar, iExpr)
                   ]) = makeVars TorXakis.ContextVar.empty [SortInt]
@@ -311,7 +311,7 @@ testFunctionConst =
          in
             testTemplateValue [] [functionConst] [iVar] [equal]
 
-testFunctionEqual :: SmtM()
+testFunctionEqual :: ProblemSolver p => p ()
 testFunctionEqual = 
         let (ctx, [ (bVar1, bExpr1)
                   , (bVar2, bExpr2)
@@ -320,7 +320,7 @@ testFunctionEqual =
          in
             testTemplateValue [] [functionEqual] [bVar1, bVar2] [fcall]
 
-testRecursiveLength :: SmtM ()
+testRecursiveLength :: ProblemSolver p => p ()
 testRecursiveLength = 
         let Right ctx = TorXakis.ContextVar.addADTs [listInt] TorXakis.ContextVar.empty
             (ctx', [(lVar, lExpr)]) = makeVars ctx [listIntSort]
@@ -330,7 +330,7 @@ testRecursiveLength =
          in
             testTemplateValue [listInt] [functionLength] [lVar] [bExpr]
 
-testRecursiveSum :: SmtM ()
+testRecursiveSum :: ProblemSolver p => p ()
 testRecursiveSum = 
         let Right ctx = TorXakis.ContextVar.addADTs [listInt] TorXakis.ContextVar.empty
             (ctx', [(lVar, lExpr)]) = makeVars ctx [listIntSort]
@@ -638,10 +638,11 @@ listIntSort :: Sort
 listIntSort = SortADT listIntRef
 
 listInt :: ADTDef
-listInt = list listIntName SortInt listIntSort
+listInt = list listIntName SortInt
 
-list :: Name -> Sort -> Sort -> ADTDef
-list nm srt lsrt = case mkADTDef nm [nilCstr, consCstr srt lsrt] of
+list :: Name -> Sort -> ADTDef
+list nm srt = let lsrt = SortADT (RefByName nm) in
+                    case mkADTDef nm [nilCstr, consCstr srt lsrt] of
                             Right adt -> adt
                             Left e -> error ("list failed with " ++ show e)
 

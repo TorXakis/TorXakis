@@ -20,6 +20,7 @@ library:
   - base >= 4.7 && < 5
   - containers
   - hashmap
+
   - txs-basics
   - txs-sort
   - txs-valexpr

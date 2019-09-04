@@ -26,6 +26,7 @@ module TorXakis.ProblemSolver
 )
 where
 
+import           Control.Monad.IO.Class
 import           Data.Either
 import           Data.HashMap
 import           Data.List
@@ -66,7 +67,7 @@ newtype KindOfProblem = KindOfProblem { -- | to Maybe
                                         toMaybeKindOfSolution :: Maybe KindOfSolution
                                       } deriving (Eq, Ord, Read, Show)
 -- | The Problem Solver class.
-class Monad p => ProblemSolver p where
+class MonadIO p => ProblemSolver p where
     -- | Info on Problem Solver
     info :: p String
     
