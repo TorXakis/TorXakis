@@ -60,27 +60,27 @@ toXsd = toXsdView . view
     where 
         toXsdView :: RegexView -> Text
         toXsdView (RegexStringLiteral t)      = encodeString t
-        toXsdView (RegexConcat cs)            =    (Data.Text.singleton '(')
+        toXsdView (RegexConcat cs)            =    Data.Text.singleton '('
                                                 <> intercalate (pack ")(") (Prelude.map toXsd cs)
-                                                <> (Data.Text.singleton ')')
+                                                <> Data.Text.singleton ')'
         toXsdView (RegexUnion us)             =    intercalate (Data.Text.singleton '|') (Prelude.map toXsd (Data.Set.toList us))
-        toXsdView (RegexLoop r l (Just u))    =    (Data.Text.singleton '(')
+        toXsdView (RegexLoop r l (Just u))    =    Data.Text.singleton '('
                                                 <> toXsd r
-                                                <> (Data.Text.singleton ')')
-                                                <> (Data.Text.singleton '{')
+                                                <> Data.Text.singleton ')'
+                                                <> Data.Text.singleton '{'
                                                 <> pack (show l)
-                                                <> (Data.Text.singleton ',')
+                                                <> Data.Text.singleton ','
                                                 <> pack (show u)
-                                                <> (Data.Text.singleton '}')
-        toXsdView (RegexLoop r l Nothing)     =    (Data.Text.singleton '(')
+                                                <> Data.Text.singleton '}'
+        toXsdView (RegexLoop r l Nothing)     =    Data.Text.singleton '('
                                                 <> toXsd r
-                                                <> (Data.Text.singleton ')')
-                                                <> (Data.Text.singleton '{')
+                                                <> Data.Text.singleton ')'
+                                                <> Data.Text.singleton '{'
                                                 <> pack (show l)
-                                                <> (Data.Text.singleton ',')
-                                                <> (Data.Text.singleton '}')
-        toXsdView (RegexRange l u)            =    (Data.Text.singleton '[')
+                                                <> Data.Text.singleton ','
+                                                <> Data.Text.singleton '}'
+        toXsdView (RegexRange l u)            =    Data.Text.singleton '['
                                                 <> encodeChar l
-                                                <> (Data.Text.singleton '-')
+                                                <> Data.Text.singleton '-'
                                                 <> encodeChar u
-                                                <> (Data.Text.singleton ']')
+                                                <> Data.Text.singleton ']'

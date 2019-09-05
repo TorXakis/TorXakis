@@ -61,27 +61,27 @@ toPosix t = pack "\\`" <> toPosixNested t <> pack "\\'"
 
         toPosixNestedView :: RegexView -> Text
         toPosixNestedView (RegexStringLiteral l)      = encodeString l
-        toPosixNestedView (RegexConcat cs)            =   (Data.Text.singleton '(')
+        toPosixNestedView (RegexConcat cs)            =    Data.Text.singleton '('
                                                         <> intercalate (pack ")(") (Prelude.map toPosixNested cs)
-                                                        <> (Data.Text.singleton ')')
+                                                        <> Data.Text.singleton ')'
         toPosixNestedView (RegexUnion us)             = intercalate (Data.Text.singleton '|') (Prelude.map toPosixNested (Data.Set.toList us))
-        toPosixNestedView (RegexLoop r l (Just u))    =    (Data.Text.singleton '(')
+        toPosixNestedView (RegexLoop r l (Just u))    =    Data.Text.singleton '('
                                                         <> toPosixNested r
-                                                        <> (Data.Text.singleton ')')
-                                                        <> (Data.Text.singleton '{')
+                                                        <> Data.Text.singleton ')'
+                                                        <> Data.Text.singleton '{'
                                                         <> pack (show l)
-                                                        <> (Data.Text.singleton ',')
+                                                        <> Data.Text.singleton ','
                                                         <> pack (show u)
-                                                        <> (Data.Text.singleton '}')
-        toPosixNestedView (RegexLoop r l Nothing)     =    (Data.Text.singleton '(')
+                                                        <> Data.Text.singleton '}'
+        toPosixNestedView (RegexLoop r l Nothing)     =    Data.Text.singleton '('
                                                         <> toPosixNested r
-                                                        <> (Data.Text.singleton ')')
-                                                        <> (Data.Text.singleton '{')
+                                                        <> Data.Text.singleton ')'
+                                                        <> Data.Text.singleton '{'
                                                         <> pack (show l)
-                                                        <> (Data.Text.singleton ',')
-                                                        <> (Data.Text.singleton '}')
-        toPosixNestedView (RegexRange l u)          =      (Data.Text.singleton '[')
+                                                        <> Data.Text.singleton ','
+                                                        <> Data.Text.singleton '}'
+        toPosixNestedView (RegexRange l u)          =      Data.Text.singleton '['
                                                         <> encodeChar l
-                                                        <> (Data.Text.singleton '-')
+                                                        <> Data.Text.singleton '-'
                                                         <> encodeChar u
-                                                        <> (Data.Text.singleton ']')
+                                                        <> Data.Text.singleton ']'

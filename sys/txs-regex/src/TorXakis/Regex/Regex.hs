@@ -117,8 +117,8 @@ mkRegexConcat ls = case ( merge . flatten . Prelude.filter (mkRegexEmpty /=) ) l
 mkRegexUnion :: [Regex] -> Either Error Regex
 mkRegexUnion ls = let set = flatten ls in
                     case Data.Set.toList set of
-                        []  -> Left $ Error ("precondition violation: input is empty list")
-                        [x] -> Right $ x
+                        []  -> Left $ Error "precondition violation: input is empty list"
+                        [x] -> Right x
                         _   -> Right $ Regex (RegexUnion set)
     where
         flatten :: [Regex] -> Set Regex
@@ -139,8 +139,8 @@ mkRegexLoop :: Regex         -- ^ basis regular expression
             -> Either Error Regex
 mkRegexLoop _ l _        | l < 0 = Left $ Error ("precondition violation: lowerbound (" ++ show l ++ ") is negative.")
 mkRegexLoop _ l (Just u) | u < l = Left $ Error ("precondition violation: upperbound (" ++ show u ++ ") is smaller than lowerbound (" ++ show l ++ ").")
-mkRegexLoop _ 0 (Just 0)         = Right $ mkRegexEmpty
-mkRegexLoop r 1 (Just 1)         = Right $ r
+mkRegexLoop _ 0 (Just 0)         = Right mkRegexEmpty
+mkRegexLoop r 1 (Just 1)         = Right r
 -- optimization: Loop of string literal with lowerbound == upperbound is just string literal * lowerbound
 mkRegexLoop r l mu               = Right $ mkRegexViewLoop (view r)
     where

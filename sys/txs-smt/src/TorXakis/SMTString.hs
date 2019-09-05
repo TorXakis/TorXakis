@@ -16,7 +16,6 @@ See LICENSE at root directory of this repository.
 --
 -- decode SMT String.
 -----------------------------------------------------------------------------
-{-# LANGUAGE OverloadedStrings #-}
 module TorXakis.SMTString
 
 where

@@ -46,8 +46,7 @@ prop_ToFromXsd (RegexGen val) =
     let xsd = toXsd val in
         case fromXsd xsd of
             Left e     -> trace ("\nParse error " ++ show e ++ " on\n" ++ show xsd) False
-            Right val' -> if val' == val then True
-                                         else trace ("\nval\n" ++ show val ++ "\nxsd\n" ++ show xsd ++ "\nval'\n" ++ show val' ++ "\nxsd'\n" ++ show (toXsd val')) False
+            Right val' -> (val' == val) || trace ("\nval\n" ++ show val ++ "\nxsd\n" ++ show xsd ++ "\nval'\n" ++ show val' ++ "\nxsd'\n" ++ show (toXsd val')) False
 
 -- | Concat (xs ++ [RegexEmpty] ++ ys) == Concat (xs ++ ys)
 prop_ConcatEmpty :: [RegexGen] -> Gen Bool

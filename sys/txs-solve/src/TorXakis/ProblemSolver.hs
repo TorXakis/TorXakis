@@ -122,7 +122,7 @@ class MonadIO p => ProblemSolver p where
                 case r of
                     Nothing     -> return UnableToSolve
                     Just False  -> return Unsolvable
-                    Just True   -> getAllValues >>= return . Solved
+                    Just True   -> Solved <$> getAllValues
 
     -- | What is the kind of problem?
     kindOfProblem :: p KindOfProblem

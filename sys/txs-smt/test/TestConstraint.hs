@@ -38,7 +38,7 @@ import           TestSolvers
 
 testConstraintList :: Test
 testConstraintList =
-    TestList $ concatMap (\s -> Prelude.map (\e -> TestLabel (show s ++ ": " ++ (fst e))
+    TestList $ concatMap (\s -> Prelude.map (\e -> TestLabel (show s ++ ": " ++ fst e)
                                                              $ TestCase $ do
                                                                             es <- uncurry mkSmtState s False
                                                                             case es of
@@ -46,11 +46,11 @@ testConstraintList =
                                                                                 Right ss -> do
                                                                                             r <- runExceptT $ execStateT (TorXakis.SmtM.toStateT
                                                                                                                                                  -- without symbolic solver
-                                                                                                                                                  (snd e)
+                                                                                                                                                 -- (snd e)
                                                                                                                                                  -- with symbolic solver
-                                                                                                                                                 --(execStateT (TorXakis.SymbolicSolver.toStateT (snd e))
-                                                                                                                                                 --            mkSymbolicState
-                                                                                                                                                 --)
+                                                                                                                                                 (execStateT (TorXakis.SymbolicSolver.toStateT (snd e))
+                                                                                                                                                             mkSymbolicState
+                                                                                                                                                 )
                                                                                                                          )
                                                                                                                          ss
                                                                                             case r of
@@ -428,7 +428,7 @@ makeVars ctx ss = foldl makeVar (ctx, []) (zip ss [1..])
                 Right ctxOut = addVars [varDecl] ctxIn
                 Right varExpr = mkVar ctxOut ref
               in
-                ( ctxOut, ( (varDecl, varExpr) : vs ) )
+                ( ctxOut, (varDecl, varExpr) : vs )
 
 --------------------
 -- Conditional Int
