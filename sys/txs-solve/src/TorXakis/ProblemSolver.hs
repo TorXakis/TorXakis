@@ -101,28 +101,16 @@ class MonadIO p => ProblemSolver p where
     -- `getValues` and `getAllValues` as long as the problem is not changed (e.g. by `addAssertions` or `pop`).
     solvable :: p SolvableProblem
 
-    -- | Return the values of the provided variables in the current solution.
-    -- precondition: solvable returned *SolvableProblem (Just True)* and problem has not been changed (e.g. by `addAssertions` or `pop`)
+    -- | solve Problem, yet only return part of the solution.
+    -- When solution exists, only return the values associated with the provided variable references.
     -- precondition: All provided variable references point to a declared variable in the current problem.
-    getValues :: [RefByName VarDef] -> p Solution
+    solvePartSolution :: [RefByName VarDef] -> p SolveProblem
 
-    -- | Return the values of all variables of the current solution.
-    -- precondition: solvable returned *SolvableProblem (Just True)* and problem has not been changed (e.g. by `addAssertions` or `pop`)
-    getAllValues :: p Solution
-    getAllValues = do
-        ctx <- toValExprContext
-        let varRefs :: [RefByName VarDef]
-            varRefs = Data.List.map (RefByName . name) (elemsVar ctx) in
-            getValues varRefs
-
-     -- | solve Problem
+    -- | solve Problem
     solve :: p SolveProblem
     solve = do
-                SolvableProblem r <- solvable
-                case r of
-                    Nothing     -> return UnableToSolve
-                    Just False  -> return Unsolvable
-                    Just True   -> Solved <$> getAllValues
+                ctx <- toValExprContext
+                solvePartSolution $ Data.List.map (RefByName . name) (elemsVar ctx)
 
     -- | What is the kind of problem?
     kindOfProblem :: p KindOfProblem

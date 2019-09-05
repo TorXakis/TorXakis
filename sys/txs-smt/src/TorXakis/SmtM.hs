@@ -292,7 +292,7 @@ instance ProblemSolver SmtM where
             addFunctionHeaderBodyTuple :: [(SmtString, SmtString)] -> FuncDef -> SmtM [(SmtString, SmtString)]
             addFunctionHeaderBodyTuple ls f = do
                 st <- get
-                assert (TorXakis.NameMap.null (TorXakis.NameMap.unions (TorXakis.SmtM.varDefsStack st))) $ 
+                assert (TorXakis.NameMap.null (TorXakis.NameMap.unions (TorXakis.SmtM.varDefsStack st))) $
                     let ps = TorXakis.Var.toList (paramDefs f) in do
                         _ <- push
                         declareVariables ps
@@ -323,7 +323,7 @@ instance ProblemSolver SmtM where
                                                      , srt
                                                      , TorXakis.SmtLanguage.singleton ')'
                                                      ]
-            
+
     push = do
             smtPut smtPush
             -- update depth (not returned by smt solver) and add new variables on stack
@@ -396,28 +396,36 @@ instance ProblemSolver SmtM where
                     "unknown"    -> return $ SolvableProblem Nothing
                     _            -> error ("solvable - Unexpected result by smt check-sat '"++ s ++ "'")
 
-    getValues []            = return $ Solution Data.HashMap.empty
-    getValues varRefsTxs    = do
-                                varRefsSmt <- mapM varRefToSmt varRefsTxs
-                                smtPut $ smtGetValues varRefsSmt
-                                sv <- smtGet
-                                let mp = Data.Map.mapKeys TorXakis.SmtLanguage.fromString . smtParser . smtLexer $ sv in
-                                    assert (Data.Set.fromList varRefsSmt == Data.Set.fromList (Data.Map.keys mp)) $
-                                        do
-                                            res <- mapM decode (Data.Map.toList mp)
-                                            return $ Solution (Data.HashMap.fromList res)
-            where
-                decode :: (SmtString, SMTValue)
-                       -> SmtM (RefByName VarDef, Value)
-                decode (sVar, sVal) = do
-                        m <- gets varToSmt
-                        ctx <- toValExprContext
-                        let tVarRef = fromMaybe (error ("variable (" ++ show sVar ++ ") unexpectedly not in varToSmt"))
-                                                (Data.Bimap.lookupR sVar m)
-                            tVarDef = fromMaybe (error ("variable (" ++ show tVarRef ++ ") unexpectedly not in declared variables"))
-                                                (lookupVar (toName tVarRef) ctx) in do
-                                tVal <- smtValueToTxsValue sVal (TorXakis.Var.sort tVarDef)
-                                return (tVarRef, tVal)
+    solvePartSolution vs = do
+                SolvableProblem r <- solvable
+                case r of
+                    Nothing     -> return UnableToSolve
+                    Just False  -> return Unsolvable
+                    Just True   -> Solved <$> getValues
+        where
+            getValues :: SmtM Solution
+            getValues = case vs of
+                            [] -> return $ Solution Data.HashMap.empty
+                            _  -> do
+                                        varRefsSmt <- mapM varRefToSmt vs
+                                        smtPut $ smtGetValues varRefsSmt
+                                        sv <- smtGet
+                                        let mp = Data.Map.mapKeys TorXakis.SmtLanguage.fromString . smtParser . smtLexer $ sv in
+                                            assert (Data.Set.fromList varRefsSmt == Data.Set.fromList (Data.Map.keys mp)) $
+                                                do
+                                                    res <- mapM decode (Data.Map.toList mp)
+                                                    return $ Solution (Data.HashMap.fromList res)
+
+            decode :: (SmtString, SMTValue) -> SmtM (RefByName VarDef, Value)
+            decode (sVar, sVal) = do
+                    m <- gets varToSmt
+                    ctx <- toValExprContext
+                    let tVarRef = fromMaybe (error ("variable (" ++ show sVar ++ ") unexpectedly not in varToSmt"))
+                                            (Data.Bimap.lookupR sVar m)
+                        tVarDef = fromMaybe (error ("variable (" ++ show tVarRef ++ ") unexpectedly not in declared variables"))
+                                            (lookupVar (toName tVarRef) ctx) in do
+                            tVal <- smtValueToTxsValue sVal (TorXakis.Var.sort tVarDef)
+                            return (tVarRef, tVal)
 
     toValExprContext = do
             st <- get

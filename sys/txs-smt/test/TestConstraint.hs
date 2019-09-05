@@ -46,11 +46,11 @@ testConstraintList =
                                                                                 Right ss -> do
                                                                                             r <- runExceptT $ execStateT (TorXakis.SmtM.toStateT
                                                                                                                                                  -- without symbolic solver
-                                                                                                                                                 -- (snd e)
+                                                                                                                                                 (snd e)
                                                                                                                                                  -- with symbolic solver
-                                                                                                                                                 (execStateT (TorXakis.SymbolicSolver.toStateT (snd e))
-                                                                                                                                                             mkSymbolicState
-                                                                                                                                                 )
+                                                                                                                                                 --(execStateT (TorXakis.SymbolicSolver.toStateT (snd e))
+                                                                                                                                                 --            mkSymbolicState
+                                                                                                                                                 --)
                                                                                                                          )
                                                                                                                          ss
                                                                                             case r of

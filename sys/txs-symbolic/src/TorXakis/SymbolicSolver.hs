@@ -24,6 +24,7 @@ module TorXakis.SymbolicSolver
 , SymbolicState
 )
 where
+import           Control.Exception
 import           Control.Monad.State
 import qualified Data.HashMap
 
@@ -77,7 +78,7 @@ instance ProblemSolver p => ProblemSolver (SymbolicM p) where
             return d
 
     declareVariables vs = lift $ declareVariables vs
-    
+
     addAssertions as = do
             lift $ addAssertions as
             st <- get
@@ -88,20 +89,26 @@ instance ProblemSolver p => ProblemSolver (SymbolicM p) where
                                     Left e -> error ("SymbolicSolver: addAssertions - mkAnd unexpectedly failed with " ++ show e)
                                     Right expr -> put st { assertionsStack = expr : tl }
                 _        -> error "SymbolicSolver: addAssertions - assertionStack has unexpectedly no element"
-            
-    solvable = lift solvable    -- we must also ensure that the underlying problem solver has successfully solved the problem before calling getValues
 
-    solve = do
+    solvable = do
                 st <- get
                 ctx <- toValExprContext
                 case mkAnd ctx (assertionsStack st) of
-                        Left e -> error ("SymbolicSolver: solve - mkAnd unexpectedly failed with " ++ show e)
+                        Left e -> error ("SymbolicSolver: solvable - mkAnd unexpectedly failed with " ++ show e)
+                        Right expr -> case view expr of
+                                        Vconst (Cbool b)    -> return $ SolvableProblem (Just b)
+                                        _                   -> lift solvable
+
+    solvePartSolution vs = do
+                st <- get
+                ctx <- toValExprContext
+                case mkAnd ctx (assertionsStack st) of
+                        Left e -> error ("SymbolicSolver: solvePartSolution - mkAnd unexpectedly failed with " ++ show e)
                         Right expr -> case view expr of
                                         Vconst (Cbool False)                                              -> return Unsolvable
-                                        Vconst (Cbool True) | null (TorXakis.ValExprContext.elemsVar ctx) -> return $ Solved (Solution Data.HashMap.empty)
-                                        _                                                                 -> lift solve
-
-    getValues vs = lift $ getValues vs
+                                        Vconst (Cbool True) | null (TorXakis.ValExprContext.elemsVar ctx) -> assert (null vs) $
+                                                                                                                    return $ Solved (Solution Data.HashMap.empty)
+                                        _                                                                 -> lift $ solvePartSolution vs
 
     toValExprContext = lift toValExprContext
 
