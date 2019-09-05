@@ -52,6 +52,7 @@ packages:
 - sys/txs-serverstate
 - sys/txs-smt
 - sys/txs-solve
+- sys/txs-solve-random
 - sys/txs-sort
 - sys/txs-sort-gen
 - sys/txs-symbolic

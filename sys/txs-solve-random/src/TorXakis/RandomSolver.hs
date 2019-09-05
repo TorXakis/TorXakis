@@ -4,116 +4,244 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-module RandIncrementBins
--- ----------------------------------------------------------------------------------------- --
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.RandomSolver
+-- Copyright   :  (c) 2015-2017 TNO and Radboud University
+-- License     :  BSD3 (see the file LICENSE)
 --
--- Module RandIncrementBins :  Randomization of SMT solutions 
--- Solving by incrementally fixing one variable at a time
--- When the variable can be changed, 
--- bins are created and shuffled to find a random solution.
+-- Maintainer  :  Pierre van de Laar <pierre.vandelaar@tno.nl>
+-- Stability   :  provisional
+-- Portability :  portable
 --
--- ----------------------------------------------------------------------------------------- --
--- export
-( randValExprsSolveIncrementBins
-, ParamIncrementBins (..)
+-- This module provides the Random Solver.
+-- The randomization works incrementally: one variable at a time.
+-- When the selected variable can be changed,
+-- its value space is divided into bins.
+-- By randomly selecting a bin, a random solution is approximated.
+-- Randomly solving a variable can result in additional variables.
+-- E.g. when a constructor is selected, its fields are added as new variables.
+-----------------------------------------------------------------------------
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+module TorXakis.RandomSolver
+( RandomM (..)
+, RandomState (maxDepth, nrOfBins, ratio)
+, mkRandomState
 )
 where
--- ----------------------------------------------------------------------------------------- --
--- import
 import           Control.Monad.State
-import qualified Data.Char             as Char
-import qualified Data.Map              as Map
+import qualified Data.HashMap
 import           Data.Maybe
-import           Data.Monoid
-import qualified Data.Set              as Set
-import           Data.Text             (Text)
-import qualified Data.Text             as T
-import           System.IO
+import qualified Data.Text
+import           Numeric
 import           System.Random
 import           System.Random.Shuffle
 
-import           Constant
-import           CstrDef
-import           CstrId
-import           FuncId
-import           SMT
-import           SMTData
-import           Solve.Params
-import           SolveDefs
-import           SortId
-import           SortOf
-import           ValExpr
-import           Variable
+
+import           TorXakis.Name
+import           TorXakis.ProblemSolver
+import           TorXakis.ValExpr
+import           TorXakis.ValExprContext
+import           TorXakis.Value
+
+-- | What is the size ratio between consecutive bins?
+data  Ratio      = Const | Factor | Exponent
+     deriving (Eq,Ord,Read,Show)
+
+-- | Random Solver State
+data RandomState = RandomState { -- | Maximum Depth for ADT randomizations
+                                 -- necessary to handle recursive data types by preventing infinite generation
+                                 maxDepth                 :: Integer
+                                 -- | Number of Bins for Integer generation
+                                 -- necessary since an Integer represent an infinite amount of values
+                               , nrOfBins                 :: Int
+                                 -- | Size ratio for generation of Integer bins
+                                 -- necessary to control the likelihood of Integer values.
+                                 -- How likely is e.g. 2^64 - needed for overflow tests, yet maybe too long as the length of a list
+                               , ratio                    :: Ratio
+                               , tmpId                    :: Integer
+                               } deriving (Eq,Ord,Read,Show)
+
+-- | constructor for RandomState
+mkRandomState :: Integer -- ^ max Depth
+              -> Int     -- ^ nrofBins
+              -> Ratio   -- ^ ratio of bins
+              -> RandomState
+mkRandomState m n r = RandomState m n r 0
+
+-- | Random Problem Solver Monad
+newtype RandomM p a = RandomM { -- | to `StateT`
+                                toStateT :: StateT RandomState p a
+                              }
+                              deriving (Functor, Applicative, Monad, MonadState RandomState, MonadIO, MonadTrans)
 
 
-data ParamIncrementBins =
-     ParamIncrementBins { maxDepth                 :: Int
-                        , next                     :: Next
-                        , nrOfBins                 :: Int
-                        }
-    deriving (Eq,Ord,Read,Show)
+instance ProblemSolver p => ProblemSolver (RandomM p) where
+    info = do
+                s <- lift info
+                return $ "Random Solver with " ++ s
 
--- ---------------------------
-step :: Integer
-step = 10
+    addADTs as = lift $ TorXakis.ProblemSolver.addADTs as
 
-nextFunction :: ParamIncrementBins -> Integer -> Integer
-nextFunction p =
-    case RandIncrementBins.next p  of
-        Linear   -> (step +)
-        Power    -> (step *)
-        Exponent -> nextExponent
+    addFunctions fs = lift $ addFunctions fs
 
-nextExponent :: Integer -> Integer
-nextExponent n = n * n
+    depth = lift depth
 
+    push = lift push
+
+    pop = lift pop
+
+    declareVariables vs = lift $ declareVariables vs
+
+    addAssertions as = lift $ addAssertions as
+
+    solvable = lift solvable
+
+    solvePartSolution vs = do
+                s <- lift $ solvePartSolution vs
+                return s
+
+    toValExprContext = lift toValExprContext
+
+-- | make Ranges: a list of tuples consisting of lower bound and upper bound.
 mkRanges :: (Integer -> Integer) -> Integer -> Integer -> [(Integer, Integer)]
 mkRanges nxt lw hgh = (lw, hgh-1): mkRanges nxt hgh (nxt hgh)
 
-basicIntRanges :: ParamIncrementBins -> [(Integer, Integer)]
-basicIntRanges p = take (nrOfBins p) (mkRanges (nextFunction p) 0 step)
-
-basicStringLengthRanges :: [(Integer, Integer)]
-basicStringLengthRanges = take 3 (mkRanges (3*) 0 3)
-
--- from ascending boundary values make intervals
-mkIntConstraintBins :: forall v. Ord v => ValExpr v -> [Integer] -> [ValExpr v]
-mkIntConstraintBins _ []     = [cstrConst (Cbool True)]       -- no boundary values, single interval
-mkIntConstraintBins v l@(x:_) = cstrLE v (cstrConst (Cint x)) : mkRestBins l
+-- | make basic ranges for integer
+basicIntRanges :: Int -> Integer -> Ratio -> [(Integer, Integer)]
+basicIntRanges n step r = let nxt = case r of
+                                            Const    -> nextConst
+                                            Factor   -> nextFactor
+                                            Exponent -> nextExponent
+                              in
+                                take n (mkRanges nxt 0 step)
     where
-        mkRestBins :: Ord v => [Integer] -> [ValExpr v]
-        mkRestBins [y]        = [cstrLT (cstrConst (Cint y)) v]
-        mkRestBins (y1:y2:ys) = cstrAnd ( Set.fromList [cstrLT (cstrConst (Cint y1)) v, cstrLE v (cstrConst (Cint y2)) ] ) : mkRestBins (y2:ys)
-        mkRestBins []         = error "mkIntConstraintBins - Should not happen - at least one element in mkRestBins"
+        -- | next function for constant Ratio
+        nextConst :: Integer -> Integer
+        nextConst = (step +)
 
-mkRndIntBins :: Ord v => ParamIncrementBins -> ValExpr v -> IO [ValExpr v]
-mkRndIntBins p v = do
-    neg <- mapM randomRIO (basicIntRanges p)            -- faster to reuse the same bins for positive and negative?
-    pos <- mapM randomRIO (basicIntRanges p)
-    let boundaryValues = reverse (map negate neg) ++ pos
-        bins = mkIntConstraintBins v boundaryValues
-    shuffleM bins
+        -- | next function for factor Ratio
+        nextFactor :: Integer -> Integer
+        nextFactor = (step *)
 
-findRndValue :: Variable v => v -> [ValExpr v] -> SMT Constant
-findRndValue _ [] = error "findRndValue - Solution exists, yet no solution found in all bins"
-findRndValue v (x:xs) = do
-    push
+        -- | next function for Exponent Ratio
+        nextExponent :: Integer -> Integer
+        nextExponent i = i * i
+
+-- | select random integer values
+randomIntValues :: Int -> Integer -> Ratio -> IO [Integer]
+randomIntValues n step r =
+    let ranges = basicIntRanges n step r
+     in do
+        neg <- mapM randomRIO ranges
+        pos <- mapM randomRIO ranges
+        return $ reverse (map negate neg) ++ pos
+
+justConst :: ValExprContext c => c -> Value -> ValExpression
+justConst ctx v = case mkConst ctx v of
+                    Right x -> x
+                    Left e -> error ("mkConst unexpectedly failed with " ++ show e)
+
+justLE :: ValExprContext c => c -> ValExpression -> ValExpression -> ValExpression
+justLE ctx v1 v2 = case mkLE ctx v1 v2 of
+                    Right x -> x
+                    Left e -> error ("mkLE unexpectedly failed with " ++ show e)
+
+justLT :: ValExprContext c => c -> ValExpression -> ValExpression -> ValExpression
+justLT ctx v1 v2 = case mkLT ctx v1 v2 of
+                    Right x -> x
+                    Left e -> error ("mkLT unexpectedly failed with " ++ show e)
+
+justAnd :: ValExprContext c => c -> [ValExpression] -> ValExpression
+justAnd ctx vs = case mkAnd ctx vs of
+                    Right x -> x
+                    Left e -> error ("mkAnd unexpectedly failed with " ++ show e)
+
+-- | make the `ValExpression` constraints given the integer boundary values
+mkConstraints :: ValExprContext c => c -> ValExpression -> [Integer] -> [ValExpression]
+mkConstraints ctx _ []      = [justConst ctx (Cbool True)]
+mkConstraints ctx v l@(x:_) = justLE ctx v (justConst ctx (Cint x)) : mkRestBins l
+    where
+        mkRestBins :: [Integer] -> [ValExpression]
+        mkRestBins [y]          = [justLE ctx (justConst ctx (Cint y)) v]
+        mkRestBins (y1:y2:ys)   = justAnd ctx [ justLT ctx (justConst ctx (Cint y1)) v
+                                              , justLE ctx v (justConst ctx (Cint y2))
+                                              ]
+                                  : mkRestBins (y2:ys)
+        mkRestBins []           = error "mkConstraints - unexpectedly mkRestBins called with empty list"
+
+-- | make and randomize the `ValExpression` constraints
+randomIntegerConstraints :: ProblemSolver p => ValExpression -> RandomM p [ValExpression]
+randomIntegerConstraints v = do
+            st <- get
+            let n = nrOfBins st
+                r = ratio st
+              in do
+                ns <- liftIO $ randomIntValues n 10 r
+                ctx <- toValExprContext
+                let cs = mkConstraints ctx v ns
+                  in do
+                    liftIO $ shuffleM cs
+
+-- | String generation
+-- First fix  a string length
+-- Second fix the character values
+-- make and randomize the `ValExpression` constraints for string length
+randomStringLengthConstraints :: ProblemSolver p => ValExpression -> RandomM p [ValExpression]
+randomStringLengthConstraints v = do
+            ns <- liftIO $ randomIntValues 3 3 Factor
+            ctx <- toValExprContext
+            let cs = mkConstraints ctx v ns
+              in do
+                liftIO $ shuffleM cs
+
+-- | create new variable names
+-- temporarily Variable Names for internal usages
+createNewVariableName :: ProblemSolver p => RandomM p Name
+createNewVariableName = do
+    st <- get
+    ctx <- toValExprContext
+    let i = tmpId st 
+        t = Data.Text.pack ( "__" ++ (showHex i "__tmp__") )
+        n = justName t
+      in do
+        put st { tmpId = i + 1 }
+        if memberVar n ctx
+        then createNewVariableName
+        else return n
+    where
+        justName :: Data.Text.Text -> Name
+        justName t = case mkName t of
+                            Right x -> x
+                            Left e -> error ("mkName unexpectedly failed with " ++ show e)
+
+
+-- | solve with constraints
+solveWithConstraints :: ProblemSolver p => RefByName VarDef -> [ValExpression] -> RandomM p Value
+solveWithConstraints _ [] = error "solveWithConstraints - Solution exists, yet no solution found in all bins"
+solveWithConstraints v (x:xs) = do
+    _ <- push
     addAssertions [x]
-    sat <- getSolvable
-    case sat of
-        Sat -> do
-                sol <- getSolution [v]
-                pop
-                let val = fromMaybe (error "findRndValue - SMT hasn't returned the value of requested variable.")
-                                    (Map.lookup v sol)
-                return val
-        _   -> do
-                    pop
-                    findRndValue v xs
-    
+    s <- solvePartSolution [v]
+    _ <- pop
+    case s of
+        Solved (Solution sol)   -> let val = fromMaybe (error "solveWithConstraints - Solver hasn't returned the value of requested variable.")
+                                                       (Data.HashMap.lookup v sol)
+                                    in
+                                        return val
+        _                       -> solveWithConstraints v xs
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
+-- ----------------------------------------------------------------------------------------- --
+
+
+{-
+
+
+
+
 -- ----------------------------------------------------------------------------------------- --
 -- give a random solution for constraint vexps with free variables vars
 
@@ -163,7 +291,7 @@ randomSolve _ ((_,0):_) _    = error "At maximum depth: should not be added"
 randomSolve p vs@((v,_):xs) i = do
         sat <- getSolvable
         case sat of
-            Sat -> do 
+            Sat -> do
                 sol <- getSolution [v]
                 let val = fromMaybe (error "randomSolve - SMT hasn't returned the value of requested variable.")
                                     (Map.lookup v sol)
@@ -191,7 +319,7 @@ randomSolveBins p ((v,_):xs) i    | vsort v == sortIdBool =
 randomSolveBins p ((v,_):xs) i    | vsort v == sortIdInt =
     do
         rndBins <- liftIO $ mkRndIntBins p (cstrVar v)
-        val@Cint{} <- findRndValue v rndBins
+        val@Cint{} <- solveWithConstraints v rndBins
         addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
         randomSolve p xs i
 
@@ -221,8 +349,8 @@ randomSolveBins p ((v,-123):xs) i    | vsort v == sortIdString =                
                     _                               -> map ( toConstraint v . toCharGroup ) ( toCharRange (nrofChars - nrofCharsInRange + offset) high <> toCharRange low (offset-1)
                                                                                             : map ( (\b -> toCharRange b (b+nrofCharsInRange-1)) . (offset+) ) boundaries
                                                                                             )
-        val@(Cstring s) <- findRndValue v rndBins
-        if T.length s /= 1 
+        val@(Cstring s) <- solveWithConstraints v rndBins
+        if T.length s /= 1
             then error "randomSolveBins - Unexpected Result - length of char must be 1"
             else do
                 addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
@@ -243,11 +371,11 @@ randomSolveBins p ((v,d):xs) i    | vsort v == sortIdString =
         let lengthStringVar = cstrVariable ("$$$l$" ++ show i) (10000000+i) sortIdInt
         addDeclarations [lengthStringVar]
         addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrVar lengthStringVar)]
-        
+
         boundaryValues <- liftIO $ mapM randomRIO basicStringLengthRanges
         let bins = mkIntConstraintBins (cstrVar lengthStringVar) boundaryValues
         rndBins <- shuffleM bins
-        val@(Cint l) <- findRndValue lengthStringVar rndBins
+        val@(Cint l) <- solveWithConstraints lengthStringVar rndBins
         addAssertions [ cstrEqual (cstrVar lengthStringVar) (cstrConst val) ]
         if l > 0 && d > 1
             then do
@@ -269,7 +397,7 @@ randomSolveBins p ((v,d):xs) i =
                         _      -> do
                                     shuffledCstrs <- shuffleM cstrs
                                     let shuffledBins = map (\tempCid -> cstrIsCstr tempCid (cstrVar v)) shuffledCstrs
-                                    Ccstr{cstrId = cid'} <- findRndValue v shuffledBins
+                                    Ccstr{cstrId = cid'} <- solveWithConstraints v shuffledBins
                                     return (cid', d-1)
         addIsConstructor v cid
         fieldVars <- if d' > 1 then addFields v i cid
@@ -307,3 +435,5 @@ addFields v i cid@CstrId{ cstrargs = args' } = do
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+
+-}
