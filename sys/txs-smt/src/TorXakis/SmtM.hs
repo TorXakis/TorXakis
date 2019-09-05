@@ -186,7 +186,7 @@ newtype SmtM a = SmtM { -- | to `StateT`
                       }
                       deriving (Functor, Applicative, Monad, MonadState SmtState, MonadIO, MonadError Error)
 
-
+-- TODO: is it worthwhile to implement a specific solve that uses get-model? See -- https://github.com/TorXakis/TorXakis/issues/932
 instance ProblemSolver SmtM where
     info = do
                 n <- getInfo "name"
@@ -396,38 +396,26 @@ instance ProblemSolver SmtM where
                     "unknown"    -> return $ SolvableProblem Nothing
                     _            -> error ("solvable - Unexpected result by smt check-sat '"++ s ++ "'")
 
-    solve = do
-                st <- get
-                let stack = TorXakis.SmtM.varDefsStack st
-                    varDefs = TorXakis.NameMap.unions stack
-                    varRefsTxs = Data.List.map (RefByName . name) (TorXakis.NameMap.elems varDefs) in do   -- note (assert False) is always unsolvable even when no variables are present
-                        smtPut smtCheckSat
-                        s <- smtGet
-                        case s of
-                            "sat"        -> case varRefsTxs of
-                                                 [] -> return $ Solved (Solution (Data.HashMap.empty))
-                                                 _  -> do
-                                                        varRefsSmt <- mapM varRefToSmt varRefsTxs
-                                                        smtPut $ smtGetValues varRefsSmt   -- TODO: replace by get-model (see issue https://github.com/Z3Prover/z3/issues/2502)
-                                                        sv <- smtGet
-                                                        let mp = Data.Map.mapKeys TorXakis.SmtLanguage.fromString . smtParser . smtLexer $ sv in
-                                                            assert (Data.Set.fromList varRefsSmt == Data.Set.fromList (Data.Map.keys mp)) $
-                                                                do
-                                                                    res <- mapM (decode varDefs) (Data.Map.toList mp)
-                                                                    return $ Solved (Solution (Data.HashMap.fromList res))
-                            "unsat"      -> return $ Unsolvable
-                            "unknown"    -> return $ UnableToSolve
-                            _            -> error ("solvable - Unexpected result by smt check-sat '"++ s ++ "'")
+    getValues []            = return $ Solution (Data.HashMap.empty)
+    getValues varRefsTxs    = do
+                                varRefsSmt <- mapM varRefToSmt varRefsTxs
+                                smtPut $ smtGetValues varRefsSmt
+                                sv <- smtGet
+                                let mp = Data.Map.mapKeys TorXakis.SmtLanguage.fromString . smtParser . smtLexer $ sv in
+                                    assert (Data.Set.fromList varRefsSmt == Data.Set.fromList (Data.Map.keys mp)) $
+                                        do
+                                            res <- mapM decode (Data.Map.toList mp)
+                                            return $ Solution (Data.HashMap.fromList res)
             where
-                decode :: NameMap VarDef
-                       -> (SmtString, SMTValue)
+                decode :: (SmtString, SMTValue)
                        -> SmtM (RefByName VarDef, Value)
-                decode varDefs (sVar, sVal) = do
+                decode (sVar, sVal) = do
                         m <- gets varToSmt
+                        ctx <- toValExprContext
                         let tVarRef = fromMaybe (error ("variable (" ++ show sVar ++ ") unexpectedly not in varToSmt"))
                                                 (Data.Bimap.lookupR sVar m)
-                            tVarDef = fromMaybe (error ("variable (" ++ show tVarRef ++ ") unexpectedly not in varDefs"))
-                                                (TorXakis.NameMap.lookup (toName tVarRef) varDefs) in do
+                            tVarDef = fromMaybe (error ("variable (" ++ show tVarRef ++ ") unexpectedly not in declared variables"))
+                                                (lookupVar (toName tVarRef) ctx) in do
                                 tVal <- smtValueToTxsValue sVal (TorXakis.Var.sort tVarDef)
                                 return (tVarRef, tVal)
 

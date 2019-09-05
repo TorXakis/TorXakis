@@ -22,6 +22,7 @@ library:
   - hashmap
 
   - txs-basics
+  - txs-name
   - txs-sort
   - txs-valexpr
   - txs-value

@@ -25,12 +25,10 @@ module TorXakis.SymbolicSolver
 )
 where
 import           Control.Monad.State
-import qualified Data.HashMap
 
 import           TorXakis.ContextSort
 import           TorXakis.ProblemSolver
 import           TorXakis.ValExpr
-import qualified TorXakis.ValExprContext
 import           TorXakis.Value
 
 -- | Symbolic State
@@ -98,15 +96,7 @@ instance ProblemSolver p => ProblemSolver (SymbolicM p) where
                                     Vconst (Cbool b) -> return $ SolvableProblem (Just b)
                                     _                -> lift solvable
 
-    solve = do
-                st <- get
-                ctx <- toValExprContext
-                case mkAnd ctx (assertionsStack st) of
-                        Left e -> error ("SymbolicSolver: solvable - mkAnd unexpectedly failed with " ++ show e)
-                        Right expr -> case view expr of
-                                        Vconst (Cbool False)                                              -> return Unsolvable
-                                        Vconst (Cbool True) | null (TorXakis.ValExprContext.elemsVar ctx) -> return $ Solved (Solution Data.HashMap.empty)
-                                        _                                                                 -> lift solve
+    getValues vs = lift $ getValues vs
 
     toValExprContext = lift toValExprContext
 

@@ -32,6 +32,7 @@ import           Data.HashMap
 import           Data.List
 
 import           TorXakis.ContextValExpr
+import           TorXakis.Name
 import           TorXakis.Value
 import           TorXakis.ValExpr
 import           TorXakis.Var
@@ -61,16 +62,16 @@ data KindOfSolution = NoSolution
                     | UniqueSolution
                     | MultipleSolutions
      deriving (Eq, Ord, Read, Show)
-     
+
 -- | Kind of problem
-newtype KindOfProblem = KindOfProblem { -- | to Maybe 
+newtype KindOfProblem = KindOfProblem { -- | to Maybe
                                         toMaybeKindOfSolution :: Maybe KindOfSolution
                                       } deriving (Eq, Ord, Read, Show)
 -- | The Problem Solver class.
 class MonadIO p => ProblemSolver p where
     -- | Info on Problem Solver
     info :: p String
-    
+
     -- | Add ADTDefs
     -- precondition: `depth` == 0
     addADTs :: [ADTDef] -> p ()
@@ -88,22 +89,46 @@ class MonadIO p => ProblemSolver p where
     -- precondition: `depth` > 0
     -- return new depth
     pop :: p Integer
-    
+
     -- | Declare Variables to current nested context.
     -- precondition: `depth` > 0
     declareVariables :: [VarDef] -> p ()
     -- | add Assertions to current nested context.
     addAssertions :: [ValExpression] -> p()
-    
+
     -- | is Problem Solvable?
+    -- When *SolvableProblem (Just True)* is returned, (parts of) the solution can be queried using
+    -- `getValues` and `getAllValues` as long as the problem is not changed (e.g. by `addAssertions` or `pop`).
     solvable :: p SolvableProblem
-    -- | solve Problem.
+
+    -- | Return the values of the provided variables in the current solution.
+    -- precondition: solvable returned *SolvableProblem (Just True)* and problem has not been changed (e.g. by `addAssertions` or `pop`)
+    -- precondition: All provided variable references point to a declared variable in the current problem.
+    getValues :: [RefByName VarDef] -> p Solution
+
+    -- | Return the values of all variables of the current solution.
+    -- precondition: solvable returned *SolvableProblem (Just True)* and problem has not been changed (e.g. by `addAssertions` or `pop`)
+    getAllValues :: p Solution
+    getAllValues = do
+        ctx <- toValExprContext
+        let varRefs :: [RefByName VarDef]
+            varRefs = Data.List.map (RefByName . name) (elemsVar ctx) in
+            getValues varRefs
+
+     -- | solve Problem
     solve :: p SolveProblem
+    solve = do
+                SolvableProblem r <- solvable
+                case r of
+                    Nothing     -> return UnableToSolve
+                    Just False  -> return Unsolvable
+                    Just True   -> getAllValues >>= return . Solved
+
     -- | What is the kind of problem?
     kindOfProblem :: p KindOfProblem
     kindOfProblem = do
         s <- solve
-        case s of 
+        case s of
             UnableToSolve -> return $ KindOfProblem Nothing
             Unsolvable    -> return $ KindOfProblem (Just NoSolution)
             Solved sol    -> do
