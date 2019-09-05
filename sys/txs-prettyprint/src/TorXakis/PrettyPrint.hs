@@ -194,7 +194,7 @@ instance PrettyPrint c VarsDecl where
 ---------------------------------------------------------
 
 instance SortContext c => PrettyPrint c Value where
-  prettyPrint _ ctx c  =  TxsString (valueToText ctx c)
+  prettyPrint _ ctx c  =  fromText (valueToText ctx c)
 
 ---------------------------------------------------------
 -- ValExpr

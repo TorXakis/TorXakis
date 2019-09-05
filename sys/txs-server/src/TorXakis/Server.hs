@@ -298,24 +298,26 @@ cmdVal args = do
                  doublenames = newnames `List.intersect` oldnames
                  
               in if null doublenames
-                   then do
-                     let locVexpCtx' = addVars locVexpCtx newvars
-                         substMap    = Map.fromList [ (toRef(TorXakis.Var.name vardef), vexp)
-                                                    | (vardef,vexp) <- toList venv'
-                                                    ]
-                          locVarVals' = Map.union locVarVals
-                                          Map.fromList [ (varref, case subst locVexpCtx' substMap vexp of
-                                                                    Left e  -> error e
-                                                                    Right x -> eval x
-                                                       |  (varref,vexp) <- toList substMap
-                                                       ]
-                     modify $ \env' -> env' { IOS.locVexpCtx = locVexpCtx'
-                                            , IOS.locVarVals = locVarVals'
-                     IFS.pack "VAL" [ toString $ map (prettyPrint Options(False,True) locVexpCtx')  (VEnv venv') ]
-                 cmdsIntpr
-               else do
-                 IFS.nack "VAL" [ "double variable names: " ++ toString $ map (prettyPrint Options(False,True) tdefs) doublenames ]
-                 cmdsIntpr
+                    then do
+                            let locVexpCtx' = addVars locVexpCtx newvars
+                                substMap    = Map.fromList [ (toRef(TorXakis.Var.name vardef), vexp)
+                                                           | (vardef,vexp) <- toList venv'
+                                                           ]
+                                locVarVals' = Map.union locVarVals
+                                                Map.fromList [ ( varref, case subst locVexpCtx' substMap vexp of
+                                                                                Left e  -> error e
+                                                                                Right x -> eval x 
+                                                               )
+                                                             | (varref,vexp) <- toList substMap
+                                                             ]
+                            modify $ \env' -> env' { IOS.locVexpCtx = locVexpCtx'
+                                                   , IOS.locVarVals = locVarVals'
+                                                   }
+                            IFS.pack "VAL" [ toString $ map (prettyPrint Options(False,True) locVexpCtx')  (VEnv venv') ]
+                            cmdsIntpr
+                    else do
+                        IFS.nack "VAL" [ "double variable names: " ++ toString $ map (prettyPrint Options(False,True) tdefs) doublenames ]
+                        cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 

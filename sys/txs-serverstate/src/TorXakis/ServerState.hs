@@ -41,7 +41,6 @@ import           Network
 import           System.IO
 
 import qualified Data.HashMap        as Map
-import qualified Data.Text           as T
 
 import qualified TorXakis.CoreState             as IOC
 
@@ -87,12 +86,12 @@ newtype VEnv = VEnv { toMap :: Map.Map (RefByName VarDef) Value }
 
 instance SortContext c => PrettyPrint c VEnv
   where
-     prettyPrint o c a  =  intercalate (TxsString (T.pack "\n"))
+     prettyPrint o c a  =  intercalate (fromString "\n")
                                        (map ppElem (Map.toList $ toMap a))
        where
           ppElem :: (RefByName VarDef,Value) -> TxsString
-          ppElem (nm,val)  =  TorXakis.Language.concat [ TxsString $ TorXakis.Name.toText $ toName nm
-                                                       , TxsString (T.pack " = ")
+          ppElem (nm,val)  =  TorXakis.Language.concat [ fromText $ TorXakis.Name.toText $ toName nm
+                                                       , fromString " = "
                                                        , prettyPrint o c val
                                                        ]
 
