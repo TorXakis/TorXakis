@@ -26,6 +26,7 @@ library:
 
   - txs-basics
   - txs-name
+  - txs-regex
   - txs-solve
   - txs-sort
   - txs-valexpr

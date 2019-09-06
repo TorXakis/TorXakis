@@ -26,6 +26,7 @@ import           TorXakis.FunctionName
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.ProblemSolver
+import           TorXakis.RandomSolver
 import qualified TorXakis.Regex
 import           TorXakis.SmtM
 import           TorXakis.Sort
@@ -44,13 +45,19 @@ testConstraintList =
                                                                             case es of
                                                                                 Left err -> error (show err)
                                                                                 Right ss -> do
-                                                                                            r <- runExceptT $ execStateT (TorXakis.SmtM.toStateT
-                                                                                                                                                 -- without symbolic solver
-                                                                                                                                                 (snd e)
-                                                                                                                                                 -- with symbolic solver
-                                                                                                                                                 --(execStateT (TorXakis.SymbolicSolver.toStateT (snd e))
-                                                                                                                                                 --            mkSymbolicState
-                                                                                                                                                 --)
+                                                                                            r <- runExceptT $ -- smt Solver
+                                                                                                              execStateT (TorXakis.SmtM.toStateT
+                                                                                                                                                 -- random Solver
+                                                                                                                                                 (execStateT (TorXakis.RandomSolver.toStateT 
+                                                                                                                                                                    -- symbolic solver
+                                                                                                                                                                    (execStateT (TorXakis.SymbolicSolver.toStateT 
+                                                                                                                                                                                    (snd e)
+                                                                                                                                                                                )
+                                                                                                                                                                                mkSymbolicState
+                                                                                                                                                                    )
+                                                                                                                                                             )
+                                                                                                                                                             (mkRandomState 10 10 Factor)
+                                                                                                                                                 )
                                                                                                                          )
                                                                                                                          ss
                                                                                             case r of
@@ -115,9 +122,12 @@ testStringEqualsChar =
 ioeTestStringLength :: ProblemSolver p => [(String, p ())]
 ioeTestStringLength = [
         ("String Length    0",                     testStringLength    0),
+        ("String Length    1",                     testStringLength    1),
+        ("String Length    2",                     testStringLength    2),
+        ("String Length    5",                     testStringLength    5),
         ("String Length   10",                     testStringLength   10),
-        ("String Length  100",                     testStringLength  100),
-        ("String Length 1000",                     testStringLength 1000)
+        ("String Length   20",                     testStringLength   20),
+        ("String Length   50",                     testStringLength   50)
     ]
 
 ioeTestRegex :: ProblemSolver p => [(String, p ())]

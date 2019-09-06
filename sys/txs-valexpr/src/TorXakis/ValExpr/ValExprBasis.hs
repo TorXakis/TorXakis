@@ -207,13 +207,16 @@ getCstr ctx aRef cRef = case lookupADT (toName aRef) ctx of
                                 Just aDef -> case lookupConstructor (toName cRef) aDef of
                                                 Nothing   -> Left $ Error ("Constructor " ++ show cRef ++ " not defined for ADTDefinition " ++ show aRef)
                                                 Just cDef -> Right (aDef, cDef)
+
 -- | Apply ADT Constructor of the given ADT Name and Constructor Name on the provided arguments (the list of value expressions).
 mkCstr :: VarContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression] -> Either Error ValExpression
+-- TODO: check all the sorts of the fields
 mkCstr ctx aRef cRef as = getCstr ctx aRef cRef >>= const (unsafeCstr aRef cRef (map Right as))
 
 -- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
 mkIsCstr :: VarContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> Either Error ValExpression
-mkIsCstr ctx aRef cRef v = getCstr ctx aRef cRef >>= structuralIsCstr aRef cRef v
+mkIsCstr ctx aRef cRef v | getSort ctx v == SortADT aRef = getCstr ctx aRef cRef >>= structuralIsCstr aRef cRef v
+                         | otherwise                     = Left $ Error ("Argument of IsCstr not of expected SortADT " ++ show aRef ++ " but " ++ show (getSort ctx v))
 
 -- One time only check - will never change (since structural)
 -- After type checking holds:
@@ -225,7 +228,8 @@ structuralIsCstr aRef cRef v (aDef,_) = case elemsConstructor aDef of
 
 -- | Access field made by ADT Constructor of the given ADT Name and Constructor Name on the provided argument.
 mkAccess :: VarContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpression -> Either Error ValExpression
-mkAccess ctx aRef cRef fRef v = getCstr ctx aRef cRef >>= (\(_,cDef) -> case positionField (toName fRef) cDef of
-                                                                            Just p  -> unsafeAccess aRef cRef (RefByIndex p) (Right v)
-                                                                            Nothing -> Left $ Error ("FieldName " ++ show (toName fRef) ++ " not contained in constructor " ++ show (toName cRef) ++ " of ADTDefinition " ++ show (toName aRef))
-                                                           )
+mkAccess ctx aRef cRef fRef v | getSort ctx v == SortADT aRef = getCstr ctx aRef cRef >>= (\(_,cDef) -> case positionField (toName fRef) cDef of
+                                                                                            Just p  -> unsafeAccess aRef cRef (RefByIndex p) (Right v)
+                                                                                            Nothing -> Left $ Error ("FieldName " ++ show (toName fRef) ++ " not contained in constructor " ++ show (toName cRef) ++ " of ADTDefinition " ++ show (toName aRef))
+                                                                           )
+                              | otherwise                     = Left $ Error ("Argument of Access not of expected SortADT " ++ show aRef ++ " but " ++ show (getSort ctx v))

@@ -22,6 +22,7 @@ module TorXakis.ProblemSolver
 , SolveProblem (..)
 , KindOfProblem (..)
 , ProblemSolver (..)
+, assertSolution
 , negateSolution
 )
 where
@@ -46,6 +47,7 @@ newtype SolvableProblem = SolvableProblem { -- | to Maybe Bool: `Nothing` to han
                                           } deriving (Eq, Ord, Read, Show)
 
 -- | Solution
+-- TODO: rename to assignment and move to ValExpr (with the functions assertAssignment and negateAssignment)
 newtype  Solution = Solution { -- | to Map from Variable Name and Value
                                toMap :: Map (RefByName VarDef) Value
                              } deriving (Eq, Ord, Read, Show)
@@ -136,15 +138,19 @@ class MonadIO p => ProblemSolver p where
     -- | conversion
     toValExprContext :: p ContextValExpr
 
--- | Boolean value exppression that negates the provided solution.
-negateSolution :: VarContext c => c -> Solution -> Either Error ValExpression
-negateSolution c sol = case partitionEithers [ mkVar c v >>= (\x -> mkConst c w >>= mkEqual c x)
+-- | Boolean value expression that asserts the provided solution.
+assertSolution :: VarContext c => c -> Solution -> Either Error ValExpression
+assertSolution c sol = case partitionEithers [ mkVar c v >>= (\x -> mkConst c w >>= mkEqual c x)
                                              | (v,w) <- Data.HashMap.toList (toMap sol)
                                              ] of
                             ( [], vs ) -> Right vs
-                            ( es, _ )  -> error ("unexpected errors in negateSolutions " ++ intercalate "\n" (Prelude.map show es))
+                            ( es, _ )  -> error ("unexpected errors in assertSolution " ++ intercalate "\n" (Prelude.map show es))
                         >>= mkAnd c
-                        >>= mkNot c
+
+-- | Boolean value expression that negates the provided solution.
+negateSolution :: VarContext c => c -> Solution -> Either Error ValExpression
+negateSolution c sol = assertSolution c sol >>= mkNot c
+
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

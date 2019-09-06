@@ -57,6 +57,7 @@ tests:
         - HUnit
         - txs-smt
         - txs-symbolic
+        - txs-solve-random
 
 ghc-options:
 - -O
