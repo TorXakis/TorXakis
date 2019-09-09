@@ -80,6 +80,8 @@ data ValExpressionView = Vconst    Value
                        | Vcstr     (RefByName ADTDef) (RefByName ConstructorDef) [ValExpression]
                        | Viscstr   (RefByName ADTDef) (RefByName ConstructorDef) ValExpression
                        | Vaccess   (RefByName ADTDef) (RefByName ConstructorDef) (RefByIndex FieldDef) ValExpression
+                       -- Quantor
+                       | Vforall   VarsDecl ValExpression
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | ValExpression: value expression
@@ -134,6 +136,7 @@ instance VarContext c => HasSort c ValExpressionView where
                                                Just aDef -> case lookupConstructor (toName c) aDef of
                                                                Nothing   -> error ("getSort: Constructor not found in ADTDef " ++ show c)
                                                                Just cDef -> getSort ctx ( elemsField cDef !! toIndex p )
+    getSort _    Vforall {}               = SortBool
 
 instance VarContext c => UsedSorts c ValExpression where
     usedSorts ctx = usedSorts ctx . view
@@ -162,6 +165,7 @@ instance VarContext c => UsedSorts c ValExpressionView where
     usedSorts ctx (Vcstr a _ vs)      = Set.insert (SortADT a) $ Set.unions (map (usedSorts ctx) vs)
     usedSorts ctx (Viscstr _ _ v)     = Set.insert SortBool $ usedSorts ctx v
     usedSorts ctx a@(Vaccess _ _ _ v) = Set.insert (getSort ctx a) $ usedSorts ctx v
+    usedSorts ctx (Vforall _ v)       = usedSorts ctx v
 
 instance FreeVars ValExpression where
     freeVars = freeVars . view
@@ -187,6 +191,7 @@ instance FreeVars ValExpressionView where
     freeVars (Vcstr _ _ vs)    = Set.unions $ map freeVars vs
     freeVars (Viscstr _ _ v)   = freeVars v
     freeVars (Vaccess _ _ _ v) = freeVars v
+    freeVars (Vforall vs e)    = Set.difference (freeVars e) (Set.fromList (map (RefByName . name) (toList vs)))
 
 instance UsedFuncSignatures ValExpression where
     usedFuncSignatures = usedFuncSignatures . view
@@ -212,3 +217,4 @@ instance UsedFuncSignatures ValExpressionView where
     usedFuncSignatures (Vcstr _ _ vs)    = Set.unions $ map usedFuncSignatures vs
     usedFuncSignatures (Viscstr _ _ v)   = usedFuncSignatures v
     usedFuncSignatures (Vaccess _ _ _ v) = usedFuncSignatures v
+    usedFuncSignatures (Vforall _ e)     = usedFuncSignatures e

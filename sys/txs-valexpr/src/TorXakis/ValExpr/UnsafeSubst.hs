@@ -66,6 +66,7 @@ unsafeSubst ctx  mp = unsafeSubstView . view
     unsafeSubstView (Vcstr a c l)             = unsafeCstr a c (map (unsafeSubstView . view) l)
     unsafeSubstView (Viscstr a c v)           = unsafeIsCstr a c (unsafeSubstView (view v))
     unsafeSubstView (Vaccess a c p v)         = unsafeAccess a c p (unsafeSubstView (view v))
+    unsafeSubstView (Vforall _ _)            = undefined -- TODO
 
 -- TODO? More laziness?
 -- e.g. depending on some parameter value, some other parameter values might be irrelevant

@@ -68,6 +68,8 @@ module TorXakis.ValExpr.ValExprBasis
 , mkIsCstr
   -- **** Algebraic Data Type Accessor
 , mkAccess
+  -- *** Quantors
+, mkForAll
 )
 where
 import qualified Data.Set        as Set
@@ -80,6 +82,7 @@ import           TorXakis.Sort
 import           TorXakis.ValExpr.Unsafe
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.Value
+import           TorXakis.Var
 import           TorXakis.VarContext
 
 ------------------------------------------------------------------------------------------------------------------
@@ -233,3 +236,7 @@ mkAccess ctx aRef cRef fRef v | getSort ctx v == SortADT aRef = getCstr ctx aRef
                                                                                             Nothing -> Left $ Error ("FieldName " ++ show (toName fRef) ++ " not contained in constructor " ++ show (toName cRef) ++ " of ADTDefinition " ++ show (toName aRef))
                                                                            )
                               | otherwise                     = Left $ Error ("Argument of Access not of expected SortADT " ++ show aRef ++ " but " ++ show (getSort ctx v))
+
+-- | experimental
+mkForAll :: c -> VarsDecl -> ValExpression -> ValExpression
+mkForAll _ vs e = ValExpression (Vforall vs e)

@@ -313,17 +313,6 @@ instance ProblemSolver SmtM where
                                                                 ] in
                                 return ( (h,b) : ls )
 
-            toParameterSmt :: VarDef -> SmtM SmtString
-            toParameterSmt p = do
-                ref <- varRefToSmt (RefByName (name p))
-                srt <- sortToSmt (TorXakis.Var.sort p)
-                return $ TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.singleton '('
-                                                     , ref
-                                                     , TorXakis.SmtLanguage.singleton ' '
-                                                     , srt
-                                                     , TorXakis.SmtLanguage.singleton ')'
-                                                     ]
-
     push = do
             smtPut smtPush
             -- update depth (not returned by smt solver) and add new variables on stack
@@ -530,6 +519,17 @@ getResponse h = getResponseCount 0
 -- ------------
 -- TXS 2 SMT
 -- ------------
+toParameterSmt :: VarDef -> SmtM SmtString
+toParameterSmt p = do
+    ref <- varRefToSmt (RefByName (name p))
+    srt <- sortToSmt (TorXakis.Var.sort p)
+    return $ TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.singleton '('
+                                         , ref
+                                         , TorXakis.SmtLanguage.singleton ' '
+                                         , srt
+                                         , TorXakis.SmtLanguage.singleton ')'
+                                         ]
+
 -- | sort to Smt
 sortToSmt :: Sort -> SmtM SmtString
 sortToSmt SortBool     = return smtBoolean
@@ -659,6 +659,16 @@ valExprViewToSmt (Vaccess ar cr p e) = do
                                         f <- fieldRefToSmt ar cr p
                                         arg <- valExprToSmt e
                                         return $ unaryOperatorToSmt f arg
+valExprViewToSmt (Vforall vs e) = do
+                                        ss <- mapM toParameterSmt (TorXakis.Var.toList vs)
+                                        arg <- valExprToSmt e
+                                        return $ TorXakis.SmtLanguage.concat
+                                                        [ fromString "(forall ("
+                                                        , TorXakis.SmtLanguage.concat ss
+                                                        , fromString ") "
+                                                        , arg
+                                                        , fromString ")"
+                                                        ]
 
 
 -- | unary smt operator
