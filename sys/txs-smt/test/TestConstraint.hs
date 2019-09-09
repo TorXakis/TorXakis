@@ -41,7 +41,7 @@ testConstraintList :: Test
 testConstraintList =
     TestList $ concatMap (\s -> Prelude.map (\e -> TestLabel (show s ++ ": " ++ fst e)
                                                              $ TestCase $ do
-                                                                            es <- uncurry mkSmtState s True
+                                                                            es <- uncurry mkSmtState s False
                                                                             case es of
                                                                                 Left err -> error (show err)
                                                                                 Right ss -> do
@@ -76,37 +76,36 @@ testConstraintList =
 labelTestList :: ProblemSolver p => [(String, p ())]
 labelTestList =
         [
---            ("None",                                        testNone),
---            ("True",                                        testTrue),
---            ("False",                                       testFalse),
---            ("Negative of Negative Is Identity",            testNegativeNegativeIsIdentity),
---            ("Add Equal sum = e1 + e2",                     testAdd),
---            ("No Variables",                                testNoVariables),
---            ("Bool",                                        testBool),
---            ("Bool False",                                  testBoolFalse),
---            ("Bool True",                                   testBoolTrue),
---            ("Int",                                         testInt),
---            ("Int Negative",                                testIntNegative),
---            ("Conditional Int Datatype",                    testConditionalInt),
---            ("Conditional Int Value",                       testConditionalIntValue),
---            ("Conditional Int IsAbsent",                    testConditionalIntIsAbsent),
---            ("Conditional Int IsPresent",                   testConditionalIntIsPresent),
---            ("Conditional Int Present Value",               testConditionalIntPresentValue),
---            ("Conditional Int Instances",                   testConditionalIntInstances),
---            ("Nested Constructor",                          testNestedConstructor),
---            ("Function Const",                              testFunctionConst),
---            ("Function Equal",                              testFunctionEqual),
---            ("Recursive length",                            testRecursiveLength),
---            ("Recursive sum",                               testRecursiveSum),
+            ("None",                                        testNone),
+            ("True",                                        testTrue),
+            ("False",                                       testFalse),
+            ("Negative of Negative Is Identity",            testNegativeNegativeIsIdentity),
+            ("Add Equal sum = e1 + e2",                     testAdd),
+            ("No Variables",                                testNoVariables),
+            ("Bool",                                        testBool),
+            ("Bool False",                                  testBoolFalse),
+            ("Bool True",                                   testBoolTrue),
+            ("Int",                                         testInt),
+            ("Int Negative",                                testIntNegative),
+            ("Conditional Int Datatype",                    testConditionalInt),
+            ("Conditional Int Value",                       testConditionalIntValue),
+            ("Conditional Int IsAbsent",                    testConditionalIntIsAbsent),
+            ("Conditional Int IsPresent",                   testConditionalIntIsPresent),
+            ("Conditional Int Present Value",               testConditionalIntPresentValue),
+            ("Conditional Int Instances",                   testConditionalIntInstances),
+            ("Nested Constructor",                          testNestedConstructor),
+            ("Function Const",                              testFunctionConst),
+            ("Function Equal",                              testFunctionEqual),
+            ("Recursive length",                            testRecursiveLength),
+            ("Recursive sum",                               testRecursiveSum),
             ("Just String",                                 testString)
         ]
-  {-  ++
+    ++
        ioeTestStringEquals
     ++
         ioeTestStringLength
     ++
         ioeTestRegex
--}
 
 ioeTestStringEquals :: ProblemSolver p => [(String, p ())]
 ioeTestStringEquals = [
@@ -127,8 +126,7 @@ ioeTestStringLength = [
         ("String Length    2",                     testStringLength    2),
         ("String Length    5",                     testStringLength    5),
         ("String Length   10",                     testStringLength   10),
-        ("String Length   20",                     testStringLength   20),
-        ("String Length   50",                     testStringLength   50)
+        ("String Length   20",                     testStringLength   20)
     ]
 
 ioeTestRegex :: ProblemSolver p => [(String, p ())]

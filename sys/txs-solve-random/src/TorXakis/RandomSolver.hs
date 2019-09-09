@@ -40,7 +40,6 @@ import qualified Data.List
 import           Data.Maybe
 import qualified Data.Text
 import           Numeric
-import           System.IO
 import           System.Random
 import           System.Random.Shuffle
 
@@ -354,39 +353,12 @@ createNewVariableName = do
                             Right x -> x
                             Left e -> error ("mkName unexpectedly failed with " ++ show e)
 
-assertTrue :: ProblemSolver p => RefByName VarDef -> [ValExpression] -> RandomM p ()
-assertTrue v xs = do
-    ctx <- toValExprContext
-    --addDatatypes (elemsADT ctx)
-    --addFunctions (elemsFunc ctx)
-    case lookupVar (toName v) ctx of
-        Nothing -> error "variable not found"
-        Just vd -> case mkVarsDecl ctx [vd] of
-                    Left e   -> error ("variable declaration failed with " ++ show e)
-                    Right vs -> case mkOr ctx xs of
-                                    Left e       -> error ("mkOr failed with " ++ show e)
-                                    Right orExpr -> do
-                                                        addAssertions [mkForAll ctx vs orExpr]
-                                                        _ <- push
-                                                        s <- solvable
-                                                        _ <- pop
-                                                        case s of
-                                                            SolvableProblem (Just True)  -> return ()
-                                                            SolvableProblem (Just False) -> liftIO $ hPutStrLn stderr "problem must be solvable! - string length known"
-                                                            SolvableProblem Nothing      -> liftIO $ hPutStrLn stderr "problem solver can't solve problem"
-
--- | solve with constraints
+-- | Solve with constraints
+-- The union (or) of all provided constraints should be true
+-- given the variable's properties (such as length of string is >= 0, or string length of a character string is 1)
 solveWithConstraints :: ProblemSolver p => RefByName VarDef -> [ValExpression] -> RandomM p Value
-solveWithConstraints v xs = do
-    _ <- push
-    assertTrue v xs
-    _ <- pop
-    solveWithConstraints' v xs
-
-
-solveWithConstraints' :: ProblemSolver p => RefByName VarDef -> [ValExpression] -> RandomM p Value
-solveWithConstraints' _ [] = error "solveWithConstraints - Solution exists, yet no solution found in all bins"
-solveWithConstraints' v (x:xs) = do
+solveWithConstraints _ [] = error "solveWithConstraints - Solution exists, yet no solution found in all bins"
+solveWithConstraints v (x:xs) = do
     _ <- push
     addAssertions [x]
     s <- lift $ solvePartSolution [v]
@@ -395,7 +367,7 @@ solveWithConstraints' v (x:xs) = do
         Solved (Solution sol) -> assert (Data.HashMap.size sol == 1) $
                                      return $ fromMaybe (error "solveWithConstraints - Solver hasn't returned the value of requested variable.")
                                                         (Data.HashMap.lookup v sol)
-        _                     -> solveWithConstraints' v xs
+        _                     -> solveWithConstraints v xs
 
 -- | solve randomly
 -- first check whether the variable can be changed
