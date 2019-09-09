@@ -54,6 +54,8 @@ tests:
         - -rtsopts
         - -with-rtsopts=-N
         dependencies:
+        - hspec
+        - hspec-contrib
         - HUnit
         - txs-smt
         - txs-symbolic

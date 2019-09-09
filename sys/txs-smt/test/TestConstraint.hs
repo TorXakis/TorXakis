@@ -39,7 +39,7 @@ import           TestSolvers
 
 testConstraintList :: Test
 testConstraintList =
-    TestList $ concatMap (\s -> Prelude.map (\e -> TestLabel (show s ++ ": " ++ fst e)
+    TestList $ concatMap (\s -> Prelude.map (\e -> TestLabel (show s ++ ": " ++ show (fst e))
                                                              $ TestCase $ do
                                                                             es <- uncurry mkSmtState s False
                                                                             case es of

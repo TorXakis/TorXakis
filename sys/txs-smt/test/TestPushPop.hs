@@ -27,7 +27,8 @@ import           TorXakis.Var
 
 testPushPopList :: Test
 testPushPopList =
-    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do
+    TestList $ concatMap (\s -> map (\e -> TestLabel (show s ++ ": " ++ show (fst e))
+                                                     $ TestCase $ do
                                                                             es <- uncurry mkSmtState s False
                                                                             case es of
                                                                                 Left err -> error (show err)
