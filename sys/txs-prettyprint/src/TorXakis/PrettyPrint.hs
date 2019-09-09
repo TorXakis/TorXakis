@@ -264,6 +264,7 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
                                                                 Just cDef   -> let field = elemsField cDef !! toIndex p in
                                                                                     funcInst o ctx (txsFuncNameField field) [v]
+  prettyPrint _ _   (Vforall _ _)      = undefined  -- TODO: ForAll quantifier not yet supported in TorXakis language
 
 -- | Helper function since func and predef both are function Instantations in TorXakis
 funcInst :: VarContext c => Options -> c -> TxsString -> [ValExpression] -> TxsString

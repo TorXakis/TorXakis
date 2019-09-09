@@ -254,7 +254,7 @@ randomIntegerConstraints v = do
 randomNonNegativeValues :: Int -> Integer -> Ratio -> IO [Integer]
 randomNonNegativeValues n step r =
     let ranges = basicIntRanges n step r
-     in do
+     in 
         mapM randomRIO ranges
 
 -- | make the `ValExpression` constraints for non-negativew range (such as string length) given the integer boundary values
@@ -299,7 +299,7 @@ randomStringCharConstraints v =
             liftIO $ shuffleM cs
     where
         nrOfChars :: Int
-        nrOfChars = (ord regexRangeHigh) - (ord regexRangeLow) +1
+        nrOfChars = ord regexRangeHigh - ord regexRangeLow +1
         nrOfCharsInRange :: Int
         nrOfCharsInRange = 32
 
@@ -455,42 +455,41 @@ randomSolveBins ((v,d):xs) = do
                                             assert (1 == Data.Text.length s) $ do
                                                 addAssertions [ justAssignment ctx v c ]
                                                 randomSolve xs
-                        SortADT ar  -> do
-                                            case lookupADT (toName ar) ctx of
-                                                Nothing -> error ("Datatype " ++ show ar ++ " can unexpectedly not been found in context")
-                                                Just ad -> do
-                                                                (d', cr) <- case elemsConstructor ad of
-                                                                                []   -> error ("Datatype " ++ show ar ++ " has unexpectedly no constructors")
-                                                                                [cd] -> return (d, RefByName (constructorName cd))  -- no choice and no decrease of depth
-                                                                                _    -> do
-                                                                                            bins <- randomIsCstrConstraints ar (justVar ctx v)
-                                                                                            (Ccstr ar' cr' _) <- solveWithConstraints v bins
-                                                                                            assert (ar == ar') $ return (d-1, cr')
-                                                                case mkIsCstr ctx ar cr (justVar ctx v) of
-                                                                    Left e  -> error ("mkIsCstr unexpectedly failed with " ++ show e)
-                                                                    Right e -> do
-                                                                            addAssertions [ e ]
-                                                                            case lookupConstructor (toName cr) ad of
-                                                                                Nothing -> error ("Constructor " ++ show cr ++ " can unexpectedly not been found in adt " ++ show ar)
-                                                                                Just cd -> if d' == 0 || null (elemsField cd)
-                                                                                            then randomSolve xs
-                                                                                            else do
-                                                                                                    eithers <- mapM (\f -> do 
-                                                                                                                               n <- createNewVariableName
-                                                                                                                               return $ mkVarDef ctx n (TorXakis.Sort.sort f)
-                                                                                                                    )
-                                                                                                                    (elemsField cd)
-                                                                                                    case partitionEithers eithers of
-                                                                                                        ([], varDefs) -> do
-                                                                                                                            declareVariables varDefs
-                                                                                                                            ctx' <- toValExprContext
-                                                                                                                            let varRefs :: [RefByName VarDef]
-                                                                                                                                varRefs = Data.List.map (RefByName . TorXakis.Var.name) varDefs
-                                                                                                                                exprs = Data.List.map (\(r,n) -> justEqual ctx' (justVar ctx' r) (justAccess ctx' ar cr (RefByName n) (justVar ctx' v))) (zip varRefs (map fieldName (elemsField cd)))
-                                                                                                                            addAssertions exprs
-                                                                                                                            sxs <- liftIO $ shuffleM (xs ++ zip varRefs (repeat d'))
-                                                                                                                            randomSolve sxs
-                                                                                                        (es, _)       -> error ("randomSolveBins - mkVarDef unexpectedly failed with " ++ show es)
+                        SortADT ar  -> case lookupADT (toName ar) ctx of
+                                            Nothing -> error ("Datatype " ++ show ar ++ " can unexpectedly not been found in context")
+                                            Just ad -> do
+                                                            (d', cr) <- case elemsConstructor ad of
+                                                                            []   -> error ("Datatype " ++ show ar ++ " has unexpectedly no constructors")
+                                                                            [cd] -> return (d, RefByName (constructorName cd))  -- no choice and no decrease of depth
+                                                                            _    -> do
+                                                                                        bins <- randomIsCstrConstraints ar (justVar ctx v)
+                                                                                        (Ccstr ar' cr' _) <- solveWithConstraints v bins
+                                                                                        assert (ar == ar') $ return (d-1, cr')
+                                                            case mkIsCstr ctx ar cr (justVar ctx v) of
+                                                                Left e  -> error ("mkIsCstr unexpectedly failed with " ++ show e)
+                                                                Right e -> do
+                                                                        addAssertions [ e ]
+                                                                        case lookupConstructor (toName cr) ad of
+                                                                            Nothing -> error ("Constructor " ++ show cr ++ " can unexpectedly not been found in adt " ++ show ar)
+                                                                            Just cd -> if d' == 0 || null (elemsField cd)
+                                                                                        then randomSolve xs
+                                                                                        else do
+                                                                                                eithers <- mapM (\f -> do 
+                                                                                                                           n <- createNewVariableName
+                                                                                                                           return $ mkVarDef ctx n (TorXakis.Sort.sort f)
+                                                                                                                )
+                                                                                                                (elemsField cd)
+                                                                                                case partitionEithers eithers of
+                                                                                                    ([], varDefs) -> do
+                                                                                                                        declareVariables varDefs
+                                                                                                                        ctx' <- toValExprContext
+                                                                                                                        let varRefs :: [RefByName VarDef]
+                                                                                                                            varRefs = Data.List.map (RefByName . TorXakis.Var.name) varDefs
+                                                                                                                            exprs = Data.List.map (\(r,n) -> justEqual ctx' (justVar ctx' r) (justAccess ctx' ar cr (RefByName n) (justVar ctx' v))) (zip varRefs (map fieldName (elemsField cd)))
+                                                                                                                        addAssertions exprs
+                                                                                                                        sxs <- liftIO $ shuffleM (xs ++ zip varRefs (repeat d'))
+                                                                                                                        randomSolve sxs
+                                                                                                    (es, _)       -> error ("randomSolveBins - mkVarDef unexpectedly failed with " ++ show es)
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
