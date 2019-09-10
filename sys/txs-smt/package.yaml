@@ -47,7 +47,7 @@ library:
 
 tests:
     txs-smt-test:
-        main : TestMain.hs
+        main : Spec.hs
         source-dirs: test
         ghc-options:
         - -threaded
@@ -57,7 +57,10 @@ tests:
         - hspec
         - hspec-contrib
         - HUnit
+        - QuickCheck
+
         - txs-smt
+        - txs-sort-gen
         - txs-symbolic
         - txs-solve-random
 

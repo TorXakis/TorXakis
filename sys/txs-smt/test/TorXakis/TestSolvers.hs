@@ -9,7 +9,7 @@ See LICENSE at root directory of this repository.
 -- solvers in the user' system.
 --
 -- See: https://github.com/TorXakis/TorXakis/issues/197
-module TestSolvers where
+module TorXakis.TestSolvers where
 
 -- | The tests should be re-written to avoid this hardcoded SMT processes.
 -- a raw command with arguments: see http://hackage.haskell.org/package/process/docs/System-Process.html#v:proc for more info
@@ -21,12 +21,12 @@ defaultSMTProcs =
 
 cmdCVC4 :: (FilePath,[String])
 cmdCVC4 = ("cvc4", [ "--lang=smt2.5"
-                 , "--incremental"
-                 , "--strings-exp"
-                 , "--fmf-fun-rlv"
-                 , "--uf-ss-fair"
-                 , "--no-strings-print-ascii"
-                 ]
+                   , "--incremental"
+                   , "--strings-exp"
+                   , "--fmf-fun-rlv"
+                   , "--uf-ss-fair"
+                   , "--no-strings-print-ascii"
+                   ]
           )
 
 cmdZ3 :: (FilePath,[String])

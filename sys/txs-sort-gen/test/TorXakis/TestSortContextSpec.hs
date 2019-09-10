@@ -154,9 +154,9 @@ prop_initial =
           all (\s -> sortSize s ctx == 0)
               [ SortBool
               , SortInt
-              , SortChar
+              --, SortChar
               , SortString
-              , SortRegex
+              --, SortRegex
               ]
 
 -- | a sort context can be incrementally extended - which should be the same as creating it in one step.

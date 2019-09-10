@@ -74,9 +74,9 @@ empty = TestSortData primitiveSortSize Map.empty
         primitiveSortSize :: Map.Map Sort Int
         primitiveSortSize = Map.fromList $ zip [ SortBool
                                                , SortInt
-                                               , SortChar
+                                               --, SortChar
                                                , SortString
-                                               , SortRegex
+                                               --, SortRegex
                                                ]
                                                (repeat 0)
 

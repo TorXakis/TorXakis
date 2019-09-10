@@ -4,17 +4,18 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-module TestPushPop
-(
-testPushPopList
+module TorXakis.PushPopSpec
+( spec
 )
 where
 
 import           Control.Monad.Except
 import           Control.Monad.State
+import           Test.Hspec
+import           Test.Hspec.Contrib.HUnit
 import           Test.HUnit
 
-import           TestSolvers
+import           TorXakis.TestSolvers
 
 import           TorXakis.ContextVar
 import           TorXakis.Name
@@ -146,3 +147,7 @@ testIsolate =
         _ <- pop
 
         return ()
+
+spec :: Spec
+spec = describe "push pop" $
+            fromHUnitTest testPushPopList

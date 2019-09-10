@@ -238,7 +238,7 @@ smtPop = fromString "(pop 1)"
 -- | The Smt Get Info command on topic
 smtGetInfo :: String -- ^ topic
            -> SmtString
-smtGetInfo topic = TorXakis.SmtLanguage.concat [ fromString "(get-info : "
+smtGetInfo topic = TorXakis.SmtLanguage.concat [ fromString "(get-info :"
                                                , fromString topic
                                                , singleton ')'
                                                ]

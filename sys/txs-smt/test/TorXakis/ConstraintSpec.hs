@@ -4,20 +4,17 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-module TestConstraint
-(
-testConstraintList
+module TorXakis.ConstraintSpec
+( spec
 )
 where
--- general Haskell imports
 import           Control.Monad.Except
 import           Control.Monad.State
 import qualified Data.Char
 import qualified Data.HashMap
 import qualified Data.Text
---import           Text.Regex.TDFA
-
--- test specific Haskell imports
+import           Test.Hspec
+import           Test.Hspec.Contrib.HUnit
 import           Test.HUnit
 
 import           TorXakis.ContextVar
@@ -35,7 +32,7 @@ import           TorXakis.ValExpr
 import           TorXakis.Value
 import           TorXakis.Var
 
-import           TestSolvers
+import           TorXakis.TestSolvers
 
 testConstraintList :: Test
 testConstraintList =
@@ -729,3 +726,7 @@ functionSumRef :: RefByFuncSignature
 functionSumRef =
     let Right ctx = TorXakis.ContextVar.addADTs [ listInt ] TorXakis.ContextVar.empty in
             RefByFuncSignature (getFuncSignature ctx functionSum)
+
+spec :: Spec
+spec = describe "constraint" $
+            fromHUnitTest testConstraintList

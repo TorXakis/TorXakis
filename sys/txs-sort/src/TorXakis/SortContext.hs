@@ -50,9 +50,9 @@ class SortContext c where
     elemsSort :: c -> [Sort]
     elemsSort ctx =   SortBool
                     : SortInt
-                    : SortChar
+                    -- : SortChar
                     : SortString
-                    : SortRegex
+                    -- : SortRegex
                     : map (SortADT . RefByName . adtName) (elemsADT ctx)
 
     -- | Points the provided name to an ADTDef in the context?

@@ -205,7 +205,7 @@ smtParser :: [Token] -> Map.Map String SMTValue
 smtParser = happySmt
 
 cstrRegex :: String
-cstrRegex = "c[0-9A-F]+\\$[0-9A-F]+"
+cstrRegex = "c[0-9a-f]+\\$[0-9a-f]+"
 }
 -- ----------------------------------------------------------------------------------------- --
 -- end uninterpreted haskell postamble
