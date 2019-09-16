@@ -70,9 +70,8 @@ import qualified TorXakis.NameMap
 -- | The data type that represents 'Sort'.
 data Sort = SortBool
           | SortInt
-          | SortChar
+--        | SortChar
           | SortString
-          | SortRegex
           | SortADT (RefByName ADTDef)
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 -- If we want to make Sort package more flexible, we can use SortPrim "Int" & SortADT "WhatEver".
@@ -80,9 +79,8 @@ data Sort = SortBool
 instance Hashable Sort where
     s `hashWithSalt` SortBool    = s `hashWithSalt` T.pack "Bool"
     s `hashWithSalt` SortInt     = s `hashWithSalt` T.pack "Int"
-    s `hashWithSalt` SortChar    = s `hashWithSalt` T.pack "Char"
+--  s `hashWithSalt` SortChar    = s `hashWithSalt` T.pack "Char"
     s `hashWithSalt` SortString  = s `hashWithSalt` T.pack "String"
-    s `hashWithSalt` SortRegex   = s `hashWithSalt` T.pack "Regex"
     s `hashWithSalt` (SortADT r) = s `hashWithSalt` r  -- ADT name differs from predefined names
 
 -- | Enables 'Sort's of entities to be accessed in a common way.

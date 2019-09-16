@@ -34,7 +34,6 @@ import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
 import           TorXakis.Name
-import           TorXakis.Regex
 import           TorXakis.Sort
 import           TorXakis.SortContext
 
@@ -43,12 +42,10 @@ data Value = -- | Constructor of Boolean value.
              Cbool Bool
              -- | Constructor of Int value.
            | Cint Integer
-             -- | Constructor of Char value.
-           | Cchar Char
+--             -- | Constructor of Char value.
+--           | Cchar Char
              -- | Constructor of String value.
            | Cstring Text
-             -- | Constructor of Regular Expression value.
-           | Cregex Regex
              -- | Constructor of constructor value (value of ADT).
            | Ccstr (RefByName ADTDef) (RefByName ConstructorDef) [Value]
              -- | Constructor of ANY value - temporary hack : don't use.
@@ -60,17 +57,15 @@ data Value = -- | Constructor of Boolean value.
 instance HasSort c Value where
     getSort _ Cbool{}         = SortBool
     getSort _ Cint{}          = SortInt
-    getSort _ Cchar{}         = SortChar
+--  getSort _ Cchar{}         = SortChar
     getSort _ Cstring{}       = SortString
-    getSort _ Cregex{}        = SortRegex
     getSort _ (Ccstr a _ _)   = SortADT a
     getSort _ (Cany s)        = s
 
 instance SortContext c => UsedSorts c Value where
     usedSorts _   Cbool{}         = Set.singleton SortBool
     usedSorts _   Cint{}          = Set.singleton SortInt
-    usedSorts _   Cchar{}         = Set.singleton SortChar
+--  usedSorts _   Cchar{}         = Set.singleton SortChar
     usedSorts _   Cstring{}       = Set.singleton SortString
-    usedSorts _   Cregex{}        = Set.singleton SortRegex
     usedSorts ctx (Ccstr a _ vs)  = Set.insert (SortADT a) $ Set.unions (map (usedSorts ctx) vs)
     usedSorts _   (Cany s)        = Set.singleton s

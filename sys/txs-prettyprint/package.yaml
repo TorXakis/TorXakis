@@ -20,9 +20,11 @@ library:
   - base >= 4.7 && < 5
   - containers
   - deepseq
+  - text
   # TorXakis dependencies
   - txs-basics
   - txs-language
+  - txs-regex
   - txs-name
   - txs-sort
   - txs-valexpr

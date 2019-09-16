@@ -78,6 +78,7 @@ import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.RefByIndex
+import qualified TorXakis.Regex
 import           TorXakis.Sort
 import           TorXakis.ValExpr.Unsafe
 import           TorXakis.ValExpr.ValExpr
@@ -198,10 +199,9 @@ mkConcat ctx l | all (\e -> SortString == getSort ctx e) l = unsafeConcat (map R
 mkConcat _   _                                             = Left $ Error "Not all value expressions in list are of expected sort String"
 
 -- | Apply String In Regular Expression operator on the provided value expressions.
-mkStrInRe :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkStrInRe :: VarContext c => c -> ValExpression -> TorXakis.Regex.Regex -> Either Error ValExpression
 mkStrInRe ctx s _ | getSort ctx s /= SortString = Left $ Error ("First argument of At not of expected Sort String but " ++ show (getSort ctx s))
-mkStrInRe ctx _ r | getSort ctx r /= SortRegex  = Left $ Error ("Second argument of At not of expected Sort Regex but " ++ show (getSort ctx r))
-mkStrInRe _   s r                               = unsafeStrInRe (Right s) (Right r)
+mkStrInRe _   s r                               = unsafeStrInRe (Right s) r
 
 -- get ConstructorDef when possible
 getCstr :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> Either Error (ADTDef, ConstructorDef)

@@ -27,7 +27,6 @@ import           Test.QuickCheck
 
 import TorXakis.Distribute
 import TorXakis.Name
-import TorXakis.RegexGen
 import TorXakis.Sort
 import TorXakis.SortContext
 import TorXakis.SortGenContext
@@ -57,15 +56,11 @@ arbitraryValue ctx =
 arbitraryValueOfSort :: TestSortContext c => c -> Sort -> Gen Value
 arbitraryValueOfSort _   SortBool   = Cbool <$> arbitrary
 arbitraryValueOfSort _   SortInt    = Cint <$> arbitrary
-arbitraryValueOfSort _   SortChar   = Cchar <$> arbitraryChar
+-- arbitraryValueOfSort _   SortChar   = Cchar <$> arbitraryChar
 arbitraryValueOfSort _   SortString = 
     do
         s <- listOf arbitraryChar
         return $ Cstring (T.pack s)
-arbitraryValueOfSort _   SortRegex = 
-    do
-        rg <- arbitrary :: Gen RegexGen
-        return $ Cregex (unRegexGen rg)
 arbitraryValueOfSort ctx (SortADT a) = 
     do
         n <- getSize

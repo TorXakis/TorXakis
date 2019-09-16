@@ -46,15 +46,12 @@ tokens :-                                          -- Each right-hand side has t
    $nameStartChar $nameChar*                        { tok ( \p s -> Tname p s ) }
 
    \-? $digit+                                      { tok ( \p s -> Tint p (read s) ) }
-   \' ( .
-      | &\#$digit{1,3}\;
-      ) \'                                          { tok ( \p s -> Tchar p s ) }
+-- \' ( .
+--    | &\#$digit{1,3}\;
+--    ) \'                                          { tok ( \p s -> Tchar p s ) }
    \" ([^&\"]
       |&\#$digit{1,3}\;
       )* \"                                         { tok ( \p s -> Tstring p s) }
-   ` ([^&`]
-     |&\#$digit{1,3}\;
-     )* `                                           { tok ( \p s -> Tregex p s) }
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -66,9 +63,8 @@ tok f p s = f p s
 data  Token  = Tname        AlexPosn  String
              | Tbool        AlexPosn  Bool
              | Tint         AlexPosn  Integer
-             | Tchar        AlexPosn  String
+--           | Tchar        AlexPosn  String
              | Tstring      AlexPosn  String
-             | Tregex       AlexPosn  String
              | Topenpar     AlexPosn
              | Tclosepar    AlexPosn
              | Tcomma       AlexPosn

@@ -33,10 +33,14 @@ module TorXakis.PrettyPrint
 , TxsString
 )
 where
+import qualified Control.Arrow
 import           Control.DeepSeq     (NFData)
+import           Control.Exception   (assert)
+import           Data.Char
 import           Data.Data           (Data)
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
+import qualified Data.Text
 import           GHC.Generics        (Generic)
 import           Prelude             hiding (concat, length, replicate)
 
@@ -48,6 +52,7 @@ import           TorXakis.FunctionName
 import           TorXakis.Language
 import           TorXakis.Name
 import           TorXakis.RefByIndex
+import           TorXakis.Regex
 import           TorXakis.Sort
 import           TorXakis.ValExpr
 import           TorXakis.Value
@@ -81,9 +86,8 @@ prettyPrintSortContext o ctx = intercalate txsNewLine (map (prettyPrint o ctx) (
 instance PrettyPrint a Sort where
     prettyPrint _ _ SortBool     = txsBoolean
     prettyPrint _ _ SortInt      = txsInteger
-    prettyPrint _ _ SortChar     = txsCharacter
+--  prettyPrint _ _ SortChar     = txsCharacter
     prettyPrint _ _ SortString   = txsString
-    prettyPrint _ _ SortRegex    = txsRegularExpression
     prettyPrint _ _ (SortADT a)  = (fromText . TorXakis.Name.toText . toName) a
 
 instance PrettyPrint c FieldDef where
@@ -197,6 +201,22 @@ instance SortContext c => PrettyPrint c Value where
   prettyPrint _ ctx c  =  fromText (valueToText ctx c)
 
 ---------------------------------------------------------
+-- Regex
+---------------------------------------------------------
+instance PrettyPrint c Regex where
+  prettyPrint _ _ r  = assert (1 == TorXakis.Language.length txsRegularExpressionClose) $
+                          concat [ txsRegularExpressionOpen
+                                 , encode (toXsd r)
+                                 , txsRegularExpressionClose
+                                 ]
+    where
+        encode :: Text -> TxsString
+        encode = fromText . Data.Text.concatMap encodeChar
+        
+        encodeChar :: Char -> Text
+        encodeChar c | c == head (TorXakis.Language.toString txsRegularExpressionClose) = Data.Text.pack ("&#" ++ show (ord c) ++ ";")
+        encodeChar c                                                                    = Data.Text.singleton c
+---------------------------------------------------------
 -- ValExpr
 ---------------------------------------------------------
 -- | Generic Pretty Printer for all instance of 'TorXakis.FuncContext'.
@@ -208,14 +228,14 @@ prettyPrintFuncContext o fc =
            ]
 
 instance VarContext c => PrettyPrint c ValExpression where
-  prettyPrint o c = prettyPrint o c . view
+  prettyPrint o c = prettyPrint o c . TorXakis.ValExpr.view
 
 instance VarContext c => PrettyPrint c ValExpressionView where
   prettyPrint o ctx (Vconst c)          = prettyPrint o ctx c
   prettyPrint _ ctx (Vvar v)            = case lookupVar (toName v) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined var " ++ show v)
                                             Just vDef   -> fromText (TorXakis.Name.toText (name vDef))
-  prettyPrint o ctx (Vequal a b)        = infixOperator o ctx txsOperatorEqual [a,b]
+  prettyPrint o ctx (Vequal a b)        = infixOperator o txsOperatorEqual (map (prettyPrint o ctx) [a,b])
   prettyPrint o ctx (Vite c tb fb)      = concat [ txsKeywordIf
                                                  , txsSpace
                                                  , indent (replicate (1 + length txsKeywordIf) txsSpace)
@@ -233,45 +253,43 @@ instance VarContext c => PrettyPrint c ValExpressionView where
                                                  , separator o
                                                  , txsKeywordFi
                                                  ]
-  prettyPrint o ctx (Vfunc r vs)        = funcInst o ctx (fromText (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
-  prettyPrint o ctx (Vpredef r vs)      = funcInst o ctx (fromText (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) vs
-  prettyPrint o ctx (Vnot x)            = funcInst o ctx txsFunctionNot [x]
-  prettyPrint o ctx (Vand s)            = infixOperator o ctx txsOperatorAnd (Set.toList s)
-  prettyPrint o ctx (Vdivide t n)       = infixOperator o ctx txsOperatorDivide [t,n]
-  prettyPrint o ctx (Vmodulo t n)       = infixOperator o ctx txsOperatorModulo [t,n]
-  prettyPrint o ctx (Vsum m)            = occuranceOperator o ctx txsOperatorPlus txsOperatorTimes (Map.toList m)
-  prettyPrint o ctx (Vproduct m)        = occuranceOperator o ctx txsOperatorTimes txsOperatorPower (Map.toList m)
-  prettyPrint o ctx (Vgez v)            = case mkConst ctx (Cint 0) of
-                                            Left e     -> error ("prettyPrint: Unable to make zero in GEZ " ++ show e)
-                                            Right zero -> infixOperator o ctx txsOperatorLessEqual [zero,v]
-  prettyPrint o ctx (Vlength s)         = funcInst o ctx txsFunctionLength [s]
-  prettyPrint o ctx (Vat s p)           = funcInst o ctx txsFunctionAt [s,p]
-  prettyPrint o ctx (Vconcat vs)        = infixOperator o ctx txsOperatorConcat vs
-  prettyPrint o ctx (Vstrinre s r)      = funcInst o ctx txsFunctionStringInRegex [s,r]
+  prettyPrint o ctx (Vfunc r vs)        = funcInst o (fromText (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) (map (prettyPrint o ctx) vs)
+  prettyPrint o ctx (Vpredef r vs)      = funcInst o (fromText (TorXakis.FunctionName.toText (TorXakis.FuncSignature.funcName (toFuncSignature r)))) (map (prettyPrint o ctx) vs)
+  prettyPrint o ctx (Vnot x)            = funcInst o txsFunctionNot [prettyPrint o ctx x]
+  prettyPrint o ctx (Vand s)            = infixOperator o txsOperatorAnd (map (prettyPrint o ctx) (Set.toList s))
+  prettyPrint o ctx (Vdivide t n)       = infixOperator o txsOperatorDivide (map (prettyPrint o ctx) [t,n])
+  prettyPrint o ctx (Vmodulo t n)       = infixOperator o txsOperatorModulo (map (prettyPrint o ctx) [t,n])
+  prettyPrint o ctx (Vsum m)            = occuranceOperator o txsOperatorPlus txsOperatorTimes  (map (Control.Arrow.first (prettyPrint o ctx)) (Map.toList m))
+  prettyPrint o ctx (Vproduct m)        = occuranceOperator o txsOperatorTimes txsOperatorPower (map (Control.Arrow.first (prettyPrint o ctx)) (Map.toList m))
+  prettyPrint o ctx (Vgez v)            = infixOperator o txsOperatorLessEqual [fromString "0", prettyPrint o ctx v]
+  prettyPrint o ctx (Vlength s)         = funcInst o txsFunctionLength [prettyPrint o ctx s]
+  prettyPrint o ctx (Vat s p)           = funcInst o txsFunctionAt (map (prettyPrint o ctx) [s,p])
+  prettyPrint o ctx (Vconcat vs)        = infixOperator o txsOperatorConcat (map (prettyPrint o ctx) vs)
+  prettyPrint o ctx (Vstrinre s r)      = funcInst o txsFunctionStringInRegex [prettyPrint o ctx s, prettyPrint o ctx r]
   prettyPrint o ctx (Vcstr a c vs)      = case lookupADT (toName a) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
                                             Just aDef   -> case lookupConstructor (toName c) aDef of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
-                                                                Just cDef   -> funcInst o ctx (txsFuncNameConstructor cDef) vs
+                                                                Just cDef   -> funcInst o (txsFuncNameConstructor cDef) (map (prettyPrint o ctx) vs)
   prettyPrint o ctx (Viscstr a c v)     = case lookupADT (toName a) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
                                             Just aDef   -> case lookupConstructor (toName c) aDef of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
-                                                                Just cDef   -> funcInst o ctx (txsFuncNameIsConstructor cDef) [v]
+                                                                Just cDef   -> funcInst o (txsFuncNameIsConstructor cDef) [prettyPrint o ctx v]
   prettyPrint o ctx (Vaccess a c p v)   = case lookupADT (toName a) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)
                                             Just aDef   -> case lookupConstructor (toName c) aDef of
                                                                 Nothing     -> error ("Pretty Print accessor refers to undefined constructor " ++ show c)
                                                                 Just cDef   -> let field = elemsField cDef !! toIndex p in
-                                                                                    funcInst o ctx (txsFuncNameField field) [v]
+                                                                                    funcInst o (txsFuncNameField field) [prettyPrint o ctx v]
   prettyPrint _ _   (Vforall _ _)      = undefined  -- TODO: ForAll quantifier not yet supported in TorXakis language
 
 -- | Helper function since func and predef both are function Instantations in TorXakis
-funcInst :: VarContext c => Options -> c -> TxsString -> [ValExpression] -> TxsString
-funcInst o ctx txsName vs =
+funcInst :: Options -> TxsString -> [TxsString] -> TxsString
+funcInst o txsName ps =
     let offset = if multiline o then concat [ txsNewLine
-                                              , replicate (1 + length txsName) txsSpace
-                                              ]
+                                            , replicate (1 + length txsName) txsSpace
+                                            ]
                                 else empty
       in
         concat [ txsName
@@ -279,13 +297,13 @@ funcInst o ctx txsName vs =
                , txsOpenScopeArguments
                , txsSpace
                , intercalate (concat [offset, txsSeparatorElements, txsSpace])
-                               (map (indent ( replicate (length txsName + length txsSeparatorElements + 2) txsSpace ) . prettyPrint o ctx) vs)
+                               (map (indent ( replicate (length txsName + length txsSeparatorElements + 2) txsSpace ) ) ps)
                , offset
                , txsCloseScopeArguments
                ]
 
-infixOperator :: VarContext c => Options -> c -> TxsString -> [ValExpression] -> TxsString
-infixOperator o ctx txsName vs =
+infixOperator :: Options -> TxsString -> [TxsString] -> TxsString
+infixOperator o txsName ps =
         -- TODO: assert length txsSpace == 1
         let offset = if multiline o then replicate (length (append txsName txsSpace)) txsSpace
                                     else empty
@@ -302,14 +320,14 @@ infixOperator o ctx txsName vs =
                                          , txsOpenScopeValExpr
                                          , txsSpace
                                         ])
-                                   (map (indent (replicate (length (concat [ txsName, txsSpace, txsOpenScopeValExpr, txsSpace])) txsSpace) . prettyPrint o ctx) vs)
+                                   (map (indent (replicate (length (concat [ txsName, txsSpace, txsOpenScopeValExpr, txsSpace])) txsSpace) ) ps)
                    , separator o
                    , offset
                    , txsCloseScopeValExpr
                    ]
 
-occuranceOperator :: VarContext c => Options -> c -> TxsString -> TxsString -> [(ValExpression, Integer)] -> TxsString
-occuranceOperator o ctx txsOp1 txsOp2 occuranceList =
+occuranceOperator :: Options -> TxsString -> TxsString -> [(TxsString, Integer)] -> TxsString
+occuranceOperator o txsOp1 txsOp2 occuranceList =
         let offset1 = if multiline o then replicate (length txsOp1 + 1) txsSpace
                                      else empty
             offset2 = replicate (length txsOp1 + length txsOpenScopeValExpr + 2) txsSpace
@@ -332,11 +350,9 @@ occuranceOperator o ctx txsOp1 txsOp2 occuranceList =
                    , txsCloseScopeValExpr
                    ]
     where
-        tupleToText :: (ValExpression, Integer) -> TxsString
-        tupleToText (v,  1) = prettyPrint o ctx v
-        tupleToText (v,  p) = case mkConst ctx (Cint p) of
-                                   Left e   -> error ("prettyPrint: Unable to make p in tupleToText: " ++ show e)
-                                   Right cP -> infixOperator o ctx txsOp2 [v, cP]
+        tupleToText :: (TxsString, Integer) -> TxsString
+        tupleToText (v,  1) = v
+        tupleToText (v,  p) = infixOperator o txsOp2 [v, fromString (show p)]
 
 instance SortContext c => PrettyPrint c FuncDef where
     prettyPrint o c fd = 

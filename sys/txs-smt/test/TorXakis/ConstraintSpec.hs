@@ -414,8 +414,7 @@ testRegex :: ProblemSolver p => Text -> p ()
 testRegex regexStr =
     let (ctx, [(stringVar, stringExpr)]) = makeVars TorXakis.ContextVar.empty [SortString]
         Right regex = TorXakis.Regex.fromXsd regexStr
-        Right val = mkConst ctx (Cregex regex)
-        Right strinre = mkStrInRe ctx stringExpr val
+        Right strinre = mkStrInRe ctx stringExpr regex
       in
         testTemplateSolution [] [] [stringVar] [strinre]
 

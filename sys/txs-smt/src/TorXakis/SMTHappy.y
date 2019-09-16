@@ -204,8 +204,14 @@ data  SMTValue       = SMTConstructor Text [SMTValue]
 smtParser :: [Token] -> Map.Map String SMTValue
 smtParser = happySmt
 
+-- | Regular expression for a constructor
 cstrRegex :: String
-cstrRegex = "c[0-9a-f]+\\$[0-9a-f]+"
+cstrRegex = "c" ++ hexValue ++ "\\$" ++ hexValue
+    where
+        hexDigit :: String
+        hexDigit = "[0-9a-f]"
+        hexValue :: String
+        hexValue = hexDigit ++ "+"
 }
 -- ----------------------------------------------------------------------------------------- --
 -- end uninterpreted haskell postamble

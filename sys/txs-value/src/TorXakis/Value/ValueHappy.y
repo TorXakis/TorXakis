@@ -45,9 +45,8 @@ import qualified Data.Text as T
     name          { Tname      pos  $$ }
     bool          { Tbool      pos  $$ }
     integer       { Tint       pos  $$ }
-    char          { Tchar      pos  $$ }
+--  char          { Tchar      pos  $$ }
     string        { Tstring    pos  $$ }
-    regex         { Tregex     pos  $$ }
 
 %% ----------------------------------------------------------------------------------------- --
 
@@ -76,12 +75,10 @@ Value :: { ParseValue }
              { Pbool $1 }
          | integer
              { Pint $1 }
-         | char
-             { Pchar ( (init .tail) $1 ) }
+--       | char
+--           { Pchar ( (init .tail) $1 ) }
          | string
              { Pstring ( (init . tail) $1 ) }
-         | regex
-             { Pregex ( (init . tail) $1 ) }
          | name Arguments
              { Pcstr (T.pack $1) $2 }
 
@@ -98,9 +95,8 @@ noerror = ()
 -- | Data structure for Parse Value.
 data  ParseValue = Pbool   Bool
                  | Pint    Integer
-                 | Pchar   String
+--               | Pchar   String
                  | Pstring String
-                 | Pregex  String
                  | Pcstr   Text [ParseValue]
      deriving (Eq,Ord,Read,Show)
 

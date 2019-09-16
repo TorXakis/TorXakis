@@ -76,7 +76,6 @@ empty = TestSortData primitiveSortSize Map.empty
                                                , SortInt
                                                --, SortChar
                                                , SortString
-                                               --, SortRegex
                                                ]
                                                (repeat 0)
 

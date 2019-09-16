@@ -31,8 +31,10 @@ import           Test.QuickCheck.Monadic
 import           TorXakis.ContextTestSort
 import           TorXakis.Name
 import           TorXakis.ProblemSolver
+import           TorXakis.RandomSolver
 import           TorXakis.SmtM
 import           TorXakis.Sort
+import           TorXakis.SymbolicSolver
 import           TorXakis.ValExpr
 import           TorXakis.Value
 import           TorXakis.Var
@@ -96,16 +98,16 @@ prop_Constructable = monadicIO $ do
                             r <- liftIO $ runExceptT $ -- smt Solver
                                               runStateT (TorXakis.SmtM.toStateT
                                                                                  -- random Solver
-                                                                                 --(execStateT (TorXakis.RandomSolver.toStateT 
+                                                                                 (evalStateT (TorXakis.RandomSolver.toStateT 
                                                                                                     -- symbolic solver
-                                                                                                    --(execStateT (TorXakis.SymbolicSolver.toStateT 
+                                                                                                    (evalStateT (TorXakis.SymbolicSolver.toStateT 
                                                                                                                     (constructableADTs ads)
-                                                                                                    --            )
-                                                                                                    --            mkSymbolicState
-                                                                                                    --)
-                                                                                             --)
-                                                                                             --(mkRandomState 10 10 Factor)
-                                                                                 --)
+                                                                                                                )
+                                                                                                                mkSymbolicState
+                                                                                                    )
+                                                                                             )
+                                                                                             (mkRandomState 3 10 Factor)
+                                                                                 )
                                                          )
                                                          ss
                             case r of
@@ -120,4 +122,4 @@ prop_Constructable = monadicIO $ do
 spec :: Spec
 spec =
   describe "All data types of a sort context" $
-        it "are constructable" $ property prop_Constructable
+            it "are constructable" $ property prop_Constructable

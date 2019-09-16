@@ -138,7 +138,7 @@ empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap
                         -- Bool -- Equal
                         $ addSuccess SortBool   2 (genValExprEqual SortBool)
                         $ addSuccess SortBool   2 (genValExprEqual SortInt)
-                        $ addSuccess SortBool   2 (genValExprEqual SortChar)
+--                      $ addSuccess SortBool   2 (genValExprEqual SortChar)
                         $ addSuccess SortBool   2 (genValExprEqual SortString)
                         
                         $ addSuccess SortBool   2 genValExprAnd
@@ -155,8 +155,8 @@ empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap
                         $ addSuccess SortInt    3 (genValExprITE SortInt)
 
                         -- Char
-                        $ addSuccess SortChar   0 (genValExprValueOfSort SortChar)
-                        $ addSuccess SortChar   3 (genValExprITE SortChar)
+--                      $ addSuccess SortChar   0 (genValExprValueOfSort SortChar)
+--                      $ addSuccess SortChar   3 (genValExprITE SortChar)
 
                         -- String
                         $ addSuccess SortString 0 (genValExprValueOfSort SortString)
@@ -164,9 +164,6 @@ empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap
                         $ addSuccess SortString 2 genValExprAt
                         $ addSuccess SortString 3 (genValExprITE SortString)
 
-                        -- Regex
-                        $ addSuccess SortRegex  0 (genValExprValueOfSort SortRegex) -- TODO: generate a VALID regex string
-                        -- TODO: add StrInRe  <- needs valid REGEX strings
                           TorXakis.GenCollection.empty
             where
                  addSuccess :: Sort

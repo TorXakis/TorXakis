@@ -29,5 +29,4 @@ constToConstant :: Sort -> Const -> Value
 constToConstant _ (BoolConst b)   = Cbool b
 constToConstant _ (IntConst i)    = Cint i
 constToConstant _ (StringConst s) = Cstring s
-constToConstant _ (RegexConst s)  = Cregex s
 constToConstant s AnyConst        = Cany s

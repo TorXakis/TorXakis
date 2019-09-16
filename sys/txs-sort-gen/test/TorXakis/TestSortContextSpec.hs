@@ -156,7 +156,6 @@ prop_initial =
               , SortInt
               --, SortChar
               , SortString
-              --, SortRegex
               ]
 
 -- | a sort context can be incrementally extended - which should be the same as creating it in one step.

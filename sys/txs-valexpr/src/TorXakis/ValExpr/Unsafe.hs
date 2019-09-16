@@ -59,7 +59,7 @@ import           TorXakis.Error
 import           TorXakis.FunctionName
 import           TorXakis.FuncSignature
 import           TorXakis.RefByIndex
-import           TorXakis.Regex         (toPosix)
+import qualified TorXakis.Regex
 import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.ValExpr.ValExpr
@@ -495,16 +495,13 @@ unsafeConcat' l = case (mergeVals . flatten . filter (stringEmptyValExpr /= ) ) 
     fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vconcat cs) = cs
     fromValExpr x                                             = [x]
 
-unsafeStrInRe :: Either Error ValExpression -> Either Error ValExpression -> Either Error ValExpression
-unsafeStrInRe (Left e1) (Left e2) = Left $ Error ("StrInRe Error 2" ++ "\nString :" ++ show e1 ++ "\nRegex :" ++ show e2)
-unsafeStrInRe (Left e1) _         = Left $ Error ("StrInRe Error 1" ++ "\nString :" ++ show e1                             )
-unsafeStrInRe _         (Left e2) = Left $ Error ("StrInRe Error 1" ++                            "\nRegex :" ++ show e2)
-unsafeStrInRe (Right s) (Right p) = unsafeStrInRe' s p
+unsafeStrInRe :: Either Error ValExpression -> TorXakis.Regex.Regex -> Either Error ValExpression
+unsafeStrInRe (Left e1) _ = Left $ Error ("StrInRe Error :" ++ show e1 )
+unsafeStrInRe (Right s) r = unsafeStrInRe' s r
 
-unsafeStrInRe' :: ValExpression -> ValExpression -> Either Error ValExpression
-unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s))
-               (TorXakis.ValExpr.ValExpr.view -> Vconst (Cregex r))  = unsafeConst (Cbool (T.unpack s =~ T.unpack (toPosix r) ) )
-unsafeStrInRe' s r                                                   = Right $ ValExpression (Vstrinre s r)
+unsafeStrInRe' :: ValExpression -> TorXakis.Regex.Regex -> Either Error ValExpression
+unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) r  = unsafeConst (Cbool (T.unpack s =~ T.unpack (TorXakis.Regex.toPosix r) ) )
+unsafeStrInRe' s r                                                      = Right $ ValExpression (Vstrinre s r)
 
 -- | When all value expressions are constant values, return Just them otherwise return Nothing.
 toMaybeValues :: [ValExpression] -> Maybe [Value]

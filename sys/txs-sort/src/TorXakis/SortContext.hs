@@ -52,7 +52,6 @@ class SortContext c where
                     : SortInt
                     -- : SortChar
                     : SortString
-                    -- : SortRegex
                     : map (SortADT . RefByName . adtName) (elemsADT ctx)
 
     -- | Points the provided name to an ADTDef in the context?

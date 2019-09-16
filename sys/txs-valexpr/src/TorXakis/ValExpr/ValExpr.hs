@@ -40,6 +40,7 @@ import           TorXakis.Error
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.RefByIndex
+import qualified TorXakis.Regex
 import           TorXakis.Sort
 import           TorXakis.Value
 import           TorXakis.Var
@@ -75,7 +76,7 @@ data ValExpressionView = Vconst    Value
                        | Vconcat   [ValExpression]
                        -- Regex
                        | Vstrinre  ValExpression
-                                   ValExpression
+                                   TorXakis.Regex.Regex
                        -- ADT
                        | Vcstr     (RefByName ADTDef) (RefByName ConstructorDef) [ValExpression]
                        | Viscstr   (RefByName ADTDef) (RefByName ConstructorDef) ValExpression
@@ -161,7 +162,7 @@ instance VarContext c => UsedSorts c ValExpressionView where
     usedSorts ctx (Vlength v)         = Set.insert SortInt $ usedSorts ctx v
     usedSorts ctx (Vat s p)           = Set.unions $ map (usedSorts ctx) [s, p]
     usedSorts ctx (Vconcat vs)        = Set.unions $ map (usedSorts ctx) vs
-    usedSorts ctx (Vstrinre s r)      = Set.insert SortBool $ Set.unions (map (usedSorts ctx) [s, r])
+    usedSorts ctx (Vstrinre s _)      = Set.insert SortBool $ usedSorts ctx s
     usedSorts ctx (Vcstr a _ vs)      = Set.insert (SortADT a) $ Set.unions (map (usedSorts ctx) vs)
     usedSorts ctx (Viscstr _ _ v)     = Set.insert SortBool $ usedSorts ctx v
     usedSorts ctx a@(Vaccess _ _ _ v) = Set.insert (getSort ctx a) $ usedSorts ctx v
@@ -187,7 +188,7 @@ instance FreeVars ValExpressionView where
     freeVars (Vlength v)       = freeVars v
     freeVars (Vat s p)         = Set.unions $ map freeVars [s, p]
     freeVars (Vconcat vs)      = Set.unions $ map freeVars vs
-    freeVars (Vstrinre s r)    = Set.unions $ map freeVars [s, r]
+    freeVars (Vstrinre s _)    = freeVars s
     freeVars (Vcstr _ _ vs)    = Set.unions $ map freeVars vs
     freeVars (Viscstr _ _ v)   = freeVars v
     freeVars (Vaccess _ _ _ v) = freeVars v
@@ -213,7 +214,7 @@ instance UsedFuncSignatures ValExpressionView where
     usedFuncSignatures (Vlength v)       = usedFuncSignatures v
     usedFuncSignatures (Vat s p)         = Set.unions $ map usedFuncSignatures [s, p]
     usedFuncSignatures (Vconcat vs)      = Set.unions $ map usedFuncSignatures vs
-    usedFuncSignatures (Vstrinre s r)    = Set.unions $ map usedFuncSignatures [s, r]
+    usedFuncSignatures (Vstrinre s _)    = usedFuncSignatures s
     usedFuncSignatures (Vcstr _ _ vs)    = Set.unions $ map usedFuncSignatures vs
     usedFuncSignatures (Viscstr _ _ v)   = usedFuncSignatures v
     usedFuncSignatures (Vaccess _ _ _ v) = usedFuncSignatures v

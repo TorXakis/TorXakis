@@ -68,9 +68,16 @@ module TorXakis.Language
 
 , txsBoolean
 , txsInteger
-, txsCharacter
+--, txsCharacter
 , txsString
-, txsRegularExpression
+
+  -- ** Declaration of Constants
+--, txsCharacterOpen
+--, txsCharacterClose
+, txsStringOpen
+, txsStringClose
+, txsRegularExpressionOpen
+, txsRegularExpressionClose
 
   -- ** Predefined Functions
 , txsFunctionNot
@@ -218,9 +225,8 @@ indent i t = intercalate (append txsNewLine i) (TorXakis.Language.lines t)
 txsPredefinedSorts :: [TxsString]
 txsPredefinedSorts = [ txsBoolean
                      , txsInteger
-                     , txsCharacter
+                     --, txsCharacter
                      , txsString
-                     , txsRegularExpression
                      ]
 
 -- | Boolean in TorXakis
@@ -232,16 +238,36 @@ txsInteger :: TxsString
 txsInteger = TxsString (T.pack "Int")
 
 -- | Character in TorXakis
-txsCharacter :: TxsString
-txsCharacter = TxsString (T.pack "Char")
+--txsCharacter :: TxsString
+--txsCharacter = TxsString (T.pack "Char")
 
 -- | String in TorXakis
 txsString :: TxsString
 txsString = TxsString (T.pack "String")
 
--- | Regular Expression in TorXakis
-txsRegularExpression :: TxsString
-txsRegularExpression = TxsString (T.pack "Regex")
+-- | Character constant declaration - Open
+--txsCharacterOpen :: TxsString
+--txsCharacterOpen = TxsString (T.singleton '\'')
+
+-- | Character constant declaration - Close
+--txsCharacterClose :: TxsString
+--txsCharacterClose = TxsString (T.singleton '\'')
+
+-- | String constant declaration - Open
+txsStringOpen :: TxsString
+txsStringOpen = TxsString (T.singleton '"')
+
+-- | String constant declaration - Close
+txsStringClose :: TxsString
+txsStringClose = TxsString (T.singleton '"')
+
+-- | RegularExpression constant declaration - Open
+txsRegularExpressionOpen :: TxsString
+txsRegularExpressionOpen = TxsString (T.singleton '`')
+
+-- | RegularExpression constant declaration - Close
+txsRegularExpressionClose :: TxsString
+txsRegularExpressionClose = TxsString (T.singleton '`')
 
 -- | Function not in TorXakis
 txsFunctionNot :: TxsString
@@ -659,7 +685,6 @@ isReservedFunctionSignature ctx f =    isMappedFuncSignature
                           ([SortString],             SortInt      ) -> txsFuncName == txsFunctionLength
                           ([SortString, SortString], SortString   ) -> txsFuncName == txsOperatorConcat
                           ([SortString, SortInt],    SortString   ) -> txsFuncName == txsFunctionAt
-                          ([SortString, SortRegex],  SortBool     ) -> txsFuncName == txsFunctionStringInRegex
                           _                                         -> False
 
         isSortFuncSignature :: Bool

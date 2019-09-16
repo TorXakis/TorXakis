@@ -33,7 +33,6 @@ import           Text.Regex.TDFA
 
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.Regex
 import           TorXakis.Sort
 import           TorXakis.SortContext
 import           TorXakis.Value.Value
@@ -45,15 +44,15 @@ controlChar :: Char -> Bool
 controlChar c = ord c == 127 || ord c < 32
 
 -- | encode character to canconical representation: &#...; for non-printable characters, terminator char ('), and normal otherwise
-encodeChar :: Char -> Char -> String
-encodeChar terminator c | c == terminator || controlChar c = "&#" ++ show (ord c) ++ ";"
-encodeChar _          c                                    = [c]
+-- encodeChar :: Char -> Char -> String
+-- encodeChar terminator c | c == terminator || controlChar c = "&#" ++ show (ord c) ++ ";"
+-- encodeChar _          c                                    = [c]
 
 -- | decode character from canconical representation: &#...; for non-printable characters, terminator char ('), and normal otherwise
-decodeChar :: String -> Char
-decodeChar [c]                            = c
-decodeChar s | s =~ "\\`&#[0-9]{1,3};\\'" = (chr . read . init . drop 2) s
-decodeChar e                              = error ("decodeChar - unexpected string sequence " ++ show e)
+-- decodeChar :: String -> Char
+-- decodeChar [c]                            = c
+-- decodeChar s | s =~ "\\`&#[0-9]{1,3};\\'" = (chr . read . init . drop 2) s
+-- decodeChar e                              = error ("decodeChar - unexpected string sequence " ++ show e)
 
 -- | encode String to canconical representation: &#...; for non-printable characters, terminator char, escape symbol (&), and normal otherwise
 encodeString :: Char -> String -> String
@@ -87,9 +86,8 @@ valueToText :: SortContext c => c -> Value -> Text
 valueToText _   (Cbool True)   = T.pack "True"
 valueToText _   (Cbool False)  = T.pack "False"
 valueToText _   (Cint i)       = T.pack (show i)
-valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar '\'' c ++ "'")
+--valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar '\'' c ++ "'")
 valueToText _   (Cstring s)    = T.pack ("\"" ++ encodeString '"' (T.unpack s) ++ "\"")
-valueToText _   (Cregex r)     = T.pack ("`" ++ encodeString '`' (T.unpack (toXsd r)) ++ "`")
 valueToText _   (Ccstr _ c []) = TorXakis.Name.toText (toName c)
 valueToText ctx (Ccstr _ c as) =
         let cNode = (TorXakis.Name.toText . toName) c
@@ -112,12 +110,8 @@ valueFromText ctx s t =
         fromParseValue :: Sort -> ParseValue -> Either Error Value
         fromParseValue SortBool    (Pbool b)    = Right $ Cbool b
         fromParseValue SortInt     (Pint b)     = Right $ Cint b
-        fromParseValue SortChar    (Pchar c)    = Right $ Cchar (decodeChar c)
+--      fromParseValue SortChar    (Pchar c)    = Right $ Cchar (decodeChar c)
         fromParseValue SortString  (Pstring s') = Right $ Cstring (T.pack (decodeString s'))
-        fromParseValue SortRegex   (Pregex sr)  = let dr = T.pack (decodeString sr) in
-                                                    case fromXsd dr of
-                                                        Left e  -> Left $ Error ("Unable to parse regular expression (" ++ show dr ++ ") in ValueFromText due to " ++ show e)
-                                                        Right r -> Right $ Cregex r
         fromParseValue (SortADT a) (Pcstr ctext ps) =
             case mkName ctext of
                 Left e      -> Left $ Error ("Illegal name " ++ show ctext ++ "\n" ++ show e)

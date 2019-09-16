@@ -107,9 +107,8 @@ getSortDictionary pd = do
     sMap <- compileToSorts (pd ^. adts)
     let pdsMap = Map.fromList [ ("Bool",   SortBool)
                               , ("Int",    SortInt)
-                              , ("Char",   SortChar)
+                              --, ("Char",   SortChar)
                               , ("String", SortString)
-                              , ("Regex",  SortRegex)
                               ]
     return $ pdsMap <> sMap
 

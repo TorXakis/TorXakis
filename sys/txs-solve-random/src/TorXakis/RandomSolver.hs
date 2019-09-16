@@ -192,7 +192,7 @@ justLength ctx v = case mkLength ctx v of
                     Right x -> x
                     Left e -> error ("mkLength unexpectedly failed with " ++ show e)
 
-justStrInRe :: ValExprContext c => c -> ValExpression -> ValExpression -> ValExpression
+justStrInRe :: ValExprContext c => c -> ValExpression -> Regex -> ValExpression
 justStrInRe ctx v1 v2 = case mkStrInRe ctx v1 v2 of
                     Right x -> x
                     Left e -> error ("mkStrInRe unexpectedly failed with " ++ show e)
@@ -309,15 +309,15 @@ randomStringCharConstraints v =
                 u = chr (i + nrOfCharsInRange -1 + ord regexRangeLow)
               in do
                 ctx <- toValExprContext
-                return $ justStrInRe ctx v (justConst ctx (Cregex (justRegexRange l u)))
+                return $ justStrInRe ctx v (justRegexRange l u)
         makeConstraint i                                     =
             let l = chr (  i                                         + ord regexRangeLow)
                 u = chr ( (i + nrOfCharsInRange -1) `mod` nrOfChars + ord regexRangeLow)
               in do
                 ctx <- toValExprContext
-                return $ justStrInRe ctx v (justConst ctx (Cregex (justRegexUnion [ justRegexRange l regexRangeHigh
-                                                                                  , justRegexRange regexRangeLow u
-                                                                                  ])))
+                return $ justStrInRe ctx v (justRegexUnion [ justRegexRange l regexRangeHigh
+                                                           , justRegexRange regexRangeLow u
+                                                           ])
 
 -- | ADT generation
 -- First fix a constructor
@@ -416,10 +416,9 @@ randomSolveBins ((v,d):xs) = do
                                         c@Cint{} <- solveWithConstraints v bins
                                         addAssertions [ justAssignment ctx v c ]
                                         randomSolve xs
-                        SortChar    -> error "not supported yet"
-                        SortRegex   -> error "TorXakis only supports regex constants, not variables"
+--                      SortChar    -> undefined
                         SortString  -> if d > 0
-                                        then do -- arbritrary string
+                                        then do -- arbritrary string -> choose a length
                                                 lengthName <- createNewVariableName
                                                 case mkVarDef ctx lengthName SortInt of
                                                     Left e          -> error ("randomSolveBins - mkVarDef unexpectedly failed with " ++ show e)

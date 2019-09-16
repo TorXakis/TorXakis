@@ -534,9 +534,8 @@ toParameterSmt p = do
 sortToSmt :: Sort -> SmtM SmtString
 sortToSmt SortBool     = return smtBoolean
 sortToSmt SortInt      = return smtInteger
-sortToSmt SortChar     = error "Not yet implemented"
+-- sortToSmt SortChar  = undefined
 sortToSmt SortString   = return smtString
-sortToSmt SortRegex    = error "Regex is not defined in SMT"
 sortToSmt (SortADT ar) = adtRefToSmt ar
 
 -- | adt Ref To Smt
@@ -586,7 +585,6 @@ valueToSmt (Cbool True)     = return smtTrue
 valueToSmt (Cbool False)    = return smtFalse
 valueToSmt (Cint n)         = return $ smtIntegerLiteral n
 valueToSmt (Cstring s)      = return $ smtTextLiteral s
-valueToSmt (Cregex r)       = return $ smtRegexLiteral r
 valueToSmt (Ccstr ar cr []) = cstrRefToSmt ar cr
 valueToSmt (Ccstr ar cr as) = do
                                  sc <- cstrRefToSmt ar cr
@@ -642,7 +640,9 @@ valExprViewToSmt (Vgez e)          = unaryOperatorToSmt (fromString "<= 0") <$> 
 valExprViewToSmt (Vlength e)       = unaryOperatorToSmt (fromString "str.len") <$> valExprToSmt e
 valExprViewToSmt (Vat v1 v2)       = operatorToSmt (fromString "str.at") <$> mapM valExprToSmt [v1,v2]
 valExprViewToSmt (Vconcat es)      = operatorToSmt (fromString "str.++") <$> mapM valExprToSmt es
-valExprViewToSmt (Vstrinre v1 v2)  = operatorToSmt (fromString "str.in.re") <$> mapM valExprToSmt [v1,v2]
+valExprViewToSmt (Vstrinre s r)  = do
+                                        ss <- valExprToSmt s
+                                        return $ operatorToSmt (fromString "str.in.re") [ ss, smtRegexLiteral r]
 valExprViewToSmt (Vcstr ar cr [])  = assert False $ cstrRefToSmt ar cr      -- A valExpr of a constructor with no parameters is expected to be rewritten to a constant value
 valExprViewToSmt (Vcstr ar cr es)  = do
                                         cs <- cstrRefToSmt ar cr

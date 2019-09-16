@@ -59,7 +59,7 @@ import qualified Data.Text                as T
 import           Prelude                  hiding (lookup)
 
 --import           TorXakis.FuncSignature   (FuncSignature (args, returnSort))
-import           TorXakis.Sort            (Sort (SortBool, SortInt, SortRegex, SortString))
+import           TorXakis.Sort            (Sort (SortBool, SortInt, SortString))
 
 import           TorXakis.TxsCompiler.Data   (CompilerM)
 import           TorXakis.TxsCompiler.Error  (Error (Error--, Errors
@@ -263,7 +263,6 @@ sortConst :: Const -> Maybe Sort
 sortConst (BoolConst _)   = Just SortBool
 sortConst (IntConst _ )   = Just SortInt
 sortConst (StringConst _) = Just SortString
-sortConst (RegexConst _)  = Just SortRegex
 -- Any does not have a sort associated with it.
 --
 -- Note that it seems like a bad design decision to change 'AnyConst' to
