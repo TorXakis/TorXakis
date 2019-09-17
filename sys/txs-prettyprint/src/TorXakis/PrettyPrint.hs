@@ -287,9 +287,7 @@ instance VarContext c => PrettyPrint c ValExpressionView where
 -- | Helper function since func and predef both are function Instantations in TorXakis
 funcInst :: Options -> TxsString -> [TxsString] -> TxsString
 funcInst o txsName ps =
-    let offset = if multiline o then concat [ txsNewLine
-                                            , replicate (1 + length txsName) txsSpace
-                                            ]
+    let offset = if multiline o then append txsNewLine $ replicate (1 + length txsName) txsSpace
                                 else empty
       in
         concat [ txsName

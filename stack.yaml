@@ -37,7 +37,6 @@ packages:
 - sys/txs-basics-gen
 - sys/txs-bexpr
 - sys/txs-chan
-- sys/txs-compiler
 - sys/txs-core
 - sys/txs-corestate
 - sys/txs-defs
@@ -48,7 +47,7 @@ packages:
 - sys/txs-prettyprint-gen
 - sys/txs-regex
 - sys/txs-regex-gen
-- sys/txs-server
+#- sys/txs-server
 - sys/txs-serverstate
 - sys/txs-smt
 - sys/txs-solve
@@ -56,7 +55,7 @@ packages:
 - sys/txs-sort
 - sys/txs-sort-gen
 - sys/txs-symbolic
-- sys/txs-txscompiler
+#- sys/txs-txscompiler
 - sys/txs-value
 - sys/txs-value-gen
 - sys/txs-valexpr
