@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- Module      :  SortContextSpec
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
@@ -92,16 +92,16 @@ prop_Constructable = monadicIO $ do
     where
         prop_Constructable_Solver :: (FilePath,[String]) -> [ADTDef] -> PropertyM IO Bool
         prop_Constructable_Solver (fp,as) ads = do
-            es <- liftIO $ mkSmtState fp as True
+            es <- liftIO $ mkSmtState fp as False
             case es of
                 Left err -> error (show err)
                 Right ss -> do
                             r <- liftIO $ runExceptT $ -- smt Solver
                                               runStateT (TorXakis.SmtM.toStateT
                                                                                  -- random Solver
-                                                                                 -- (evalStateT (TorXakis.RandomSolver.toStateT 
+                                                                                 -- (evalStateT (TorXakis.RandomSolver.toStateT
                                                                                                     -- symbolic solver
-                                                                                                    -- (evalStateT (TorXakis.SymbolicSolver.toStateT 
+                                                                                                    -- (evalStateT (TorXakis.SymbolicSolver.toStateT
                                                                                                                     (constructableADTs ads)
                                                                                                     --             )
                                                                                                     --             mkSymbolicState
@@ -123,4 +123,6 @@ prop_Constructable = monadicIO $ do
 spec :: Spec
 spec =
   describe "All data types of a sort context" $
-           modifyMaxSuccess (const 1000000) $  it "are constructable" $ property prop_Constructable
+           modifyMaxSize (const 10) $   -- prevent too complex recursive data types for regression testing
+                                        -- since problem solvers need minutes to hours to solve them
+                        it "are constructable" $ property prop_Constructable
