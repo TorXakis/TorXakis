@@ -57,6 +57,10 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
 
+-- TODO: should we implement the rewrite rules of regular expressions
+-- or depend on the problem solver?
+-- see e.g. https://github.com/Z3Prover/z3/issues/2575 which caused Z3 to implement more regex rewrite rules.
+
 -- | RegexView: the public view of regular expression 'Regex'
 data RegexView =  RegexStringLiteral Data.Text.Text
                 | RegexConcat [Regex]                     -- invariant: length list is at least 2, RegexEmpty and RegexConcat are not contained, RegexStringLiteral do not appear consecutive
@@ -102,6 +106,15 @@ mkRegexConcat ls = case ( merge . flatten . Prelude.filter (mkRegexEmpty /=) ) l
         merge ( (view -> RegexStringLiteral t1)
               : (view -> RegexStringLiteral t2)
               : xs)                             = merge (Regex (RegexStringLiteral (Data.Text.append t1 t2)) : xs)
+        merge ( (view -> RegexLoop r1 l1 mu1)
+              : (view -> RegexLoop r2 l2 mu2)
+              : xs)         | r1 == r2          = let nu = case (mu1, mu2) of    -- combine loops   x{1,2}x{3,4} == x{4,6}
+                                                           (Nothing, Nothing) -> Nothing
+                                                           (Nothing, Just _ ) -> Nothing
+                                                           (Just _ , Nothing) -> Nothing
+                                                           (Just u1, Just u2) -> Just (u1 + u2)
+                                                    in
+                                                       merge (Regex (RegexLoop r1 (l1+l2) nu) : xs)
         merge (x1:x2:xs)                        = x1 : merge (x2:xs)
 
         flatten :: [Regex] -> [Regex]
@@ -116,7 +129,9 @@ mkRegexConcat ls = case ( merge . flatten . Prelude.filter (mkRegexEmpty /=) ) l
 -- precondition: the list is not empty
 -- This precondition is needed since Posix doesn't support a concept like SMT's re.nostr.
 mkRegexUnion :: [Regex] -> Either Error Regex
-mkRegexUnion ls = let set = flatten ls in
+mkRegexUnion ls = -- TODO: merge overlapping / adjacent ranges in union e.g. [A-KL-Z] == [A-Z]
+                  -- TODO: merge similar concat starts e.g. (xyza)|(xyzb)|(xyzc) == xyz(a|b|c)
+                  let set = flatten ls in
                     case Data.Set.toList set of
                         []  -> Left $ Error "precondition violation: input is empty list"
                         [x] -> Right x
