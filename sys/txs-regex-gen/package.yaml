@@ -23,9 +23,12 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.RegexGen
+  - TorXakis.StringFromRegex
   dependencies:
   - base >= 4.7 && < 5
+  - containers
   - deepseq
+  - random
 
 tests:
     txs-regex-gen-test:
@@ -46,7 +49,7 @@ tests:
 
 ghc-options:
 - -Werror
-- -Wall
+#- -Wall
 - -O
 - -Widentities
 - -Wincomplete-uni-patterns

@@ -43,14 +43,15 @@ encodeChar '['  = "\\["
 encodeChar ']'  = "\\]"
 encodeChar '('  = "\\("
 encodeChar ')'  = "\\)"
-encodeChar '-'  = "\\-"         -- only needed in charGroup context (i.e. with [ ]), yet always allowed to escape
-encodeChar '^'  = "\\^"         -- only needed in charGroup context (i.e. with [ ]), yet always allowed to escape
+encodeChar '^'  = "\\^"
+encodeChar '$'  = "\\$"
 encodeChar c    = Data.Text.singleton c
 
 -- | encode String to Posix
 -- by escaping posix special/meta characters
 encodeString :: Text -> Text
-encodeString = Data.Text.concatMap encodeChar
+encodeString t | Data.Text.null t = Data.Text.pack "()"
+               | otherwise        = Data.Text.concatMap encodeChar t
 
 -- | transform Regular expression to Posix Text
 toPosix :: Regex -> Text
@@ -80,8 +81,21 @@ toPosix t = pack "\\`" <> toPosixNested t <> pack "\\'"
                                                         <> pack (show l)
                                                         <> Data.Text.singleton ','
                                                         <> Data.Text.singleton '}'
+        toPosixNestedView (RegexRange '-' ']')      =      Data.Text.pack "[].-\\-]"
+        toPosixNestedView (RegexRange '-' u)        =      Data.Text.pack "[.-"
+                                                        <> Data.Text.singleton u
+                                                        <> Data.Text.pack "-]"
+        toPosixNestedView (RegexRange ']' u)        =      Data.Text.pack "[]^-"
+                                                        <> Data.Text.singleton u
+                                                        <> Data.Text.singleton ']'
+        toPosixNestedView (RegexRange '^' u)        =      Data.Text.pack "[_-"
+                                                        <> Data.Text.singleton u
+                                                        <> Data.Text.pack "^]"
+        toPosixNestedView (RegexRange l ']')        =      Data.Text.pack "[]"
+                                                        <> Data.Text.singleton l
+                                                        <> Data.Text.pack "-\\]"
         toPosixNestedView (RegexRange l u)          =      Data.Text.singleton '['
-                                                        <> encodeChar l
+                                                        <> Data.Text.singleton l
                                                         <> Data.Text.singleton '-'
-                                                        <> encodeChar u
+                                                        <> Data.Text.singleton u
                                                         <> Data.Text.singleton ']'

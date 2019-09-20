@@ -50,14 +50,15 @@ where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           Data.Either
+import qualified Data.List
 import           Data.Set
-import           Data.Text
+import qualified Data.Text
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error
 
 -- | RegexView: the public view of regular expression 'Regex'
-data RegexView =  RegexStringLiteral Text
+data RegexView =  RegexStringLiteral Data.Text.Text
                 | RegexConcat [Regex]                     -- invariant: length list is at least 2, RegexEmpty and RegexConcat are not contained, RegexStringLiteral do not appear consecutive
                 | RegexUnion (Set Regex)                  -- invariant: number of elements is at least 2, elements are unique, RegexUnion is not contained
                 | RegexLoop Regex Integer (Maybe Integer) -- invariant: loops are not directly nested
@@ -85,7 +86,7 @@ regexRangeHigh :: Char
 regexRangeHigh = '\xFF'
 
 -- | constructor for the Regular Expression that only contains the provided string.
-mkRegexStringLiteral :: Text -> Regex
+mkRegexStringLiteral :: Data.Text.Text -> Regex
 mkRegexStringLiteral = Regex . RegexStringLiteral
 
 -- | constructor for the Regular Expression that concatinates the provided list of regular expressions
@@ -100,7 +101,7 @@ mkRegexConcat ls = case ( merge . flatten . Prelude.filter (mkRegexEmpty /=) ) l
         merge [x]                               = [x]
         merge ( (view -> RegexStringLiteral t1)
               : (view -> RegexStringLiteral t2)
-              : xs)                             = merge (Regex (RegexStringLiteral (append t1 t2)) : xs)
+              : xs)                             = merge (Regex (RegexStringLiteral (Data.Text.append t1 t2)) : xs)
         merge (x1:x2:xs)                        = x1 : merge (x2:xs)
 
         flatten :: [Regex] -> [Regex]
@@ -145,14 +146,18 @@ mkRegexLoop r 1 (Just 1)         = Right r
 mkRegexLoop r l mu               = Right $ mkRegexViewLoop (view r)
     where
         mkRegexViewLoop :: RegexView -> Regex
-        mkRegexViewLoop (RegexLoop ri li mui) = let nu = case (mu, mui) of
-                                                            (Nothing, Nothing) -> Nothing
-                                                            (Nothing, Just _ ) -> Nothing
-                                                            (Just _ , Nothing) -> Nothing
-                                                            (Just u , Just ui) -> Just (u * ui)
-                                                    in
-                                                        Regex (RegexLoop ri (l * li) nu)
-        mkRegexViewLoop _                     = Regex (RegexLoop r l mu)
+        mkRegexViewLoop (RegexLoop ri li mui)                           = let nu = case (mu, mui) of    -- combine loops
+                                                                                        (Nothing, Nothing) -> Nothing
+                                                                                        (Nothing, Just _ ) -> Nothing
+                                                                                        (Just _ , Nothing) -> Nothing
+                                                                                        (Just u , Just ui) -> Just (u * ui)
+                                                                                in
+                                                                                    Regex (RegexLoop ri (l * li) nu)
+        mkRegexViewLoop (RegexStringLiteral t) | Data.Text.null t       = r    -- (){3,6} == ()
+        mkRegexViewLoop (RegexStringLiteral t) | case mu of                    -- (a){3,3} == (aaa)
+                                                    Nothing -> False
+                                                    Just u  -> l == u   = Regex (RegexStringLiteral (Data.Text.pack (concat (Data.List.genericReplicate l (Data.Text.unpack t)))))
+        mkRegexViewLoop _                                               = Regex (RegexLoop r l mu)
 
 -- | constructor for the Regular Expression that contains all characters in the provided range.
 --

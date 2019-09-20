@@ -61,6 +61,7 @@ tests:
 
         - txs-smt
         - txs-sort-gen
+        - txs-regex-gen
         - txs-symbolic
         - txs-solve-random
 

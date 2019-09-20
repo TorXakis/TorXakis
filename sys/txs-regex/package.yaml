@@ -13,7 +13,8 @@ extra-source-files:
 - README.md
 
 dependencies:
-  - base >= 4.7 && < 5
+- base >= 4.7 && < 5
+- text
 
 library:
   source-dirs: src
@@ -26,8 +27,7 @@ library:
   - array                   # for alex
   - containers
   - deepseq
-  - text
-  
+
   - txs-basics
 
 tests:
@@ -42,6 +42,8 @@ tests:
         - hspec
         - QuickCheck
         - regex-tdfa
+
+        - txs-regex
 
 ghc-options:
 - -O
