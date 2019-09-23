@@ -27,7 +27,7 @@ import           Debug.Trace
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
-import           Text.Regex.TDFA
+import           Text.Regex.TDFA ((=~))
 
 import           TorXakis.Regex
 
@@ -104,13 +104,17 @@ test_CharsHighRange =
 
 -- | generic equivalent regex function
 prop_Equivalent :: String -> String -> String -> Bool
-prop_Equivalent regex1 regex2 txt = 
+prop_Equivalent posix1 posix2 txt = 
     let result1 :: Bool
-        result1 = txt =~ regex1
+        result1 = txt =~ posix1
         result2 :: Bool
-        result2 = txt =~ regex2
+        result2 = txt =~ posix2
       in
         result1 == result2
+
+-- | posix has equivalent notations, which we exploit to support one union operator only (like regexes in SMT)
+prop_Equivalent_UnionInCharGroups :: String -> Bool
+prop_Equivalent_UnionInCharGroups = prop_Equivalent "[A-Za-z_]+" "([A-Z]|[a-z]|_)+"
 
 -- | Empty Regex in loop is just empty regex
 prop_Equivalent_EmptyInLoop :: String -> Bool
@@ -130,11 +134,7 @@ prop_Equivalent_EmptyInConcatRemovable = prop_Equivalent "()[A-Z]()[a-z]()" "[A-
 
 -- | A singleton range is allowed and equal to that char
 prop_Equivalent_SingletonRange :: String -> Bool
-prop_Equivalent_SingletonRange = prop_Equivalent "[A-A]+" "A+"
-
--- | posix has equivalent notations, which we exploit to support one union operator only (like regexes in SMT)
-prop_Equivalent_UnionInCharGroups :: String -> Bool
-prop_Equivalent_UnionInCharGroups = prop_Equivalent "[A-Za-z_]+" "([A-Z]|[a-z]|_)+"
+prop_Equivalent_SingletonRange = prop_Equivalent "[A-A]*" "A*"
 
 -- | nested unions can be flattened
 prop_Equivalent_UnionNested :: String -> Bool
@@ -188,12 +188,12 @@ spec = do
     it "handle chars correctly in lowerbound position of a range" test_CharsLowRange
     it "handle chars correctly in upperbound position of a range" test_CharsHighRange
   describe "A regex has equivalent representations for" $ do
+    it "union in character groups" $ property prop_Equivalent_UnionInCharGroups
     it "empty in loop is empty" $ property prop_Equivalent_EmptyInLoop
     it "loop zero times is empty" $ property prop_Equivalent_LoopZeroIsEmpty
     it "loop once is identity" $ property prop_Equivalent_LoopOnceIsIdentity
     it "empty can be removed in concat" $ property prop_Equivalent_EmptyInConcatRemovable
     it "singleton range is character" $ property prop_Equivalent_SingletonRange
-    it "union in character groups" $ property prop_Equivalent_UnionInCharGroups
     it "nested unions" $ property prop_Equivalent_UnionNested
     it "nested concats" $ property prop_Equivalent_ConcatNested
     it "concat and unions" $ property prop_Equivalent_UnionConcat

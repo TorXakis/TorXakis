@@ -48,6 +48,7 @@ module TorXakis.Regex.Regex
 )
 where
 import           Control.DeepSeq     (NFData)
+import           Control.Exception   (assert)
 import           Data.Data           (Data)
 import           Data.Either
 import qualified Data.List
@@ -101,21 +102,27 @@ mkRegexConcat ls = case ( merge . flatten . Prelude.filter (mkRegexEmpty /=) ) l
                         fs  -> Regex $ RegexConcat fs
     where
         merge :: [Regex] -> [Regex]
-        merge []                                = []
-        merge [x]                               = [x]
+        merge []                                    = []
+        merge [x]                                   = [x]
+        merge ( (view -> RegexLoop r@(view -> RegexConcat cs) l mu)
+              : xs ) | cs `Data.List.isPrefixOf` xs = let nu = case mu of
+                                                                    Nothing -> Nothing
+                                                                    Just u  -> Just (u + 1)
+                                                        in
+                                                            merge (Regex (RegexLoop r (l+1) nu) : dropPrefix cs xs)
         merge ( (view -> RegexStringLiteral t1)
               : (view -> RegexStringLiteral t2)
-              : xs)                             = merge (Regex (RegexStringLiteral (Data.Text.append t1 t2)) : xs)
+              : xs)                                 = merge (Regex (RegexStringLiteral (Data.Text.append t1 t2)) : xs)
         merge ( (view -> RegexLoop r1 l1 mu1)
               : (view -> RegexLoop r2 l2 mu2)
-              : xs)         | r1 == r2          = let nu = case (mu1, mu2) of    -- combine loops   x{1,2}x{3,4} == x{4,6}
-                                                           (Nothing, Nothing) -> Nothing
-                                                           (Nothing, Just _ ) -> Nothing
-                                                           (Just _ , Nothing) -> Nothing
-                                                           (Just u1, Just u2) -> Just (u1 + u2)
-                                                    in
-                                                       merge (Regex (RegexLoop r1 (l1+l2) nu) : xs)
-        merge (x1:x2:xs)                        = x1 : merge (x2:xs)
+              : xs)         | r1 == r2              = let nu = case (mu1, mu2) of    -- combine loops   x{1,2}x{3,4} == x{4,6}
+                                                            (Nothing, Nothing) -> Nothing
+                                                            (Nothing, Just _ ) -> Nothing
+                                                            (Just _ , Nothing) -> Nothing
+                                                            (Just u1, Just u2) -> Just (u1 + u2)
+                                                        in
+                                                            merge (Regex (RegexLoop r1 (l1+l2) nu) : xs)
+        merge (x1:x2:xs)                            = x1 : merge (x2:xs)
 
         flatten :: [Regex] -> [Regex]
         flatten = Prelude.concatMap fromRegex
@@ -123,6 +130,11 @@ mkRegexConcat ls = case ( merge . flatten . Prelude.filter (mkRegexEmpty /=) ) l
         fromRegex :: Regex -> [Regex]
         fromRegex (view -> RegexConcat cs) = cs
         fromRegex x                        = [x]
+
+        dropPrefix :: Eq a => [a] -> [a] -> [a]
+        dropPrefix [] ys            = ys
+        dropPrefix _  []            = error "Argument passed as prefix is not a prefix"
+        dropPrefix (x:xs) (y:ys)    = assert (x==y) $ dropPrefix xs ys
 
 -- | constructor for the Regular Expression that unions the provided list of regular expressions.
 --
