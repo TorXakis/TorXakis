@@ -26,7 +26,7 @@ module TorXakis.FunctionName
 -- ** Name conversion
 , toText
 , toString
--- ** Smart constructor for Operator Name
+-- ** Smart constructor for Function Name
 , mkFunctionName
   -- dependencies, yet part of interface
 , Text
@@ -41,7 +41,7 @@ import           GHC.Generics       (Generic)
 
 import           TorXakis.Error     (Error(Error))
 
--- | Definition of the Operator name.
+-- | Definition of the Function name.
 newtype FunctionName = FunctionName
     { -- | 'Data.Text.Text' representation of FunctionName.
       toText :: Text

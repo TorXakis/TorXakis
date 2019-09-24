@@ -24,7 +24,7 @@ import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.ProblemSolver
 import           TorXakis.RandomSolver
-import qualified TorXakis.Regex
+import qualified TorXakis.Regex.Xsd
 import           TorXakis.SmtM
 import           TorXakis.Sort
 import           TorXakis.SymbolicSolver
@@ -413,7 +413,7 @@ testStringLength n =
 testRegex :: ProblemSolver p => Text -> p ()
 testRegex regexStr =
     let (ctx, [(stringVar, stringExpr)]) = makeVars TorXakis.ContextVar.empty [SortString]
-        Right regex = TorXakis.Regex.fromXsd regexStr
+        Right regex = TorXakis.Regex.Xsd.fromXsd regexStr
         Right strinre = mkStrInRe ctx stringExpr regex
       in
         testTemplateSolution [] [] [stringVar] [strinre]

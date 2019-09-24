@@ -66,12 +66,12 @@ runSolver exec (fp,as) = do
                                             Nothing  -> return b
 
 -- | all Char in Regex Range
-allChars :: [Char]
+allChars :: String
 allChars = [regexRangeLow..regexRangeHigh]
 
 -- | Are all chars correctly handled (by escaping when needed)
-expectation_Chars :: Expectation
-expectation_Chars = runSolvers instanceChars
+expectationChars :: Expectation
+expectationChars = runSolvers instanceChars
     where
         instanceChars :: ProblemSolver p => p Bool
         instanceChars = and <$> mapM instanceChar allChars
@@ -88,7 +88,7 @@ expectation_Chars = runSolvers instanceChars
                 ctx' <- toValExprContext
                 let Right var = mkVar ctx' (RefByName nm)
                     Right varIsVal = mkEqual ctx' var val
-                    r = mkRegexStringLiteral (Data.Text.singleton c)
+                    Right r = mkRegexCharLiteral c
                     Right varInRe = mkStrInRe ctx' var r
                   in do
                     addAssertions [varIsVal, varInRe]
@@ -149,8 +149,8 @@ inRange l h x = do
 
 -- | Are all chars correctly handled (by escaping when needed) in the lowerbound Position of a range
 -- In posix, the character at the position of u at [l - u]
-expectation_CharsLowRange :: Expectation
-expectation_CharsLowRange = runSolvers allMatchRanges
+expectationCharsLowRange :: Expectation
+expectationCharsLowRange = runSolvers allMatchRanges
     where
         allMatchRanges :: ProblemSolver p => p Bool
         allMatchRanges = and <$> mapM matchRanges allChars
@@ -165,8 +165,8 @@ expectation_CharsLowRange = runSolvers allMatchRanges
 
 -- | Are all chars correctly handled (by escaping when needed) in the Upperbound Position of a range
 -- In posix, the character at the position of u at [l - u]
-expectation_CharsHighRange :: Expectation
-expectation_CharsHighRange = runSolvers allMatchRanges
+expectationCharsHighRange :: Expectation
+expectationCharsHighRange = runSolvers allMatchRanges
     where
         allMatchRanges :: ProblemSolver p => p Bool
         allMatchRanges = and <$> mapM matchRanges allChars
@@ -182,7 +182,7 @@ expectation_CharsHighRange = runSolvers allMatchRanges
 spec :: Spec
 spec =
   describe "All Smt Solvers" $ do
-        it "handle chars correctly" expectation_Chars
-        it "handle chars correctly in lowerbound position of a range" expectation_CharsLowRange
-        it "handle chars correctly in upperbound position of a range" expectation_CharsHighRange
+        it "handle chars correctly" expectationChars
+        it "handle chars correctly in lowerbound position of a range" expectationCharsLowRange
+        it "handle chars correctly in upperbound position of a range" expectationCharsHighRange
         it "match string generated from regex" $ property prop_StringFromRegex

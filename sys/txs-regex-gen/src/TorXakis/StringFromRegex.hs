@@ -16,9 +16,6 @@ See LICENSE at root directory of this repository.
 -- This module provides a Generator for string according to a 'TorXakis.Regex'.
 -- Functionality is comparable to Xeger (see https://code.google.com/archive/p/xeger/)
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
 module TorXakis.StringFromRegex
 ( 
 -- * Regex Generator
@@ -34,6 +31,7 @@ import qualified Data.Text
 import           System.Random
 
 import           TorXakis.Regex
+import           TorXakis.Regex.CharRepr
 
 -- | parameter needed to generate unbounded loops (like generated with * and +)
 -- TODO: have really an exponentially decreasy likelihood of length
@@ -42,18 +40,19 @@ maxReplicate = 10         -- many, yet not too large to ensure fast generation
 
 -- | generate a string that adheres to the given 'TorXakis.Regex'.
 stringFromRegex :: Regex -> IO Data.Text.Text
-stringFromRegex = stringFromRegexView . view
+stringFromRegex = stringFromRegexCharRepr . viewCharRepr
 
-stringFromRegexView :: RegexView -> IO Data.Text.Text
-stringFromRegexView (RegexStringLiteral t)      = return t
-stringFromRegexView (RegexConcat rs)            = Data.Text.concat <$> mapM stringFromRegex rs
-stringFromRegexView (RegexUnion s)              = let l = Data.Set.toList s in do
-                                                    index <- randomRIO (0, length l -1)
-                                                    stringFromRegex (l !! index)
-stringFromRegexView (RegexLoop r l (Just u))    = do
-                                                    count <- randomRIO (l,u)
-                                                    Data.Text.concat <$> mapM stringFromRegex (Data.List.genericReplicate count r)
-stringFromRegexView (RegexLoop r l Nothing)     = do
-                                                    count <- randomRIO (0, maxReplicate)
-                                                    Data.Text.concat <$> mapM stringFromRegex (Data.List.genericReplicate (l+count) r)
-stringFromRegexView (RegexRange l u)            = Data.Text.singleton . Data.Char.chr <$> randomRIO (Data.Char.ord l, Data.Char.ord u)
+stringFromRegexCharRepr :: CharRepr -> IO Data.Text.Text
+stringFromRegexCharRepr  RegexEmpty                 = return Data.Text.empty
+stringFromRegexCharRepr (RegexCharLiteral c)        = return $ Data.Text.singleton c
+stringFromRegexCharRepr (RegexConcat rs)            = Data.Text.concat <$> mapM stringFromRegexCharRepr rs
+stringFromRegexCharRepr (RegexUnion s)              = let l = Data.Set.toList s in do
+                                                          index <- randomRIO (0, length l -1)
+                                                          stringFromRegexCharRepr (l !! index)
+stringFromRegexCharRepr (RegexLoop r l (Just u))    = do
+                                                        count <- randomRIO (l,u)
+                                                        Data.Text.concat <$> mapM stringFromRegexCharRepr (Data.List.genericReplicate count r)
+stringFromRegexCharRepr (RegexLoop r l Nothing)     = do
+                                                        count <- randomRIO (0, maxReplicate)
+                                                        Data.Text.concat <$> mapM stringFromRegexCharRepr (Data.List.genericReplicate (l+count) r)
+stringFromRegexCharRepr (RegexRange l u)            = Data.Text.singleton . Data.Char.chr <$> randomRIO (Data.Char.ord l, Data.Char.ord u)

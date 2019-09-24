@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Regex.ConversionXsd
+-- Module      :  TorXakis.Regex.Xsd
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -16,7 +16,7 @@ See LICENSE at root directory of this repository.
 -- Xsd conversions of regular expressions.
 -----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-module TorXakis.Regex.ConversionXsd
+module TorXakis.Regex.Xsd
 ( 
 -- * Conversion to Xsd
   toXsd
@@ -27,7 +27,8 @@ import           Data.Monoid            ((<>))
 import           Data.Set
 import           Data.Text
 
-import           TorXakis.Regex.Regex
+import           TorXakis.Regex
+import           TorXakis.Regex.CharRepr
 import           TorXakis.Regex.RegexFromXsdHappy
 
 -- | encode Char to Xsd
@@ -49,23 +50,19 @@ encodeChar '-'  = "\\-"         -- only needed in charGroup context (i.e. with [
 encodeChar '^'  = "\\^"         -- only needed in charGroup context (i.e. with [ ]), yet always allowed to escape
 encodeChar c    = Data.Text.singleton c
 
--- | encode String to Xsd
--- by escaping posix special/meta characters
-encodeString :: Text -> Text
-encodeString = Data.Text.concatMap encodeChar
-
 -- | transform Regular expression to Xsd Text
 toXsd :: Regex -> Text
-toXsd = toXsdView . view
+toXsd = toXsdView . viewCharRepr
     where 
-        toXsdView :: RegexView -> Text
-        toXsdView (RegexStringLiteral t)      = encodeString t
+        toXsdView :: CharRepr -> Text
+        toXsdView  RegexEmpty                 = Data.Text.pack "()"
+        toXsdView (RegexCharLiteral c)        = encodeChar c
         toXsdView (RegexConcat cs)            =    Data.Text.singleton '('
-                                                <> intercalate (pack ")(") (Prelude.map toXsd cs)
+                                                <> intercalate (pack ")(") (Prelude.map toXsdView cs)
                                                 <> Data.Text.singleton ')'
-        toXsdView (RegexUnion us)             =    intercalate (Data.Text.singleton '|') (Prelude.map toXsd (Data.Set.toList us))
+        toXsdView (RegexUnion us)             =    intercalate (Data.Text.singleton '|') (Prelude.map toXsdView (Data.Set.toList us))
         toXsdView (RegexLoop r l (Just u))    =    Data.Text.singleton '('
-                                                <> toXsd r
+                                                <> toXsdView r
                                                 <> Data.Text.singleton ')'
                                                 <> Data.Text.singleton '{'
                                                 <> pack (show l)
@@ -73,7 +70,7 @@ toXsd = toXsdView . view
                                                 <> pack (show u)
                                                 <> Data.Text.singleton '}'
         toXsdView (RegexLoop r l Nothing)     =    Data.Text.singleton '('
-                                                <> toXsd r
+                                                <> toXsdView r
                                                 <> Data.Text.singleton ')'
                                                 <> Data.Text.singleton '{'
                                                 <> pack (show l)

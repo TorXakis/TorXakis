@@ -44,7 +44,8 @@ import TorXakis.Sort
 import TorXakis.SortContext
 
 -- | Data structure for Channel Sort: a list of 'TorXakis.Sort's.
-newtype ChanSort = ChanSort { toSorts :: [Sort] }
+newtype ChanSort = ChanSort { -- | to List of 'TorXakis.Sort's.
+                              toSorts :: [Sort] }
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Smart constructor for ChanSort

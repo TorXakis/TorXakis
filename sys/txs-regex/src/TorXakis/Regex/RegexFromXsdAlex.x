@@ -53,10 +53,10 @@ tokens :-                                          -- Each right-hand side has t
    \\                        { tok ( \p _s -> Tesc p ) }
    \|                        { tok ( \p _s -> Tunion p ) }
    \^                        { tok ( \p _s -> Ttop p ) }
-   $digit                    { tok ( \p s -> Tdigit p s ) }
-   $quantifier               { tok ( \p s -> Tquantifier p s ) }
-   $formatEsc                { tok ( \p s -> Tformatesc p s ) }
-   $normal                   { tok ( \p s -> Tnormal p s ) }
+   $digit                    { tok ( \p [c]-> Tdigit p c ) }
+   $quantifier               { tok ( \p [c]-> Tquantifier p c ) }
+   $formatEsc                { tok ( \p [c]-> Tformatesc p c ) }
+   $normal                   { tok ( \p [c]-> Tnormal p c ) }
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -77,10 +77,10 @@ data  Token  = Tcomma AlexPosn
              | Tesc AlexPosn
              | Tunion AlexPosn
              | Ttop AlexPosn
-             | Tdigit AlexPosn String
-             | Tquantifier AlexPosn String
-             | Tformatesc AlexPosn String
-             | Tnormal AlexPosn String
+             | Tdigit AlexPosn Char
+             | Tquantifier AlexPosn Char
+             | Tformatesc AlexPosn Char
+             | Tnormal AlexPosn Char
    deriving (Eq, Show)
 
 -- | Lexer for regular expressions.

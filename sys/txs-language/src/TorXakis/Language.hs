@@ -195,8 +195,8 @@ length :: TxsString -> Int
 length = T.length . toText
 
 -- | Returns a 'TorXakis.TxsString' consisting of the input 'TorXakis.TxsString' repeated the given number of times.
-replicate :: Int       -- | ^ number of repeat
-          -> TxsString -- | ^ input 'TorXakis.TxsString' that will be repeated
+replicate :: Int       -- ^ number of repeat
+          -> TxsString -- ^ input 'TorXakis.TxsString' that will be repeated
           -> TxsString
 replicate n t = TxsString (T.replicate n (toText t))
 

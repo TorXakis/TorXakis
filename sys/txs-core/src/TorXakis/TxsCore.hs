@@ -83,6 +83,7 @@ txsTermit  =  do
        _ -> put envc { IOC.state = IOC.Noning }
 
 
+-- | evaluation of 'TorXakis.ValExpression'
 --   Only possible when txscore is initialized.
 txsEval :: ValExpression                               -- ^ value expression to be evaluated.
         -> IOC.IOC (Either Error Value)

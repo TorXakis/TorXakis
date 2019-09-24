@@ -62,6 +62,7 @@ mkRelabelMap m | nrOfElems /= nrOfKeys    = Left $ Error ("Not injective: number
        nrOfElems :: Int
        nrOfElems = Set.size (Set.fromList (Map.elems m))
 
+-- | hide set of names from RelableMap
 hide :: Set.Set Name -> RelabelMap -> RelabelMap
 hide s (RelabelMap m) = let l  = Set.toList s
                             m' = deleteAll l m
@@ -88,12 +89,15 @@ hide s (RelabelMap m) = let l  = Set.toList s
         root r v = case Map.lookup v r of
                         Nothing -> v
                         Just w  -> root r w
-        
+
+-- | class for relabelable objects
 class Relabel e where
+    -- | relabel (with checking functionality)
     relabel :: RelabelMap -> e -> e
     relabel m | Map.null (toMap m) = id
               | otherwise          = relabel' m
 
+    -- | relabel (without checking functionality)
     relabel' :: RelabelMap -> e -> e
 
 instance Relabel Name where

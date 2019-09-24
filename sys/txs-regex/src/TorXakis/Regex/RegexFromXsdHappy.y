@@ -33,7 +33,7 @@ import qualified Data.Text as T
 import           Data.Monoid
 
 import           TorXakis.Error
-import           TorXakis.Regex.Regex
+import           TorXakis.Regex
 import           TorXakis.Regex.RegexFromXsdAlex (Token(..), regexFromXsdLexer)
 }
 
@@ -76,81 +76,81 @@ import           TorXakis.Regex.RegexFromXsdAlex (Token(..), regexFromXsdLexer)
 
 Digits      :: { Text }
             : digit
-                { T.pack $1 }
+                { T.singleton $1 }
             | Digits digit
-                { $1 <> T.pack $2 }
+                { $1 <> T.singleton $2 }
 
             -- everything that is included in ~[.\\?*+{}()|[\]]
             -- include CommaChar | DashChar | TopChar | DigitChar | FormatEscChar | NormalChar
-Normal      :: { Text }
+Normal      :: { Char }
             : ","
-                { "," }
+                { ',' }
             | "-"
-                { "-" }
+                { '-' }
             | "^"
-                { "^" }
+                { '^' }
             | digit
-                { T.pack $1 }
+                { $1 }
             | formatEsc
-                { T.pack $1 }
+                { $1 }
             | normal
-                { T.pack $1 }
+                { $1 }
 
                 -- everything that is included in ~[\\[\]]
-SingleCharNoEsc :: { Text }
+SingleCharNoEsc :: { Char }
                 : ","
-                    { "," }
+                    { ',' }
                 | "."
-                    { "." }
+                    { '.' }
                 | "-"
-                    { "-" }
+                    { '-' }
                 | "("
-                    { "(" }
+                    { '(' }
                 | ")"
-                    { ")" }
+                    { ')' }
                 | "{"
-                    { "{" }
+                    { '{' }
                 | "}"
-                    { "}" }
+                    { '}' }
                 | "|"
-                    { "|" }
+                    { '|' }
                 | "^"
-                    { "^" }
+                    { '^' }
                 | digit
-                    { T.pack $1 }
+                    { $1 }
                 | quantifier
-                    { T.pack $1 }
+                    { $1 }
                 | formatEsc
-                    { T.pack $1 }
+                    { $1 }
                 | normal
-                    { T.pack $1 }
+                    { $1 }
 
                     -- everything that is included in [\.\\\?\*\+\{\}\(\)\[\]\|\-\^]
-SingleCharEscChar   :: { Text }
+SingleCharEscChar   :: { Char }
                     : "."
-                        { "." }
+                        { '.' }
                     | "\\"
-                        { "\\" }
+                        { '\\' }
                     | quantifier
-                        { T.pack $1 }
+                        { $1 }
                     | "{"
-                        { "{" }
+                        { '{' }
                     | "}"
-                        { "}" }
+                        { '}' }
                     | "("
-                        { "(" }
+                        { '(' }
                     | ")"
-                        { ")" }
+                        { ')' }
                     | "["
-                        { "[" }
+                        { '[' }
                     | "]"
-                        { "]" }
+                        { ']' }
                     | "|"
-                        { "|" }
+                        { '|' }
                     | "-"
-                        { "-" }
+                        { '-' }
                     | "^"
-                        { "^" }
+                        { '^' }
 
 RegExp  :: { Regex }
         : RegExp1
@@ -190,9 +190,9 @@ Piece       :: { Regex }
 Quantifier  :: { Regex -> Regex }
             : quantifier
                 { case $1 of
-                    "?" -> mkRegexOptional
-                    "*" -> mkRegexKleeneStar
-                    "+" -> mkRegexKleeneCross
+                    '?' -> mkRegexOptional
+                    '*' -> mkRegexKleeneStar
+                    '+' -> mkRegexKleeneCross
                 }
 
 Quantity    :: { (Integer, Maybe Integer) }
@@ -207,7 +207,7 @@ Atom    :: { Regex }
         : "(" RegExp ")"                        -- Precedence
             { $2 }
         | Normal
-            { mkRegexStringLiteral $1 }
+            {% mkRegexCharLiteral $1 }
         | CharClass
             { $1 }
 
@@ -215,7 +215,7 @@ CharClass   :: { Regex }
             : "[" CharGroup "]"        -- charClassExpr
                 { $2 }
             | SingleCharEsc
-                { mkRegexStringLiteral $1 }
+                {% mkRegexCharLiteral $1 }
             | "."                      -- wildcardEsc
                 -- UTF8 - extended ascii 256 characters
                 -- from \x00 till \xFF
@@ -236,36 +236,30 @@ PosCharGroup    :: { [Regex] }
 
 CharGroupPart   :: { Regex }
                 : SingleChar "-" SingleChar
-                    {% case (T.unpack $1, T.unpack $3) of
-                         ([c1],[c3]) -> mkRegexRange c1 c3
-                         (_,_)       -> error ("Expected single character strings, yet got (" ++ show $1 ++ ", " ++ show $3 ++ ")")
-                    }
+                    {% mkRegexRange $1 $3 }
                 | SingleChar "-"
-                    {% case T.unpack $1 of
-                        [c1] -> mkRegexUnion [ mkRegexStringLiteral $1
-                                             , mkRegexStringLiteral "-"
-                                             ]
-                        _    -> error ("Expected single character string, yet got " ++ show $1)
+                    {% case partitionEithers [ mkRegexCharLiteral $1
+                                             , mkRegexCharLiteral '-'
+                                             ] of
+                                    ([], cs) -> mkRegexUnion cs
+                                    (es, _)  -> error ("mkRegexCharLiteral failed unexpectedly with " ++ show es)
                     }
                 | SingleChar
-                    { case T.unpack $1 of
-                        [c1] -> mkRegexStringLiteral $1
-                        _    -> error ("Expected single character string, yet got " ++ show $1)
-                    }
+                    {% mkRegexCharLiteral $1 }
                 --  | charClassEsc
 
-SingleChar  :: { Text }
+SingleChar  :: { Char }
             : SingleCharNoEsc
                 { $1 }
             | SingleCharEsc
                 { $1 }
 
-SingleCharEsc   :: { Text }
+SingleCharEsc   :: { Char }
                 : "\\" formatEsc
                     { case $2 of
-                        "n"     -> "\n"
-                        "r"     -> "\r"
-                        "t"     -> "\t"
+                        'n'     -> '\n'
+                        'r'     -> '\r'
+                        't'     -> '\t'
                     }
                 | "\\" SingleCharEscChar
                     { $2 }

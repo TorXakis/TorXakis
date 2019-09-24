@@ -48,8 +48,8 @@ tests:
         - txs-regex-gen
 
 ghc-options:
-- -Werror
-#- -Wall
+#- -Werror
+- -Wall
 - -O
 - -Widentities
 - -Wincomplete-uni-patterns

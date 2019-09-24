@@ -26,7 +26,7 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
 import           Text.Regex.TDFA
 
-import           TorXakis.Regex
+import           TorXakis.Regex.Posix
 import           TorXakis.RegexGen
 import           TorXakis.StringFromRegex
 
@@ -36,8 +36,7 @@ prop_StringFromRegex (RegexGen r) = monadicIO $ do
     s <- liftIO $ stringFromRegex r
     assert $ unpack s =~ unpack (toPosix r)
 
-
 spec :: Spec
 spec =
-  describe "String From Regex" $ 
+  describe "String From Regex" $
         it "adheres to the regex" $ property prop_StringFromRegex

@@ -65,61 +65,62 @@ import           Data.Data           (Data)
 import           Data.List
 import           Data.Hashable       (Hashable(hashWithSalt))
 import qualified Data.Set
-import qualified Data.Text as T
+import qualified Data.Text
 import           GHC.Generics        (Generic)
 import           Text.Printf
 
 import           TorXakis.Regex
+import           TorXakis.Regex.StringRepr
 
 -- | The data type that represents content in the Smt language.
 -- The content can be output of e.g. a pretty printer or input for an smt solver.
 newtype SmtString = SmtString { -- | To Text conversion
-                                toText :: T.Text
+                                toText :: Data.Text.Text
                               }
     deriving (Eq, Ord, Read, Generic, NFData, Data)
 
 instance Show SmtString where
-    show (SmtString x) = T.unpack x
+    show (SmtString x) = Data.Text.unpack x
 
 instance Hashable SmtString where
     hashWithSalt s = hashWithSalt s . toText
 
 -- | From Text constructor
-fromText :: T.Text -> SmtString
+fromText :: Data.Text.Text -> SmtString
 fromText = SmtString
 
 -- | From String constructor
 fromString :: String -> SmtString
-fromString = SmtString . T.pack
+fromString = SmtString . Data.Text.pack
 
 -- | To String conversion
 toString :: SmtString -> String
-toString = T.unpack . toText
+toString = Data.Text.unpack . toText
 
 -- | The empty 'SmtString'.
 empty :: SmtString
-empty = SmtString T.empty
+empty = SmtString Data.Text.empty
 
--- | The singleton constructor taking a `Char`.
+-- | The singleton constructor taking a 'Data.Char'.
 singleton :: Char -> SmtString
-singleton = SmtString . T.singleton
+singleton = SmtString . Data.Text.singleton
 
 -- | Returns the number of characters in a 'SmtString'. Subject to fusion.
 length :: SmtString -> Int
-length = T.length . toText
+length = Data.Text.length . toText
 
 -- |  The intercalate function takes a 'SmtString' and
 -- a list of 'SmtString's and concatenates the list after interspersing the first argument between each element of the list.
 intercalate :: SmtString -> [SmtString] -> SmtString
-intercalate t ls = SmtString (T.intercalate (toText t) (map toText ls))
+intercalate t ls = SmtString (Data.Text.intercalate (toText t) (map toText ls))
 
 -- | Concatenate a list of 'SmtString's.
 concat :: [SmtString] -> SmtString
-concat ls = SmtString (T.concat (map toText ls))
+concat ls = SmtString (Data.Text.concat (map toText ls))
 
 -- | Appends one 'SmtString' to the other by copying both of them into a new 'SmtString'. Subject to fusion.
 append :: SmtString -> SmtString -> SmtString
-append a b = SmtString (T.append (toText a) (toText b))
+append a b = SmtString (Data.Text.append (toText a) (toText b))
 
 -- | Smt Boolean
 smtBoolean :: SmtString
@@ -150,54 +151,62 @@ smtIntegerLiteral n | n < 0 = TorXakis.SmtLanguage.concat [ fromString "(- "
 smtIntegerLiteral n = fromString (show (abs n))
 
 -- | String Literal To Smt
---   Encode Haskell String to SMT.
+--   Encode Haskell String to SMData.Text.
 --
 --   According to smt-lib-version 2.5 standard (http://smtlib.cs.uiowa.edu/papers/smt-lib-reference-v2.5-r2015-06-28.pdf),
 --   quote and escape characters are escaped.
 --
 --   Furthermore, prevent CVC4 Parse Error "Extended/unprintable characters are not part of SMT-LIB, and they must be encoded as escape sequences"
 smtStringLiteral :: String -> SmtString
-smtStringLiteral t = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( singleton '"' : Data.List.map charToSmt t ) )
+smtStringLiteral s = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( singleton '"' : Data.List.map charToSmt s) )
                                                  ( singleton '"' )
-    where
-        charToSmt :: Char -> SmtString
-        charToSmt '"'                              = fromString "\"\""
-        charToSmt '\\'                             = fromString "\\\\"
-        charToSmt c  | ord c < 32 || ord c >= 127  = fromString $ printf "\\x%02x" (ord c)
-        charToSmt c                                = TorXakis.SmtLanguage.singleton c
 
 -- | Text Literal To Smt
---   Encode Haskell Text to SMT.
---
---   According to smt-lib-version 2.5 standard (http://smtlib.cs.uiowa.edu/papers/smt-lib-reference-v2.5-r2015-06-28.pdf),
---   quote and escape characters are escaped.
---
---   Furthermore, prevent CVC4 Parse Error "Extended/unprintable characters are not part of SMT-LIB, and they must be encoded as escape sequences"
-smtTextLiteral :: T.Text -> SmtString
-smtTextLiteral = smtStringLiteral . T.unpack
+--   Encode Haskell Text to 'SmtString'.
+smtTextLiteral :: Data.Text.Text -> SmtString
+smtTextLiteral = smtStringLiteral . Data.Text.unpack
 
+
+-- | Char Literal To Smt
+--   Encode Char String to 'SmtString'.
+smtCharLiteral :: Char -> SmtString
+smtCharLiteral c = TorXakis.SmtLanguage.concat [ singleton '"'
+                                               , charToSmt c
+                                               , singleton '"'
+                                               ]
+
+-- encode single char (no context)
+charToSmt :: Char -> SmtString
+charToSmt '"'                              = fromString "\"\""
+charToSmt '\\'                             = fromString "\\\\"
+charToSmt c  | ord c < 32 || ord c >= 127  = fromString $ printf "\\x%02x" (ord c)
+charToSmt c                                = TorXakis.SmtLanguage.singleton c
+
+-- | Regex Literal To Smt
+--   Encode 'Regex' to 'SmtString'.
 smtRegexLiteral :: Regex -> SmtString
-smtRegexLiteral = smtRegexViewLiteral . view
+smtRegexLiteral = smtRegexViewLiteral . viewStringRepr
     where
         -- all generated regexes contain brackets
         -- (regexes like re.nostr and re.allchar are not used)
         -- so intercalate with a space is NOT needed in case of concatenation
+        smtRegexViewLiteral :: StringRepr -> SmtString
         smtRegexViewLiteral (RegexStringLiteral t)      = TorXakis.SmtLanguage.concat [ fromString "(str.to.re "
                                                                                       , smtTextLiteral t
                                                                                       , singleton ')'
                                                                                       ]
-        smtRegexViewLiteral (RegexConcat cs)            = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.++ " : map smtRegexLiteral cs ) )
+        smtRegexViewLiteral (RegexConcat cs)            = TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.++ " : map smtRegexViewLiteral cs ) )
                                                                                       ( singleton ')' )
-        smtRegexViewLiteral (RegexUnion us)             =  TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.union " : map smtRegexLiteral (Data.Set.toList us) ) )
+        smtRegexViewLiteral (RegexUnion us)             =  TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.union " : map smtRegexViewLiteral (Data.Set.toList us) ) )
                                                                                       ( singleton ')' )
         smtRegexViewLiteral (RegexLoop r l Nothing)     = TorXakis.SmtLanguage.concat [ fromString "(re.loop "
-                                                                                      , smtRegexLiteral r
+                                                                                      , smtRegexViewLiteral r
                                                                                       , singleton ' '
                                                                                       , smtIntegerLiteral l
                                                                                       , singleton ')'
                                                                                       ]
         smtRegexViewLiteral (RegexLoop r l (Just u))    = TorXakis.SmtLanguage.concat [ fromString "(re.loop "
-                                                                                      , smtRegexLiteral r
+                                                                                      , smtRegexViewLiteral r
                                                                                       , singleton ' '
                                                                                       , smtIntegerLiteral l
                                                                                       , singleton ' '
@@ -205,9 +214,9 @@ smtRegexLiteral = smtRegexViewLiteral . view
                                                                                       , singleton ')'
                                                                                       ]
         smtRegexViewLiteral (RegexRange l u)            = TorXakis.SmtLanguage.concat [ fromString "(re.range "
-                                                                                      , smtStringLiteral [l]
+                                                                                      , smtCharLiteral l
                                                                                       , singleton ' '
-                                                                                      , smtStringLiteral [u]
+                                                                                      , smtCharLiteral u
                                                                                       , singleton ')'
                                                                                       ]
 

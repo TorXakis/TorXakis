@@ -20,8 +20,12 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric      #-}
 module TorXakis.RegexGen
 ( 
--- * Regex Generator
+  -- * Regex Generator
   RegexGen(..)
+  -- * Char for a regex
+, RegexChar(..)
+  -- * LoopBound for a regex loop
+, LoopBound(..)
   -- dependencies, yet part of interface
 , Regex
 )
@@ -29,9 +33,7 @@ where
 
 
 import           Control.DeepSeq (NFData)
-import           Data.Char
 import           Data.Data (Data)
-import qualified Data.Text as T
 import           GHC.Generics     (Generic)
 import           Test.QuickCheck
 
@@ -43,20 +45,51 @@ newtype RegexGen = RegexGen { -- | accessor to 'TorXakis.Regex'
                             unRegexGen :: Regex}
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
--- | generate a char within the allowed range
-arbitraryChar :: Gen Char
-arbitraryChar = chr <$> choose (0, 255)
+-- | Definition of a regex char
+newtype RegexChar = RegexChar { -- | to Char conversion
+                                toChar :: Char}
+    deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance Arbitrary RegexChar
+    where
+        -- | generate an arbitrary char for a regex
+        arbitrary = RegexChar <$> choose (regexRangeLow, regexRangeHigh)
+
+-- | Definition of the boundaries of a loop
+-- to be used for symbolic substititutions
+data LoopBound = LoopBound { -- | lowerbound
+                             lowerbound :: Integer
+                             -- | Maybe upperbound
+                           , upperBound :: Maybe Integer
+                           } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance Arbitrary LoopBound
+    where
+        -- | generate bounds for an arbitrary loop
+        arbitrary = do
+                        NonNegative l <- arbitrary
+                        b <- arbitrary
+                        if b
+                        then do
+                                NonNegative delta <- arbitrary
+                                return $ LoopBound l (Just (l+delta))
+                        else return $ LoopBound l Nothing
 
 -- ----------------------------------------------------------------------------------
-genRegexStringLiteral :: Gen RegexGen
-genRegexStringLiteral = do
-    s <- listOf arbitraryChar
-    return $ RegexGen (mkRegexStringLiteral (T.pack s))
+genRegexEmpty :: Gen RegexGen
+genRegexEmpty = return $ RegexGen mkRegexEmpty
+
+genRegexCharLiteral :: Gen RegexGen
+genRegexCharLiteral = do
+    RegexChar c <- arbitrary
+    case mkRegexCharLiteral c of
+        Left e -> error ("mkRegexCharLiteral unexpectedly failed with " ++ show e)
+        Right r -> return $ RegexGen r
 
 genRegexRange :: Gen RegexGen
 genRegexRange = do
-    c1 <- arbitraryChar
-    c2 <- arbitraryChar
+    RegexChar c1 <- arbitrary
+    RegexChar c2 <- arbitrary
     let (l,u) = if c1 <= c2 then (c1,c2) else (c2,c1) in
         case mkRegexRange l u of
             Left e -> error ("mkRegexRange failed with lowerbound (" ++ show l ++ ") and upperbound (" ++ show u ++ ") with error " ++ show e)
@@ -117,7 +150,8 @@ serie lb size             =
             mapM genRegex additionalComplexity
 
 allRegexGenThresholdTuples :: [(Gen RegexGen, Int)]
-allRegexGenThresholdTuples = [ (genRegexStringLiteral,   0)
+allRegexGenThresholdTuples = [ (genRegexEmpty,           0)
+                             , (genRegexCharLiteral,     1)
                              , (genRegexRange,           2)
                              , (genRegexLoop,            3)
                              , (genRegexConcat,          serieSize +0)

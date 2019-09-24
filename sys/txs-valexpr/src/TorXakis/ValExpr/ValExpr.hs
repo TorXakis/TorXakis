@@ -47,7 +47,10 @@ import           TorXakis.Var
 import           TorXakis.VarContext
 
 -- | ValExpressionView: the public view of value expression 'ValExpression'
--- Should we change to Either Error ValExpression to increase laziness (e.g. in ITE, And, concat, func, and cstr)?
+-- TODO: Should we change to Either Error ValExpression to increase laziness (e.g. in ITE, And, concat, func, and cstr)?
+-- TODO: Should we hide ValExpression completely, and only use ValExpressionView? 
+--       See Regex with its two views (String and Char Representation)
+--       Might be the way forward to two ValExpressions: Solvable (i.e. without Vpredef) and generic (with Vpredef).
 data ValExpressionView = Vconst    Value
                        | Vvar      (RefByName VarDef)
                        -- generic

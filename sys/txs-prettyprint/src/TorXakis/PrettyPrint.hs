@@ -53,6 +53,7 @@ import           TorXakis.Language
 import           TorXakis.Name
 import           TorXakis.RefByIndex
 import           TorXakis.Regex
+import           TorXakis.Regex.Xsd
 import           TorXakis.Sort
 import           TorXakis.ValExpr
 import           TorXakis.Value

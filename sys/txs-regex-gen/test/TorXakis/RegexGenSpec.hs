@@ -19,13 +19,12 @@ module TorXakis.RegexGenSpec
 (spec
 )
 where
-import           Debug.Trace
 import           Test.Hspec
 import           Test.QuickCheck
 
 import           TorXakis.Cover
-import           TorXakis.Error
 import           TorXakis.Regex
+import           TorXakis.Regex.Xsd
 import           TorXakis.RegexGen
 
 -- | Eq check
@@ -41,48 +40,150 @@ prop_ReadShow :: RegexGen -> Bool
 prop_ReadShow (RegexGen val) = coverReadShow val
 
 -- | FromXsd . ToXsd == Identity
-prop_ToFromXsd :: RegexGen -> Bool
+prop_ToFromXsd :: RegexGen -> Expectation
 prop_ToFromXsd (RegexGen val) =
     let xsd = toXsd val in
         case fromXsd xsd of
-            Left e     -> trace ("\nParse error " ++ show e ++ " on\n" ++ show xsd) False
-            Right val' -> (val' == val) || trace ("\nval\n" ++ show val ++ "\nxsd\n" ++ show xsd ++ "\nval'\n" ++ show val' ++ "\nxsd'\n" ++ show (toXsd val')) False
+            Left e     -> error ("Parse error " ++ show e ++ " on\n" ++ show xsd)
+            Right val' -> val' `shouldBe` val
 
+-- | Empty Regex in loop is just empty regex
+-- forall l    : "(){l,}" == "()"
+-- forall l, u : "(){l,u}" == "()"
+prop_Equivalent_EmptyInLoop :: LoopBound -> Expectation
+prop_Equivalent_EmptyInLoop (LoopBound l mu) =
+    case mkRegexLoop mkRegexEmpty l mu of
+        Left e     -> error ("mkRegexLoop unexpectedly failed with " ++ show e)
+        Right loop -> loop `shouldBe` mkRegexEmpty
+
+-- | Loop with zero occurances is empty regex
+-- forall r : "r{0,0}" == "()"
+prop_Equivalent_LoopZeroIsEmpty :: RegexGen -> Expectation
+prop_Equivalent_LoopZeroIsEmpty (RegexGen r) = 
+    case mkRegexLoop r 0 (Just 0) of
+        Left e     -> error ("mkRegexLoop unexpectedly failed with " ++ show e)
+        Right loop -> loop `shouldBe` mkRegexEmpty
+
+-- | Loop with one occurance is just that regex
+-- forall r : "r{1,1}" == "r"
+prop_Equivalent_LoopOnceIsIdentity :: RegexGen -> Expectation
+prop_Equivalent_LoopOnceIsIdentity (RegexGen r) = 
+    case mkRegexLoop r 1 (Just 1) of
+        Right loop -> loop `shouldBe` r
+        Left e     -> error ("mkRegexLoop unexpectedly failed with " ++ show e)
+
+-- | Empty in concat is removable
 -- | Concat (xs ++ [RegexEmpty] ++ ys) == Concat (xs ++ ys)
-prop_ConcatEmpty :: [RegexGen] -> Gen Bool
-prop_ConcatEmpty rgs =
-    let rs = map unRegexGen rgs in do
-        p <- choose (0, length rs)
-        let (xs,ys) = splitAt p rs
-            actual = mkRegexConcat (xs++(mkRegexEmpty : ys))
-            expected = mkRegexConcat (xs++ys) in
-                if actual == expected
-                then return True
-                else trace ("\nactual xsd\n" ++ show (toXsd actual) ++ "\nexpected xsd\n" ++ show (toXsd expected)) $ return False
+prop_Equivalent_EmptyInConcatRemovable :: [RegexGen] -> Expectation
+prop_Equivalent_EmptyInConcatRemovable rgs = 
+        checkAll `shouldSatisfy` and
+    where
+        rs :: [Regex]
+        rs = map unRegexGen rgs
+        
+        checkAll :: [Bool]
+        checkAll = map check [0..length rs]
+        
+        check :: Int -> Bool
+        check p = let (xs,ys) = splitAt p rs
+                      actual = mkRegexConcat (xs++(mkRegexEmpty : ys))
+                      expected = mkRegexConcat (xs++ys) in
+                          actual == expected
+
+-- | A singleton range is allowed and equal to that char
+prop_Equivalent_SingletonRange :: RegexChar -> Expectation
+prop_Equivalent_SingletonRange (RegexChar c) = 
+    case mkRegexRange c c of
+        Left e      -> error ("mkRegexRange unexpectedly failed with " ++ show e)
+        Right range -> case mkRegexCharLiteral c of
+                        Left e      -> error ("mkRegexCharLiteral unexpectedly failed with " ++ show e)
+                        Right expected -> range `shouldBe` expected
+
+-- | nested loops can be flattened
+-- when innerloop has different bounds
+prop_Equivalent_LoopNested :: LoopBound -> LoopBound -> RegexGen -> Expectation
+prop_Equivalent_LoopNested (LoopBound li mui)            _                             _            | Just li == mui    =
+    return ()  -- no rewrite possible: (a{5,5}){1,2} <> a{5,10}
+prop_Equivalent_LoopNested lbi@(LoopBound li (Just ui))  lbo@(LoopBound lo (Just uo))  (RegexGen r)                     =
+    let actual = nestedLoop lbi lbo r in 
+        case mkRegexLoop r (li*lo) (Just (ui*uo)) of
+            Left e         -> error ("mkRegexLoop (expected) unexpectedly failed with " ++ show e)
+            Right expected -> actual `shouldBe` expected
+prop_Equivalent_LoopNested lbi@(LoopBound li _)          lbo@(LoopBound lo _)          (RegexGen r)                     =
+    let actual = nestedLoop lbi lbo r in 
+        case mkRegexLoop r (li*lo) Nothing of
+            Left e         -> error ("mkRegexLoop (expected) unexpectedly failed with " ++ show e)
+            Right expected -> actual `shouldBe` expected
+
+-- | create a nested loop
+nestedLoop :: LoopBound -> LoopBound -> Regex -> Regex
+nestedLoop (LoopBound li mui) (LoopBound lo muo) r =
+    case mkRegexLoop r li mui of
+        Left e      -> error ("mkRegexLoop innerloop unexpectedly failed with " ++ show e)
+        Right loopi -> case mkRegexLoop loopi lo muo of
+                        Left e      -> error ("mkRegexLoop outerloop unexpectedly failed with " ++ show e)
+                        Right loopo -> loopo
+
+-- | concatenated loops over the same regular expression can be combined
+prop_Equivalent_LoopConcatenated :: LoopBound -> LoopBound -> RegexGen -> Expectation
+prop_Equivalent_LoopConcatenated lb1@(LoopBound l1 (Just u1)) lb2@(LoopBound l2 (Just u2)) (RegexGen r) =
+    case mkRegexLoop r (l1+l2) (Just (u1+u2)) of
+        Left e         -> error ("mkRegexLoop (expected) unexpectedly failed with " ++ show e)
+        Right expected -> let actual = concatLoop lb1 lb2 r in
+                                actual `shouldBe` expected
+prop_Equivalent_LoopConcatenated lb1@(LoopBound l1 _)         lb2@(LoopBound l2 _)         (RegexGen r) =
+    case mkRegexLoop r (l1+l2) Nothing of
+        Left e         -> error ("mkRegexLoop (expected) unexpectedly failed with " ++ show e)
+        Right expected -> let actual = concatLoop lb1 lb2 r in
+                                actual `shouldBe` expected
+
+concatLoop :: LoopBound -> LoopBound -> Regex -> Regex
+concatLoop (LoopBound l1 m1) (LoopBound l2 m2) r =
+    case mkRegexLoop r l1 m1 of
+        Left e      -> error ("mkRegexLoop first loop unexpectedly failed with " ++ show e)
+        Right loop1 -> case mkRegexLoop r l2 m2 of
+                        Left e      -> error ("mkRegexLoop second loop unexpectedly failed with " ++ show e)
+                        Right loop2 -> mkRegexConcat [loop1, loop2]
+
+-- | loop over an instance followed by that instance can be combined
+-- rewritting "a{3,6}a" to "a{4,7}" doesn't always simplify the str.in.re problem.
+-- Yet in some contexts it does! For example, rewritting "a{3,6}aa{1,2}" to "a{5,9}" simplifies the str.in.re problem.
+-- Note when a concatenated regex is in a loop, we must look at the front/tail of any concatenated regex after/before it.
+prop_Equivalent_LoopAndInstance :: LoopBound -> RegexGen -> Expectation
+prop_Equivalent_LoopAndInstance (LoopBound l m) (RegexGen r) =
+    let lExpected = l +1
+        mExpected = case m of
+                        Nothing -> Nothing
+                        Just u  -> Just (u+1)
+      in
+        case mkRegexLoop r lExpected mExpected of
+            Left e         -> error ("mkRegexLoop (expected) unexpectedly failed with " ++ show e)
+            Right expected -> case mkRegexLoop r l m of
+                                    Left e     -> error ("mkRegexLoop loop unexpectedly failed with " ++ show e)
+                                    Right loop -> mkRegexConcat [loop, r] `shouldBe` expected
+
+-- | an instance followed by a loop over that instance can be combined
+prop_Equivalent_InstanceAndLoop :: LoopBound -> RegexGen -> Expectation
+prop_Equivalent_InstanceAndLoop (LoopBound l m) (RegexGen r) =
+    let lExpected = l +1
+        mExpected = case m of
+                        Nothing -> Nothing
+                        Just u  -> Just (u+1)
+      in
+        case mkRegexLoop r lExpected mExpected of
+            Left e         -> error ("mkRegexLoop (expected) unexpectedly failed with " ++ show e)
+            Right expected -> case mkRegexLoop r l m of
+                                    Left e     -> error ("mkRegexLoop loop unexpectedly failed with " ++ show e)
+                                    Right loop -> mkRegexConcat [r,loop] `shouldBe` expected
 
 -- | Union xs == Union (reverse xs)
-prop_UnionOrder :: [RegexGen] -> Bool
+prop_UnionOrder :: [RegexGen] -> Expectation
 prop_UnionOrder xgs =
     let xs = map unRegexGen xgs
         actual = mkRegexUnion (reverse xs)
         expected = mkRegexUnion xs in
-            actual == expected
+            actual `shouldBe` expected
 
--- | Loop r 0 (just 0) == RegexEmpty
-prop_LoopExactlyZero :: RegexGen -> Bool
-prop_LoopExactlyZero (RegexGen val) =
-    let actual = mkRegexLoop val 0 (Just 0)
-        expected :: Either Error Regex
-        expected = Right mkRegexEmpty in
-            actual == expected
-
--- | Loop r 1 (just 1) == r
-prop_LoopExactlyOnce :: RegexGen -> Bool
-prop_LoopExactlyOnce (RegexGen val) =
-    let actual = mkRegexLoop val 1 (Just 1)
-        expected :: Either Error Regex
-        expected = Right val in
-            actual == expected
 
 spec :: Spec
 spec = do
@@ -92,7 +193,13 @@ spec = do
     it "is an instance of Read and Show - read . show is identity" $ property prop_ReadShow
     it "fromXsd . toXsd is identity" $ property prop_ToFromXsd
   describe "A Regex can be rewritten:" $ do
-    it "Empty is irrelevant in concat" $ property prop_ConcatEmpty
-    it "Order is irrelevant in union" $ property prop_UnionOrder
-    it "Loop exactly zero is Empty" $ property prop_LoopExactlyZero
-    it "Loop exactly once is identity" $ property prop_LoopExactlyOnce
+        it "Empty regex in loop is empty regex" $ property prop_Equivalent_EmptyInLoop
+        it "Loop exactly zero is Empty" $ property prop_Equivalent_LoopZeroIsEmpty
+        it "Loop exactly once is identity" $ property prop_Equivalent_LoopOnceIsIdentity
+        it "Empty is irrelevant in concat" $ property prop_Equivalent_EmptyInConcatRemovable
+        it "singleton range is character" $ property prop_Equivalent_SingletonRange
+        it "nested loops" $ property prop_Equivalent_LoopNested
+--        it "concatenate loops over same regex" $ property prop_Equivalent_LoopConcatenated
+        it "combine loop over instance followed by that instance" $ property prop_Equivalent_LoopAndInstance
+--        it "combine instance followed by a loop over that instance" $ property prop_Equivalent_InstanceAndLoop
+        it "Order is irrelevant in union" $ property prop_UnionOrder

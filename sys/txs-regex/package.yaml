@@ -20,6 +20,10 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.Regex
+  - TorXakis.Regex.CharRepr
+  - TorXakis.Regex.StringRepr
+  - TorXakis.Regex.Posix
+  - TorXakis.Regex.Xsd
   build-tools:
   - alex
   - happy

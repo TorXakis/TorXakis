@@ -30,6 +30,7 @@ import           Test.QuickCheck.Monadic
 import           Text.Regex.TDFA ((=~))
 
 import           TorXakis.Regex
+import           TorXakis.Regex.Posix
 
 -- This empty test case learns us that at top level posix needs brackets or anchors:
 -- When using "" we get the following error
@@ -56,7 +57,7 @@ test_Ranges = monadicIO $
     handler = const (return True)
 
 -- | all Char in Regex Range
-allChars :: [Char]
+allChars :: String
 allChars = [regexRangeLow..regexRangeHigh]
 
 -- | Are all chars correctly handled (by escaping when needed)
@@ -65,7 +66,11 @@ test_Chars =
         all matchRegex allChars
     where
         matchRegex :: Char -> Bool
-        matchRegex c = [c] =~ Data.Text.unpack (toPosix (mkRegexStringLiteral (Data.Text.singleton c)))
+        matchRegex c = [c] =~ posixRegex
+            where
+                posixRegex = case mkRegexCharLiteral c of
+                                Right r -> Data.Text.unpack (toPosix r)
+                                Left e  -> error ("mkRegexCharLiteral unexpectedly failed with "++ show e)
 
 -- | Is Char in range of low and high
 inRange :: Char -> Char -> Char -> Bool
@@ -82,8 +87,8 @@ test_CharsLowRange =
         matchRanges :: Char -> Bool
         matchRanges c = let (invalidRange, validRange) = splitAt (Data.Char.ord c - Data.Char.ord regexRangeLow) allChars
                             in
-                                (     (all (inRange c regexRangeHigh) validRange)
-                                && (all (not . inRange c regexRangeHigh) invalidRange)
+                                (      all (inRange c regexRangeHigh) validRange
+                                    && all (not . inRange c regexRangeHigh) invalidRange
                                 )
                                 || trace ("Char " ++ show c ++ " fails") False
 
@@ -97,8 +102,8 @@ test_CharsHighRange =
     where
         matchRanges c = let (validRange, invalidRange) = splitAt (Data.Char.ord c - Data.Char.ord regexRangeLow + 1) allChars
                             in
-                                (      (all (inRange regexRangeLow c) validRange)
-                                    && (all (not . inRange regexRangeLow c) invalidRange)
+                                (      all (inRange regexRangeLow c) validRange
+                                    && all (not . inRange regexRangeLow c) invalidRange
                                 )
                                 || trace ("Char " ++ show c ++ " fails") False
 
@@ -179,6 +184,11 @@ prop_Equivalent_OverlappingRanges = prop_Equivalent "([A-P]|[L-Z])*" "([A-Z])*"
 prop_Equivalent_CharAdjacentRange :: String -> Bool
 prop_Equivalent_CharAdjacentRange = prop_Equivalent "(A|[B-Z])*" "([A-Z])*"
 
+-- | loop can be unfolded and differently refolded with adjacent parts
+-- "(ab){3,4}a(ba){2,3}" can be rewritten to the easier regex (to solve) "(ab){5,7}a"
+prop_Equivalent_LoopRefold :: String -> Bool
+prop_Equivalent_LoopRefold = prop_Equivalent "A(BA)*" "(AB)*A"
+
 spec :: Spec
 spec = do
   describe "A Regex" $ do
@@ -204,3 +214,4 @@ spec = do
     it "combine adjacent ranges" $ property prop_Equivalent_AdjacentRanges
     it "combine overlapping ranges" $ property prop_Equivalent_OverlappingRanges
     it "combine char and adjacent range" $ property prop_Equivalent_CharAdjacentRange
+    it "loops including adjacent elements" $ property prop_Equivalent_LoopRefold

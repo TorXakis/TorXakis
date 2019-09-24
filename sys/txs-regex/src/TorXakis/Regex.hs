@@ -18,13 +18,12 @@ See LICENSE at root directory of this repository.
 -- UTF-8 has 256 characters from \x00 till \xFF
 -----------------------------------------------------------------------------
 module TorXakis.Regex
-( module TorXakis.Regex.Regex
-, module TorXakis.Regex.ConversionPosix
-, module TorXakis.Regex.ConversionXsd
+( module TorXakis.Regex.RegexBasis
+, viewCharRepr
+, viewStringRepr
 )
 where
 
-import TorXakis.Regex.Regex
-import TorXakis.Regex.ConversionPosix
-import TorXakis.Regex.ConversionXsd
-
+import           TorXakis.Regex.RegexBasis
+import           TorXakis.Regex.CharRepr
+import           TorXakis.Regex.StringRepr

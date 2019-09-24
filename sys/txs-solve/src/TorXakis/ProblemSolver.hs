@@ -99,16 +99,15 @@ class MonadIO p => ProblemSolver p where
     addAssertions :: [ValExpression] -> p()
 
     -- | is Problem Solvable?
-    -- When *SolvableProblem (Just True)* is returned, (parts of) the solution can be queried using
-    -- `getValues` and `getAllValues` as long as the problem is not changed (e.g. by `addAssertions` or `pop`).
     solvable :: p SolvableProblem
 
     -- | solve Problem, yet only return part of the solution.
-    -- When solution exists, only return the values associated with the provided variable references.
+    -- When a solution exists, only return the values associated with the provided variable references.
     -- precondition: All provided variable references point to a declared variable in the current problem.
     solvePartSolution :: [RefByName VarDef] -> p SolveProblem
 
     -- | solve Problem
+    -- When the problem is solvable, a solution mapping all variables in the problem to a value is returned.
     solve :: p SolveProblem
     solve = do
                 ctx <- toValExprContext
