@@ -85,6 +85,7 @@ import qualified Data.Set           as Set
 import qualified Data.Text          as T
 import           Text.Regex.TDFA
 
+import qualified Boute
 import           Constant
 import           CstrId
 import qualified FreeMonoidX        as FMX
@@ -375,7 +376,7 @@ cstrProduct' ms =
 -- Preconditions are /not/ checked.
 cstrDivide :: ValExpr v -> ValExpr v -> ValExpr v
 cstrDivide _                          (view -> Vconst (Cint n)) | n == 0 = error "Error in model: Division by Zero in Divide"
-cstrDivide (view ->  Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `div` n) )
+cstrDivide (view ->  Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `Boute.div` n) )
 cstrDivide vet ven = ValExpr (Vdivide vet ven)
 
 -- Modulo
@@ -384,7 +385,7 @@ cstrDivide vet ven = ValExpr (Vdivide vet ven)
 -- Preconditions are /not/ checked.
 cstrModulo :: ValExpr v -> ValExpr v -> ValExpr v
 cstrModulo _                         (view -> Vconst (Cint n)) | n == 0 = error "Error in model: Division by Zero in Modulo"
-cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `mod` n) )
+cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `Boute.mod` n) )
 cstrModulo vet ven = ValExpr (Vmodulo vet ven)
 
 -- | Apply operator GEZ (Greater Equal Zero) on the provided value expression.
