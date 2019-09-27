@@ -53,7 +53,9 @@ data Value = -- | Constructor of Boolean value.
              -- See https://en.wikipedia.org/wiki/Parametric_polymorphism for more info.
            | Cany Sort
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
-  
+
+-- TODO: introduce constructor to enforce that Ccstr's Values are as expected by the constructor!
+
 instance HasSort c Value where
     getSort _ Cbool{}         = SortBool
     getSort _ Cint{}          = SortInt

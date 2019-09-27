@@ -180,7 +180,7 @@ testTemplateSolution as fs vs es = do
       in do
         liftIO $ assertEqual "length" (length vs) (Data.HashMap.size solution)
         case view answer of
-            Vconst (Cbool b) -> liftIO $ assertBool "Is valid solution" b
+            Vconst (Cbool b) -> liftIO $ assertBool ("Is valid solution\n"++show solution) b
             _                -> error ("Answer of and is unexpectedly not a constant boolean, but " ++ show answer)
 ---------------------------------------------------------------------------
 -- Tests

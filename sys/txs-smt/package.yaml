@@ -60,7 +60,10 @@ tests:
         - QuickCheck
 
         - txs-smt
+        - txs-name-gen
         - txs-sort-gen
+        - txs-valexpr-gen
+        - txs-value-gen
         - txs-regex-gen
         - txs-symbolic
         - txs-solve-random

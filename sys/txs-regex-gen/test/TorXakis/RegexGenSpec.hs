@@ -102,6 +102,12 @@ prop_Equivalent_SingletonRange (RegexChar c) =
 -- | nested loops can be flattened
 -- when innerloop has different bounds
 prop_Equivalent_LoopNested :: LoopBound -> LoopBound -> RegexGen -> Expectation
+prop_Equivalent_LoopNested lbi@(LoopBound 0 (Just 0))   lbo                            (RegexGen r)                     =
+    let actual = nestedLoop lbi lbo r in  -- 0 * Inf == 0
+        actual `shouldBe` mkRegexEmpty
+prop_Equivalent_LoopNested lbi                          lbo@(LoopBound 0 (Just 0))     (RegexGen r)                     =
+    let actual = nestedLoop lbi lbo r in  -- 0 * Inf == 0
+        actual `shouldBe` mkRegexEmpty
 prop_Equivalent_LoopNested (LoopBound li mui)            _                             _            | Just li == mui    =
     return ()  -- no rewrite possible: (a{5,5}){1,2} <> a{5,10}
 prop_Equivalent_LoopNested lbi@(LoopBound li (Just ui))  lbo@(LoopBound lo (Just uo))  (RegexGen r)                     =

@@ -53,7 +53,7 @@ import qualified Data.Map           as Map
 import           Data.Maybe
 import qualified Data.Set           as Set
 import qualified Data.Text          as T
-import           Text.Regex.TDFA
+import           Text.Regex.TDFA ((=~))
 
 import           TorXakis.Error
 import           TorXakis.FunctionName
@@ -66,6 +66,7 @@ import           TorXakis.SortContext
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.Value
 import           TorXakis.Var
+import           TorXakis.Boute
 
 trueValExpr :: ValExpression
 trueValExpr = ValExpression $ Vconst (Cbool True)
@@ -290,7 +291,7 @@ unsafeDivide (Left e1)                                                   (Left e
 unsafeDivide (Left e1)                                                   _                                                           = Left $ Error ("Divide Error 1" ++ "\nDividend: " ++ show e1                     )
 unsafeDivide _                                                           (Left e2)                                                   = Left $ Error ("Divide Error 1" ++                              "\nDivisor:" ++ show e2)
 unsafeDivide _                                                           (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint 0)))  = Left $ Error  "Divide Error: Divisor equal to zero"
-unsafeDivide (Right (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t))) (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)))  = unsafeConst (Cint (t `div` n) )
+unsafeDivide (Right (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t))) (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)))  = unsafeConst (Cint (t `TorXakis.Boute.div` n ))
 unsafeDivide (Right vet)                                                 (Right ven)                                                 = Right $ ValExpression (Vdivide vet ven)
 
 unsafeModulo :: Either Error ValExpression -> Either Error ValExpression -> Either Error ValExpression
@@ -298,7 +299,7 @@ unsafeModulo (Left e1)                                                   (Left e
 unsafeModulo (Left e1)                                                   _                                                           = Left $ Error ("Modulo Error 1" ++ "\nDividend: " ++ show e1                     )
 unsafeModulo _                                                           (Left e2)                                                   = Left $ Error ("Modulo Error 1" ++                              "\nDivisor:" ++ show e2)
 unsafeModulo _                                                           (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint 0)))  = Left $ Error  "Modulo Error: Divisor equal to zero"
-unsafeModulo (Right (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t))) (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)))  = unsafeConst (Cint (t `mod` n) )
+unsafeModulo (Right (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t))) (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)))  = unsafeConst (Cint (t `TorXakis.Boute.mod` n) )
 unsafeModulo (Right vet)                                                 (Right ven)                                                 = Right $ ValExpression (Vmodulo vet ven)
 
 -- is key a constant?
@@ -501,17 +502,25 @@ unsafeStrInRe (Left e1) _ = Left $ Error ("StrInRe Error :" ++ show e1 )
 unsafeStrInRe (Right s) r = unsafeStrInRe' s r
 
 unsafeStrInRe' :: ValExpression -> TorXakis.Regex.Regex -> Either Error ValExpression
-unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) r  = unsafeConst (Cbool (T.unpack s =~ T.unpack (toPosix r) ) )
+unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) r  = let match :: Bool
+                                                                              match = T.unpack s =~ (T.unpack (toPosix r)) in
+                                                                            -- trace ("\nregex = " ++ show r ++
+                                                                            --        "\nposix = " ++ show (toPosix r) ++
+                                                                            --        "\nstring = " ++ show s ++
+                                                                            --        "\nmatch = " ++ show match
+                                                                            --       )
+                                                                                      unsafeConst (Cbool match)
 unsafeStrInRe' s r                                                      = Right $ ValExpression (Vstrinre s r)
 
 -- | When all value expressions are constant values, return Just them otherwise return Nothing.
+-- The order of the Values corresponds with that of the ValExpressions
 toMaybeValues :: [ValExpression] -> Maybe [Value]
-toMaybeValues = foldl toMaybeValue (Just [])
+toMaybeValues = foldr toMaybeValue (Just [])
     where
-        toMaybeValue :: Maybe [Value] -> ValExpression -> Maybe [Value]
-        toMaybeValue Nothing   _                                           = Nothing
-        toMaybeValue (Just vs) (TorXakis.ValExpr.ValExpr.view -> Vconst v) = Just (v:vs)
-        toMaybeValue _         _                                           = Nothing
+        toMaybeValue :: ValExpression -> Maybe [Value] -> Maybe [Value]
+        toMaybeValue _                                           Nothing   = Nothing
+        toMaybeValue (TorXakis.ValExpr.ValExpr.view -> Vconst v) (Just vs) = Just (v:vs)
+        toMaybeValue _                                           _         = Nothing
 
 -- TODO? More laziness?
 -- e.g. when used in an accessor, only one field is relevant

@@ -63,10 +63,10 @@ allChars = [regexRangeLow..regexRangeHigh]
 -- | Are all chars correctly handled (by escaping when needed)
 test_Chars :: Bool
 test_Chars =
-        all matchRegex allChars
+        all matchCharRegex allChars
     where
-        matchRegex :: Char -> Bool
-        matchRegex c = [c] =~ posixRegex
+        matchCharRegex :: Char -> Bool
+        matchCharRegex c = [c] =~ posixRegex
             where
                 posixRegex = case mkRegexCharLiteral c of
                                 Right r -> Data.Text.unpack (toPosix r)

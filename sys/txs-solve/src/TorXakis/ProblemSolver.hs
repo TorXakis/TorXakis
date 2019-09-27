@@ -79,7 +79,7 @@ class MonadIO p => ProblemSolver p where
     addADTs :: [ADTDef] -> p ()
     -- | Add Functions
     -- precondition: `depth` == 0
-    addFunctions :: [FuncDef] -> p ()
+    addFunctions :: [FuncDef] -> p ()       -- TODO: rename to addFuncs like FuncContext?
 
     -- | depth of nested contexts
     -- postcondition: `depth` >= 0

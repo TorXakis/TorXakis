@@ -40,6 +40,7 @@ import           TorXakis.FuncContext
 import           TorXakis.FuncSignature
 import qualified TorXakis.GenCollection
 import           TorXakis.Name
+import           TorXakis.RegexGen
 import           TorXakis.Sort
 import           TorXakis.TestFuncData
 import           TorXakis.TestSortData
@@ -142,6 +143,7 @@ empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap
                         $ addSuccess SortBool   2 (genValExprEqual SortString)
                         
                         $ addSuccess SortBool   2 genValExprAnd
+                        $ addSuccess SortBool   2 genValExprStrInRe
                         $ addSuccess SortBool   3 (genValExprITE SortBool)
 
                         -- Int
@@ -358,6 +360,18 @@ genValExprAnd ctx = do
     ps <- serie SortBool ctx
     case mkAnd ctx ps of
          Left e  -> error ("genValExprAnd constructor fails " ++ show e)
+         Right x -> return x
+
+-- | generation of string in regular expression check
+genValExprStrInRe :: TestValExprContext a => a -> Gen ValExpression
+genValExprStrInRe ctx = do
+    n <- getSize
+    let available = n - 2 in do -- distribute available size over two intervals
+        t <- choose (0, available)
+        str        <- resize t             (arbitraryValExprOfSort ctx SortString)
+        RegexGen r <- resize (available-t) arbitrary
+        case mkStrInRe ctx str r of
+         Left e  -> error ("genValExprStrInRe constructor fails " ++ show e)
          Right x -> return x
 
 -------------------------------------------------------------------------------

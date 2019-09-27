@@ -27,7 +27,7 @@ import           Data.Set
 import           Data.Text
 
 import           TorXakis.Regex
-import           TorXakis.Regex.CharRepr
+import           TorXakis.Regex.StringRepr
 
 -- | encode Char to Posix
 -- by escaping posix special/meta characters
@@ -50,11 +50,12 @@ encodeChar c    = Data.Text.singleton c
 
 -- | transform Regular expression to Posix Text
 toPosix :: Regex -> Text
-toPosix t = pack "\\`" <> toPosixView (viewCharRepr t) <> pack "\\'"
+toPosix t = pack "\\`(" <> toPosixView (viewStringRepr t) <> pack ")\\'"
     where
-        toPosixView :: CharRepr -> Text
-        toPosixView  RegexEmpty                 = Data.Text.pack "()"
-        toPosixView (RegexCharLiteral c)        = encodeChar c
+        toPosixView :: StringRepr -> Text
+        toPosixView (RegexStringLiteral s)      = if Data.Text.null s
+                                                  then pack "()"
+                                                  else Data.Text.concatMap encodeChar s
         toPosixView (RegexConcat cs)            =    Data.Text.singleton '('
                                                   <> intercalate (pack ")(") (Prelude.map toPosixView cs)
                                                   <> Data.Text.singleton ')'

@@ -8,12 +8,12 @@ See LICENSE at root directory of this repository.
 -- Module      :  TorXakis.ContextTestValExpr
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (ESI)
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- ValExpression Context for Test: 
+-- ValExpression Context for Test:
 -- Additional functionality to ensure termination for QuickCheck
 -----------------------------------------------------------------------------
 {-# LANGUAGE FlexibleInstances     #-}
@@ -44,7 +44,7 @@ import           TorXakis.VarsDeclGen
 -- Test Func Context
 -------------------------------------------------------------------------------------------------------------
 -- | data for ContextTestValExpr
-data ContextTestValExpr = 
+data ContextTestValExpr =
         ContextTestValExpr
             { basis :: ContextValExpr
             , tvecd :: TestValExprData ContextTestValExpr
@@ -109,7 +109,7 @@ instance FuncContext ContextTestValExpr where
     lookupFunc r = lookupFunc r . basis
 
     funcSignatures = funcSignatures . basis
-    
+
     elemsFunc = elemsFunc . basis
 
     addFuncs fs ctx = case addFuncs fs (basis ctx) of
@@ -130,6 +130,7 @@ instance TestValExprContext ContextTestValExpr where
 
     funcSize r ctx = TorXakis.TestValExprData.funcSize r (basis ctx) (tvecd ctx)
 
+-- TODO: add recursive functions (and ensure termination when called with constant arguments)
 arbitraryFuncDefs :: TestValExprContext c => c -> Gen [FuncDef]
 arbitraryFuncDefs ctx = do
     funcNameGens <- listOf (arbitrary :: Gen FunctionNameGen)
@@ -163,5 +164,4 @@ arbitraryContextTestValExpr =
                                                                 case addVars (toList vs) ctx3 of
                                                                     Left e     -> error ("arbitraryContextTestValExpr: Invalid generator - addVars " ++ show e)
                                                                     Right ctx4 -> return ctx4
-                                    
-                                
+

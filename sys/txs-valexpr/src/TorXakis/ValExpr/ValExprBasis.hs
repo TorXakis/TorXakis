@@ -155,13 +155,45 @@ mkUnaryMinus :: VarContext c => c -> ValExpression -> Either Error ValExpression
 mkUnaryMinus ctx v | getSort ctx v == SortInt = unsafeUnaryMinus (Right v)
                    | otherwise                = Left $ Error ("Unary Minus argument not of expected Sort Int but " ++ show (getSort ctx v))
 
+-- http://smtlib.cs.uiowa.edu/theories-Ints.shtml
+
 -- | Apply operator Divide on the provided value expressions.
+-- `mkDivide` and `mkModulo` are defined according to Boute's Euclidean definition, that is,
+--  so as to satisfy the formula
+--
+-- @
+--  (for all ((m Int) (n Int))
+--    (=> (distinct n 0)
+--        (let ((q (div m n)) (r (mod m n)))
+--          (and (= m (+ (* n q) r))
+--               (<= 0 r (- (abs n) 1))))))
+-- @
+--
+-- Boute, Raymond T. (April 1992). 
+--      The Euclidean definition of the functions div and mod. 
+--      ACM Transactions on Programming Languages and Systems (TOPLAS) 
+--      ACM Press. 14 (2): 127 - 144. doi:10.1145/128861.128862.
 mkDivide :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkDivide ctx d _ | getSort ctx d /= SortInt = Left $ Error ("Dividend not of expected Sort Int but " ++ show (getSort ctx d))
 mkDivide ctx _ d | getSort ctx d /= SortInt = Left $ Error ("Divisor not of expected Sort Int but " ++ show (getSort ctx d))
 mkDivide _   t n                        = unsafeDivide (Right t) (Right n)
 
 -- | Apply operator Modulo on the provided value expressions.
+-- `mkDivide` and `mkModulo` are defined according to Boute's Euclidean definition, that is,
+--  so as to satisfy the formula
+--
+-- @
+--  (for all ((m Int) (n Int))
+--    (=> (distinct n 0)
+--        (let ((q (div m n)) (r (mod m n)))
+--          (and (= m (+ (* n q) r))
+--               (<= 0 r (- (abs n) 1))))))
+-- @
+--
+-- Boute, Raymond T. (April 1992). 
+--      The Euclidean definition of the functions div and mod. 
+--      ACM Transactions on Programming Languages and Systems (TOPLAS) 
+--      ACM Press. 14 (2): 127 - 144. doi:10.1145/128861.128862.
 mkModulo :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
 mkModulo ctx d _ | getSort ctx d /= SortInt = Left $ Error ("Dividend not of expected Sort Int but " ++ show (getSort ctx d))
 mkModulo ctx _ d | getSort ctx d /= SortInt = Left $ Error ("Divisor not of expected Sort Int but " ++ show (getSort ctx d))
@@ -213,8 +245,14 @@ getCstr ctx aRef cRef = case lookupADT (toName aRef) ctx of
 
 -- | Apply ADT Constructor of the given ADT Name and Constructor Name on the provided arguments (the list of value expressions).
 mkCstr :: VarContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression] -> Either Error ValExpression
--- TODO: check all the sorts of the fields
-mkCstr ctx aRef cRef as = getCstr ctx aRef cRef >>= const (unsafeCstr aRef cRef (map Right as))
+mkCstr ctx aRef cRef as =
+    getCstr ctx aRef cRef >>= (\(_,cd) -> let expectedSorts = map (getSort ctx) (elemsField cd) 
+                                              actualSorts = map (getSort ctx) as
+                                            in
+                                                if expectedSorts == actualSorts
+                                                then unsafeCstr aRef cRef (map Right as)
+                                                else Left $ Error ("Mismatch in sorts:\nexpected = "++ show expectedSorts ++ "\nactual = " ++ show actualSorts)
+                              )
 
 -- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
 mkIsCstr :: VarContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> Either Error ValExpression

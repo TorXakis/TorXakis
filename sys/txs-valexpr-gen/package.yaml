@@ -30,6 +30,7 @@ library:
     - txs-basics-gen
     - txs-name
     - txs-name-gen
+    - txs-regex-gen
     - txs-sort-gen
     - txs-value-gen
     - txs-var
