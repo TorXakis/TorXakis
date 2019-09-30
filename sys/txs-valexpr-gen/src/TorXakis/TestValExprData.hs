@@ -51,15 +51,6 @@ import           TorXakis.Value
 import           TorXakis.ValueGen
 import           TorXakis.Var
 
-                                    -- to be added to genMap
-                                    -- 0. predefined operators (modulo, and, not, sum , etc)
-                                    -- 1. value generation for all defined sorts
-                                    -- 2. generators related to ADTs (constructors and accessors)
-                                    -- 3. If THEN Else etc.
-                                    -- 4. generators for variables (based on variables defined in context)
-                                    -- 5. generators for funcInstantiation (based on funcSignatures defined in context)
-
-
 -- | Test FuncSignature Data
 data TestValExprData c where
         TestValExprData :: TestValExprContext c
@@ -128,7 +119,7 @@ empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap
                         $ addSuccess SortBool   2 (genValExprEqual SortInt)
 --                      $ addSuccess SortBool   2 (genValExprEqual SortChar)
                         $ addSuccess SortBool   2 (genValExprEqual SortString)
-                        
+
                         $ addSuccess SortBool   2 genValExprAnd
                         $ addSuccess SortBool   2 genValExprStrInRe
                         $ addSuccess SortBool   3 (genValExprITE SortBool)
@@ -169,28 +160,34 @@ empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap
 afterAddADTs :: (SortContext c, TestValExprContext d) => c -> [ADTDef] -> TestValExprData d -> TestValExprData d
 afterAddADTs ctx as tvecd = TestValExprData newTsd
                                                         (addConstructorsGens
-                                                         (addValueGens (genMap tvecd) as)
+                                                         (addBasicGens (genMap tvecd) as)
                                                          as
                                                         )
                                                         -- TODO: add IsConstructors and accessors functions
     where
             newTsd = TorXakis.TestSortData.afterAddADTs ctx as (tsd tvecd)
             -- TODO: should we merge ???
-            addValueGens :: TestValExprContext d
+            addBasicGens :: TestValExprContext d
                          => TorXakis.GenCollection.GenCollection d ValExpression
                          -> [ADTDef]
                          -> TorXakis.GenCollection.GenCollection d ValExpression
-            addValueGens = foldl addValueGen
+            addBasicGens = foldl addBasicGen
                 where
-                    addValueGen :: TestValExprContext d
+                    addBasicGen :: TestValExprContext d
                                 => TorXakis.GenCollection.GenCollection d ValExpression
                                 -> ADTDef
                                 -> TorXakis.GenCollection.GenCollection d ValExpression
-                    addValueGen m a = let srt = SortADT ((RefByName . adtName) a)
+                    addBasicGen m a = let srt      = SortADT ((RefByName . adtName) a)
+                                          sizeSrt  = TorXakis.TestSortData.sortSize srt newTsd
+                                          sizeBool = TorXakis.TestSortData.sortSize SortBool newTsd
                                         in
                                           case TorXakis.GenCollection.add ctx srt 0 (genValExprValueOfSort srt) m of
-                                            Left e -> error ("addADTs - addValueGens - successful add expected, yet " ++ show e)
-                                            Right m' -> m'
+                                            Left e -> error ("addADTs - addBasicGen - successful add expected of const, yet " ++ show e)
+                                            Right m' -> case TorXakis.GenCollection.add ctx SortBool (2 + 2*sizeSrt) (genValExprEqual srt) m' of
+                                                            Left e    -> error ("addADTs - addBasicGen - successful add expected of equal, yet " ++ show e)
+                                                            Right m'' -> case TorXakis.GenCollection.add ctx srt (3 + sizeBool + 2*sizeSrt) (genValExprITE srt) m'' of
+                                                                            Left e     -> error ("addADTs - addBasicGen - successful add expected of equal, yet " ++ show e)
+                                                                            Right m''' -> m'''
 
             addConstructorsGens :: TestValExprContext d
                                 => TorXakis.GenCollection.GenCollection d ValExpression
@@ -203,17 +200,25 @@ afterAddADTs ctx as tvecd = TestValExprData newTsd
                                        -> ADTDef
                                        -> TorXakis.GenCollection.GenCollection d ValExpression
                     addConstructorsGen m a = foldl addConstructorGen m (elemsConstructor a)
-                        where 
-                            srt = SortADT ((RefByName . adtName) a)
+                        where
                             addConstructorGen :: TestValExprContext d
                                               => TorXakis.GenCollection.GenCollection d ValExpression
                                               -> ConstructorDef
                                               -> TorXakis.GenCollection.GenCollection d ValExpression
-                            addConstructorGen m' c = case TorXakis.GenCollection.add ctx srt (TorXakis.TestSortData.constructorSize (RefByName (adtName a)) (RefByName (constructorName c)) newTsd) (genValExprConstructor a c) m' of
-                                                            Left e -> error ("addADTs - addConstructorGen - successful add expected, yet " ++ show e)
-                                                            Right m'' -> m''
+                            addConstructorGen m' c = let aRef :: RefByName ADTDef
+                                                         aRef = RefByName (adtName a)
+                                                         srt = SortADT aRef
+                                                         sizeSrt  = TorXakis.TestSortData.sortSize srt newTsd
+                                                         cRef :: RefByName ConstructorDef
+                                                         cRef = RefByName (constructorName c)
+                                                         sizeCstr = TorXakis.TestSortData.constructorSize aRef cRef newTsd
+                                                       in 
+                                                            case TorXakis.GenCollection.add ctx srt sizeCstr (genValExprConstructor a c) m' of
+                                                                Left e    -> error ("addADTs - addConstructorGen - successful add expected of cstr, yet " ++ show e)
+                                                                Right m'' -> case TorXakis.GenCollection.add ctx SortBool (1+sizeSrt) (genValExprIsConstructor a c) m'' of
+                                                                                    Left e     -> error ("addADTs - addConstructorGen - successful add expected of isCstr, yet " ++ show e)
+                                                                                    Right m''' -> m'''
 
-                            
 -- | Update TestValExprData to remain consistent after
 -- a successful addition of Vars to the context.
 afterAddVars :: (VarContext a, TestValExprContext d) => a -> [VarDef] -> TestValExprData d -> TestValExprData d
@@ -280,7 +285,7 @@ genValExprITE s ctx = do
         availableSize = available - sizeBool - 2 * sizeBranch
       in do
         adds <- distribute availableSize 3
-        case adds of 
+        case adds of
             [addBool, addTrue, addFalse] -> do
                                                 c <- resize (sizeBool + addBool) (arbitraryValExprOfSort ctx SortBool)
                                                 t <- resize (sizeBranch + addTrue) (arbitraryValExprOfSort ctx s)
@@ -463,7 +468,7 @@ genValExprConcat ctx = do
 -- ADT generators
 ------------------------------------------------
 genValExprConstructor :: TestValExprContext a => ADTDef -> ConstructorDef -> a -> Gen ValExpression
-genValExprConstructor a c ctx = 
+genValExprConstructor a c ctx =
     let aRef :: RefByName ADTDef
         aRef = RefByName (adtName a)
         cRef :: RefByName ConstructorDef
@@ -481,3 +486,16 @@ genValExprConstructor a c ctx =
                 case mkCstr ctx aRef cRef fs of
                     Left e  -> error ("genValExprConstructor constructor fails " ++ show e)
                     Right x -> return x
+
+genValExprIsConstructor :: TestValExprContext a => ADTDef -> ConstructorDef -> a -> Gen ValExpression
+genValExprIsConstructor a c ctx =
+    let aRef :: RefByName ADTDef
+        aRef = RefByName (adtName a)
+        cRef :: RefByName ConstructorDef
+        cRef = RefByName (constructorName c)
+      in do
+        n <- getSize
+        arg <- resize (n-1) (arbitraryValExprOfSort ctx (SortADT aRef))
+        case mkIsCstr ctx aRef cRef arg of
+            Left e  -> error ("genValExprIsConstructor constructor fails " ++ show e)
+            Right x -> return x
