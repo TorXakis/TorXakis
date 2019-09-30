@@ -45,7 +45,6 @@ tests:
         dependencies:
         - hspec
         - QuickCheck
-        - regex-compat
         - regex-tdfa
 
         - txs-regex

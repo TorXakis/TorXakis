@@ -114,19 +114,6 @@ varSize r ctx = TorXakis.TestVarData.varSize r ctx . tsd
 funcSize :: RefByFuncSignature -> c -> TestValExprData d -> Int
 funcSize r ctx = TorXakis.TestFuncData.funcSize r ctx . tsd
 
-{-
--- | FuncSignature Size
---   The size of the provided funcSignature as specified by the references to 'TorXakis.FuncSignature' is returned.
---   The size is a measurement of complexity and is indicated by an 'Int'.
---   Note that the function should crash when the context does not contain the 'TorXakis.FuncSignature' and any related 'TorXakis.Sort' references.
-funcSize :: RefByFuncSignature -> a -> TestFuncSignatureData -> Int
-funcSize r _ tfd  = let f = toFuncSignature r in
-                      sum (map useSize (returnSort f: args f))
-    where
-        useSize :: Sort -> Int
-        useSize s = 1 + TorXakis.TestSortData.sortSize s tfd
--}
-
 -- | Constructor of empty Test Val Expr  Data
 empty :: (SortContext c, TestValExprContext d) => c -> TestValExprData d
 empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap

@@ -503,7 +503,7 @@ unsafeStrInRe (Right s) r = unsafeStrInRe' s r
 
 unsafeStrInRe' :: ValExpression -> TorXakis.Regex.Regex -> Either Error ValExpression
 unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) r  = let match :: Bool
-                                                                              match = T.unpack s =~ (T.unpack (toPosix r)) in
+                                                                              match = T.unpack s =~ T.unpack (toPosix r) in
                                                                             -- trace ("\nregex = " ++ show r ++
                                                                             --        "\nposix = " ++ show (toPosix r) ++
                                                                             --        "\nstring = " ++ show s ++

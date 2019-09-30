@@ -19,6 +19,7 @@ module TorXakis.ValExprContextSpec
 (spec
 )
 where
+import           Control.Concurrent
 import           Control.Monad.IO.Class
 import           Control.Monad.Except
 import           Control.Monad.State
@@ -59,7 +60,9 @@ runSolvers exec = do
 -- | run specific solver
 runSolver :: SmtM Bool -> (FilePath,[String]) -> IO Bool
 runSolver exec (fp,as) = do
-    es <- liftIO $ mkSmtState fp as False
+    liftIO $ threadDelay 500000 -- wait half a second, to prevent creating log files with identical time stamp:
+                                -- uncaught exception: IOException of type ResourceBusy (logSMT.2019-09-27-16-45-21.7920361.smt2: openFile: resource busy (file is locked))
+    es <- liftIO $ mkSmtState fp as True
     case es of
         Left err -> error (show err)
         Right ss -> do
@@ -75,7 +78,7 @@ runSolver exec (fp,as) = do
                                             Nothing  -> return b
 
 -- | Solve equal function calls
-testFunctionArbitrary :: (ValExprContext c, ProblemSolver p) => c -> Data.HashMap.Map Sort Value -> p Bool
+testFunctionArbitrary :: (FuncContext c, ProblemSolver p) => c -> Data.HashMap.Map Sort Value -> p Bool
 testFunctionArbitrary ctx mp = do
     TorXakis.ProblemSolver.addADTs (elemsADT ctx)
     TorXakis.ProblemSolver.addFunctions (elemsFunc ctx)

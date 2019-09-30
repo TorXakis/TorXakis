@@ -28,6 +28,7 @@ module TorXakis.ContextTestValExpr
 )
 where
 --import           Debug.Trace
+import           Control.Monad
 import           Test.QuickCheck
 
 import           TorXakis.ContextValExpr
@@ -130,23 +131,26 @@ instance TestValExprContext ContextTestValExpr where
 
     funcSize r ctx = TorXakis.TestValExprData.funcSize r (basis ctx) (tvecd ctx)
 
+-- incrementally to allow for function calls
 -- TODO: add recursive functions (and ensure termination when called with constant arguments)
 arbitraryFuncDefs :: TestValExprContext c => c -> Gen [FuncDef]
 arbitraryFuncDefs ctx = do
     funcNameGens <- listOf (arbitrary :: Gen FunctionNameGen)
     let funcNames = map unFunctionNameGen funcNameGens in
-        mapM defineFunc funcNames
+        elemsFunc <$> foldM defineFunc ctx funcNames
   where
-    defineFunc :: FunctionName -> Gen FuncDef
-    defineFunc n = do
-        vs <- arbitraryVarsDecl ctx
-        case addVars (toList vs) ctx of
-             Left e     -> error ("arbitraryFuncDefs: Invalid generator - addVars " ++ show e)
-             Right ctx2 -> do
-                            b <- arbitraryValExpr ctx2
-                            case mkFuncDef ctx n vs b of
-                                 Left e -> error ("arbitraryFuncDefs: Invalid generator - mkFuncDef " ++ show e)
-                                 Right d -> return d
+    defineFunc :: TestValExprContext c => c -> FunctionName -> Gen c
+    defineFunc ctxAcc n = do
+        vs <- arbitraryVarsDecl ctxAcc
+        case addVars (toList vs) ctxAcc of
+             Left e        -> error ("arbitraryFuncDefs: Invalid generator - addVars " ++ show e)
+             Right ctxBody -> do
+                                b <- arbitraryValExpr ctxBody
+                                case mkFuncDef ctxAcc n vs b of
+                                    Left e  -> error ("arbitraryFuncDefs: Invalid generator - mkFuncDef " ++ show e)
+                                    Right d -> case addFuncs [d] ctxAcc of
+                                                Left e       -> error ("arbitraryFuncDefs: Invalid generator - addFuncs " ++ show e)
+                                                Right ctxNew -> return ctxNew
 
 -- | generate an arbitrary Test ValExpr Context
 arbitraryContextTestValExpr :: Gen ContextTestValExpr
