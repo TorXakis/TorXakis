@@ -147,7 +147,7 @@ charGroupRegex list = toTestObject (foldl addCharGroupPart ("","") list)
 testTestObject :: String -> TestObject -> Test
 testTestObject s rt = TestCase $
     -- Trace.trace ( (input rt) ++ " => " ++ (expected rt) ) $ do
-    assertEqual s ("^" ++ expected rt ++ "$") (T.unpack (xsd2posix (T.pack (input rt) ) ) )
+    assertEqual s ("\\`(" ++ expected rt ++ ")\\'") (T.unpack (xsd2posix (T.pack (input rt) ) ) )
 
 ---------------------------------------------------------------------------
 -- Tests
