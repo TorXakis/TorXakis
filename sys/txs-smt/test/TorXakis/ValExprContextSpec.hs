@@ -63,7 +63,7 @@ runSolver :: SmtM Bool -> (FilePath,[String]) -> IO Bool
 runSolver exec (fp,as) = do
     liftIO $ threadDelay 500000 -- wait half a second, to prevent creating log files with identical time stamp:
                                 -- uncaught exception: IOException of type ResourceBusy (logSMT.2019-09-27-16-45-21.7920361.smt2: openFile: resource busy (file is locked))
-    es <- liftIO $ mkSmtState fp as False
+    es <- liftIO $ mkSmtState fp as True
     case es of
         Left err -> error (show err)
         Right ss -> do
@@ -128,5 +128,6 @@ prop_FuncCallEqual = do
 spec :: Spec
 spec =
   describe "All Function Definitions" $
-    modifyMaxSuccess (const 10) $ -- TODO: increase number of tests when bugs are removed / performance is increased of the solvers
+    modifyMaxSize (const 20) $
+    modifyMaxSuccess (const 100) $ -- TODO: increase size of tests when bugs are removed / performance is increased of the solvers
         it "are usable" $ property prop_FuncCallEqual
