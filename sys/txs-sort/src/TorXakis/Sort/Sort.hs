@@ -81,7 +81,7 @@ instance Hashable Sort where
     s `hashWithSalt` SortInt     = s `hashWithSalt` T.pack "Int"
 --  s `hashWithSalt` SortChar    = s `hashWithSalt` T.pack "Char"
     s `hashWithSalt` SortString  = s `hashWithSalt` T.pack "String"
-    s `hashWithSalt` (SortADT r) = s `hashWithSalt` r  -- ADT name differs from predefined names
+    s `hashWithSalt` (SortADT r) = hashWithSalt s $ T.append (T.singleton 'a') (toText (toName r))  -- no predefined sort starts with "a", so no clash possible with ADT names
 
 -- | Enables 'Sort's of entities to be accessed in a common way.
 class HasSort c a where

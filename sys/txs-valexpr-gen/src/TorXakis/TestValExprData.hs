@@ -201,23 +201,30 @@ afterAddADTs ctx as tvecd = TestValExprData newTsd
                                        -> TorXakis.GenCollection.GenCollection d ValExpression
                     addConstructorsGen m a = foldl addConstructorGen m (elemsConstructor a)
                         where
+                            aRef :: RefByName ADTDef
+                            aRef = RefByName (adtName a)
+                            srt = SortADT aRef
+                            sizeSrt  = TorXakis.TestSortData.sortSize srt newTsd
                             addConstructorGen :: TestValExprContext d
                                               => TorXakis.GenCollection.GenCollection d ValExpression
                                               -> ConstructorDef
                                               -> TorXakis.GenCollection.GenCollection d ValExpression
-                            addConstructorGen m' c = let aRef :: RefByName ADTDef
-                                                         aRef = RefByName (adtName a)
-                                                         srt = SortADT aRef
-                                                         sizeSrt  = TorXakis.TestSortData.sortSize srt newTsd
-                                                         cRef :: RefByName ConstructorDef
-                                                         cRef = RefByName (constructorName c)
-                                                         sizeCstr = TorXakis.TestSortData.constructorSize aRef cRef newTsd
-                                                       in 
-                                                            case TorXakis.GenCollection.add ctx srt sizeCstr (genValExprConstructor a c) m' of
-                                                                Left e    -> error ("addADTs - addConstructorGen - successful add expected of cstr, yet " ++ show e)
-                                                                Right m'' -> case TorXakis.GenCollection.add ctx SortBool (1+sizeSrt) (genValExprIsConstructor a c) m'' of
-                                                                                    Left e     -> error ("addADTs - addConstructorGen - successful add expected of isCstr, yet " ++ show e)
-                                                                                    Right m''' -> m'''
+                            addConstructorGen m' c = case TorXakis.GenCollection.add ctx srt sizeCstr (genValExprConstructor a c) m' of
+                                                          Left e    -> error ("addADTs - addConstructorGen - successful add expected of cstr, yet " ++ show e)
+                                                          Right m'' -> case TorXakis.GenCollection.add ctx SortBool (1+sizeSrt) (genValExprIsConstructor a c) m'' of
+                                                                            Left e     -> error ("addADTs - addConstructorGen - successful add expected of isCstr, yet " ++ show e)
+                                                                            Right m''' -> foldl addFieldAccesGen m''' (elemsField c)
+                                where
+                                    cRef :: RefByName ConstructorDef
+                                    cRef = RefByName (constructorName c)
+                                    sizeCstr = TorXakis.TestSortData.constructorSize aRef cRef newTsd
+                                    addFieldAccesGen :: TestValExprContext d
+                                              => TorXakis.GenCollection.GenCollection d ValExpression
+                                              -> FieldDef
+                                              -> TorXakis.GenCollection.GenCollection d ValExpression
+                                    addFieldAccesGen m'' f = case TorXakis.GenCollection.add ctx (TorXakis.Sort.sort f) (3+sizeSrt) (genValExprAccess a c f) m'' of
+                                                                  Left e     -> error ("addADTs - addConstructorGen - successful add expected of cstr, yet " ++ show e)
+                                                                  Right m''' -> m'''
 
 -- | Update TestValExprData to remain consistent after
 -- a successful addition of Vars to the context.
@@ -390,20 +397,13 @@ zero = case mkConst TorXakis.ContextSort.empty (Cint 0) of
             Left e -> error ("Unable to make zero " ++ show e)
             Right x -> x
 
-nonZero :: TestValExprContext a => a -> Gen ValExpression
-nonZero ctx = do
-    n <- arbitraryValExprOfSort ctx SortInt
-    if n == zero
-        then discard
-        else return n
-
 division :: TestValExprContext a => a -> Gen (ValExpression, ValExpression)
 division ctx = do
     n <- getSize
     let available = n - 2 in do -- distribute available size over two intervals
         t <- choose (0, available)
         teller <- resize t             (arbitraryValExprOfSort ctx SortInt)
-        noemer <- resize (available-t) (nonZero ctx)
+        noemer <- resize (available-t) (arbitraryValExprOfSort ctx SortInt)
         return (teller, noemer)
 
 genValExprModulo :: TestValExprContext a => a -> Gen ValExpression
@@ -411,22 +411,26 @@ genValExprModulo ctx = do
     (teller, noemer) <- division ctx
     case mkEqual ctx noemer zero of
         Left e -> error ("genValExprModulo mkEqual fails " ++ show e)
-        Right c -> case mkModulo ctx teller noemer of
-                    Left e  -> error ("genValExprModulo mkModulo fails " ++ show e)
-                    Right f -> case mkITE ctx c teller f of
-                                    Left e  -> error ("genValExprModulo mkITE fails " ++ show e)
-                                    Right x -> return x
+        Right c -> case TorXakis.ValExpr.view c of
+                        Vconst (Cbool True) -> return teller
+                        _                   -> case mkModulo ctx teller noemer of
+                                                    Left e  -> error ("genValExprModulo mkModulo fails " ++ show e)
+                                                    Right f -> case mkITE ctx c teller f of
+                                                                    Left e  -> error ("genValExprModulo mkITE fails " ++ show e)
+                                                                    Right x -> return x
 
 genValExprDivide :: TestValExprContext a => a -> Gen ValExpression
 genValExprDivide ctx = do
     (teller, noemer) <- division ctx
     case mkEqual ctx noemer zero of
         Left e -> error ("genValExprDivide mkEqual fails " ++ show e)
-        Right c -> case mkDivide ctx teller noemer of
-                    Left e  -> error ("genValExprDivide mkDivide fails " ++ show e)
-                    Right f -> case mkITE ctx c teller f of
-                                    Left e  -> error ("genValExprDivide mkITE fails " ++ show e)
-                                    Right x -> return x
+        Right c -> case TorXakis.ValExpr.view c of
+                        Vconst (Cbool True) -> return teller
+                        _                   -> case mkDivide ctx teller noemer of
+                                                    Left e  -> error ("genValExprDivide mkDivide fails " ++ show e)
+                                                    Right f -> case mkITE ctx c teller f of
+                                                                    Left e  -> error ("genValExprDivide mkITE fails " ++ show e)
+                                                                    Right x -> return x
 
 genValExprSum :: TestValExprContext a => a -> Gen ValExpression
 genValExprSum ctx = do
@@ -467,6 +471,7 @@ genValExprConcat ctx = do
 -----------------------------------------------
 -- ADT generators
 ------------------------------------------------
+-- | constructor generator
 genValExprConstructor :: TestValExprContext a => ADTDef -> ConstructorDef -> a -> Gen ValExpression
 genValExprConstructor a c ctx =
     let aRef :: RefByName ADTDef
@@ -487,6 +492,7 @@ genValExprConstructor a c ctx =
                     Left e  -> error ("genValExprConstructor constructor fails " ++ show e)
                     Right x -> return x
 
+-- | Is Constructor Generator
 genValExprIsConstructor :: TestValExprContext a => ADTDef -> ConstructorDef -> a -> Gen ValExpression
 genValExprIsConstructor a c ctx =
     let aRef :: RefByName ADTDef
@@ -499,3 +505,28 @@ genValExprIsConstructor a c ctx =
         case mkIsCstr ctx aRef cRef arg of
             Left e  -> error ("genValExprIsConstructor constructor fails " ++ show e)
             Right x -> return x
+
+-- | Field Access generator
+genValExprAccess :: TestValExprContext a => ADTDef -> ConstructorDef -> FieldDef -> a -> Gen ValExpression
+genValExprAccess a c f ctx =
+    let aRef :: RefByName ADTDef
+        aRef = RefByName (adtName a)
+        cRef :: RefByName ConstructorDef
+        cRef = RefByName (constructorName c)
+        fRef :: RefByName FieldDef
+        fRef = RefByName (fieldName f)
+        srt = SortADT aRef
+        srtField = TorXakis.Sort.sort f
+      in do
+        n <- getSize
+        arg <- resize (n-3) (arbitraryValExprOfSort ctx srt)
+        def <- genValExprValueOfSort srtField ctx
+        case mkIsCstr ctx aRef cRef arg of
+            Left e   -> error ("genValExprAccess constructor fails on mkIsCstr with " ++ show e)
+            Right be -> case TorXakis.ValExpr.view be of
+                            Vconst (Cbool False) -> return def
+                            _                    -> case mkAccess ctx aRef cRef fRef arg of
+                                                        Left e  -> error ("genValExprAccess constructor fails on mkAccess with " ++ show e)
+                                                        Right t -> case mkITE ctx be t def of
+                                                                        Left e  -> error ("genValExprAccess constructor fails on mkITE with " ++ show e)
+                                                                        Right x -> return x
