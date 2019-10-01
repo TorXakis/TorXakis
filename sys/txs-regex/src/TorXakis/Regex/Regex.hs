@@ -37,9 +37,9 @@ import           GHC.Generics        (Generic)
 
 -- | Regex: the private structure for regular expression 'Regex'
 data Regex =  RegexEmpty
-                | RegexCharLiteral Char
-                | RegexRange Char Char                    -- invariant: lowerbound < upperbound
-                | RegexConcat [Regex]                     -- invariant: length list is at least 2, RegexEmpty and RegexConcat are not contained, RegexStringLiteral do not appear consecutive
-                | RegexUnion (Set Regex)                  -- invariant: number of elements is at least 2, elements are unique, RegexUnion is not contained
-                | RegexLoop Regex Integer (Maybe Integer)
+            | RegexCharLiteral Char
+            | RegexRange Char Char                    -- invariant: lowerbound < upperbound
+            | RegexConcat [Regex]                     -- invariant: length list is at least 2, RegexEmpty and RegexConcat are not contained, RegexStringLiteral do not appear consecutive
+            | RegexUnion (Set Regex)                  -- invariant: number of elements is at least 2, elements are unique, RegexUnion is not contained
+            | RegexLoop Regex Integer (Maybe Integer)
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)

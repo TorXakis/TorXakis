@@ -17,6 +17,7 @@ See LICENSE at root directory of this repository.
 -- Additional data to ensure termination for QuickCheck
 -----------------------------------------------------------------------------
 {-# LANGUAGE GADTs                #-}
+{-# LANGUAGE ViewPatterns         #-}
 module TorXakis.TestValExprData
 (-- * Test FuncSignature Data
   TestValExprData
@@ -393,7 +394,7 @@ genValExprLength ctx = do
          Right x -> return x
 
 zero :: ValExpression
-zero = case mkConst TorXakis.ContextSort.empty (Cint 0) of
+zero = case mkConst TorXakis.ContextSort.empty (mkInt 0) of
             Left e -> error ("Unable to make zero " ++ show e)
             Right x -> x
 
@@ -412,12 +413,12 @@ genValExprModulo ctx = do
     case mkEqual ctx noemer zero of
         Left e -> error ("genValExprModulo mkEqual fails " ++ show e)
         Right c -> case TorXakis.ValExpr.view c of
-                        Vconst (Cbool True) -> return teller
-                        _                   -> case mkModulo ctx teller noemer of
-                                                    Left e  -> error ("genValExprModulo mkModulo fails " ++ show e)
-                                                    Right f -> case mkITE ctx c teller f of
-                                                                    Left e  -> error ("genValExprModulo mkITE fails " ++ show e)
-                                                                    Right x -> return x
+                        Vconst (TorXakis.Value.view -> Cbool True)  -> return teller
+                        _                                           -> case mkModulo ctx teller noemer of
+                                                                            Left e  -> error ("genValExprModulo mkModulo fails " ++ show e)
+                                                                            Right f -> case mkITE ctx c teller f of
+                                                                                            Left e  -> error ("genValExprModulo mkITE fails " ++ show e)
+                                                                                            Right x -> return x
 
 genValExprDivide :: TestValExprContext a => a -> Gen ValExpression
 genValExprDivide ctx = do
@@ -425,12 +426,12 @@ genValExprDivide ctx = do
     case mkEqual ctx noemer zero of
         Left e -> error ("genValExprDivide mkEqual fails " ++ show e)
         Right c -> case TorXakis.ValExpr.view c of
-                        Vconst (Cbool True) -> return teller
-                        _                   -> case mkDivide ctx teller noemer of
-                                                    Left e  -> error ("genValExprDivide mkDivide fails " ++ show e)
-                                                    Right f -> case mkITE ctx c teller f of
-                                                                    Left e  -> error ("genValExprDivide mkITE fails " ++ show e)
-                                                                    Right x -> return x
+                        Vconst (TorXakis.Value.view -> Cbool True)  -> return teller
+                        _                                           -> case mkDivide ctx teller noemer of
+                                                                            Left e  -> error ("genValExprDivide mkDivide fails " ++ show e)
+                                                                            Right f -> case mkITE ctx c teller f of
+                                                                                            Left e  -> error ("genValExprDivide mkITE fails " ++ show e)
+                                                                                            Right x -> return x
 
 genValExprSum :: TestValExprContext a => a -> Gen ValExpression
 genValExprSum ctx = do
@@ -524,9 +525,9 @@ genValExprAccess a c f ctx =
         case mkIsCstr ctx aRef cRef arg of
             Left e   -> error ("genValExprAccess constructor fails on mkIsCstr with " ++ show e)
             Right be -> case TorXakis.ValExpr.view be of
-                            Vconst (Cbool False) -> return def
-                            _                    -> case mkAccess ctx aRef cRef fRef arg of
-                                                        Left e  -> error ("genValExprAccess constructor fails on mkAccess with " ++ show e)
-                                                        Right t -> case mkITE ctx be t def of
-                                                                        Left e  -> error ("genValExprAccess constructor fails on mkITE with " ++ show e)
-                                                                        Right x -> return x
+                            Vconst (TorXakis.Value.view -> Cbool False) -> return def
+                            _                                           -> case mkAccess ctx aRef cRef fRef arg of
+                                                                                Left e  -> error ("genValExprAccess constructor fails on mkAccess with " ++ show e)
+                                                                                Right t -> case mkITE ctx be t def of
+                                                                                                Left e  -> error ("genValExprAccess constructor fails on mkITE with " ++ show e)
+                                                                                                Right x -> return x

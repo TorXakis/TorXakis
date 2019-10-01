@@ -69,16 +69,16 @@ import           TorXakis.Var
 import           TorXakis.Boute
 
 trueValExpr :: ValExpression
-trueValExpr = ValExpression $ Vconst (Cbool True)
+trueValExpr = ValExpression $ Vconst (mkBool True)
 
 falseValExpr :: ValExpression
-falseValExpr = ValExpression $ Vconst (Cbool False)
+falseValExpr = ValExpression $ Vconst (mkBool False)
 
 stringEmptyValExpr :: ValExpression
-stringEmptyValExpr = ValExpression $ Vconst (Cstring (T.pack ""))
+stringEmptyValExpr = ValExpression $ Vconst (mkString (T.pack ""))
 
 zeroValExpr :: ValExpression
-zeroValExpr = ValExpression $ Vconst (Cint 0)
+zeroValExpr = ValExpression $ Vconst (mkInt 0)
 
 unsafeConst :: Value -> Either Error ValExpression
 unsafeConst = Right . ValExpression . Vconst
@@ -166,15 +166,19 @@ unsafePredefNonSolvable ctx r vs = case partitionEithers vs of
         evalPredefNonSolvable :: [Value] -> Either Error ValExpression
         evalPredefNonSolvable values =
             case (toString (funcName fs), returnSort fs, values) of
-                 ("toString",             SortString,    [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
-                 ("fromString",           s,             [Cstring t])              -> valueFromText ctx s t >>= unsafeConst
-                 ("toXML",                SortString,    [v])                      -> unsafeConst $ Cstring (valueToXML ctx v)
-                 ("fromXML",              s,             [Cstring t])              -> valueFromXML ctx s t >>= unsafeConst
-                 ("takeWhile",            SortString,    [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`elemT` v1) v2)
-                 ("takeWhileNot",         SortString,    [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`notElemT` v1) v2)
-                 ("dropWhile",            SortString,    [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`elemT` v1) v2)
-                 ("dropWhileNot",         SortString,    [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`notElemT` v1) v2)
-                 _                                                                 -> error ("Unknown predefined function: " ++ show fs)
+                 ("toString",             SortString,    [v])                                   -> unsafeConst $ mkString (valueToText ctx v)
+                 ("fromString",           s,             [ TorXakis.Value.view -> Cstring t ])  -> valueFromText ctx s t >>= unsafeConst
+                 ("toXML",                SortString,    [v])                                   -> unsafeConst $ mkString (valueToXML ctx v)
+                 ("fromXML",              s,             [ TorXakis.Value.view -> Cstring t ])  -> valueFromXML ctx s t >>= unsafeConst
+                 ("takeWhile",            SortString,    [ TorXakis.Value.view -> Cstring v1
+                                                         , TorXakis.Value.view -> Cstring v2 ]) -> unsafeConst $ mkString (T.takeWhile (`elemT` v1) v2)
+                 ("takeWhileNot",         SortString,    [ TorXakis.Value.view -> Cstring v1
+                                                         , TorXakis.Value.view -> Cstring v2 ]) -> unsafeConst $ mkString (T.takeWhile (`notElemT` v1) v2)
+                 ("dropWhile",            SortString,    [ TorXakis.Value.view -> Cstring v1
+                                                         , TorXakis.Value.view -> Cstring v2 ]) -> unsafeConst $ mkString (T.dropWhile (`elemT` v1) v2)
+                 ("dropWhileNot",         SortString,    [ TorXakis.Value.view -> Cstring v1
+                                                         , TorXakis.Value.view -> Cstring v2 ]) -> unsafeConst $ mkString (T.dropWhile (`notElemT` v1) v2)
+                 _                                                                              -> error ("Unknown predefined function: " ++ show fs)
             where
                 elemT :: Char -> T.Text -> Bool
                 elemT c = isJust . T.find (== c)
@@ -264,7 +268,7 @@ unsafeAnd ps = case partitionEithers (Set.toList ps) of
 
                 isCstrTuples :: [ValExpression] -> [(RefByName ADTDef, RefByName ConstructorDef, ValExpression)]
                 isCstrTuples [] = []
-                isCstrTuples (x:xs) = case view x of
+                isCstrTuples (x:xs) = case TorXakis.ValExpr.ValExpr.view x of
                                         Viscstr a c v -> (a,c,v) : isCstrTuples xs
                                         _             ->           isCstrTuples xs
 
@@ -290,16 +294,24 @@ unsafeDivide :: Either Error ValExpression -> Either Error ValExpression -> Eith
 unsafeDivide (Left e1)                                                   (Left e2)                                                   = Left $ Error ("Divide Error 2" ++ "\nDividend: " ++ show e1 ++ "\nDivisor:" ++ show e2)
 unsafeDivide (Left e1)                                                   _                                                           = Left $ Error ("Divide Error 1" ++ "\nDividend: " ++ show e1                     )
 unsafeDivide _                                                           (Left e2)                                                   = Left $ Error ("Divide Error 1" ++                              "\nDivisor:" ++ show e2)
-unsafeDivide _                                                           (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint 0)))  = Left $ Error  "Divide Error: Divisor equal to zero"
-unsafeDivide (Right (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t))) (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)))  = unsafeConst (Cint (t `TorXakis.Boute.div` n ))
+unsafeDivide _
+             (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint 0))) =
+    Left $ Error  "Divide Error: Divisor equal to zero"
+unsafeDivide (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint t)))
+             (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint n))) =
+    unsafeConst (mkInt (t `TorXakis.Boute.div` n ))
 unsafeDivide (Right vet)                                                 (Right ven)                                                 = Right $ ValExpression (Vdivide vet ven)
 
 unsafeModulo :: Either Error ValExpression -> Either Error ValExpression -> Either Error ValExpression
 unsafeModulo (Left e1)                                                   (Left e2)                                                   = Left $ Error ("Modulo Error 2" ++ "\nDividend: " ++ show e1 ++ "\nDivisor:" ++ show e2)
 unsafeModulo (Left e1)                                                   _                                                           = Left $ Error ("Modulo Error 1" ++ "\nDividend: " ++ show e1                     )
 unsafeModulo _                                                           (Left e2)                                                   = Left $ Error ("Modulo Error 1" ++                              "\nDivisor:" ++ show e2)
-unsafeModulo _                                                           (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint 0)))  = Left $ Error  "Modulo Error: Divisor equal to zero"
-unsafeModulo (Right (TorXakis.ValExpr.ValExpr.view ->  Vconst (Cint t))) (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint n)))  = unsafeConst (Cint (t `TorXakis.Boute.mod` n) )
+unsafeModulo _
+             (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint 0))) =
+    Left $ Error  "Modulo Error: Divisor equal to zero"
+unsafeModulo (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint t)))
+             (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint n))) =
+    unsafeConst (mkInt (t `TorXakis.Boute.mod` n) )
 unsafeModulo (Right vet)                                                 (Right ven)                                                 = Right $ ValExpression (Vmodulo vet ven)
 
 -- is key a constant?
@@ -354,7 +366,7 @@ unsafeSumFromMap m =
             retVal :: Map.Map ValExpression Integer
             retVal = case sum (map toValue (Map.toList vals)) of
                         0   -> nonvals
-                        val -> case unsafeConst (Cint val) of
+                        val -> case unsafeConst (mkInt val) of
                                     Right x -> Map.insert x 1 nonvals
                                     Left _  -> error "Unexpected failure in unsafeConst in unsafeSum"
           in
@@ -364,9 +376,9 @@ unsafeSumFromMap m =
                 _           -> Right $ ValExpression (Vsum retVal)
     where
         toValue :: (ValExpression, Integer) -> Integer
-        toValue (x                                               , 0) = error ("Factor of Value in Sum is equal to zero: violates invariant - " ++ show x)
-        toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o) = i * o
-        toValue (_                                               , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeSum"
+        toValue (x                                                                      , 0) = error ("Factor of Value in Sum is equal to zero: violates invariant - " ++ show x)
+        toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint i), o) = i * o
+        toValue (_                                                                      , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeSum"
 
 -- Note: inverse of product (division) is not communicative -> occurrence can only be positive
 -- Simplification incorporated:
@@ -413,15 +425,14 @@ unsafeProductFromMap  m =
         value = product (map toValue (Map.toList vals))
       in
         case Map.toList nonvals of
-            []         -> unsafeConst (Cint value)
+            []         -> unsafeConst (mkInt value)
             [(term,1)] -> unsafeSumFromMap $ Map.singleton term value
             _          -> unsafeSumFromMap $ Map.singleton (ValExpression (Vproduct nonvals)) value
     where
         toValue :: (ValExpression, Integer) -> Integer
-        toValue (x                                               , i) | i <= 0 = error ("Non positive factor of Value in Product (" ++ show i ++ "): violates invariant - " ++ show x)
-
-        toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i), o)          = i ^ o
-        toValue (_                                               , _)          = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
+        toValue (x                                                                      , i) | i <= 0 = error ("Non positive factor of Value in Product (" ++ show i ++ "): violates invariant - " ++ show x)
+        toValue (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint i), o)          = i ^ o
+        toValue (_                                                                      , _)          = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
 
 unsafeGEZ :: Either Error ValExpression -> Either Error ValExpression
 unsafeGEZ (Left e) = Left $ Error ("GEZ Error " ++ show e)
@@ -429,18 +440,18 @@ unsafeGEZ (Right v) = unsafeGEZ' v
 
 unsafeGEZ' :: ValExpression -> Either Error ValExpression
 -- Simplification: Integer Value to Boolean
-unsafeGEZ' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint v)) = unsafeConst (Cbool (0 <= v))
+unsafeGEZ' (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint v)) = unsafeConst (mkBool (0 <= v))
 -- Simplification: length of string is always Greater or equal to zero
-unsafeGEZ' (TorXakis.ValExpr.ValExpr.view -> Vlength {})      = Right trueValExpr
-unsafeGEZ' ve                                                 = Right $ ValExpression (Vgez ve)
+unsafeGEZ' (TorXakis.ValExpr.ValExpr.view -> Vlength {})                             = Right trueValExpr
+unsafeGEZ' ve                                                                        = Right $ ValExpression (Vgez ve)
 
 unsafeLength :: Either Error ValExpression -> Either Error ValExpression
 unsafeLength (Left e) = Left $ Error ("Length Error " ++ show e)
 unsafeLength (Right v) = unsafeLength' v
 
 unsafeLength' :: ValExpression -> Either Error ValExpression
-unsafeLength' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) = unsafeConst (Cint (Prelude.toInteger (T.length s)))
-unsafeLength' v                                                     = Right $ ValExpression (Vlength v)
+unsafeLength' (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s)) = unsafeConst (mkInt (Prelude.toInteger (T.length s)))
+unsafeLength' v                                                                            = Right $ ValExpression (Vlength v)
 
 unsafeAt :: Either Error ValExpression -> Either Error ValExpression -> Either Error ValExpression
 unsafeAt (Left e1) (Left e2) = Left $ Error ("At Error 2" ++ "\nString :" ++ show e1 ++ "\nPosition :" ++ show e2)
@@ -449,15 +460,22 @@ unsafeAt _         (Left e2) = Left $ Error ("At Error 1" ++                    
 unsafeAt (Right s) (Right p) = unsafeAt' s p
 
 unsafeAt' :: ValExpression -> ValExpression -> Either Error ValExpression
-unsafeAt' _                                                     (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) | i < 0                                 = Right stringEmptyValExpr
-unsafeAt' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) | i >= Prelude.toInteger (T.length s)   = Right stringEmptyValExpr
-unsafeAt' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i))                                         = unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
-unsafeAt' (TorXakis.ValExpr.ValExpr.view -> Vconcat ((TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)):xs)) (TorXakis.ValExpr.ValExpr.view -> Vconst (Cint i)) =
+unsafeAt' _
+          (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint i)) | i < 0                                 =
+    Right stringEmptyValExpr
+unsafeAt' (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s))
+          (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint i)) | i >= Prelude.toInteger (T.length s)   =
+    Right stringEmptyValExpr
+unsafeAt' (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s))
+          (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint i))                                         =
+    unsafeConst (mkString (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
+unsafeAt' (TorXakis.ValExpr.ValExpr.view -> Vconcat ((TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s)):xs))
+          (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint i))                                         =
     let lengthS = Prelude.toInteger (T.length s) in
         if i < lengthS
-            then unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))
+            then unsafeConst (mkString (T.take 1 (T.drop (fromInteger i) s)))
             else unsafeConcat' xs >>= (\nc ->
-                    unsafeConst (Cint (i - lengthS)) >>=
+                    unsafeConst (mkInt (i - lengthS)) >>=
                         unsafeAt' nc)
 unsafeAt' ves vei = Right $ ValExpression (Vat ves vei)
 
@@ -483,9 +501,9 @@ unsafeConcat' l = case (mergeVals . flatten . filter (stringEmptyValExpr /= ) ) 
     mergeVals :: [ValExpression] -> [ValExpression]
     mergeVals []            = []
     mergeVals [x]           = [x]
-    mergeVals ( (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s1))
-              : (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s2))
-              : xs)         = case unsafeConst (Cstring (T.append s1 s2)) of
+    mergeVals ( (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s1))
+              : (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s2))
+              : xs)         = case unsafeConst (mkString (T.append s1 s2)) of
                                     Right x -> mergeVals (x:xs)
                                     Left e  -> error ("Unexpected error in mergeVals of Concat" ++ show e)
     mergeVals (x1:x2:xs)    = x1 : mergeVals (x2:xs)
@@ -502,15 +520,12 @@ unsafeStrInRe (Left e1) _ = Left $ Error ("StrInRe Error :" ++ show e1 )
 unsafeStrInRe (Right s) r = unsafeStrInRe' s r
 
 unsafeStrInRe' :: ValExpression -> TorXakis.Regex.Regex -> Either Error ValExpression
-unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (Cstring s)) r  = let match :: Bool
-                                                                              match = T.unpack s =~ T.unpack (toPosix r) in
-                                                                            -- trace ("\nregex = " ++ show r ++
-                                                                            --        "\nposix = " ++ show (toPosix r) ++
-                                                                            --        "\nstring = " ++ show s ++
-                                                                            --        "\nmatch = " ++ show match
-                                                                            --       )
-                                                                                      unsafeConst (Cbool match)
-unsafeStrInRe' s r                                                      = Right $ ValExpression (Vstrinre s r)
+unsafeStrInRe' (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s)) r  =
+    let match :: Bool
+        match = T.unpack s =~ T.unpack (toPosix r) in
+                unsafeConst (mkBool match)
+unsafeStrInRe' s r                                                                             =
+    Right $ ValExpression (Vstrinre s r)
 
 -- | When all value expressions are constant values, return Just them otherwise return Nothing.
 -- The order of the Values corresponds with that of the ValExpressions
@@ -524,37 +539,38 @@ toMaybeValues = foldr toMaybeValue (Just [])
 
 -- TODO? More laziness?
 -- e.g. when used in an accessor, only one field is relevant
-unsafeCstr :: RefByName ADTDef -> RefByName ConstructorDef -> [Either Error ValExpression] -> Either Error ValExpression
-unsafeCstr aName cName ps = case partitionEithers ps of
-                                 ([], as)   -> unsafeCstr' aName cName as
+unsafeCstr :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> [Either Error ValExpression] -> Either Error ValExpression
+unsafeCstr ctx aName cName ps = case partitionEithers ps of
+                                 ([], as)   -> unsafeCstr' ctx aName cName as
                                  (es, _)    -> Left $ Error ("Cstr " ++ show cName ++ " of " ++ show aName ++ " Error " ++ show (length es) ++ "\n" ++ intercalate "\n" (map show es))
 
-unsafeCstr' :: RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression] -> Either Error ValExpression
-unsafeCstr' aName cName as = case toMaybeValues as of
-                                  Just vs -> unsafeConst (Ccstr aName cName vs)
-                                  Nothing -> Right $ ValExpression (Vcstr aName cName as)
+unsafeCstr' :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpression] -> Either Error ValExpression
+unsafeCstr' ctx aName cName as = case toMaybeValues as of
+                                        Just vs -> case mkADT ctx aName cName vs of
+                                                        Left e -> error ("unsafeCst - mkADT unexpectedly failed with " ++ show e)
+                                                        Right c -> unsafeConst c
+                                        Nothing -> Right $ ValExpression (Vcstr aName cName as)
 
 unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> Either Error ValExpression -> Either Error ValExpression
 unsafeIsCstr aName cName (Left e) = Left $ Error ("Is Cstr " ++ show cName ++ " of " ++ show aName ++ " Error: " ++ show e)
 unsafeIsCstr aName cName (Right v) = unsafeIsCstr' aName cName v
 
 unsafeIsCstr' :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpression -> Either Error ValExpression
-unsafeIsCstr' aName cName (TorXakis.ValExpr.ValExpr.view -> Vcstr a c _)          = unsafeConst (Cbool (aName == a && cName == c))
-unsafeIsCstr' aName cName (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr a c _)) = unsafeConst (Cbool (aName == a && cName == c))
-unsafeIsCstr' aName cName v                                                       = Right $ ValExpression (Viscstr aName cName v)
+unsafeIsCstr' aName cName (TorXakis.ValExpr.ValExpr.view -> Vcstr a c _)                                = unsafeConst (mkBool (aName == a && cName == c))
+unsafeIsCstr' aName cName (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cadt a c _)) = unsafeConst (mkBool (aName == a && cName == c))
+unsafeIsCstr' aName cName v                                                                             = Right $ ValExpression (Viscstr aName cName v)
 
 unsafeAccess :: RefByName ADTDef -> RefByName ConstructorDef -> RefByIndex FieldDef -> Either Error ValExpression -> Either Error ValExpression
 unsafeAccess _ _ _ (Left e) = Left $ Error ("Access Error " ++ show e)
 unsafeAccess aName cName pos (Right v) = unsafeAccess' aName cName pos v
 
 unsafeAccess' :: RefByName ADTDef -> RefByName ConstructorDef -> RefByIndex FieldDef -> ValExpression -> Either Error ValExpression
--- Note: different sort is impossible so aName for both the same
-unsafeAccess' _ cName pos (TorXakis.ValExpr.ValExpr.view -> Vcstr _ c fs) =
+unsafeAccess' aName cName pos (TorXakis.ValExpr.ValExpr.view -> Vcstr a c fs) = assert (aName == a) $
     if cName == c
         then Right $ fs !! toIndex pos
         else Left $ Error (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on instance from constructor " ++ show c
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
-unsafeAccess' _ cName pos (TorXakis.ValExpr.ValExpr.view -> Vconst (Ccstr _ c fs)) =
+unsafeAccess' aName cName pos (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cadt a c fs)) = assert (aName == a) $
     if cName == c
         then unsafeConst $ fs !! toIndex pos
         else Left $ Error (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on value from constructor " ++ show c

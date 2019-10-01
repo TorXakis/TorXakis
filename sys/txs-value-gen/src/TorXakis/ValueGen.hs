@@ -54,13 +54,12 @@ arbitraryValue ctx =
 -- | generate a random value of the given sort within a context.
 -- ANY is excluded
 arbitraryValueOfSort :: TestSortContext c => c -> Sort -> Gen Value
-arbitraryValueOfSort _   SortBool   = Cbool <$> arbitrary
-arbitraryValueOfSort _   SortInt    = Cint <$> arbitrary
--- arbitraryValueOfSort _   SortChar   = Cchar <$> arbitraryChar
+arbitraryValueOfSort _   SortBool   = mkBool <$> arbitrary
+arbitraryValueOfSort _   SortInt    = mkInt <$> arbitrary
 arbitraryValueOfSort _   SortString = 
     do
         s <- listOf arbitraryChar
-        return $ Cstring (T.pack s)
+        return $ mkString (T.pack s)
 arbitraryValueOfSort ctx (SortADT a) = 
     do
         n <- getSize
@@ -83,7 +82,9 @@ arbitraryValueOfSort ctx (SortADT a) =
                                                     aFields = zipWith (+) sFields additionalComplexity
                                                   in do
                                                     fs <- mapM (\(c,f) -> resize c (arbitraryValueOfSort ctx (sort f))) $ zip aFields cFields
-                                                    return $ Ccstr a (toConstructorRef cstrDef) fs
+                                                    case mkADT ctx a (toConstructorRef cstrDef) fs of
+                                                        Left e -> error ("arbitraryValueOfSort: mkADT unexpectedly failed with " ++ show e)
+                                                        Right v -> return v
   where
         toConstructorRef :: ConstructorDef -> RefByName ConstructorDef
         toConstructorRef = RefByName . constructorName

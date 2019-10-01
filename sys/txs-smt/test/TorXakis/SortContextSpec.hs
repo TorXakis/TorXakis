@@ -9,12 +9,13 @@ See LICENSE at root directory of this repository.
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
--- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Maintainer  :  pierre.vandelaar@tno.nl - ESI (TNO)
 -- Stability   :  experimental
 -- Portability :  portable
 --
 -- Test specifications for 'SortContext' elements.
 -----------------------------------------------------------------------------
+{-# LANGUAGE ViewPatterns               #-}
 module TorXakis.SortContextSpec
 (spec
 )
@@ -79,9 +80,9 @@ constructableADTByConstructor vr ar cr = do
                                                    solution
                                   )
                                   expr
-    case view answer of
-        Vconst (Cbool b) -> return ( b || trace (i ++ "\nUnexpectedly it is impossible to make an instance for the ADT (" ++ show ar ++ ") with constructor (" ++ show cr ++ ")") False)
-        _                -> error ("Answer of and is unexpectedly not a constant boolean, but " ++ show answer)
+    case TorXakis.ValExpr.view answer of
+        Vconst (TorXakis.Value.view -> Cbool b) -> return ( b || trace (i ++ "\nUnexpectedly it is impossible to make an instance for the ADT (" ++ show ar ++ ") with constructor (" ++ show cr ++ ")") False)
+        _                                       -> error ("Answer of and is unexpectedly not a constant boolean, but " ++ show answer)
 
 -- | Data types are constructable
 prop_Constructable :: Property

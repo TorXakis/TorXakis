@@ -581,25 +581,29 @@ funcRefToSmt fr = do
 
 -- | value to smt
 valueToSmt :: Value -> SmtM SmtString
-valueToSmt (Cbool True)     = return smtTrue
-valueToSmt (Cbool False)    = return smtFalse
-valueToSmt (Cint n)         = return $ smtIntegerLiteral n
-valueToSmt (Cstring s)      = return $ smtTextLiteral s
-valueToSmt (Ccstr ar cr []) = cstrRefToSmt ar cr
-valueToSmt (Ccstr ar cr as) = do
-                                 sc <- cstrRefToSmt ar cr
-                                 sas <- mapM valueToSmt as
-                                 return $ TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.singleton '('
-                                                                      , sc
-                                                                      , TorXakis.SmtLanguage.singleton ' '
-                                                                      , TorXakis.SmtLanguage.intercalate (TorXakis.SmtLanguage.singleton ' ') sas
-                                                                      , TorXakis.SmtLanguage.singleton ')'
-                                                                      ]
-valueToSmt x                = error ("Illegal input valueToSmt - " ++ show x)
+valueToSmt = valueViewToSmt . TorXakis.Value.view
+
+-- | valueView to smt
+valueViewToSmt :: ValueView -> SmtM SmtString
+valueViewToSmt (Cbool True)     = return smtTrue
+valueViewToSmt (Cbool False)    = return smtFalse
+valueViewToSmt (Cint n)         = return $ smtIntegerLiteral n
+valueViewToSmt (Cstring s)      = return $ smtTextLiteral s
+valueViewToSmt (Cadt ar cr [])  = cstrRefToSmt ar cr
+valueViewToSmt (Cadt ar cr as)  = do
+                                    sc <- cstrRefToSmt ar cr
+                                    sas <- mapM valueToSmt as
+                                    return $ TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.singleton '('
+                                                                         , sc
+                                                                         , TorXakis.SmtLanguage.singleton ' '
+                                                                         , TorXakis.SmtLanguage.intercalate (TorXakis.SmtLanguage.singleton ' ') sas
+                                                                         , TorXakis.SmtLanguage.singleton ')'
+                                                                         ]
+valueViewToSmt x                = error ("Illegal input valueToSmt - " ++ show x)
 
 -- | valExpr to Smt
 valExprToSmt :: ValExpression -> SmtM SmtString
-valExprToSmt = valExprViewToSmt . view
+valExprToSmt = valExprViewToSmt . TorXakis.ValExpr.view
 
 -- | valExprView to Smt
 valExprViewToSmt :: ValExpressionView -> SmtM SmtString
@@ -693,9 +697,9 @@ operatorToSmt operator as = TorXakis.SmtLanguage.concat [ TorXakis.SmtLanguage.s
 -- TODO: check that compiler indeed removes all calculations related to checking sort (2nd parameter is only used within asserts)
 -- TODO: discuss Jan is this wanted/desired?
 smtValueToTxsValue :: SMTValue -> Sort -> SmtM Value
-smtValueToTxsValue (SMTBool b)                      srt          = assert (srt == SortBool)   $ return (Cbool b)
-smtValueToTxsValue (SMTInt i)                       srt          = assert (srt == SortInt)    $ return (Cint i)
-smtValueToTxsValue (SMTString s)                    srt          = assert (srt == SortString) $ return (Cstring s)
+smtValueToTxsValue (SMTBool b)                      srt          = assert (srt == SortBool)   $ return (mkBool b)
+smtValueToTxsValue (SMTInt i)                       srt          = assert (srt == SortInt)    $ return (mkInt i)
+smtValueToTxsValue (SMTString s)                    srt          = assert (srt == SortString) $ return (mkString s)
 smtValueToTxsValue (SMTConstructor cname argValues) srt          = do
     st <- get
     let m = cstrToSmt st
@@ -708,8 +712,11 @@ smtValueToTxsValue (SMTConstructor cname argValues) srt          = do
                  cd = fromMaybe (error ("TXS SMT2TXS smtValueToTxsValue: constructor (" ++ show cr ++ ") unexpectedly not present in adt (" ++ show ar ++ ")"))
                                 (lookupConstructor (toName cr) ad)
                  fields = elemsField cd in
-                    assert (Data.List.length fields == Data.List.length argValues) $
-                        Ccstr ar cr <$> zipWithM smtValueToTxsValue argValues (Data.List.map TorXakis.Sort.sort fields)
+                    assert (Data.List.length fields == Data.List.length argValues) $ do
+                            vs <- zipWithM smtValueToTxsValue argValues (Data.List.map TorXakis.Sort.sort fields)
+                            case mkADT fc ar cr vs of
+                                Left e -> error ("smtValueToTxsValue - mkADT failed unexpectedly with " ++ show e)
+                                Right v -> return v
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

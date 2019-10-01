@@ -82,7 +82,7 @@ expectationChars = runSolvers instanceChars
             _ <- push
             let Right nm = mkName (Data.Text.pack "var")
                 Right varDecl = mkVarDef ctx nm SortString
-                Right val = mkConst ctx (Cstring (Data.Text.singleton c))
+                Right val = mkConst ctx (mkString (Data.Text.singleton c))
               in do
                 declareVariables[varDecl]
                 ctx' <- toValExprContext
@@ -109,7 +109,7 @@ prop_StringFromRegex (RegexGen r) = runSolvers instanceStringFromRegex
             ctx <- toValExprContext
             let Right nm = mkName (Data.Text.pack "var")
                 Right varDecl = mkVarDef ctx nm SortString
-                Right val = mkConst ctx (Cstring s)
+                Right val = mkConst ctx (mkString s)
               in do
                 declareVariables[varDecl]
                 ctx' <- toValExprContext
@@ -131,7 +131,7 @@ inRange l h x = do
         _ <- push
         let Right nm = mkName (Data.Text.pack "var")
             Right varDecl = mkVarDef ctx nm SortString
-            Right val = mkConst ctx (Cstring (Data.Text.singleton x))
+            Right val = mkConst ctx (mkString (Data.Text.singleton x))
           in do
             declareVariables[varDecl]
             ctx' <- toValExprContext

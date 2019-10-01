@@ -18,20 +18,19 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ViewPatterns               #-}
 module TorXakis.SymbolicSolver
 ( SymbolicM (..)
 , mkSymbolicState
 , SymbolicState
 )
 where
-import           Control.Exception
 import           Control.Monad.State
 import qualified Data.HashMap
 
 import           TorXakis.ContextSort
 import           TorXakis.ProblemSolver
 import           TorXakis.ValExpr
-import qualified TorXakis.ValExprContext
 import           TorXakis.Value
 
 -- | Symbolic State
@@ -43,7 +42,7 @@ mkSymbolicState = SymbolicState [trueExpression]
 
 -- | true Val Expression constructor
 trueExpression :: ValExpression
-trueExpression = case mkConst TorXakis.ContextSort.empty (Cbool True) of
+trueExpression = case mkConst TorXakis.ContextSort.empty (mkBool True) of
                         Left e -> error ("SymbolicSolver: unexpectedly failed to create trueExpression with " ++ show e)
                         Right x -> x
 
@@ -95,20 +94,19 @@ instance ProblemSolver p => ProblemSolver (SymbolicM p) where
                 ctx <- toValExprContext
                 case mkAnd ctx (assertionsStack st) of
                         Left e -> error ("SymbolicSolver: solvable - mkAnd unexpectedly failed with " ++ show e)
-                        Right expr -> case view expr of
-                                        Vconst (Cbool b)    -> return $ SolvableProblem (Just b)
-                                        _                   -> lift solvable
+                        Right expr -> case TorXakis.ValExpr.view expr of
+                                        Vconst (TorXakis.Value.view -> Cbool b) -> return $ SolvableProblem (Just b)
+                                        _                                       -> lift solvable
 
     solvePartSolution vs = do
                 st <- get
                 ctx <- toValExprContext
                 case mkAnd ctx (assertionsStack st) of
                         Left e -> error ("SymbolicSolver: solvePartSolution - mkAnd unexpectedly failed with " ++ show e)
-                        Right expr -> case view expr of
-                                        Vconst (Cbool False)                                              -> return Unsolvable
-                                        Vconst (Cbool True) | null (TorXakis.ValExprContext.elemsVar ctx) -> assert (null vs) $
-                                                                                                                    return $ Solved (Solution Data.HashMap.empty)
-                                        _                                                                 -> lift $ solvePartSolution vs
+                        Right expr -> case TorXakis.ValExpr.view expr of
+                                        Vconst (TorXakis.Value.view -> Cbool False)          -> return Unsolvable
+                                        Vconst (TorXakis.Value.view -> Cbool True) | null vs -> return $ Solved (Solution Data.HashMap.empty)
+                                        _                                                    -> lift $ solvePartSolution vs
 
     toValExprContext = lift toValExprContext
 

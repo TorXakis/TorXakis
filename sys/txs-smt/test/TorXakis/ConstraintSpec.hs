@@ -3,7 +3,20 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE OverloadedStrings #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.ConstraintSpec
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Test specifications for Constraints.
+-----------------------------------------------------------------------------
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE ViewPatterns               #-}
 module TorXakis.ConstraintSpec
 ( spec
 )
@@ -179,9 +192,9 @@ testTemplateSolution as fs vs es = do
                                   andExpr
       in do
         liftIO $ assertEqual "length" (length vs) (Data.HashMap.size solution)
-        case view answer of
-            Vconst (Cbool b) -> liftIO $ assertBool ("Is valid solution\n"++show solution) b
-            _                -> error ("Answer of and is unexpectedly not a constant boolean, but " ++ show answer)
+        case TorXakis.ValExpr.view answer of
+            Vconst (TorXakis.Value.view -> Cbool b) -> liftIO $ assertBool ("Is valid solution\n"++show solution) b
+            _                                       -> error ("Answer of and is unexpectedly not a constant boolean, but " ++ show answer)
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
@@ -192,21 +205,21 @@ testNone = testTemplateSolvable [] True
 testTrue :: ProblemSolver p => p ()
 testTrue =
     let ctx             = TorXakis.ContextVar.empty
-        Right x         = mkConst ctx (Cbool True)
+        Right x         = mkConst ctx (mkBool True)
     in
         testTemplateSolvable [x] True
 
 testFalse :: ProblemSolver p => p ()
 testFalse =
     let ctx             = TorXakis.ContextVar.empty
-        Right x         = mkConst ctx (Cbool False)
+        Right x         = mkConst ctx (mkBool False)
     in
         testTemplateSolvable [x] False
 
 testNegativeNegativeIsIdentity :: ProblemSolver p => p ()
 testNegativeNegativeIsIdentity =
     let ctx             = TorXakis.ContextVar.empty
-        Right x         = mkConst ctx (Cint 3)
+        Right x         = mkConst ctx (mkInt 3)
         Right minX      = mkUnaryMinus ctx x
         Right minMinX   = mkUnaryMinus ctx minX
         Right equal     = mkEqual ctx x minMinX
@@ -216,10 +229,10 @@ testNegativeNegativeIsIdentity =
 testAdd :: ProblemSolver p => p ()
 testAdd =
     let ctx          = TorXakis.ContextVar.empty
-        Right a      = mkConst ctx (Cint 4)
-        Right b      = mkConst ctx (Cint 9)
+        Right a      = mkConst ctx (mkInt 4)
+        Right b      = mkConst ctx (mkInt 9)
         Right add    = mkSum ctx [a,b]
-        Right answer = mkConst ctx (Cint 13)
+        Right answer = mkConst ctx (mkInt 13)
         Right equal  = mkEqual ctx answer add
       in
         testTemplateSolvable [equal] True
@@ -255,7 +268,7 @@ testInt =
 testIntNegative :: ProblemSolver p => p ()
 testIntNegative =
     let (ctx, [(intVar, intExpr)]) = makeVars TorXakis.ContextVar.empty [SortInt]
-        Right constExpr = mkConst ctx (Cint 0)
+        Right constExpr = mkConst ctx (mkInt 0)
         Right boolExpr = mkLT ctx intExpr constExpr
       in
         testTemplateSolution [] [] [intVar] [boolExpr]
@@ -272,7 +285,7 @@ testConditionalIntValue :: ProblemSolver p => p ()
 testConditionalIntValue =
     let Right ctx = TorXakis.ContextVar.addADTs [conditionalInt] TorXakis.ContextVar.empty
         (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
-        Right constExpr = mkConst ctx' (Cint 4)
+        Right constExpr = mkConst ctx' (mkInt 4)
         Right cstrExpr = mkCstr ctx' conditionalIntRef presentCstrRef [constExpr]
         Right boolExpr = mkEqual ctx' cIntExpr cstrExpr
       in
@@ -300,9 +313,9 @@ testConditionalIntPresentValue =
         (ctx', [(cIntVar, cIntExpr)]) = makeVars ctx [conditionalIntSort]
         condExpr = isCstrPresent ctx' cIntExpr
         acessExpr = accessValue ctx' cIntExpr
-        Right constExpr = mkConst ctx' (Cint 4)
+        Right constExpr = mkConst ctx' (mkInt 4)
         Right trueBranch = mkGT ctx' acessExpr constExpr
-        Right falseBranch = mkConst ctx' (Cbool False)
+        Right falseBranch = mkConst ctx' (mkBool False)
         Right boolExpr = mkITE ctx' condExpr trueBranch falseBranch
       in
         testTemplateSolution [conditionalInt] [] [cIntVar] [boolExpr]
@@ -372,7 +385,7 @@ testRecursiveLength =
         let Right ctx = TorXakis.ContextVar.addADTs [listInt] TorXakis.ContextVar.empty
             (ctx', [(lVar, lExpr)]) = makeVars ctx [listIntSort]
             Right fcall = mkFunc ctx' functionLengthRef [lExpr]
-            Right one = mkConst ctx' (Cint 1)
+            Right one = mkConst ctx' (mkInt 1)
             Right bExpr = mkGE ctx' fcall one
          in
             testTemplateSolution [listInt] [functionLength] [lVar] [bExpr]
@@ -382,7 +395,7 @@ testRecursiveSum =
         let Right ctx = TorXakis.ContextVar.addADTs [listInt] TorXakis.ContextVar.empty
             (ctx', [(lVar, lExpr)]) = makeVars ctx [listIntSort]
             Right fcall = mkFunc ctx' functionSumRef [lExpr]
-            Right twelve = mkConst ctx' (Cint 12)
+            Right twelve = mkConst ctx' (mkInt 12)
             Right bExpr = mkGT ctx' fcall twelve
          in
             testTemplateSolution [listInt] [functionSum] [lVar] [bExpr]
@@ -396,7 +409,7 @@ testString =
 testStringEquals :: ProblemSolver p => Text -> p ()
 testStringEquals txt =
     let (ctx, [(stringVar, stringExpr)]) = makeVars TorXakis.ContextVar.empty [SortString]
-        Right val = mkConst ctx (Cstring txt)
+        Right val = mkConst ctx (mkString txt)
         Right equal = mkEqual ctx stringExpr val
       in
         testTemplateSolution [] [] [stringVar] [equal]
@@ -404,7 +417,7 @@ testStringEquals txt =
 testStringLength :: ProblemSolver p => Integer -> p ()
 testStringLength n =
     let (ctx, [(stringVar, stringExpr)]) = makeVars TorXakis.ContextVar.empty [SortString]
-        Right val = mkConst ctx (Cint n)
+        Right val = mkConst ctx (mkInt n)
         Right lengthExpr = mkLength ctx stringExpr
         Right equal = mkEqual ctx lengthExpr val
       in
@@ -561,7 +574,7 @@ functionConst :: FuncDef
 functionConst =
     let varContext = TorXakis.ContextVar.empty
         Right ps = mkVarsDecl varContext []
-        Right bd = mkConst varContext (Cint (-12))
+        Right bd = mkConst varContext (mkInt (-12))
       in
         case mkFuncDef varContext constName ps bd of
                 Right fd -> fd
@@ -682,7 +695,7 @@ functionLength =
         (ctx', [ (var, expr) ]) = makeVars ctx [ listIntSort ]
         Right ps = mkVarsDecl ctx' [var]
         cond = isCstrNil ctx' expr
-        Right one = mkConst ctx' (Cint 1)
+        Right one = mkConst ctx' (mkInt 1)
         access = accessTail ctx' expr
         Right sign = mkFuncSignature ctx' lengthName [ listIntSort ] SortInt
         Right fc = mkFunc ctx' (RefByFuncSignature sign) [access]
@@ -709,7 +722,7 @@ functionSum =
         (ctx', [ (var, expr) ]) = makeVars ctx [ listIntSort ]
         Right ps = mkVarsDecl ctx' [var]
         cond = isCstrCons ctx' expr
-        Right zero = mkConst ctx' (Cint 0)
+        Right zero = mkConst ctx' (mkInt 0)
         tailAccess = accessTail ctx' expr
         headAccess = accessHead ctx' expr
         Right sign = mkFuncSignature ctx' sumName [ listIntSort ] SortInt

@@ -24,6 +24,7 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ViewPatterns               #-}
 module TorXakis.RandomSolver
 ( RandomM (..)
 , RandomState (maxDepth, nrOfBins, ratio)
@@ -226,13 +227,13 @@ randomIntValues n step r =
 
 -- | make the `ValExpression` constraints for integer range given the integer boundary values
 mkIntConstraints :: ValExprContext c => c -> ValExpression -> [Integer] -> [ValExpression]
-mkIntConstraints ctx _ []      = [justConst ctx (Cbool True)]
-mkIntConstraints ctx v l@(x:_) = justLE ctx v (justConst ctx (Cint x)) : mkRestBins l
+mkIntConstraints _   _ []      = []
+mkIntConstraints ctx v l@(x:_) = justLE ctx v (justConst ctx (mkInt x)) : mkRestBins l
     where
         mkRestBins :: [Integer] -> [ValExpression]
-        mkRestBins [y]          = [justLT ctx (justConst ctx (Cint y)) v]
-        mkRestBins (y1:y2:ys)   = justAnd ctx [ justLT ctx (justConst ctx (Cint y1)) v
-                                              , justLE ctx v (justConst ctx (Cint y2))
+        mkRestBins [y]          = [justLT ctx (justConst ctx (mkInt y)) v]
+        mkRestBins (y1:y2:ys)   = justAnd ctx [ justLT ctx (justConst ctx (mkInt y1)) v
+                                              , justLE ctx v (justConst ctx (mkInt y2))
                                               ]
                                   : mkRestBins (y2:ys)
         mkRestBins []           = error "mkIntConstraints - unexpectedly mkRestBins called with empty list"
@@ -259,16 +260,16 @@ randomNonNegativeValues n step r =
 
 -- | make the `ValExpression` constraints for non-negativew range (such as string length) given the integer boundary values
 mkNonNegativeConstraints :: ValExprContext c => c -> ValExpression -> [Integer] -> [ValExpression]
-mkNonNegativeConstraints ctx _ []      = [justConst ctx (Cbool True)]
-mkNonNegativeConstraints ctx v l@(x:_) =    justAnd ctx [ justLE ctx (justConst ctx (Cint 0)) v
-                                                        , justLE ctx v (justConst ctx (Cint x))
+mkNonNegativeConstraints _   _ []      = []
+mkNonNegativeConstraints ctx v l@(x:_) =    justAnd ctx [ justLE ctx (justConst ctx (mkInt 0)) v
+                                                        , justLE ctx v (justConst ctx (mkInt x))
                                                         ]
                                          : mkRestBins l
     where
         mkRestBins :: [Integer] -> [ValExpression]
-        mkRestBins [y]          = [justLT ctx (justConst ctx (Cint y)) v]
-        mkRestBins (y1:y2:ys)   = justAnd ctx [ justLT ctx (justConst ctx (Cint y1)) v
-                                              , justLE ctx v (justConst ctx (Cint y2))
+        mkRestBins [y]          = [justLT ctx (justConst ctx (mkInt y)) v]
+        mkRestBins (y1:y2:ys)   = justAnd ctx [ justLT ctx (justConst ctx (mkInt y1)) v
+                                              , justLE ctx v (justConst ctx (mkInt y2))
                                               ]
                                   : mkRestBins (y2:ys)
         mkRestBins []           = error "mkNonNegativeConstraints - unexpectedly mkRestBins called with empty list"
@@ -409,14 +410,13 @@ randomSolveBins ((v,d):xs) = do
                         SortBool    -> do
                                         -- since the variable can be changed both values are possible: pick one and be done
                                         b <- liftIO randomIO
-                                        addAssertions [ justAssignment ctx v (Cbool b) ]
+                                        addAssertions [ justAssignment ctx v (mkBool b) ]
                                         randomSolve xs
                         SortInt     -> do
                                         bins <- randomIntegerConstraints (justVar ctx v)
-                                        c@Cint{} <- solveWithConstraints v bins
+                                        c@(TorXakis.Value.view -> Cint{}) <- solveWithConstraints v bins
                                         addAssertions [ justAssignment ctx v c ]
                                         randomSolve xs
---                      SortChar    -> undefined
                         SortString  -> if d > 0
                                         then do -- arbritrary string -> choose a length
                                                 lengthName <- createNewVariableName
@@ -430,7 +430,7 @@ randomSolveBins ((v,d):xs) = do
                                                                                 lengthExpr = justVar ctx' lengthRef
                                                                             addAssertions [ justEqual ctx' (justLength ctx' (justVar ctx' v)) lengthExpr ]
                                                                             bins <- randomStringLengthConstraints lengthExpr
-                                                                            val@(Cint l) <- solveWithConstraints lengthRef bins
+                                                                            val@(TorXakis.Value.view -> Cint l) <- solveWithConstraints lengthRef bins
                                                                             addAssertions [ justAssignment ctx' lengthRef val ]
                                                                             if d > 1 && l > 0
                                                                             then do
@@ -442,7 +442,7 @@ randomSolveBins ((v,d):xs) = do
                                                                                                         ctx'' <- toValExprContext
                                                                                                         let varRefs :: [RefByName VarDef]
                                                                                                             varRefs = Data.List.map RefByName varNames
-                                                                                                            exprs = Data.List.map (\(r,p) -> justEqual ctx'' (justVar ctx'' r) (justAt ctx'' (justVar ctx'' v) (justConst ctx'' (Cint p)))) (zip varRefs [0..])
+                                                                                                            exprs = Data.List.map (\(r,p) -> justEqual ctx'' (justVar ctx'' r) (justAt ctx'' (justVar ctx'' v) (justConst ctx'' (mkInt p)))) (zip varRefs [0..])
                                                                                                         addAssertions exprs
                                                                                                         sxs <- liftIO $ shuffleM (xs ++ zip varRefs (repeat (-123)))
                                                                                                         randomSolve sxs
@@ -450,7 +450,7 @@ randomSolveBins ((v,d):xs) = do
                                                                             else randomSolve xs
                                         else do -- string of length 1 (to represent an arbitrary character)
                                             bins <- randomStringCharConstraints (justVar ctx v)
-                                            c@(Cstring s) <- solveWithConstraints v bins
+                                            c@(TorXakis.Value.view -> Cstring s) <- solveWithConstraints v bins
                                             assert (1 == Data.Text.length s) $ do
                                                 addAssertions [ justAssignment ctx v c ]
                                                 randomSolve xs
@@ -462,7 +462,7 @@ randomSolveBins ((v,d):xs) = do
                                                                             [cd] -> return (d, RefByName (constructorName cd))  -- no choice and no decrease of depth
                                                                             _    -> do
                                                                                         bins <- randomIsCstrConstraints ar (justVar ctx v)
-                                                                                        (Ccstr ar' cr' _) <- solveWithConstraints v bins
+                                                                                        (TorXakis.Value.view -> Cadt ar' cr' _) <- solveWithConstraints v bins
                                                                                         assert (ar == ar') $ return (d-1, cr')
                                                             case mkIsCstr ctx ar cr (justVar ctx v) of
                                                                 Left e  -> error ("mkIsCstr unexpectedly failed with " ++ show e)

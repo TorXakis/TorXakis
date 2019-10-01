@@ -32,7 +32,7 @@ import           TorXakis.Value
 prop_ConversionText_StringId :: Bool
 prop_ConversionText_StringId = 
     let ctx = empty :: ContextSort
-        val = Cstring (T.pack (map chr [0..255]))
+        val = mkString (T.pack (map chr [0..255]))
         txt = valueToText ctx val
         actual = valueFromText ctx SortString txt
       in
@@ -44,7 +44,7 @@ prop_ConversionText_StringId =
 prop_ConversionXML_StringId :: Bool
 prop_ConversionXML_StringId = 
     let ctx = empty :: ContextSort
-        val = Cstring (T.pack (map chr [0..255]))
+        val = mkString (T.pack (map chr [0..255]))
         xml = valueToXML ctx val
         actual = valueFromXML ctx SortString xml
       in
@@ -64,81 +64,35 @@ prop_fromText_String =
         
         case actual of
             Left e     -> trace ("\nParse error " ++ show e) False
-            Right val -> val == Cstring (T.pack (map chr range))
-
--- | ConversionText for Char is Identity
--- prop_ConversionText_CharId ::  Bool
--- prop_ConversionText_CharId =
---     let vals = map chr [0..255]
---       in 
---         all check vals
---     where check :: Char -> Bool
---           check v = 
---                 let ctx = empty :: ContextSort
---                     txt = valueToText ctx (Cchar v)
---                     actual = valueFromText ctx SortChar txt
---                   in
---                     case actual of
---                         Left e   -> trace ("\nParse error " ++ show e) False
---                         Right v' -> v' == Cchar v
-
--- | ConversionXML for Char is Identity
--- prop_ConversionXML_CharId ::  Bool
--- prop_ConversionXML_CharId =
---     let vals = map chr [0..255]
---       in
---         all check vals
---     where check :: Char -> Bool
---           check v = 
---                 let ctx = empty :: ContextSort
---                     xml = valueToText ctx (Cchar v)
---                     actual = valueFromText ctx SortChar xml
---                   in
---                     case actual of
---                         Left e   -> trace ("\nParse error " ++ show e) False
---                         Right v' -> v' == Cchar v
-
--- | from Text with all characters escaped
--- prop_fromText_Char :: Bool
--- prop_fromText_Char = 
---     let vals = [0..255]
---       in
---         all check vals
---     where check :: Int -> Bool
---           check i =
---             let txt = T.pack ("'&#" ++ show i ++ ";'")
---                 ctx = empty :: ContextSort
---                 actual = valueFromText ctx SortChar txt
---               in
---                 case actual of
---                     Left e     -> trace ("\nParse error " ++ show e) False
---                     Right val -> val == Cchar (chr i)
+            Right val -> val == mkString (T.pack (map chr range))
 
 -- | ConversionText for Int is Identity
 prop_ConversionText_IntId ::  Bool
 prop_ConversionText_IntId = all check [-255..255]
     where check :: Integer -> Bool
-          check v = 
+          check i = 
                 let ctx = empty :: ContextSort
-                    txt = valueToText ctx (Cint v)
+                    v = mkInt i
+                    txt = valueToText ctx v
                     actual = valueFromText ctx SortInt txt
                   in
                     case actual of
                         Left e   -> trace ("\nParse error " ++ show e) False
-                        Right v' -> v' == Cint v
+                        Right v' -> v' == v
 
 -- | ConversionXML for Int is Identity
 prop_ConversionXML_IntId ::  Bool
 prop_ConversionXML_IntId = all check [-255..255]
     where check :: Integer -> Bool
-          check v = 
+          check i = 
                 let ctx = empty :: ContextSort
-                    xml = valueToText ctx (Cint v)
+                    v = mkInt i
+                    xml = valueToText ctx v
                     actual = valueFromText ctx SortInt xml
                   in
                     case actual of
                         Left e   -> trace ("\nParse error " ++ show e) False
-                        Right v' -> v' == Cint v
+                        Right v' -> v' == v
 
 spec :: Spec
 spec = do
@@ -146,10 +100,6 @@ spec = do
         it "fromText . toText == id" prop_ConversionText_StringId
         it "fromXML . toXML == id" prop_ConversionXML_StringId
         it "fromText with all characters escaped" prop_fromText_String
--- describe "Char conversion" $ do
---       it "fromText . toText == id" prop_ConversionText_CharId
---       it "fromXML . toXML == id" prop_ConversionXML_CharId
---       it "fromText with all characters escaped" prop_fromText_Char
   describe "Int conversion" $ do
         it "fromText . toText == id" prop_ConversionText_IntId
         it "fromXML . toXML == id" prop_ConversionXML_IntId

@@ -3,6 +3,18 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.PushPopSpec
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  pierre.vandelaar@tno.nl - ESI (TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Test specifications for Push and Pop.
+-----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 module TorXakis.PushPopSpec
 ( spec
@@ -87,7 +99,7 @@ testIsolate =
         Right ctxOut = addVars [varDecl] ctxIn
         Right varExpr = mkVar ctxOut ref
 
-        Right zero = mkConst ctxOut (Cint 0)
+        Right zero = mkConst ctxOut (mkInt 0)
         Right gT = mkGT ctxOut varExpr zero
         Right lT = mkLT ctxOut varExpr zero
       in do

@@ -81,8 +81,8 @@ mkActionPref ctx vs a b | null nonUniqueNames = mkVarsDecl ctx vs >>= (\vd -> un
 unsafeActionPref :: c -> VarsDecl -> ActOffer -> BExpression -> Either Error BExpression
 unsafeActionPref _ s a b = case TorXakis.ValExpr.view (constraint a) of
                              -- A?x [[ False ]] >-> p <==> stop
-                             Vconst (Cbool False)    -> Right mkStop
-                             _                       -> Right $ BExpression (ActionPref s a b)
+                             Vconst (TorXakis.Value.view -> Cbool False) -> Right mkStop
+                             _                                           -> Right $ BExpression (ActionPref s a b)
 
 -- | Create a guard behaviour expression.
 mkGuard :: BExprContext c => c -> ValExpression -> BExpression -> Either Error BExpression
@@ -91,14 +91,14 @@ mkGuard ctx c b                                = unsafeGuard ctx c b
 
 unsafeGuard :: BExprContext c => c -> ValExpression -> BExpression -> Either Error BExpression
 -- [[ False ]] =>> p <==> stop
-unsafeGuard _   (TorXakis.ValExpr.view -> Vconst (Cbool False)) _              = Right mkStop
+unsafeGuard _   (TorXakis.ValExpr.view -> Vconst (TorXakis.Value.view -> Cbool False)) _              = Right mkStop
 -- [[ True ]] =>> p <==> p
-unsafeGuard _   (TorXakis.ValExpr.view -> Vconst (Cbool True))  b              = Right b
+unsafeGuard _   (TorXakis.ValExpr.view -> Vconst (TorXakis.Value.view -> Cbool True))  b              = Right b
 -- [[ c ]] =>> stop <==> stop
 unsafeGuard _   _ b                                                 | isStop b = Right mkStop
 -- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ IF c1 THEN c2 ELSE False FI ]] >-> p
 -- Note: smart constructor ITE handles special case: [[ c1 ]] =>> A?x [[ True ]] >-> p <==> A?x [[ c1 ]] >-> p
-unsafeGuard ctx v (TorXakis.BExpr.BExpr.view -> ActionPref vs (ActOffer o c m) b) = mkConst ctx (Cbool False) >>= 
+unsafeGuard ctx v (TorXakis.BExpr.BExpr.view -> ActionPref vs (ActOffer o c m) b) = mkConst ctx (mkBool False) >>= 
                                                                                       mkITE ctx v c >>= 
                                                                                      (\ite -> unsafeActionPref ctx vs (ActOffer o ite m) b)
 --  [[ c ]] =>> (p1 ## p2) <==> ( ([[ c ]] =>> p1) ## ([[ c ]] =>> p2) )

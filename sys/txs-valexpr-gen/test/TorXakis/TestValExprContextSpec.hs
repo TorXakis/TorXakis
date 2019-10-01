@@ -15,6 +15,7 @@ See LICENSE at root directory of this repository.
 --
 -- Test specifications for 'ValExprGen'.
 -----------------------------------------------------------------------------
+{-# LANGUAGE ViewPatterns         #-}
 module TorXakis.TestValExprContextSpec
 (spec
 )
@@ -65,10 +66,10 @@ prop_AOrNotA ctx = do
                         Left e   -> trace ("\nUnexpected error with mkNot " ++ show e) False
                         Right na -> case mkOr ctx [a,na] of
                                         Left e  -> trace ("\nUnexpected error with mkOr " ++ show e) False
-                                        Right v -> case view v of 
-                                                        Vconst (Cbool True) -> True
-                                                        x                   -> trace ("\nValue =\n" ++ show (prettyPrint (Options True True) ctx a) ++
-                                                                                      "\nleads to wrong value =\n" ++ show (prettyPrint (Options True True) ctx x)) False
+                                        Right v -> case TorXakis.ValExpr.view v of 
+                                                        Vconst (TorXakis.Value.view -> Cbool True)  -> True
+                                                        x                                           -> trace ("\nValue =\n" ++ show (prettyPrint (Options True True) ctx a) ++
+                                                                                                              "\nleads to wrong value =\n" ++ show (prettyPrint (Options True True) ctx x)) False
 
 -- | not a => a <==> a
 prop_NotAImpliesAEqualsA :: TestValExprContext a => a -> Gen Bool

@@ -250,7 +250,7 @@ mkCstr ctx aRef cRef as =
                                               actualSorts = map (getSort ctx) as
                                             in
                                                 if expectedSorts == actualSorts
-                                                then unsafeCstr aRef cRef (map Right as)
+                                                then unsafeCstr ctx aRef cRef (map Right as)
                                                 else Left $ Error ("Mismatch in sorts:\nexpected = "++ show expectedSorts ++ "\nactual = " ++ show actualSorts)
                               )
 

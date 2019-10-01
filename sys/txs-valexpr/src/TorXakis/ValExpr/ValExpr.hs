@@ -42,7 +42,7 @@ import           TorXakis.Name
 import           TorXakis.RefByIndex
 import qualified TorXakis.Regex
 import           TorXakis.Sort
-import           TorXakis.Value
+import qualified TorXakis.Value
 import           TorXakis.Var
 import           TorXakis.VarContext
 
@@ -51,7 +51,7 @@ import           TorXakis.VarContext
 -- TODO: Should we hide ValExpression completely, and only use ValExpressionView? 
 --       See Regex with its two views (String and Char Representation)
 --       Might be the way forward to two ValExpressions: Solvable (i.e. without Vpredef) and generic (with Vpredef).
-data ValExpressionView = Vconst    Value
+data ValExpressionView = Vconst    TorXakis.Value.Value
                        | Vvar      (RefByName VarDef)
                        -- generic
                        | Vequal    ValExpression
@@ -102,10 +102,10 @@ newtype ValExpression = ValExpression { -- | View on value expression.
 
 -- | Evaluate the provided value expression.
 -- Either the Right Constant Value is returned or a (Left) error message.
-eval :: ValExpression -> Either Error Value
+eval :: ValExpression -> Either Error TorXakis.Value.Value
 eval = evalView . view
   where
-    evalView :: ValExpressionView -> Either Error Value
+    evalView :: ValExpressionView -> Either Error TorXakis.Value.Value
     evalView (Vconst v) = Right v
     evalView x          = Left $ Error ("Value Expression is not a constant value " ++ show x)
 

@@ -49,12 +49,13 @@ import           TorXakis.ValueGen
 -- | run All solvers
 runSolvers :: SmtM Bool -> Expectation
 runSolvers exec = do
-        bs <- liftIO $ mapM (runSolver exec) [cmdZ3] -- found issues in cvc4 with this test case
+        bs <- liftIO $ mapM (runSolver exec) [cmdZ3] -- defaultSMTProcs
+                                                     -- found issues in cvc4 with this test case
                                                      -- https://github.com/CVC4/CVC4/issues/3316
                                                      -- https://github.com/CVC4/CVC4/issues/3317
                                                      -- Note cvc4's performance might remain an issue
-
-                                                     -- defaultSMTProcs
+                                                     -- Also Z3 can crash https://github.com/Z3Prover/z3/issues/2602
+                                                     --         or be very slow https://github.com/Z3Prover/z3/issues/2601
         bs `shouldSatisfy` and
 
 -- | run specific solver
@@ -127,7 +128,5 @@ prop_FuncCallEqual = do
 spec :: Spec
 spec =
   describe "All Function Definitions" $
-    modifyMaxSuccess (const 10) $  -- Z3 can crash https://github.com/Z3Prover/z3/issues/2602
-                                   --    or be very slow https://github.com/Z3Prover/z3/issues/2601
-                                   -- so only a few tests ...
+    modifyMaxSuccess (const 10) $ -- TODO: increase number of tests when bugs are removed / performance is increased of the solvers
         it "are usable" $ property prop_FuncCallEqual

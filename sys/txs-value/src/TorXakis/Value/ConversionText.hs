@@ -83,20 +83,23 @@ decodeString s = replaceMatches (getAllMatches (s =~ "&#[0-9]{1,3};")) escapedCh
 
 -- | 'TorXakis.Value.Value' to 'Data.Text.Text' conversion.
 valueToText :: SortContext c => c -> Value -> Text
-valueToText _   (Cbool True)   = T.pack "True"
-valueToText _   (Cbool False)  = T.pack "False"
-valueToText _   (Cint i)       = T.pack (show i)
---valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar '\'' c ++ "'")
-valueToText _   (Cstring s)    = T.pack ("\"" ++ encodeString '"' (T.unpack s) ++ "\"")
-valueToText _   (Ccstr _ c []) = TorXakis.Name.toText (toName c)
-valueToText ctx (Ccstr _ c as) =
+valueToText ctx = valueViewToText ctx . view
+
+valueViewToText :: SortContext c => c -> ValueView -> Text
+valueViewToText _   (Cbool True)   = T.pack "True"
+valueViewToText _   (Cbool False)  = T.pack "False"
+valueViewToText _   (Cint i)       = T.pack (show i)
+--valueViewToText _   (Cchar c)      = T.pack ("'" ++ encodeChar '\'' c ++ "'")
+valueViewToText _   (Cstring s)    = T.pack ("\"" ++ encodeString '"' (T.unpack s) ++ "\"")
+valueViewToText _   (Cadt _ c [])  = TorXakis.Name.toText (toName c)
+valueViewToText ctx (Cadt _ c as)  =
         let cNode = (TorXakis.Name.toText . toName) c
           in
             cNode
             <> T.pack "("
             <> T.intercalate (T.pack ",") (map (valueToText ctx) as) 
             <> T.pack ")"
-valueToText _   (Cany _)       = error "ANY not supported"
+valueViewToText _   (Cany _)       = error "ANY not supported"
 
 -- | 'TorXakis.Value.Value' from 'Data.Text.Text' conversion.
 -- Expected 'TorXakis.Sort' of 'TorXakis.Value.Value' must be provided.
@@ -108,10 +111,9 @@ valueFromText ctx s t =
         fromParseValue s p
     where
         fromParseValue :: Sort -> ParseValue -> Either Error Value
-        fromParseValue SortBool    (Pbool b)    = Right $ Cbool b
-        fromParseValue SortInt     (Pint b)     = Right $ Cint b
---      fromParseValue SortChar    (Pchar c)    = Right $ Cchar (decodeChar c)
-        fromParseValue SortString  (Pstring s') = Right $ Cstring (T.pack (decodeString s'))
+        fromParseValue SortBool    (Pbool b)    = Right $ mkBool b
+        fromParseValue SortInt     (Pint b)     = Right $ mkInt b
+        fromParseValue SortString  (Pstring s') = Right $ mkString (T.pack (decodeString s'))
         fromParseValue (SortADT a) (Pcstr ctext ps) =
             case mkName ctext of
                 Left e      -> Left $ Error ("Illegal name " ++ show ctext ++ "\n" ++ show e)
@@ -124,7 +126,7 @@ valueFromText ctx s t =
                                                          expected = length ps
                                                       in if actual == expected
                                                             then case partitionEithers (zipWith fromParseValue (map TorXakis.Sort.sort fs) ps) of
-                                                                      ([], vs) -> Right $ Ccstr a (RefByName cname) vs
+                                                                      ([], vs) -> mkADT ctx a (RefByName cname) vs
                                                                       (es, _)  -> Left $ Error $ intercalate "\n" (map show es)
                                                             else Left $ Error ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual)
         fromParseValue s' p                     = Left $ Error ("Sort " ++ show s' ++ " mismatch with parsed value " ++ show p ++ "\nNote ANY is not supported")

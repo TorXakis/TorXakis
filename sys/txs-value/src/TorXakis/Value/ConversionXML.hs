@@ -84,22 +84,22 @@ encodeString = T.concatMap encodeChar
 
 -- | 'TorXakis.Value.Value' to XML conversion.
 valueToXML :: SortContext c => c -> Value -> Text
-valueToXML ctx = pairToXML rootNodeName
+valueToXML ctx = pairToXML rootNodeName . view
     where
-        pairToXML :: Text -> Value -> Text
+        pairToXML :: Text -> ValueView -> Text
         pairToXML node (Cbool True)   = nodeTextToXML node "true"
         pairToXML node (Cbool False)  = nodeTextToXML node "false"
         pairToXML node (Cint i)       = nodeTextToXML node (T.pack (show i))
 --      pairToXML node (Cchar c)      = nodeTextToXML node (encodeChar c)
         pairToXML node (Cstring s)    = nodeTextToXML node (encodeString s)
-        pairToXML node (Ccstr a c as) = 
+        pairToXML node (Cadt a c as) = 
             let adtDef = fromMaybe (error ("ADTDef " ++ show a ++ " not in context"))
                                    (lookupADT (toName a) ctx)
                 cstrDef = fromMaybe (error ("cstrDef " ++ show c ++ " not in ADTDef " ++ show a))
                                     (lookupConstructor (toName c) adtDef)
                 cNode = (TorXakis.Name.toText . constructorName) cstrDef
                 fieldTexts = map (TorXakis.Name.toText . fieldName) ( elemsField cstrDef )
-                txt = nodeTextToXML cNode (T.concat (zipWith pairToXML fieldTexts as))
+                txt = nodeTextToXML cNode (T.concat (zipWith pairToXML fieldTexts (map view as)))
               in nodeTextToXML node txt
         pairToXML _   (Cany _)       = error "ANY not supported"
 
@@ -126,16 +126,11 @@ valueFromXML ctx s t =
     where
         fromXML :: Sort -> Text -> Node Text Text -> Either Error Value
         fromXML SortBool   n (Element nt [] list) | nt == n
-                = Right $ Cbool ("true" == stringFromList list)
+                = Right $ mkBool ("true" == stringFromList list)
         fromXML SortInt    n (Element nt [] list) | nt == n
-                = Right $ Cint (read (T.unpack (stringFromList list)))
---      fromXML SortChar   n (Element nt [] list) | nt == n
---              = let str = T.unpack (stringFromList list) in
---                  case str of
---                      [c] -> Right $ Cchar c
---                      _   -> Left $ Error (T.pack ("Char should have length 1, yet is " ++ show str))
+                = Right $ mkInt (read (T.unpack (stringFromList list)))
         fromXML SortString n (Element nt [] list) | nt == n
-                = Right $ Cstring (stringFromList list)
+                = Right $ mkString (stringFromList list)
         fromXML (SortADT a) n (Element nt [] [Element ctext [] list]) | nt == n
                 = case mkName ctext of
                     Left e      -> Left $ Error ("Illegal name " ++ show ctext ++ "\n" ++ show e)
@@ -148,7 +143,7 @@ valueFromXML ctx s t =
                                                              expected = length list
                                                           in if actual == expected
                                                             then case partitionEithers (zipWith3 fromXML (map TorXakis.Sort.sort fs) (map (TorXakis.Name.toText . fieldName) fs) list) of
-                                                                      ([], vs) -> Right $ Ccstr a (RefByName cname) vs
+                                                                      ([], vs) -> mkADT ctx a (RefByName cname) vs
                                                                       (es, _)  -> Left $ Error $ intercalate "\n" (map show es)
                                                             else Left $ Error ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual)
         fromXML s' n l = Left $ Error ("Sort " ++ show s' ++ " of node " ++ show n ++ " mismatch with XML value " ++ show l)
