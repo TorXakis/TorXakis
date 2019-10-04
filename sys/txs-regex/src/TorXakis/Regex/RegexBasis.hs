@@ -168,29 +168,33 @@ mkRegexUnion ls = -- TODO: merge overlapping / adjacent ranges in union e.g. [A-
 --
 -- preconditions: lowerbound >= 0
 --                when present: upperbound >= lowerbound
+--
 mkRegexLoop :: Regex         -- ^ basis regular expression
             -> Integer       -- ^ lowerbound
             -> Maybe Integer -- ^ optional upperbound
             -> Either Error Regex
 mkRegexLoop _ l _        | l < 0 = Left $ Error ("precondition violation: lowerbound (" ++ show l ++ ") is negative.")
 mkRegexLoop _ l (Just u) | u < l = Left $ Error ("precondition violation: upperbound (" ++ show u ++ ") is smaller than lowerbound (" ++ show l ++ ").")
-mkRegexLoop _ 0 (Just 0)         = Right mkRegexEmpty  -- also ensures that "(a{20,}){0,0}" == "()" and NOT "a{0,}"
+mkRegexLoop _ 0 (Just 0)         = Right mkRegexEmpty
 mkRegexLoop r 1 (Just 1)         = Right r
-mkRegexLoop r l mu               = Right $ mkRegexInnerLoop r
-    where
-        mkRegexInnerLoop :: Regex -> Regex
-        mkRegexInnerLoop  RegexEmpty                            = RegexEmpty
-        mkRegexInnerLoop (RegexLoop ri li mui) | mui /= Just li = -- combine loops but not innerloops with no choice 
-                                                                  -- since (a{5,5}){2,3} <> a{10,15}
-                                                                   let nu = case (mu, mui) of    -- combine loops
-                                                                
-                                                                               (Nothing, Nothing) -> Nothing
-                                                                               (Nothing, Just _ ) -> Nothing
-                                                                               (Just _ , Nothing) -> Nothing
-                                                                               (Just u , Just ui) -> Just (u * ui)
-                                                                       in
-                                                                           RegexLoop ri (l * li) nu
-        mkRegexInnerLoop _                                      = RegexLoop r l mu
+mkRegexLoop RegexEmpty _ _       = Right mkRegexEmpty
+-- When
+-- a>=0 && b>=a && c>=0 && d>=c && (c==d || (b-a)*c >= a-1)
+-- then
+-- (x{a,b}){c,d} == x{a*c,b*d}
+mkRegexLoop (RegexLoop r a (Just b)) c (Just d) | c == d || (b-a)*c >= a-1 = Right $ RegexLoop r (a*c) (Just (b*d))
+-- When d is Infinite, it is never equal to c.
+-- Note: b*d is Infinite except for b == 0. 
+-- The case b == 0 (and thus also a == 0) is however already rewritten earlier!
+mkRegexLoop (RegexLoop r a (Just b)) c Nothing  |           (b-a)*c >= a-1 = Right $ RegexLoop r (a*c) Nothing
+-- When b is Infinite, and thus (b-a)*c is Infinite for all a and all c /= 0
+-- the formula can be rewritten to (c==d || ( c==0 => a<=1 ))
+-- Note: b*d is Infinite except for d == 0. 
+-- The case d == 0 (and thus also c == 0) is however already rewritten earlier!
+mkRegexLoop (RegexLoop r a Nothing) c md  | Just c == md || (c /= 0 || a <= 1) =
+    assert (md /= Just 0) $
+           Right (RegexLoop r (a*c) Nothing)
+mkRegexLoop r l mu               = Right $ RegexLoop r l mu
 
 -- | constructor for the Regular Expression that only contains the provided string.
 mkRegexStringLiteral :: Data.Text.Text -> Either Error Regex

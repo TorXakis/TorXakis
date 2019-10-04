@@ -124,6 +124,29 @@ prop_StringFromRegex (RegexGen r) = runSolvers instanceStringFromRegex
                         Nothing -> error ("Problem solver can determine " ++ show s ++ " is in regex of " ++ show r)
                         Just b  -> return b
 
+-- | RegexSolvable
+prop_RegexSolvable :: RegexGen -> Expectation
+prop_RegexSolvable (RegexGen r) = runSolvers instanceRegexSolvable
+    where
+        instanceRegexSolvable :: ProblemSolver p => p Bool
+        instanceRegexSolvable = do
+            _ <- push
+            ctx <- toValExprContext
+            let Right nm = mkName (Data.Text.pack "var")
+                Right varDecl = mkVarDef ctx nm SortString
+              in do
+                declareVariables[varDecl]
+                ctx' <- toValExprContext
+                let Right var = mkVar ctx' (RefByName nm)
+                    Right varInRe = mkStrInRe ctx' var r
+                  in do
+                    addAssertions [varInRe]
+                    res <- solvable
+                    _ <- pop
+                    case toMaybeBool res of
+                        Nothing -> error ("Problem solver can determine that regex '" ++ show r ++ "' is solvable")
+                        Just b  -> return b
+
 -- | Is Char in range of low and high
 inRange :: ProblemSolver p => Char -> Char -> Char -> p Bool
 inRange l h x = do
@@ -186,3 +209,4 @@ spec =
         it "handle chars correctly in lowerbound position of a range" expectationCharsLowRange
         it "handle chars correctly in upperbound position of a range" expectationCharsHighRange
         it "match string generated from regex" $ property prop_StringFromRegex
+        it "can solve all regexes" $ property prop_RegexSolvable

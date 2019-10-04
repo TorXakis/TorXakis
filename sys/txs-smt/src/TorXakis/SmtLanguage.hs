@@ -199,6 +199,29 @@ smtRegexLiteral = smtRegexViewLiteral . viewStringRepr
                                                                                       ( singleton ')' )
         smtRegexViewLiteral (RegexUnion us)             =  TorXakis.SmtLanguage.append ( TorXakis.SmtLanguage.concat ( fromString "(re.union " : map smtRegexViewLiteral (Data.Set.toList us) ) )
                                                                                       ( singleton ')' )
+        -- optimized translation for not rewritten nested loops (invariant d /=0 and a>1)
+        -- for b is Infinite, only constraint when c == 0 => split into two case 0 and {1,d}
+        smtRegexViewLiteral (RegexLoop (RegexLoop r a Nothing) 0 _) = TorXakis.SmtLanguage.concat [ fromString "(re.union (str.to.re \"\") (re.loop "
+                                                                                                  , smtRegexViewLiteral r
+                                                                                                  , singleton ' '
+                                                                                                  , smtIntegerLiteral a
+                                                                                                  , fromString "))"
+                                                                                                  ]
+        -- for b is Finite (invariant b/=0) , constraint (b-a) >= a-1 statisfied but c == 0 => split into two case 0 and {1,d}
+        smtRegexViewLiteral (RegexLoop (RegexLoop r a (Just b)) 0 Nothing) | b-a >= a-1 = TorXakis.SmtLanguage.concat [ fromString "(re.union (str.to.re \"\") (re.loop "
+                                                                                                                      , smtRegexViewLiteral r
+                                                                                                                      , singleton ' '
+                                                                                                                      , smtIntegerLiteral a
+                                                                                                                      , fromString "))"
+                                                                                                                      ]
+        smtRegexViewLiteral (RegexLoop (RegexLoop r a (Just b)) 0 (Just d)) | b-a >= a-1 = TorXakis.SmtLanguage.concat [ fromString "(re.union (str.to.re \"\") (re.loop "
+                                                                                                                       , smtRegexViewLiteral r
+                                                                                                                       , singleton ' '
+                                                                                                                       , smtIntegerLiteral a
+                                                                                                                       , singleton ' '
+                                                                                                                       , smtIntegerLiteral (b*d)
+                                                                                                                       , fromString "))"
+                                                                                                                       ]
         smtRegexViewLiteral (RegexLoop r l Nothing)     = TorXakis.SmtLanguage.concat [ fromString "(re.loop "
                                                                                       , smtRegexViewLiteral r
                                                                                       , singleton ' '

@@ -99,27 +99,29 @@ prop_Equivalent_SingletonRange (RegexChar c) =
                         Left e      -> error ("mkRegexCharLiteral unexpectedly failed with " ++ show e)
                         Right expected -> range `shouldBe` expected
 
+multiply :: Maybe Integer -> Maybe Integer -> Maybe Integer
+multiply (Just 0) _ = Just 0
+multiply _ (Just 0) = Just 0
+multiply Nothing _  = Nothing
+multiply _ Nothing  = Nothing
+multiply (Just x) (Just y) = Just (x*y)
+
 -- | nested loops can be flattened
--- when innerloop has different bounds
+-- when c==d || (b-a)*c>= a-1
 prop_Equivalent_LoopNested :: LoopBound -> LoopBound -> RegexGen -> Expectation
-prop_Equivalent_LoopNested lbi@(LoopBound 0 (Just 0))   lbo                            (RegexGen r)                     =
-    let actual = nestedLoop lbi lbo r in  -- 0 * Inf == 0
-        actual `shouldBe` mkRegexEmpty
-prop_Equivalent_LoopNested lbi                          lbo@(LoopBound 0 (Just 0))     (RegexGen r)                     =
-    let actual = nestedLoop lbi lbo r in  -- 0 * Inf == 0
-        actual `shouldBe` mkRegexEmpty
-prop_Equivalent_LoopNested (LoopBound li mui)            _                             _            | Just li == mui    =
-    return ()  -- no rewrite possible: (a{5,5}){1,2} <> a{5,10}
-prop_Equivalent_LoopNested lbi@(LoopBound li (Just ui))  lbo@(LoopBound lo (Just uo))  (RegexGen r)                     =
+prop_Equivalent_LoopNested lbi@(LoopBound a mb@(Just b)) lbo@(LoopBound c md)           (RegexGen r) | Just c == md || (b-a)*c >= a-1  =
     let actual = nestedLoop lbi lbo r in 
-        case mkRegexLoop r (li*lo) (Just (ui*uo)) of
+        case mkRegexLoop r (a*c) (multiply mb md) of
             Left e         -> error ("mkRegexLoop (expected) unexpectedly failed with " ++ show e)
             Right expected -> actual `shouldBe` expected
-prop_Equivalent_LoopNested lbi@(LoopBound li _)          lbo@(LoopBound lo _)          (RegexGen r)                     =
+-- when b is Infinite, a-1 is only limited when c == 0 hence formula simplifies to c==d || c/=0 || a<=1
+prop_Equivalent_LoopNested lbi@(LoopBound a Nothing)    lbo@(LoopBound c md)           (RegexGen r) | Just c == md || c/=0 || a<=1  =
     let actual = nestedLoop lbi lbo r in 
-        case mkRegexLoop r (li*lo) Nothing of
+        case mkRegexLoop r (a*c) (multiply Nothing md) of
             Left e         -> error ("mkRegexLoop (expected) unexpectedly failed with " ++ show e)
             Right expected -> actual `shouldBe` expected
+prop_Equivalent_LoopNested _                            _                              _ =
+    return ()  -- no rewrite possible: for example, (a{5,5}){1,2} <> a{5,10}
 
 -- | create a nested loop
 nestedLoop :: LoopBound -> LoopBound -> Regex -> Regex

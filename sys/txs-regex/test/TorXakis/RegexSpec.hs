@@ -22,6 +22,7 @@ where
 import qualified Control.Exception
 import           Control.Monad.IO.Class
 import           Data.Char
+import           Data.List
 import qualified Data.Text
 import           Debug.Trace
 import           Test.Hspec
@@ -109,7 +110,7 @@ test_CharsHighRange =
 
 -- | generic equivalent regex function
 prop_Equivalent :: String -> String -> String -> Bool
-prop_Equivalent posix1 posix2 txt = 
+prop_Equivalent posix1 posix2 txt =
     let result1 :: Bool
         result1 = txt =~ posix1
         result2 :: Bool
@@ -189,6 +190,127 @@ prop_Equivalent_CharAdjacentRange = prop_Equivalent "(A|[B-Z])*" "([A-Z])*"
 prop_Equivalent_LoopRefold :: String -> Bool
 prop_Equivalent_LoopRefold = prop_Equivalent "A(BA)*" "(AB)*A"
 
+-- | proof rewritting 
+-- ONLY when a>=0, b>=a, c>=0, d>=c, c==d || (b-a)*c >= a-1
+-- HOLDS
+--  (x{a,b}){c,d} == x{a*c,b*d}
+prop_Equivalent_LoopNestedCondition_LimitedLimited :: Bool
+prop_Equivalent_LoopNestedCondition_LimitedLimited =
+    all okLower [low .. high]
+  where
+    low = 0
+    high = 7
+    
+    okLower :: Integer -> Bool
+    okLower a = all (lower a) [a..high]
+    
+    lower :: Integer -> Integer -> Bool
+    lower a b = all (okUpper a b) [low..high]
+
+    okUpper :: Integer -> Integer -> Integer -> Bool
+    okUpper a b c = all (upper a b c) [c..high]
+    
+    upper :: Integer -> Integer -> Integer -> Integer -> Bool
+    upper a b c d = let l = a*c
+                        u = b*d
+                       in   
+                            if c==d || (b-a)*c >= a-1
+                            then all agree [l .. u]         || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ "," ++ show d ++ "} fails on [" ++ show l ++ "," ++ show u ++ "]") False
+                            else any (not . agree) [l .. u] || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ "," ++ show d ++ "} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
+            where
+                agree :: Integer -> Bool
+                agree i = let string = genericReplicate i 'x'
+                              regex = "\\`(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ "," ++ show d ++ "}\\'"
+                            in
+                              string =~ regex
+
+-- | proof rewritting 
+-- forall c>=0: (x{0,0}){c,} == x{0,0}
+-- forall a>=0, b>=a, b>0, c>=0, (b-a)*c >= a-1: (x{a,b}){c,} == x{a*c,}
+prop_Equivalent_LoopNestedCondition_LimitedUnlimited :: Bool
+prop_Equivalent_LoopNestedCondition_LimitedUnlimited =
+    all okLower [low .. high]
+  where
+    low = 0
+    high = 7
+    
+    okLower :: Integer -> Bool
+    okLower a = all (lower a) [a..high]
+    
+    lower :: Integer -> Integer -> Bool
+    lower a b = all (upper a b) [low..high]
+
+    upper :: Integer -> Integer -> Integer -> Bool
+    upper a b c = let l = a*c
+                      u = b*(high+1)  -- our approximation of infinite is (high+1)
+                                      -- note for b == 0, the upperbound is 0!
+                       in   
+                            if (b-a)*c >= a-1
+                            then all agree [l .. u]         || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ ",} fails on [" ++ show l ++ "," ++ show u ++ "]") False
+                            else any (not . agree) [l .. u] || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ ",} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
+            where
+                agree :: Integer -> Bool
+                agree i = let string = genericReplicate i 'x'
+                              regex = "\\`(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ ",}\\'"
+                            in
+                              string =~ regex
+
+-- | proof rewritting 
+-- forall a>=0: (x{a,}){0,0} == x{0,0}
+-- forall a>=0, c>=0, d>=c, d>0, c==d || (c==0 => a<=1):  (x{a,}){c,d} == x{a*c,}
+prop_Equivalent_LoopNestedCondition_UnlimitedLimited :: Bool
+prop_Equivalent_LoopNestedCondition_UnlimitedLimited =
+    all lower [low .. high]
+  where
+    low = 0
+    high = 7
+    
+    lower :: Integer -> Bool
+    lower a = all (okUpper a) [low..high]
+    
+    okUpper :: Integer -> Integer -> Bool
+    okUpper a c = all (upper a c) [c..high]
+    
+    upper :: Integer -> Integer -> Integer -> Bool
+    upper a c d = let l = a*c
+                      u = (high+1)*d
+                       in   
+                            if c==d || c/=0 || a<=1
+                            then all agree [l .. u]         || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ "," ++ show d ++ "} fails on [" ++ show l ++ "," ++ show u ++ "]") False
+                            else any (not . agree) [l .. u] || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ "," ++ show d ++ "} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
+            where
+                agree :: Integer -> Bool
+                agree i = let string = genericReplicate i 'x'
+                              regex = "\\`(x{" ++ show a ++ ",}){" ++ show c ++ "," ++ show d ++ "}\\'"
+                            in
+                              string =~ regex
+
+-- | proof rewritting 
+-- forall a>=0, c>=0, c==0 => a<=1: (x{a,}){c,} == x{a*c,}
+prop_Equivalent_LoopNestedCondition_UnlimitedUnlimited :: Bool
+prop_Equivalent_LoopNestedCondition_UnlimitedUnlimited =
+    all lower [low .. high]
+  where
+    low = 0
+    high = 7
+    
+    lower :: Integer -> Bool
+    lower a = all (upper a) [low..high]
+
+    upper :: Integer -> Integer -> Bool
+    upper a c = let l = a*c
+                    u = (high+1)^(2::Integer)
+                       in   
+                            if c/=0 || a<=1
+                            then all agree [l .. u]         || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ ",} fails on [" ++ show l ++ "," ++ show u ++ "]") False
+                            else any (not . agree) [l .. u] || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ ",} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
+            where
+                agree :: Integer -> Bool
+                agree i = let string = genericReplicate i 'x'
+                              regex = "\\`(x{" ++ show a ++ ",}){" ++ show c ++ ",}\\'"
+                            in
+                              string =~ regex
+
 spec :: Spec
 spec = do
   describe "A Regex" $ do
@@ -215,3 +337,8 @@ spec = do
     it "combine overlapping ranges" $ property prop_Equivalent_OverlappingRanges
     it "combine char and adjacent range" $ property prop_Equivalent_CharAdjacentRange
     it "loops including adjacent elements" $ property prop_Equivalent_LoopRefold
+  describe "rewrite containing loops" $ do
+    it "(x{a,b}){c,d}" prop_Equivalent_LoopNestedCondition_LimitedLimited
+    it "(x{a,b}){c,}" prop_Equivalent_LoopNestedCondition_LimitedUnlimited
+    it "(x{a,}){c,d}" prop_Equivalent_LoopNestedCondition_UnlimitedLimited
+    it "(x{a,}){c,}" prop_Equivalent_LoopNestedCondition_UnlimitedUnlimited
