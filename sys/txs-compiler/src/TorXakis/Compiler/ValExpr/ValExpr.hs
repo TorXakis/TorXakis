@@ -73,7 +73,7 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
                 checkSortIds (varsort vId) eSid
                 return $ cstrVar vId
             Right shs -> do
-                (sig, h)  <- determineSH shs [] (Just eSid)
+                (sig, h)  <- determineSH shs [] (Just eSid) (getErrorLoc l)
                 checkSortIds (sortRet sig) eSid
                 return $ h []
     ConstLit c -> do
