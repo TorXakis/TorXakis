@@ -136,18 +136,19 @@ determineF mm ls aSids mRSid =
 determineSH :: [(Signature, Handler VarId)]
              -> [SortId]     -- ^ @SortId@s of the arguments.
              -> Maybe SortId -- ^ Expected return @SortId@ (if known).
+             -> ErrorLoc     -- ^ Error Loc to be reported in case of error
              -> Either Error (Signature, Handler VarId)
-determineSH shs sargs msret =
+determineSH shs sargs msret el =
     case filter (sigMatches . fst) shs of
         [(sig, h)] -> return (sig, h)
         [] -> Left Error
             { _errorType = Undefined Function
-            , _errorLoc = NoErrorLoc
+            , _errorLoc = el
             , _errorMsg = "Could not determine the function based on the given signature "
             }
         _ -> Left Error
             { _errorType = MultipleDefinitions Function
-            , _errorLoc = NoErrorLoc
+            , _errorLoc = el
             , _errorMsg = "Found multiple functions that can be applied."
             }
     where
