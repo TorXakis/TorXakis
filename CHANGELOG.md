@@ -1,5 +1,11 @@
 # Torxakis Changelog
 
+## v0.9.0
+
+Added [LPE operations](https://github.com/TorXakis/TorXakis/tree/develop/sys/lpeops) (thanks to Djurre van der Wal)
+
+Fixed a number of bugs, including some fundamental issues found in the [Refactor-All activity](https://github.com/TorXakis/TorXakis/tree/refactor/All/).
+
 ## v0.8.1
 
 Bug fixes in
