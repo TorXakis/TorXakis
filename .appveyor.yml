@@ -5,7 +5,7 @@
 build: off
 skip_tags: true
 
-version: pre-0.9.0.{build}.{branch}
+version: pre-0.9.1.{build}.{branch}
 # branches:
     # only:
     # - develop
@@ -26,7 +26,7 @@ install:
 # obtain the stack executable
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\stack.exe")) {
-        curl  -Verbose -OutFile stack.zip https://github.com/commercialhaskell/stack/releases/download/v2.1.1/stack-2.1.1-windows-x86_64.zip
+        curl  -Verbose -OutFile stack.zip https://github.com/commercialhaskell/stack/releases/download/v2.1.3/stack-2.1.3-windows-x86_64.zip
         7z x $("-o" + $CACHE_DIR) stack.zip stack.exe
     } else {
         Write-Host "stack.exe found.";
@@ -43,7 +43,7 @@ install:
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\z3")) {
         # install z3
-        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.8.5/z3-4.8.5-x64-win.zip -Verbose
+        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.8.7/z3-4.8.7-x64-win.zip -Verbose
         mkdir $CACHE_DIR\z3
         7z x $("-o${CACHE_DIR}\z3\") z3.zip
         move ${CACHE_DIR}\z3\z3-*\* ${CACHE_DIR}\z3

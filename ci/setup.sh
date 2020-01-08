@@ -15,13 +15,13 @@ then
     mkdir -p $CACHE_DIR/bin
 fi
 
-if [ -f $CACHE_DIR/bin/stack ] && [ -e $CACHE_DIR/bin/stack-2.1.1 ]
+if [ -f $CACHE_DIR/bin/stack ] && [ -e $CACHE_DIR/bin/stack-2.1.3 ]
 then
     echo "$CACHE_DIR/bin/stack found in cache."
 else
-    echo "stack not found in cache or different version than 2.1.1."
+    echo "stack not found in cache or different version than 2.1.3."
     rm -f $CACHE_DIR/bin/stack*
-    curl -L https://github.com/commercialhaskell/stack/releases/download/v2.1.1/stack-2.1.1-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C $CACHE_DIR/bin '*/stack'
+    curl -L https://github.com/commercialhaskell/stack/releases/download/v2.1.3/stack-2.1.3-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C $CACHE_DIR/bin '*/stack'
     touch $CACHE_DIR/bin/stack-2.1.1
 fi
 
@@ -39,7 +39,7 @@ fi
 
 if [ -d $CACHE_DIR/z3 ] && [ -e $CACHE_DIR/z3/z3-4.8.5 ]
 then
-    echo "$CACHE_DIR/z3 build z3-4.8.5found in cache."
+    echo "$CACHE_DIR/z3 build z3-4.8.5 found in cache."
 else
     echo "z3 not found in cache or different version than z3-4.8.5"
     rm $CACHE_DIR/z3 -rf
