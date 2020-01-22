@@ -38,6 +38,8 @@ module TorXakis.ValExpr.Unsafe
 , unsafeLength
 , unsafeAt
 , unsafeConcat
+, unsafeLT
+, unsafeLE
 , unsafeStrInRe
 , unsafeCstr
 , unsafeIsCstr
@@ -120,6 +122,8 @@ unsafeEqual (Right v1) (Right v2) = unsafeEqual' v1 v2
                                                                 else case unsafeNot' e of
                                                                         Left m  -> error ("Unexpected error in Equal: " ++ show m)
                                                                         Right m -> Right $ ValExpression (Vequal m n)
+    -- todo: a++x == a++y <==> x == y
+    -- todo: (String str) == (String p) ++ y <==> p is prefix of str /\ (String (drop (length p) str)) == y
     -- Same representation: a == b <==> b == a
     unsafeEqual' ve1 ve2                                 = if ve1 <= ve2
                                                                 then Right $ ValExpression (Vequal ve1 ve2)
@@ -514,6 +518,38 @@ unsafeConcat' l = case (mergeVals . flatten . filter (stringEmptyValExpr /= ) ) 
     fromValExpr :: ValExpression -> [ValExpression]
     fromValExpr (TorXakis.ValExpr.ValExpr.view -> Vconcat cs) = cs
     fromValExpr x                                             = [x]
+
+unsafeLT :: Either Error ValExpression -> Either Error ValExpression -> Either Error ValExpression
+unsafeLT (Left e1)  (Left e2 ) = Left $ Error ("Less Than error on both sides\nleft: " ++ show e1 ++ "\nright: " ++ show e2)
+unsafeLT (Left e1)  _          = Left $ Error ("Less Than error on left side: " ++ show e1)
+unsafeLT _          (Left e2)  = Left $ Error ("Less Than error on right side: " ++ show e2)
+unsafeLT (Right v1) (Right v2) = unsafeLT' v1 v2
+  where
+    unsafeLT' :: ValExpression -> ValExpression -> Either Error ValExpression
+    -- Simplification: a < a <==> False
+    unsafeLT' ve1 ve2 | ve1 == ve2                    = Right falseValExpr
+    unsafeLT' (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s1))
+              (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s2)) = unsafeConst (mkBool (s1 < s2))
+    -- todo: a++x < a++y <==> x < y
+    -- "a" < "aa" yet "ab" > "aa"
+    -- "aa" > "a" yet "aa" < "ab"
+    -- todo: (String str) < (String p) ++ y /\ NOT(p is prefix of str) <==> str < p
+    -- todo: (String px) ++ x < (String py) ++ y /\ NOT (py is prefix of px) /\ NOT (px is prefix of py) <==>  px < py
+    unsafeLT' ve1 ve2                                 = Right $ ValExpression (Vlt ve1 ve2)
+
+unsafeLE :: Either Error ValExpression -> Either Error ValExpression -> Either Error ValExpression
+unsafeLE (Left e1)  (Left e2 ) = Left $ Error ("Less Equal error on both sides\nleft: " ++ show e1 ++ "\nright: " ++ show e2)
+unsafeLE (Left e1)  _          = Left $ Error ("Less Equal error on left side: " ++ show e1)
+unsafeLE _          (Left e2)  = Left $ Error ("Less Equal error on right side: " ++ show e2)
+unsafeLE (Right v1) (Right v2) = unsafeLE' v1 v2
+  where
+    unsafeLE' :: ValExpression -> ValExpression -> Either Error ValExpression
+    -- Simplification: a <= a <==> True
+    unsafeLE' ve1 ve2 | ve1 == ve2                    = Right trueValExpr
+    unsafeLE' (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s1))
+              (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cstring s2)) = unsafeConst (mkBool (s1 <= s2))
+    -- todo: rewrite rules (see LT)
+    unsafeLE' ve1 ve2                                 = Right $ ValExpression (Vle ve1 ve2)
 
 unsafeStrInRe :: Either Error ValExpression -> TorXakis.Regex.Regex -> Either Error ValExpression
 unsafeStrInRe (Left e1) _ = Left $ Error ("StrInRe Error :" ++ show e1 )

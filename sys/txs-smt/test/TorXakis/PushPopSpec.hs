@@ -123,7 +123,7 @@ testIsolate =
         _ <- push
         addAssertions [gT, lT]
         respIII <- solvable
-        liftIO $ assertEqual "x > 0 && x <0" (SolvableProblem (Just False)) respIII
+        liftIO $ assertEqual "x > 0 && x < 0" (SolvableProblem (Just False)) respIII
         _ <- pop
         
         -- nested gT first

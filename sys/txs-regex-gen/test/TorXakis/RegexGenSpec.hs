@@ -159,13 +159,13 @@ concatLoop (LoopBound l1 m1) (LoopBound l2 m2) r =
 -- Note when a concatenated regex is in a loop, we must look at the front/tail of any concatenated regex after/before it.
 prop_Equivalent_LoopAndInstance :: LoopBound -> RegexGen -> Expectation
 prop_Equivalent_LoopAndInstance (LoopBound l m) (RegexGen r) =
-    let lExpected = l +1
+    let lExpected = l + 1
         mExpected = case m of
                         Nothing -> Nothing
                         Just u  -> Just (u+1)
       in
         case mkRegexLoop r lExpected mExpected of
-            Left e         -> error ("mkRegexLoop (expected) unexpectedly failed with " ++ show e)
+            Left e         -> error ("while making expected: mkRegexLoop unexpectedly failed with " ++ show e)
             Right expected -> case mkRegexLoop r l m of
                                     Left e     -> error ("mkRegexLoop loop unexpectedly failed with " ++ show e)
                                     Right loop -> mkRegexConcat [loop, r] `shouldBe` expected

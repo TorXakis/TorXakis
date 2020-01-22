@@ -123,6 +123,8 @@ empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap
 
                         $ addSuccess SortBool   2 genValExprAnd
                         $ addSuccess SortBool   2 genValExprStrInRe
+                        $ addSuccess SortBool   2 genValExprLessThan
+                        $ addSuccess SortBool   2 genValExprLessEqual
                         $ addSuccess SortBool   3 (genValExprITE SortBool)
 
                         -- Int
@@ -325,6 +327,15 @@ genValExprValueOfSort s ctx = do
         Left e  -> error ("genValExprValueOfSort constructor with value " ++ show v ++ " of sort " ++ show s ++ " fails " ++ show e)
         Right x -> return x
 
+pair :: TestValExprContext a => (Sort, Sort) -> a ->  Gen (ValExpression, ValExpression)
+pair (s1,s2) ctx = do
+    n <- getSize
+    let available = n - 2 in do -- distribute available size over two intervals
+        t <- choose (0, available)
+        p1 <- resize t             (arbitraryValExprOfSort ctx s1)
+        p2 <- resize (available-t) (arbitraryValExprOfSort ctx s2)
+        return (p1,p2)
+
 serie :: TestValExprContext a => Sort -> a -> Gen [ValExpression]
 serie s ctx = do
     n <- getSize
@@ -371,7 +382,23 @@ genValExprStrInRe ctx = do
         str        <- resize t             (arbitraryValExprOfSort ctx SortString)
         RegexGen r <- resize (available-t) arbitrary
         case mkStrInRe ctx str r of
-         Left e  -> error ("genValExprStrInRe constructor fails " ++ show e)
+            Left e  -> error ("genValExprStrInRe constructor fails " ++ show e)
+            Right x -> return x
+
+-- | generation of strings in less than check
+genValExprLessThan :: TestValExprContext a => a -> Gen ValExpression
+genValExprLessThan ctx = do
+    (str1, str2) <- pair (SortString, SortString) ctx
+    case mkLT ctx str1 str2 of
+         Left e  -> error ("genValExprLessThan constructor fails " ++ show e)
+         Right x -> return x
+
+-- | generation of strings in less equal check
+genValExprLessEqual :: TestValExprContext a => a -> Gen ValExpression
+genValExprLessEqual ctx = do
+    (str1, str2) <- pair (SortString, SortString) ctx
+    case mkLE ctx str1 str2 of
+         Left e  -> error ("genValExprLessEqual constructor fails " ++ show e)
          Right x -> return x
 
 -------------------------------------------------------------------------------
@@ -399,13 +426,7 @@ zero = case mkConst TorXakis.ContextSort.empty (mkInt 0) of
             Right x -> x
 
 division :: TestValExprContext a => a -> Gen (ValExpression, ValExpression)
-division ctx = do
-    n <- getSize
-    let available = n - 2 in do -- distribute available size over two intervals
-        t <- choose (0, available)
-        teller <- resize t             (arbitraryValExprOfSort ctx SortInt)
-        noemer <- resize (available-t) (arbitraryValExprOfSort ctx SortInt)
-        return (teller, noemer)
+division = pair (SortInt, SortInt)
 
 genValExprModulo :: TestValExprContext a => a -> Gen ValExpression
 genValExprModulo ctx = do

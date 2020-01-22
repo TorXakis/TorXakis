@@ -35,11 +35,7 @@ module TorXakis.ValExpr.ValExprExtension
 , mkTimes
   -- **** Absolute value
 , mkAbs
-  -- *** Derived Integer comparisons
-  -- **** Less than (<)
-, mkLT
-  -- **** Less Equal (<=)
-, mkLE
+  -- *** Derived comparisons
   -- **** Greater Equal (>=)
 , mkGE
   -- **** Greater Than (>)
@@ -112,30 +108,18 @@ mkAbs ctx a | SortInt /= getSort ctx a = Left $ Error ("Argument of Abs is not o
 -- abs (x) <==> IF (x >=0) THEN x ELSE -x
 mkAbs ctx a                            = mkUnaryMinus ctx a >>= (\na -> mkGEZ ctx a >>= (\c -> mkITE ctx c a na))
 
--- | Apply operator Less Then (<) on the provided value expressions.
-mkLT :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
-mkLT ctx a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of LT is not of expected sort Int but " ++ show (getSort ctx a))
-mkLT ctx _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of LT is not of expected sort Int but " ++ show (getSort ctx b))
--- a < b <==> a - b < 0 <==> Not ( a - b >= 0 )
-mkLT ctx a b                            = mkMinus ctx a b >>= mkGEZ ctx >>= mkNot ctx
-
--- | Apply operator Greater Then (>) on the provided value expressions.
+-- | Apply operator Greater Than (>) on the provided value expressions.
 mkGT :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
-mkGT ctx a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of GT is not of expected sort Int but " ++ show (getSort ctx a))
-mkGT ctx _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of GT is not of expected sort Int but " ++ show (getSort ctx b))
--- a > b <==> 0 > b - a <==> Not ( 0 <= b - a )
-mkGT ctx a b                            = mkMinus ctx b a >>= mkGEZ ctx >>= mkNot ctx
-
--- | Apply operator Less Equal (<=) on the provided value expressions.
-mkLE :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
-mkLE ctx   a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of LE is not of expected sort Int but " ++ show (getSort ctx a))
-mkLE ctx   _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of LE is not of expected sort Int but " ++ show (getSort ctx b))
--- a <= b <==> 0 <= b - a
-mkLE ctx a b                        = mkMinus ctx b a >>= mkGEZ ctx
+mkGT ctx ve1 ve2 | getSort ctx ve1 /= getSort ctx ve2    = Left $ Error ("Sort of value expressions in GreaterThan differ " ++ show (getSort ctx ve1) ++ " versus " ++ show (getSort ctx ve2))
+-- a > b <==> NOT(a <= b)
+mkGT ctx a b     | SortInt == getSort ctx a || SortString == getSort ctx a
+                                                         = mkLE ctx a b >>= mkNot ctx
+mkGT ctx ve1 _                                           = Left $ Error ("Only Int and String supported by GreaterThan: Sort is " ++ show (getSort ctx ve1))
 
 -- | Apply operator Greater Equal (>=) on the provided value expressions.
 mkGE :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
-mkGE ctx   a _ | SortInt /= getSort ctx a = Left $ Error ("First argument of GE is not of expected sort Int but " ++ show (getSort ctx a))
-mkGE ctx   _ b | SortInt /= getSort ctx b = Left $ Error ("Second argument of GE is not of expected sort Int but " ++ show (getSort ctx b))
--- a >= b <==> a - b >= 0
-mkGE ctx a b                        = mkMinus ctx a b >>= mkGEZ ctx
+mkGE ctx ve1 ve2 | getSort ctx ve1 /= getSort ctx ve2    = Left $ Error ("Sort of value expressions in GreaterEqual differ " ++ show (getSort ctx ve1) ++ " versus " ++ show (getSort ctx ve2))
+-- a >= b <==> NOT(a < b)
+mkGE ctx a b     | SortInt == getSort ctx a || SortString == getSort ctx a
+                                                         = mkLT ctx a b >>= mkNot ctx
+mkGE ctx ve1 _                                           = Left $ Error ("Only Int and String supported by GreaterEqual: Sort is " ++ show (getSort ctx ve1))

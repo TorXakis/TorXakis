@@ -29,6 +29,10 @@ module TorXakis.ValExpr.ValExprBasis
 , mkEqual
   -- **** If Then Else
 , mkITE
+  -- **** Less Than (<) operator
+, mkLT
+  -- **** Less Equal (<=) operator
+, mkLE
   -- **** Function Call
 , mkFunc
   -- **** PredefNonSolvableined Function Call
@@ -114,6 +118,22 @@ mkITE ctx b _  _  | getSort ctx b  /= SortBool        = Left $ Error ("Condition
 mkITE ctx _ tb fb | getSort ctx tb /= getSort ctx fb  = Left $ Error ("Sorts of branches differ " ++ show (getSort ctx tb) ++ " versus " ++ show (getSort ctx fb))
 mkITE ctx b tb fb | memberSort (getSort ctx tb) ctx   = unsafeITE (Right b) (Right tb) (Right fb)
 mkITE ctx _ tb _                                      = Left $  Error ("Sort " ++ show (getSort ctx tb) ++ " not defined in context")
+
+-- | Apply operator LessThan (<) on the provided value expressions.
+mkLT :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkLT ctx ve1 ve2 | getSort ctx ve1 /= getSort ctx ve2    = Left $ Error ("Sort of value expressions in LessThan differ " ++ show (getSort ctx ve1) ++ " versus " ++ show (getSort ctx ve2))
+mkLT ctx ve1 ve2 | getSort ctx ve1 == SortString         = unsafeLT (Right ve1) (Right ve2)
+                                                           -- a < b <==> a - b < 0 <==> Not ( a - b >= 0 )
+mkLT ctx a   b   | getSort ctx a   == SortInt            = mkUnaryMinus ctx b >>= (\nb -> mkSum ctx [a,nb]) >>= mkGEZ ctx >>= mkNot ctx
+mkLT ctx ve1 _                                           = Left $ Error ("Only Int and String supported by LessThan: Sort is " ++ show (getSort ctx ve1))
+
+-- | Apply operator LessEqual (<=) on the provided value expressions.
+mkLE :: VarContext c => c -> ValExpression -> ValExpression -> Either Error ValExpression
+mkLE ctx ve1 ve2 | getSort ctx ve1 /= getSort ctx ve2    = Left $ Error ("Sort of value expressions in LessEqual differ " ++ show (getSort ctx ve1) ++ " versus " ++ show (getSort ctx ve2))
+mkLE ctx ve1 ve2 | getSort ctx ve1 == SortString         = unsafeLE (Right ve1) (Right ve2)
+                                                           -- a <= b <==> 0 <= b - a
+mkLE ctx a b     | getSort ctx a   == SortInt            = mkUnaryMinus ctx a >>= (\na -> mkSum ctx [b,na]) >>= mkGEZ ctx
+mkLE ctx ve1 _                                           = Left $ Error ("Only Int and String supported by LessEqual: Sort is " ++ show (getSort ctx ve1))
 
 -- | Create a function call.
 -- TODO: check for undefined entities in arguments (vs)
@@ -232,7 +252,7 @@ mkConcat _   _                                             = Left $ Error "Not a
 
 -- | Apply String In Regular Expression operator on the provided value expressions.
 mkStrInRe :: VarContext c => c -> ValExpression -> TorXakis.Regex.Regex -> Either Error ValExpression
-mkStrInRe ctx s _ | getSort ctx s /= SortString = Left $ Error ("First argument of At not of expected Sort String but " ++ show (getSort ctx s))
+mkStrInRe ctx s _ | getSort ctx s /= SortString = Left $ Error ("First argument of StrInRe not of expected Sort String but " ++ show (getSort ctx s))
 mkStrInRe _   s r                               = unsafeStrInRe (Right s) r
 
 -- get ConstructorDef when possible

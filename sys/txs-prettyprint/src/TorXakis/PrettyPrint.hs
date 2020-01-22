@@ -266,6 +266,8 @@ instance VarContext c => PrettyPrint c ValExpressionView where
   prettyPrint o ctx (Vlength s)         = funcInst o txsFunctionLength [prettyPrint o ctx s]
   prettyPrint o ctx (Vat s p)           = funcInst o txsFunctionAt (map (prettyPrint o ctx) [s,p])
   prettyPrint o ctx (Vconcat vs)        = infixOperator o txsOperatorConcat (map (prettyPrint o ctx) vs)
+  prettyPrint o ctx (Vlt e1 e2)         = infixOperator o txsOperatorLessThan (map (prettyPrint o ctx) [e1, e2])
+  prettyPrint o ctx (Vle e1 e2)         = infixOperator o txsOperatorLessEqual (map (prettyPrint o ctx) [e1, e2])
   prettyPrint o ctx (Vstrinre s r)      = funcInst o txsFunctionStringInRegex [prettyPrint o ctx s, prettyPrint o ctx r]
   prettyPrint o ctx (Vcstr a c vs)      = case lookupADT (toName a) ctx of
                                             Nothing     -> error ("Pretty Print accessor refers to undefined adt " ++ show a)

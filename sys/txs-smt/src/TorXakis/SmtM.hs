@@ -644,6 +644,8 @@ valExprViewToSmt (Vgez e)          = unaryOperatorToSmt (fromString "<= 0") <$> 
 valExprViewToSmt (Vlength e)       = unaryOperatorToSmt (fromString "str.len") <$> valExprToSmt e
 valExprViewToSmt (Vat v1 v2)       = operatorToSmt (fromString "str.at") <$> mapM valExprToSmt [v1,v2]
 valExprViewToSmt (Vconcat es)      = operatorToSmt (fromString "str.++") <$> mapM valExprToSmt es
+valExprViewToSmt (Vlt v1 v2)       = operatorToSmt (fromString "str.<") <$> mapM valExprToSmt [v1, v2]
+valExprViewToSmt (Vle v1 v2)       = operatorToSmt (fromString "str.<=") <$> mapM valExprToSmt [v1, v2]
 valExprViewToSmt (Vstrinre s r)  = do
                                         ss <- valExprToSmt s
                                         return $ operatorToSmt (fromString "str.in.re") [ ss, smtRegexLiteral r]
