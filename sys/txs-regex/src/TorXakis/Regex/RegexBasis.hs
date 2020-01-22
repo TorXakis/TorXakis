@@ -102,30 +102,21 @@ mkRegexConcat ls = case ( merge . flatten . Prelude.filter (mkRegexEmpty /=) ) l
                                                             Right r -> merge (r:rs)
         merge ( RegexLoop r1 l mu
               : r2 
-              : rs ) | r1 == r2                     = let nu = case mu of
-                                                                    Nothing -> Nothing
-                                                                    Just u  -> Just (u + 1)
-                                                        in case mkRegexLoop r1 (l+1) nu of
-                                                            Left e -> error ("mkRegexLoop unexpectedly failed with " ++ show e)
-                                                            Right r -> merge (r:rs)
+              : rs ) | r1 == r2                     = case mkRegexLoop r1 (l+1) (fmap succ mu) of
+                                                           Left e -> error ("mkRegexLoop unexpectedly failed with " ++ show e)
+                                                           Right r -> merge (r:rs)
         merge ( r1
               : RegexLoop r2 l mu 
-              : rs ) | r1 == r2                     = let nu = case mu of
-                                                                    Nothing -> Nothing
-                                                                    Just u  -> Just (u + 1)
-                                                        in case mkRegexLoop r1 (l+1) nu of
-                                                            Left e -> error ("mkRegexLoop unexpectedly failed with " ++ show e)
-                                                            Right r -> merge (r:rs)
+              : rs ) | r1 == r2                     = case mkRegexLoop r1 (l+1) (fmap succ mu) of
+                                                           Left e -> error ("mkRegexLoop unexpectedly failed with " ++ show e)
+                                                           Right r -> merge (r:rs)
         merge ( RegexLoop r@(RegexConcat cs) l mu
-              : rs ) | cs `Data.List.isPrefixOf` rs = let nu = case mu of
-                                                                    Nothing -> Nothing
-                                                                    Just u  -> Just (u + 1)
-                                                        in case mkRegexLoop r (l+1) nu of
-                                                            Left e -> error ("mkRegexLoop unexpectedly failed with " ++ show e)
-                                                            Right r' -> merge (r':dropPrefix cs rs)
-        merge ( RegexLoop r1 l1 mu1
-              : RegexLoop r2 l2 mu2
-              : rs)  | r1 == r2                     = let nu = case (mu1, mu2) of    -- combine loops   x{1,2}x{3,4} == x{4,6}
+              : rs ) | cs `Data.List.isPrefixOf` rs = case mkRegexLoop r (l+1) (fmap succ mu) of
+                                                           Left e -> error ("mkRegexLoop unexpectedly failed with " ++ show e)
+                                                           Right r' -> merge (r':dropPrefix cs rs)
+        merge ( RegexLoop r1 l1 mu1                      -- combine loops   x{1,2}x{3,4} == x{4,6}
+              : RegexLoop r2 l2 mu2                      -- alternative implementation use liftM2 (see https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad.html#v:liftM2)
+              : rs)  | r1 == r2                     = let nu = case (mu1, mu2) of
                                                             (Nothing, Nothing) -> Nothing
                                                             (Nothing, Just _ ) -> Nothing
                                                             (Just _ , Nothing) -> Nothing
