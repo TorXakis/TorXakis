@@ -166,7 +166,6 @@ afterAddADTs ctx as tvecd = TestValExprData newTsd
                                                          (addBasicGens (genMap tvecd) as)
                                                          as
                                                         )
-                                                        -- TODO: add IsConstructors and accessors functions
     where
             newTsd = TorXakis.TestSortData.afterAddADTs ctx as (tsd tvecd)
             -- TODO: should we merge ???
@@ -189,7 +188,7 @@ afterAddADTs ctx as tvecd = TestValExprData newTsd
                                             Right m' -> case TorXakis.GenCollection.add ctx SortBool (2 + 2*sizeSrt) (genValExprEqual srt) m' of
                                                             Left e    -> error ("addADTs - addBasicGen - successful add expected of equal, yet " ++ show e)
                                                             Right m'' -> case TorXakis.GenCollection.add ctx srt (3 + sizeBool + 2*sizeSrt) (genValExprITE srt) m'' of
-                                                                            Left e     -> error ("addADTs - addBasicGen - successful add expected of equal, yet " ++ show e)
+                                                                            Left e     -> error ("addADTs - addBasicGen - successful add expected of ite, yet " ++ show e)
                                                                             Right m''' -> m'''
 
             addConstructorsGens :: TestValExprContext d
@@ -226,7 +225,7 @@ afterAddADTs ctx as tvecd = TestValExprData newTsd
                                               -> FieldDef
                                               -> TorXakis.GenCollection.GenCollection d ValExpression
                                     addFieldAccesGen m'' f = case TorXakis.GenCollection.add ctx (TorXakis.Sort.sort f) (3+sizeSrt) (genValExprAccess a c f) m'' of
-                                                                  Left e     -> error ("addADTs - addConstructorGen - successful add expected of cstr, yet " ++ show e)
+                                                                  Left e     -> error ("addADTs - addConstructorGen - successful add expected of field access, yet " ++ show e)
                                                                   Right m''' -> m'''
 
 -- | Update TestValExprData to remain consistent after
