@@ -26,7 +26,6 @@ import           Control.Monad.State
 import           Data.Either
 import qualified Data.HashMap
 import           Test.Hspec
-import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
 import           TorXakis.FuncDef
@@ -49,7 +48,7 @@ import           TorXakis.ValueGen
 -- | run All solvers
 runSolvers :: SmtM Bool -> Expectation
 runSolvers exec = do
-        bs <- liftIO $ mapM (runSolver exec) [cmdCVC4] -- defaultSMTProcs
+        bs <- liftIO $ mapM (runSolver exec) defaultSMTProcs
                                                      -- found issues in cvc4 with this test case
                                                      -- https://github.com/CVC4/CVC4/issues/3316
                                                      -- https://github.com/CVC4/CVC4/issues/3317
@@ -107,7 +106,7 @@ testFunctionArbitrary ctx mp = do
                                                                                 res <- TorXakis.ProblemSolver.solvable
                                                                                 _ <- TorXakis.ProblemSolver.pop
                                                                                 case toMaybeBool res of
-                                                                                    Nothing -> error ("Problem solver can't determine function call is equal for " ++ show fd)
+                                                                                    Nothing -> error ("Problem solver can't determine function call is equal for\n" ++ show fd ++ "\nwith\n" ++ show valExprs)
                                                                                     Just b  -> return b
                                                                 (es, _)        -> error ("mkEqual unexpectely failed with " ++ show es)
                                         (es, _)        -> error ("mkVar unexpectely failed with " ++ show es)
@@ -128,5 +127,4 @@ prop_FuncCallEqual = do
 spec :: Spec
 spec =
   describe "All Function Definitions" $
-    modifyMaxSize (const 10) $ -- limit due to limitations of z3 => see https://github.com/Z3Prover/z3/issues/2601
-        it "are usable" $ property prop_FuncCallEqual
+            it "are usable" $ property prop_FuncCallEqual

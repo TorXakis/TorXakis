@@ -304,6 +304,8 @@ unsafeDivide _
 unsafeDivide (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint t)))
              (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint n))) =
     unsafeConst (mkInt (t `TorXakis.Boute.div` n ))
+-- can't add rewrite rule for Div 0 x | x <> 0 = 0 due to the requirement x <> 0
+-- can't add rewrite rule for Div a b | a == b /\ b <> 0 = 1 due to the requirement b <> 0
 unsafeDivide (Right vet)                                                 (Right ven)                                                 = Right $ ValExpression (Vdivide vet ven)
 
 unsafeModulo :: Either Error ValExpression -> Either Error ValExpression -> Either Error ValExpression
@@ -316,6 +318,8 @@ unsafeModulo _
 unsafeModulo (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint t)))
              (Right (TorXakis.ValExpr.ValExpr.view -> Vconst (TorXakis.Value.view -> Cint n))) =
     unsafeConst (mkInt (t `TorXakis.Boute.mod` n) )
+-- can't add rewrite rule: Mod 0 x | x <> 0 = 0 due to the requirement x <> 0
+-- can't add rewrite rule for Mod a b | a == b /\ b <> 0 = 0 due to the requirement b <> 0
 unsafeModulo (Right vet)                                                 (Right ven)                                                 = Right $ ValExpression (Vmodulo vet ven)
 
 -- is key a constant?

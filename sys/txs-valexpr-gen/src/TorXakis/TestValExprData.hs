@@ -131,7 +131,7 @@ empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap
                         $ addSuccess SortInt    0 (genValExprValueOfSort SortInt)
                         $ addSuccess SortInt    1 genValExprUnaryMinus
                         $ addSuccess SortInt    1 genValExprLength
-                        $ addSuccess SortInt    2 genValExprModulo
+                        $ addSuccess SortInt    2 genValExprModulo  -- see https://github.com/CVC4/CVC4/issues/3697
                         $ addSuccess SortInt    2 genValExprDivide
                         $ addSuccess SortInt    2 genValExprSum
                         $ addSuccess SortInt    2 genValExprProduct
@@ -147,6 +147,8 @@ empty ctx = TestValExprData TorXakis.TestSortData.empty initialGenMap
                         $ addSuccess SortString 2 genValExprAt
                         $ addSuccess SortString 3 (genValExprITE SortString)
 
+                        -- Regex (StrInRe)
+                        -- todo: when cvc4 solves all regexes
                           TorXakis.GenCollection.empty
             where
                  addSuccess :: Sort
