@@ -24,8 +24,8 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Either
-import qualified Data.HashMap
 import           Test.Hspec
+import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
 import           TorXakis.FuncDef
@@ -48,11 +48,7 @@ import           TorXakis.ValueGen
 -- | run All solvers
 runSolvers :: SmtM Bool -> Expectation
 runSolvers exec = do
-        bs <- liftIO $ mapM (runSolver exec) defaultSMTProcs
-                                                     -- found issues in cvc4 with this test case
-                                                     -- https://github.com/CVC4/CVC4/issues/3316
-                                                     -- https://github.com/CVC4/CVC4/issues/3317
-                                                     -- Note cvc4's performance might remain an issue
+        bs <- liftIO $ mapM (runSolver exec) [cmdCVC4] -- defaultSMTProcs
                                                      -- Also Z3 can crash https://github.com/Z3Prover/z3/issues/2602
                                                      --         or be very slow https://github.com/Z3Prover/z3/issues/2601
         bs `shouldSatisfy` and
@@ -78,8 +74,8 @@ runSolver exec (fp,as) = do
                                             Nothing  -> return b
 
 -- | Solve equal function calls
-testFunctionArbitrary :: (FuncContext c, ProblemSolver p) => c -> Data.HashMap.Map Sort Value -> p Bool
-testFunctionArbitrary ctx mp = do
+testFunctionArbitrary :: (FuncContext c, ProblemSolver p) => c -> (Sort -> IO Value) -> p Bool
+testFunctionArbitrary ctx genVal = do
     TorXakis.ProblemSolver.addADTs (elemsADT ctx)
     TorXakis.ProblemSolver.addFunctions (elemsFunc ctx)
     and <$> mapM checkFunc (elemsFunc ctx)
@@ -88,8 +84,10 @@ testFunctionArbitrary ctx mp = do
     checkFunc fd =
         let ps = paramDefs fd
             vars = toList ps
-            vals = map ((Data.HashMap.!) mp . getSort ctx) vars
-        in case partitionEithers (map (mkConst ctx) vals) of
+            ss = map (getSort ctx) vars
+         in do
+            vals <- liftIO $ mapM genVal ss
+            case partitionEithers (map (mkConst ctx) vals) of
                 ([], valExprs) -> do
                                     _ <- TorXakis.ProblemSolver.push
                                     TorXakis.ProblemSolver.declareVariables vars
@@ -116,15 +114,14 @@ testFunctionArbitrary ctx mp = do
 prop_FuncCallEqual :: Gen Expectation
 prop_FuncCallEqual = do
     ctx <- arbitraryContextTestValExpr
-    mp <- foldM (addValue ctx) Data.HashMap.empty (elemsSort ctx)
-    return $ runSolvers (testFunctionArbitrary ctx mp)
+    return $ runSolvers (testFunctionArbitrary ctx (genVal ctx))
   where
-    addValue :: TestSortContext c => c -> Data.HashMap.Map Sort Value -> Sort -> Gen (Data.HashMap.Map Sort Value)
-    addValue ctx mp s = do
-        v <- arbitraryValueOfSort ctx s
-        return $ Data.HashMap.insert s v mp
+    genVal :: TestSortContext c => c -> Sort -> IO Value
+    genVal ctx = generate . arbitraryValueOfSort ctx
 
 spec :: Spec
 spec =
   describe "All Function Definitions" $
+    modifyMaxSuccess (const 250) $
+    modifyMaxSize (const 15) $
             it "are usable" $ property prop_FuncCallEqual
