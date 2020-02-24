@@ -29,12 +29,15 @@ module TorXakis.ContextTestValExpr
 where
 --import           Debug.Trace
 import           Control.Monad
+import qualified Data.List
+import qualified Data.Set as Set
 import           Test.QuickCheck
 
 import           TorXakis.ContextValExpr
 import           TorXakis.FuncDef
 import           TorXakis.FunctionNameGen
 import qualified TorXakis.GenCollection
+import           TorXakis.Name
 import           TorXakis.SortGen
 import           TorXakis.TestValExprContext
 import           TorXakis.TestValExprData
@@ -135,8 +138,11 @@ instance TestValExprContext ContextTestValExpr where
 -- TODO: add recursive functions (and ensure termination when called with constant arguments)
 arbitraryFuncDefs :: TestValExprContext c => c -> Gen [FuncDef]
 arbitraryFuncDefs ctx = do
-    funcNameGens <- listOf (arbitrary :: Gen FunctionNameGen)
-    let funcNames = map unFunctionNameGen funcNameGens in
+    -- funcNameGens <- listOf (arbitrary :: Gen FunctionNameGen)
+    f1 <- arbitrary :: Gen FunctionNameGen
+    f2 <- arbitrary :: Gen FunctionNameGen
+    --let funcNames = Data.List.nub (map unFunctionNameGen funcNameGens) in     -- prevent identical function signatures, by ensuring different function names.
+    let funcNames = Data.List.nub (map unFunctionNameGen [f1,f2]) in
         elemsFunc <$> foldM defineFunc ctx funcNames
   where
     defineFunc :: TestValExprContext c => c -> FunctionName -> Gen c
@@ -146,11 +152,16 @@ arbitraryFuncDefs ctx = do
              Left e        -> error ("arbitraryFuncDefs: Invalid generator - addVars " ++ show e)
              Right ctxBody -> do
                                 b <- arbitraryValExpr ctxBody
-                                case mkFuncDef ctxAcc n vs b of
-                                    Left e  -> error ("arbitraryFuncDefs: Invalid generator - mkFuncDef " ++ show e)
-                                    Right d -> case addFuncs [d] ctxAcc of
-                                                Left e       -> error ("arbitraryFuncDefs: Invalid generator - addFuncs " ++ show e)
-                                                Right ctxNew -> return ctxNew
+                                -- remove unused variables
+                                let frs = freeVars b
+                                    fvs = filter (\x -> Set.member (RefByName (name x)) frs) (toList vs) in
+                                    case mkVarsDecl ctxAcc fvs of
+                                        Left e -> error ("arbitraryFuncDefs: Invalid generator - mkVarsDecl " ++ show e)
+                                        Right us -> case mkFuncDef ctxAcc n us b of
+                                                        Left e  -> error ("arbitraryFuncDefs: Invalid generator - mkFuncDef " ++ show e)
+                                                        Right d -> case addFuncs [d] ctxAcc of
+                                                                    Left e       -> error ("arbitraryFuncDefs: Invalid generator - addFuncs " ++ show e)
+                                                                    Right ctxNew -> return ctxNew
 
 -- | generate an arbitrary Test ValExpr Context
 arbitraryContextTestValExpr :: Gen ContextTestValExpr

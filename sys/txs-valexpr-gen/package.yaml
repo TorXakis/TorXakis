@@ -27,6 +27,7 @@ library:
   - TorXakis.TestValExprContext
   - TorXakis.TestValExprData
   dependencies:
+    - containers
     - txs-basics-gen
     - txs-name
     - txs-name-gen

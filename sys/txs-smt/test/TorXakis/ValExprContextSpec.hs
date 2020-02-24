@@ -25,7 +25,6 @@ import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Either
 import           Test.Hspec
-import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
 import           TorXakis.FuncDef
@@ -48,9 +47,11 @@ import           TorXakis.ValueGen
 -- | run All solvers
 runSolvers :: SmtM Bool -> Expectation
 runSolvers exec = do
-        bs <- liftIO $ mapM (runSolver exec) [cmdCVC4] -- defaultSMTProcs
-                                                     -- Also Z3 can crash https://github.com/Z3Prover/z3/issues/2602
-                                                     --         or be very slow https://github.com/Z3Prover/z3/issues/2601
+        bs <- liftIO $ mapM (runSolver exec) [cmdZ3]
+                                                     -- Some exceptional errors/behaviours can be triggered
+                                                     -- cvc4: https://github.com/CVC4/CVC4/issues/3697
+                                                     -- Z3:   https://github.com/Z3Prover/z3/issues/2602
+                                                     --   and https://github.com/Z3Prover/z3/issues/2601
         bs `shouldSatisfy` and
 
 -- | run specific solver
@@ -113,15 +114,14 @@ testFunctionArbitrary ctx genVal = do
 -- | function calls are equal
 prop_FuncCallEqual :: Gen Expectation
 prop_FuncCallEqual = do
+    n <- getSize
     ctx <- arbitraryContextTestValExpr
-    return $ runSolvers (testFunctionArbitrary ctx (genVal ctx))
+    return $ runSolvers (testFunctionArbitrary ctx (genVal n ctx))
   where
-    genVal :: TestSortContext c => c -> Sort -> IO Value
-    genVal ctx = generate . arbitraryValueOfSort ctx
+    genVal :: TestSortContext c => Int -> c -> Sort -> IO Value
+    genVal n ctx = (generate . resize n) . arbitraryValueOfSort ctx  -- resize ensures that we are able to generate data values for the generated sorts
 
 spec :: Spec
 spec =
   describe "All Function Definitions" $
-    modifyMaxSuccess (const 250) $
-    modifyMaxSize (const 15) $
             it "are usable" $ property prop_FuncCallEqual

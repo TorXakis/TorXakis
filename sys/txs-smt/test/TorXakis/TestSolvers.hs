@@ -22,10 +22,11 @@ defaultSMTProcs =
 cmdCVC4 :: (FilePath,[String])
 cmdCVC4 = ("cvc4", [ "--lang=smt2.5"
                    , "--incremental"
-                   , "--strings-exp"
                    , "--fmf-fun-rlv"
                    , "--uf-ss-fair"
+                   , "--strings-exp"
                    , "--no-strings-print-ascii"
+                   , "--nl-ext-tplanes"                     -- See recommendation in https://github.com/CVC4/CVC4/issues/3697
                    ]
           )
 
@@ -35,25 +36,23 @@ cmdZ3 = ("z3", [ "-smt2"
                ]
         )
 
-{- See https://github.com/Z3Prover/z3/issues/2071
+-- See https://github.com/Z3Prover/z3/issues/2071
 cmdZ3Str3 :: (FilePath,[String])
 cmdZ3Str3 = ("z3", [ "-smt2"
                    , "-in"
                    , "smt.string_solver=z3str3"
                    ]
             )
--}
 
-{- Yices doesn't support declare-datatypes
+
+-- Yices doesn't support declare-datatypes
 cmdYices :: (FilePath,[String])
 cmdYices = ("yices-smt2", [ "--incremental"
                           ]
             )
--}
 
-{- MathSat occasionally unexplainably hangs: https://github.com/TorXakis/TorXakis/issues/419
+-- MathSat occasionally unexplainably hangs: https://github.com/TorXakis/TorXakis/issues/419
 cmdMathSAT :: (FilePath,[String])
 cmdMathSAT = ("mathsat", [
                          ]
             )
--}
