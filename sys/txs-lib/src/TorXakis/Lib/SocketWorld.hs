@@ -22,10 +22,11 @@ module TorXakis.Lib.SocketWorld
     )
 where
 
-import           Debug.Trace
+import           Debug.Trace                  ()
 
 import           Control.Concurrent           (forkIO, killThread)
-import           Control.Concurrent.Async     (async, mapConcurrently, wait)
+--import           Control.Concurrent.Async     (async, mapConcurrently, wait)
+import           Control.Concurrent.Async     (mapConcurrently)
 import           Control.Concurrent.STM.TChan (TChan, writeTChan)
 import           Control.Monad                (forever)
 import           Control.Monad.State          (liftIO)
@@ -49,7 +50,7 @@ import           TxsDefs                      (CnectDef (..), CnectType (..),
                                                ConnDef (..))
 import qualified TxsDefs
 import           ValExpr                      (cstrConst, subst)
-import qualified VarId
+import qualified VarId                        ()
 
 import           TorXakis.Lib.Common
 import           TorXakis.Lib.CommonCore

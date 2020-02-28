@@ -27,7 +27,7 @@ dependencies: []
 ghc-options:
 - -O2
 - -optc-O3
-- -Werror
+#- -Werror
 - -Wall
 - -optc-ffast-math
 
