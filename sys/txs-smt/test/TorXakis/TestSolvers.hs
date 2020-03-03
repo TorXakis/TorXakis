@@ -23,10 +23,10 @@ cmdCVC4 :: (FilePath,[String])
 cmdCVC4 = ("cvc4", [ "--lang=smt2.5"
                    , "--incremental"
                    , "--fmf-fun-rlv"
-                   , "--uf-ss-fair"
                    , "--strings-exp"
                    , "--no-strings-print-ascii"
                    , "--nl-ext-tplanes"                     -- See recommendation in https://github.com/CVC4/CVC4/issues/3697
+                   , "--mbqi=fmc"
                    ]
           )
 
@@ -36,7 +36,6 @@ cmdZ3 = ("z3", [ "-smt2"
                ]
         )
 
--- See https://github.com/Z3Prover/z3/issues/2071
 cmdZ3Str3 :: (FilePath,[String])
 cmdZ3Str3 = ("z3", [ "-smt2"
                    , "-in"

@@ -47,11 +47,7 @@ import           TorXakis.ValueGen
 -- | run All solvers
 runSolvers :: SmtM Bool -> Expectation
 runSolvers exec = do
-        bs <- liftIO $ mapM (runSolver exec) [cmdZ3]
-                                                     -- Some exceptional errors/behaviours can be triggered
-                                                     -- cvc4: https://github.com/CVC4/CVC4/issues/3697
-                                                     -- Z3:   https://github.com/Z3Prover/z3/issues/2602
-                                                     --   and https://github.com/Z3Prover/z3/issues/2601
+        bs <- liftIO $ mapM (runSolver exec) [cmdZ3] -- defaultSMTProcs, issues in Cvc4 & Z3Str3
         bs `shouldSatisfy` and
 
 -- | run specific solver
@@ -59,7 +55,7 @@ runSolver :: SmtM Bool -> (FilePath,[String]) -> IO Bool
 runSolver exec (fp,as) = do
     liftIO $ threadDelay 500000 -- wait half a second, to prevent creating log files with identical time stamp:
                                 -- uncaught exception: IOException of type ResourceBusy (logSMT.2019-09-27-16-45-21.7920361.smt2: openFile: resource busy (file is locked))
-    es <- liftIO $ mkSmtState fp as True
+    es <- liftIO $ mkSmtState fp as False
     case es of
         Left err -> error (show err)
         Right ss -> do

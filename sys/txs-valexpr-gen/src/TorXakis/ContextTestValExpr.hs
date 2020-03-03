@@ -29,7 +29,6 @@ module TorXakis.ContextTestValExpr
 where
 --import           Debug.Trace
 import           Control.Monad
-import qualified Data.List
 import qualified Data.Set as Set
 import           Test.QuickCheck
 
@@ -138,11 +137,8 @@ instance TestValExprContext ContextTestValExpr where
 -- TODO: add recursive functions (and ensure termination when called with constant arguments)
 arbitraryFuncDefs :: TestValExprContext c => c -> Gen [FuncDef]
 arbitraryFuncDefs ctx = do
-    -- funcNameGens <- listOf (arbitrary :: Gen FunctionNameGen)
-    f1 <- arbitrary :: Gen FunctionNameGen
-    f2 <- arbitrary :: Gen FunctionNameGen
-    --let funcNames = Data.List.nub (map unFunctionNameGen funcNameGens) in     -- prevent identical function signatures, by ensuring different function names.
-    let funcNames = Data.List.nub (map unFunctionNameGen [f1,f2]) in
+    funcNameGens <- listOf (arbitrary :: Gen FunctionNameGen)
+    let funcNames = map unFunctionNameGen funcNameGens in
         elemsFunc <$> foldM defineFunc ctx funcNames
   where
     defineFunc :: TestValExprContext c => c -> FunctionName -> Gen c
@@ -160,7 +156,7 @@ arbitraryFuncDefs ctx = do
                                         Right us -> case mkFuncDef ctxAcc n us b of
                                                         Left e  -> error ("arbitraryFuncDefs: Invalid generator - mkFuncDef " ++ show e)
                                                         Right d -> case addFuncs [d] ctxAcc of
-                                                                    Left e       -> error ("arbitraryFuncDefs: Invalid generator - addFuncs " ++ show e)
+                                                                    Left _       -> return ctxAcc   -- we generated an identical function signature as before, so ignore this function
                                                                     Right ctxNew -> return ctxNew
 
 -- | generate an arbitrary Test ValExpr Context
