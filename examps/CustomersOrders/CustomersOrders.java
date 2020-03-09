@@ -85,7 +85,9 @@ public class CustomersOrders {
                     addItem(input, storage);
                     input = socketReader.readLine();
                 }
+                System.out.println("Input == null");
                 server.close();
+                System.out.println("Server closed");
                 System.exit(0);
             } catch (IOException e) {
                 System.err.println("IOException while reading " + storage.name + ". Last read: " + input);
