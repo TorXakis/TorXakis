@@ -123,7 +123,7 @@ getRegisteredVar varId = do
     oMap <- gets objectMap
     case Map.lookup (TxsDefs.IdVar varId) oMap of
       Just (RegVar var) -> return (MCRL2Defs.varName var, var)
-      _ -> return (Text.pack "VAR_NOT_FOUND", MCRL2Defs.MissingVariable)
+      _ -> return (Text.pack ("VAR_NOT_FOUND{" ++ Text.unpack (VarId.name varId) ++ "}"), MCRL2Defs.MissingVariable)
 -- getRegisteredVar
 
 getRegisteredMapping :: FuncId.FuncId -> T2MMonad (MCRL2Defs.ObjectId, MCRL2Defs.Sort)
@@ -135,7 +135,7 @@ getRegisteredMapping funcId = do
         case Map.lookup oId mappings of
           Just m -> return (oId, m)
           _ -> return (oId, MCRL2Defs.MissingMapping)
-      _ -> return (Text.pack "MAPPING_NOT_FOUND", MCRL2Defs.MissingMapping)
+      _ -> return (Text.pack ("MAPPING_NOT_FOUND{" ++ Text.unpack (FuncId.name funcId) ++ "}"), MCRL2Defs.MissingMapping)
 -- getRegisteredMapping
 
 getRegisteredAction :: ChanId.ChanId -> T2MMonad (MCRL2Defs.ObjectId, MCRL2Defs.Action)
@@ -147,7 +147,7 @@ getRegisteredAction chanId = do
         case Map.lookup oId actions of
           Just a -> return (oId, a)
           _ -> return (oId, MCRL2Defs.Action MCRL2Defs.MissingSort)
-      _ -> return (Text.pack "ACTION_NOT_FOUND", MCRL2Defs.MissingAction)
+      _ -> return (Text.pack ("ACTION_NOT_FOUND{" ++ Text.unpack (ChanId.name chanId) ++ "}"), MCRL2Defs.MissingAction)
 -- getRegisteredAction
 
 getRegisteredProcess :: ProcId.ProcId -> T2MMonad (MCRL2Defs.ObjectId, MCRL2Defs.Process)
@@ -159,7 +159,7 @@ getRegisteredProcess procId = do
         case Map.lookup oId processes of
           Just p -> return (oId, p)
           _ -> return (oId, MCRL2Defs.MissingProcess)
-      _ -> return (Text.pack "PROCESS_NOT_FOUND", MCRL2Defs.MissingProcess)
+      _ -> return (Text.pack ("PROCESS_NOT_FOUND{" ++ Text.unpack (ProcId.name procId) ++ "}"), MCRL2Defs.MissingProcess)
 -- getRegisteredProcess
 
 getFreshName :: MCRL2Defs.ObjectId -> T2MMonad MCRL2Defs.ObjectId

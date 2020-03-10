@@ -45,6 +45,7 @@ import MCRL2PrettyPrint
 import MCRL2Env
 import LPETypes
 import ValFactory
+import LPEChanMap
 
 -- import TxsShow
 
@@ -72,13 +73,14 @@ lpeProcess2mcrl2 lpe out _invariant = do
     eqGroups <- Monad.mapM function2eqGroup (Map.toList (TxsDefs.funcDefs tdefs))
     modifySpec (\spec -> spec { MCRL2Defs.equationGroups = eqGroups })
     -- Translate channels:
-    actions <- Monad.mapM createFreshAction (Set.toList (lpeChanParams lpe))
+    -- actions <- Monad.mapM createFreshAction (Set.insert TxsDefs.chanIdIstep (Set.toList (lpeChanParams lpe)))
+    actions <- Monad.mapM createFreshAction (Set.toList (revertSimplChanIdsWithChanMap (lpeChanMap lpe) (lpeChanParams lpe)))
     modifySpec (\spec -> spec { MCRL2Defs.actions = Map.fromList actions })
     -- Translate LPE header:
     (lpeProcName, lpeProc) <- createLPEProcess orderedParams
     modifySpec (\spec -> spec { MCRL2Defs.processes = Map.fromList [(lpeProcName, lpeProc)] })
     -- Translate LPE body:
-    newSummands <- Monad.mapM (summand2summand (lpeProcName, lpeProc) orderedParams) (Set.toList (lpeSummands lpe))
+    newSummands <- Monad.mapM (summand2summand lpe (lpeProcName, lpeProc) orderedParams) (Set.toList (lpeSummands lpe))
     let newProcess = lpeProc { MCRL2Defs.expr = MCRL2Defs.PChoice newSummands }
     modifySpec (\spec -> spec { MCRL2Defs.processes = Map.insert lpeProcName newProcess (MCRL2Defs.processes spec) })
     -- Translate LPE initialization:
@@ -163,6 +165,7 @@ function2eqGroup (funcId, FuncDef.FuncDef params expr) = do
 createFreshAction :: TxsDefs.ChanId -> T2MMonad (MCRL2Defs.ObjectId, MCRL2Defs.Action)
 createFreshAction chanId = do
     actionName <- getFreshName (ChanId.name chanId)
+    --lift $ IOC.putMsgs [ EnvData.TXS_CORE_ANY ("Renamed " ++ Text.unpack (ChanId.name chanId) ++ " to " ++ Text.unpack actionName) ]
     actionSorts <- Monad.mapM sort2sort (ChanId.chansorts chanId)
     registerObject (TxsDefs.IdChan chanId) (RegAction actionName)
     return (actionName, MCRL2Defs.Action (sorts2multiSort actionSorts))
@@ -177,19 +180,13 @@ createLPEProcess paramIds = do
     return (procName, MCRL2Defs.Process { MCRL2Defs.processParams = procParams, MCRL2Defs.expr = MCRL2Defs.PDeadlock })
 -- createLPEProcess
 
-summand2summand :: (MCRL2Defs.ObjectId, MCRL2Defs.Process) -> [VarId.VarId] -> LPESummand -> T2MMonad MCRL2Defs.PExpr
-summand2summand (lpeProcName, lpeProc) orderedParams summand = do
+summand2summand :: LPE -> (MCRL2Defs.ObjectId, MCRL2Defs.Process) -> [VarId.VarId] -> LPESummand -> T2MMonad MCRL2Defs.PExpr
+summand2summand lpe (lpeProcName, lpeProc) orderedParams summand = do
     -- Create the channel variables (both explicit and hidden) first, so that they can be referenced:
     actionVars <- Monad.mapM createFreshVar (lpeSmdVars summand)
     -- Create actions (with their arguments):
-    newActionExpr <- if lpeSmdChan summand == TxsDefs.chanIdIstep
-                     then
-                             --lift $ IOC.putMsgs [ EnvData.TXS_CORE_ANY "WARNING: Found summand without action offers, fixed format by inserting tau" ]
-                             return (MCRL2Defs.PAction MCRL2Defs.ATau)
-                     else do -- actions <- Monad.mapM channelOffer2action (Map.toList (lpeSmdOffers summand))
-                             -- return (MCRL2Defs.PAction (MCRL2Defs.AExpr actions))
-                             a <- channelOffer2action (lpeSmdChan summand, lpeSmdVars summand)
-                             return (MCRL2Defs.PAction (MCRL2Defs.AExpr [a]))
+    newActionExpr <- do actionExpr <- channelOffer2actionExpr lpe summand
+                        return (MCRL2Defs.PAction actionExpr)
     -- Translate guard and recursive instantiation:
     newGuardExpr <- valExpr2dataExpr (lpeSmdGuard summand)
     newProcInst <- procInst2procInst (lpeProcName, lpeProc) orderedParams (lpeSmdEqs summand)
@@ -204,13 +201,23 @@ procInst2procInst (lpeProcName, lpeProc) orderedParams paramEqs = do
 -- paramEqs2procInst
 
 -- channelOffer2action :: LPEChanOffer -> T2MMonad MCRL2Defs.AInstance
-channelOffer2action :: (TxsDefs.ChanId, [VarId.VarId]) -> T2MMonad MCRL2Defs.AInstance
-channelOffer2action (chanId, chanVars) = do
-    -- The action should already exist:
-    (actionName, _action) <- getRegisteredAction chanId
-    translatedVars <- Monad.mapM getRegisteredVar chanVars
-    let translatedVarExprs = map (\(_varName, varObj) -> MCRL2Defs.DVariableRef varObj) translatedVars
-    return (MCRL2Defs.AInstance actionName translatedVarExprs)
+channelOffer2actionExpr :: LPE -> LPESummand -> T2MMonad MCRL2Defs.AExpr
+channelOffer2actionExpr lpe summand = do
+    -- Actions have been remapped for convenience, undo this first:
+    let (varsPerChan, _hiddenVars) = getActOfferDataFromChanMap (lpeChanMap lpe) (lpeSmdChan summand) (lpeSmdVars summand)
+    -- TODO: What should be done with the hidden variables?!
+    if null varsPerChan
+    then return MCRL2Defs.ATau
+    else do translatedAInsts <- Monad.mapM varPerChanToAInstance varsPerChan
+            return (MCRL2Defs.AExpr translatedAInsts)
+  where
+    varPerChanToAInstance :: (ChanId.ChanId, [VarId.VarId]) -> T2MMonad MCRL2Defs.AInstance
+    varPerChanToAInstance (cid, vids) = do
+        -- The action (after look-up) should already exist:
+        (actionName, _action) <- getRegisteredAction cid
+        translatedVars <- Monad.mapM getRegisteredVar vids
+        let translatedVarExprs = map (\(_varName, varObj) -> MCRL2Defs.DVariableRef varObj) translatedVars
+        return (MCRL2Defs.AInstance actionName translatedVarExprs)
 -- offer2action
 
 -- Translates a TXS sort to an mCRL2 sort:
@@ -224,6 +231,7 @@ sort2sort sortId = do
 createFreshVar :: VarId.VarId -> T2MMonad MCRL2Defs.Variable
 createFreshVar varId = do
     newVarName <- getFreshName (VarId.name varId)
+    --lift $ IOC.putMsgs [ EnvData.TXS_CORE_ANY ("(var) Renamed " ++ Text.unpack (VarId.name varId) ++ " to " ++ Text.unpack newVarName) ]
     newVarSort <- sort2sort (VarId.varsort varId)
     let newVar = MCRL2Defs.Variable { MCRL2Defs.varName = newVarName, MCRL2Defs.varSort = newVarSort }
     registerObject (TxsDefs.IdVar varId) (RegVar newVar)
