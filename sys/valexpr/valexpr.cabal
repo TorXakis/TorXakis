@@ -15,7 +15,8 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      Constant
+  exposed-modules:      Boute
+                      , Constant
                       , CstrDef
                       , CstrId
                       , FreeMonoidX

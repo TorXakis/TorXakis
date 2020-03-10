@@ -19,10 +19,11 @@ available-solvers:
   flags:
   - "--lang=smt2.5"
   - "--incremental"
-  - "--strings-exp"
   - "--fmf-fun-rlv"
-  - "--uf-ss-fair"
+  - "--strings-exp"
   - "--no-strings-print-ascii"
+  - "--nl-ext-tplanes"
+  - "--mbqi=fmc"
 - solver-id: "yices"
   executable-name: "yices-smt2"
   flags:

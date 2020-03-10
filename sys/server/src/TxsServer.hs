@@ -61,17 +61,13 @@ import qualified TxsDefs
 import qualified TxsShow
 import qualified Utils
 import qualified VarId
-import qualified ModelId
 
 -- import from bexpr
 import qualified ProcId
 import qualified ChanId
 
--- imports added for changes to cmdLPE
-import qualified EnvCore as IOC
-import qualified ProcId
-import qualified ChanId
-import ModelIdFactory
+-- import from lpeops
+import           ModelIdFactory
 
 -- import from valexpr
 import qualified Constant

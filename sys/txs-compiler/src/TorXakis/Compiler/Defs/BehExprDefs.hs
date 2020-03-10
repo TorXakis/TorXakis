@@ -132,7 +132,7 @@ toBExpr mm vrvds (Pappl n l crs exs) = do
         (ls, _)             -> throwError Error
             { _errorType = NoDefinition
             , _errorLoc  = getErrorLoc l
-            , _errorMsg  = "No matching process definition found: "
+            , _errorMsg  = "No matching process definition found for '" <> toText n <> "[..](..)': "
                          <> T.pack (show ls)
             }
 toBExpr mm vrvds (Par _ sOn be0 be1) = do

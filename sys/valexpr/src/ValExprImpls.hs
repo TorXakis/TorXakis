@@ -76,17 +76,19 @@ module ValExprImpls
 )
 where
 
-import           Control.Arrow   (first)
-import qualified Data.Map        as Map
-import           Data.Maybe      (fromMaybe)
-import           Data.Monoid     ((<>))
-import qualified Data.Set        as Set
-import qualified Data.Text       as T
+import           Control.Arrow      (first)
+import           Control.Exception  (assert)
+import qualified Data.Map           as Map
+import           Data.Maybe         (fromMaybe)
+import           Data.Monoid        ((<>))
+import qualified Data.Set           as Set
+import qualified Data.Text          as T
 import           Text.Regex.TDFA
 
+import qualified Boute
 import           Constant
 import           CstrId
-import qualified FreeMonoidX     as FMX
+import qualified FreeMonoidX        as FMX
 import           FuncDef
 import           FuncId
 import           Product
@@ -246,7 +248,10 @@ cstrAnd' s =
                             let nots = filterNot (Set.toList s') in
                                 if any (contains s') nots
                                     then cstrConst (Cbool False)
-                                    else ValExpr (Vand s')
+                                    else let ts = isCstrTuples (Set.toList s') in
+                                            if sameValExpr ts
+                                                then cstrConst (Cbool False)
+                                                else ValExpr (Vand s')
     where
         filterNot :: [ValExpr v] -> [ValExpr v]
         filterNot [] = []
@@ -254,10 +259,25 @@ cstrAnd' s =
                             Vnot n -> n : filterNot xs
                             _      ->     filterNot xs
         
-        contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
+        contains :: Ord v => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
 
+        isCstrTuples :: [ValExpr v] -> [(CstrId, ValExpr v)]
+        isCstrTuples [] = []
+        isCstrTuples (x:xs) = case view x of
+                                Viscstr c v -> (c,v) : isCstrTuples xs
+                                _           ->         isCstrTuples xs
+
+        sameValExpr :: Ord v => [(CstrId, ValExpr v)] ->  Bool
+        sameValExpr []     = False
+        sameValExpr (x:xs) = containValExpr x xs
+            where
+                containValExpr :: Ord v => (CstrId, ValExpr v) -> [(CstrId, ValExpr v)] ->  Bool
+                containValExpr _      []             = False
+                containValExpr (c1,x1) ((c2,x2):cxs) = if x1 == x2 
+                                                        then assert (c1 /= c2) True
+                                                        else containValExpr (c1,x1) cxs
 -- * Sum
 
 -- | Is ValExpr a Sum Expression?
@@ -356,7 +376,7 @@ cstrProduct' ms =
 -- Preconditions are /not/ checked.
 cstrDivide :: ValExpr v -> ValExpr v -> ValExpr v
 cstrDivide _                          (view -> Vconst (Cint n)) | n == 0 = error "Error in model: Division by Zero in Divide"
-cstrDivide (view ->  Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `div` n) )
+cstrDivide (view ->  Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `Boute.div` n) )
 cstrDivide vet ven = ValExpr (Vdivide vet ven)
 
 -- Modulo
@@ -365,7 +385,7 @@ cstrDivide vet ven = ValExpr (Vdivide vet ven)
 -- Preconditions are /not/ checked.
 cstrModulo :: ValExpr v -> ValExpr v -> ValExpr v
 cstrModulo _                         (view -> Vconst (Cint n)) | n == 0 = error "Error in model: Division by Zero in Modulo"
-cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `mod` n) )
+cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `Boute.mod` n) )
 cstrModulo vet ven = ValExpr (Vmodulo vet ven)
 
 -- | Apply operator GEZ (Greater Equal Zero) on the provided value expression.

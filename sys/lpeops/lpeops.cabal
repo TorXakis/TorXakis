@@ -140,6 +140,7 @@ test-suite lpeops-test
                      , HUnit
                      , MissingH
                      , behave
+                     , behaveenv
                      , coreenv
                      , deepseq
                      , random
