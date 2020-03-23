@@ -205,7 +205,9 @@ channelOffer2actionExpr :: LPE -> LPESummand -> T2MMonad MCRL2Defs.AExpr
 channelOffer2actionExpr lpe summand = do
     -- Actions have been remapped for convenience, undo this first:
     let (varsPerChan, _hiddenVars) = getActOfferDataFromChanMap (lpeChanMap lpe) (lpeSmdChan summand) (lpeSmdVars summand)
-    -- TODO: What should be done with the hidden variables?!
+    -- NOTE: Hidden variables are introduced in the sum operator, which does not exist in TorXakis.
+    --       Consequently, we don't have to attach them as a parameter to an action (as happens in TorXakis).
+    --       It is (still) assumed that the hidden variables are finitely bounded!
     if null varsPerChan
     then return MCRL2Defs.ATau
     else do translatedAInsts <- Monad.mapM varPerChanToAInstance varsPerChan
