@@ -15,8 +15,6 @@ ls $DOC_DIR
 #copy documentation (ensure doc directory is empty first)
 rm ./doc/* -rf
 cp -r $DOC_DIR/. ./doc/
-#add theme for github pages
-echo "theme: jekyll-theme-slate" > _config.yml
 #add changes to gh-pages branch
 git add .
 commitMsg="Haddock @ $(date +%Y%m%d_%H%M%S)"
