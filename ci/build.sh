@@ -2,13 +2,14 @@
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
 
-# Stack should be installed at this stage.
-
 echo $PATH
+# Stack should be installed at this stage.
 echo "stack"
 stack --version
+# CVC4 should be installed at this stage.
 echo "cvc4"
 cvc4 --version
+# Z3 should be installed at this stage.
 echo "z3"
 z3 -version
 
