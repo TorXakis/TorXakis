@@ -1,0 +1,20 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CHANDEF Channels ::=
+    Input :: Int
+ENDDEF
+
+STAUTDEF example [Input :: Int]() ::=
+    STATE inputState
+    INIT  inputState
+ENDDEF 
+
+MODELDEF Model ::=
+    CHAN IN   Input
+    CHAN OUT
+    BEHAVIOUR stdi_example [Input]()
+ENDDEF

@@ -20,6 +20,7 @@ import qualified Data.Map as Map
 import           Data.Maybe
 import qualified Data.Text         as T
 
+import SortId
 import TxsDefs
 import VarId
 import ValExpr
@@ -189,7 +190,7 @@ testActionPref4 = TestCase $
       procDefP = ProcDef [chanIdA] [] (hide (Set.singleton chanIdA) (actionPref actOfferAx stop))
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdA1' = VarId (T.pack "A$1_3") 34 intSort
+      varIdA1' = VarId (T.pack "A$1_3") 4034 sortIdInt
                                                                                           
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
       procDefPlpe = ProcDef [chanIdA] [varIdPcP] (actionPref                         

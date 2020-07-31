@@ -23,7 +23,7 @@ import           GHC.Generics                  (Generic)
 import           Lens.Micro.TH                 (makeLenses)
 
 import           ChanId                        (ChanId)
-import           ConstDefs                     (Const)
+import           Constant                      (Constant)
 import           EnvCore                       (EnvC, initEnvC)
 import           EnvData                       (Msg)
 import           ParamCore                     (Params)
@@ -35,7 +35,7 @@ import           TorXakis.Lib.Common
 import           TorXakis.Lib.SessionParams
 
 newtype ToWorldMapping = ToWorldMapping
-    { _sendToW         :: [Const] -> IO (Response (Maybe Action))
+    { _sendToW         :: [Constant] -> IO (Response (Maybe Action))
     }
 makeLenses ''ToWorldMapping
 

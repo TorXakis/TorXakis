@@ -335,7 +335,7 @@ PROCDEF enabler[X :: Int]() ::=
     X ? v >-> EXIT ! 10 ? z :: Int >>> ACCEPT ? a ? b IN X ! a + b NI
 ENDDEF
 
-PROCDEF enabler3[X :: Int]() ::=
+PROCDEF enabler4[X :: Int]() ::=
     X ? v >-> EXIT ! 10 ? z :: Int >-> X ? v >-> EXIT ! 10 ? z :: Int >>> ACCEPT ? a ? b IN X ! a + b NI
 ENDDEF
 
@@ -399,7 +399,7 @@ MODELDEF Enabler2 ::=
     NI
 ENDDEF
 
-PROCDEF enabler3[X :: Int; Z]() ::=
+PROCDEF enabler5[X :: Int; Z]() ::=
     (X ? v >-> EXIT ||| X ! 22 >-> EXIT) >>> X ! 10
 ENDDEF
 
@@ -664,3 +664,10 @@ PROCDEF hidder2[I, J, K :: Int]() ::=
         I ! v
     NI
 ENDDEF    
+
+-- | Test support for implicit variables introduced in (question mark) actions.
+--
+-- See https://github.com/TorXakis/TorXakis/issues/769#issuecomment-413872550
+PROCDEF varActionBinding[S, R :: Int]() ::=
+   S ? x [[ LET y = x IN True NI ]]
+ENDDEF

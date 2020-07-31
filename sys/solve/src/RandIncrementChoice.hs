@@ -31,9 +31,10 @@ import           Data.Monoid
 import           Data.Text             (Text)
 import qualified Data.Text             as T
 
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
+import           FuncId
 import           SMT
 import           SMTData
 import           SolveDefs
@@ -107,7 +108,7 @@ randomSolve p ((v,_):xs) i    | vsort v == sortIdBool =
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Bool"
     where
-        choicesFunc :: Variable v => v -> Bool -> Const -> SMT [(Bool, Text)]
+        choicesFunc :: Variable v => v -> Bool -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' b (Cbool b')  = do
                                          let cond = b == b'
                                          st <- valExprToString $ cstrEqual (cstrVar v') (cstrConst (Cbool b))
@@ -133,9 +134,9 @@ randomSolve p ((v,_):xs) i    | vsort v == sortIdInt =
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Int"
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
+        choicesFunc :: Variable v => v -> Int -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' r (Cint x)  = do
-                                        let r' = toInteger r
+                                        let r' = Prelude.toInteger r
                                             cond = x < r'
                                         st <- valExprToString $ cstrLT (cstrVar v') (cstrConst (Cint r'))
                                         sf <- valExprToString $ cstrGE (cstrVar v') (cstrConst (Cint r'))
@@ -159,7 +160,7 @@ randomSolve p ((v,-123):xs) i    | vsort v == sortIdString =                 -- 
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - char"
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
+        choicesFunc :: Variable v => v -> Int -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' r (Cstring str) |
           T.length str == 1 = do
             let
@@ -184,7 +185,7 @@ randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
         case c of
             Cstring s   -> do
                                 let l = T.length s
-                                addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrConst (Cint (toInteger l)))]
+                                addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrConst (Cint (Prelude.toInteger l)))]
                                 if l > 0 && d > 1
                                 then do
                                         let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortIdString) [i .. i+l-1]
@@ -203,11 +204,11 @@ randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
                                             _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l == 0"
             _              -> error "RandIncrementChoice: impossible constant - string"
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
+        choicesFunc :: Variable v => v -> Int -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' r (Cstring s) = do
                                             let cond = T.length s < r
-                                            st <- valExprToString $ cstrLT (cstrLength (cstrVar v')) (cstrConst (Cint (toInteger r)))
-                                            sf <- valExprToString $ cstrGE (cstrLength (cstrVar v')) (cstrConst (Cint (toInteger r)))
+                                            st <- valExprToString $ cstrLT (cstrLength (cstrVar v')) (cstrConst (Cint (Prelude.toInteger r)))
+                                            sf <- valExprToString $ cstrGE (cstrLength (cstrVar v')) (cstrConst (Cint (Prelude.toInteger r)))
                                             return [ (cond, st)
                                                    , (not cond, sf)
                                                    ]
@@ -217,10 +218,10 @@ randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
 randomSolve p ((v,d):xs) i =
     do
         let sid = vsort v
-        cstrs <- lookupConstructors sid
-        case cstrs of
-            []  -> error $ "Unexpected: no constructor for " ++ show v
-            [(cid,_)] -> -- no choice -- one constructor
+        cstrIds <- lookupCstrIds sid
+        case cstrIds of
+            []    -> error $ "Unexpected: no constructor for " ++ show v
+            [cid] -> -- no choice -- one constructor
                     do
                         addIsConstructor v cid
                         fieldVars <- addFields v i cid
@@ -235,15 +236,13 @@ randomSolve p ((v,d):xs) i =
                                                 else
                                                     randomSolve p xs i
                             _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - 1"
-            _   ->
+            _     ->
                     do
-                        shuffledCstrs <- shuffleM cstrs
-                        let (partA, partB) = splitAt (div (length cstrs) 2) shuffledCstrs
+                        shuffledCstrs <- shuffleM cstrIds
+                        let (partA, partB) = splitAt (div (length cstrIds) 2) shuffledCstrs
                         c <- randomSolveVar v (choicesFunc v partA partB)
                         case c of
-                            Cstr{cstrId = cid}  ->
-                                case Map.lookup cid (Map.fromList cstrs) of
-                                    Just CstrDef{} ->
+                            Ccstr{cstrId = cid} ->
                                         do
                                             addIsConstructor v cid
                                             fieldVars <- if d > 1 then addFields v i cid
@@ -259,15 +258,14 @@ randomSolve p ((v,d):xs) i =
                                                                     else
                                                                         randomSolve p xs i
                                                 _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - n"
-                                    Nothing                 -> error "RandIncrementChoice: value not found - ADT - n"
                             _                   -> error "RandIncrementChoice: impossible constant - ADT - n"
     where
-        choicesFunc :: Variable v => v -> [(CstrId, CstrDef)] -> [(CstrId, CstrDef)] -> Const -> SMT [(Bool, Text)]
-        choicesFunc v' partA partB Cstr{cstrId = cId} =
+        choicesFunc :: Variable v => v -> [CstrId] -> [CstrId] -> Constant -> SMT [(Bool, Text)]
+        choicesFunc v' partA partB Ccstr{cstrId = cId} =
             do
-                let cond = Map.member cId (Map.fromList partA)
-                lA <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partA
-                lB <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partB
+                let cond = cId `elem` partA
+                lA <- mapM (\tempCid -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partA
+                lB <- mapM (\tempCid -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partB
                 return [ (cond, case lA of
                                     [a] -> a
                                     _   -> "(or " <> T.intercalate " " lA <> ") ")
@@ -279,7 +277,7 @@ randomSolve p ((v,d):xs) i =
 
 
 -- Find random solution for variable, using the different choices
-randomSolveVar :: (Variable v) => v -> (Const -> SMT [(Bool, Text)]) -> SMT Const
+randomSolveVar :: (Variable v) => v -> (Constant -> SMT [(Bool, Text)]) -> SMT Constant
 randomSolveVar v choicesFunc = do
     sol <- getSolution [v]
     case Map.lookup v sol of
@@ -305,12 +303,12 @@ randomSolveVar v choicesFunc = do
                                                                         return c
         _       -> error "RandIncrementChoice: value not found - randomSolveVar"
 
--- lookup a constructor given its sort and constructor name
-lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
-lookupConstructors sid  =  do
+-- lookup constructors given its sort id
+lookupCstrIds :: SortId -> SMT [CstrId]
+lookupCstrIds sid  =  do
      edefs <- gets envDefs
-     return [(cstrid, cdef) | (cstrid@(CstrId _ _ _ sid'), cdef) <- Map.toList (cstrDefs edefs), sid == sid']
-
+     return [cstrid | cstrid@CstrId{cstrsort = sid'} <- Map.keys (cstrDefs edefs), sid == sid']
+     
 addIsConstructor :: (Variable v) => v -> CstrId -> SMT ()
 addIsConstructor v cid = addAssertions [cstrIsCstr cid (cstrVar v)]
 
@@ -318,9 +316,15 @@ addFields :: (Variable v) => v -> Int -> CstrId -> SMT [v]
 addFields v i cid@CstrId{ cstrargs = args' } = do
     let fieldVars = map (\(iNew,sNew) -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sNew) (zip [i .. ] args')
     addDeclarations fieldVars
-    let exprs = map (\(pos, fieldVar) -> cstrEqual (cstrVar fieldVar) (cstrAccess cid pos (cstrVar v))) (zip [0..] fieldVars)
-    addAssertions exprs
-    return fieldVars
+    edefs <- gets envDefs
+    let mcdef = Map.lookup cid (cstrDefs edefs)
+    case mcdef of
+        Nothing               -> error $ "Unexpected: no constructor definition for " ++ show cid
+        Just (CstrDef _ fIds) -> do
+            let names = map FuncId.name fIds
+                exprs = map (\(nm, pos, fieldVar) -> cstrEqual (cstrVar fieldVar) (cstrAccess cid nm pos (cstrVar v))) (zip3 names [0..] fieldVars)
+            addAssertions exprs
+            return fieldVars
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

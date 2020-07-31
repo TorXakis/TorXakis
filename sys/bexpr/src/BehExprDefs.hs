@@ -62,7 +62,7 @@ import qualified Data.Set        as Set
 import           GHC.Generics    (Generic)
 
 import           ChanId
-import           ConstDefs
+import           Constant
 import           Id
 import           ProcId
 import           SortOf
@@ -117,10 +117,11 @@ actionPref :: ActOffer -> BExpr -> BExpr
 actionPref a b = case ValExpr.view (constraint a) of
                     -- A?x [[ False ]] >-> p <==> stop
                     Vconst (Cbool False)    -> stop
-                    _                       -> if containsEXIT (offers a)
-                                                    then -- EXIT >-> p <==> EXIT >-> STOP
-                                                         BExpr (ActionPref a stop)
-                                                    else BExpr (ActionPref a b)
+                    -- _                       -> if containsEXIT (offers a)
+                    --                                 then -- EXIT >-> p <==> EXIT >-> STOP
+                    --                                      BExpr (ActionPref a stop)
+                    --                                 else BExpr (ActionPref a b)
+                    _                       -> BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
@@ -200,7 +201,9 @@ interrupt b1 b2 = BExpr (Interrupt b1 b2)
 
 -- | Create a process instantiation behaviour expression.
 procInst :: ProcId -> [ChanId] -> [VExpr] -> BExpr
-procInst p cs vs = BExpr (ProcInst p cs vs)
+--procInst (ProcId _ _ ts _ _) cs _ | ts /= map (ChanSort . chansorts) cs = error ("Illegal ProcInst Channel\nts = " ++ show ts ++ "\ncs = " ++ show cs)
+--procInst (ProcId _ _ _ ts _) _ vs | ts /= map sortOf vs                 = error ("Illegal ProcInst Variable\nts = " ++ show ts ++ "\nvs = " ++ show vs)
+procInst p cs vs                                                        = BExpr (ProcInst p cs vs)
 
 -- | Create a hide behaviour expression.
 --   The given set of channels is hidden for its environment.

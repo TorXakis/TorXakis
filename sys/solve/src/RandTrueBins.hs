@@ -35,9 +35,10 @@ import           System.IO
 import           System.Random
 import           System.Random.Shuffle
 
-import           ConstDefs
+import           Constant(Constant(Cint, Cregex))
 import           CstrDef
 import           CstrId
+import           FuncId
 import           SMT
 import           SMTData
 import           Solve.Params
@@ -254,9 +255,9 @@ randomValue p sid expr n | n > 0 =
 
                 processConstructor :: (Variable v) => (CstrId,CstrDef) -> ValExpr v -> SMT Text
                 processConstructor (cid, CstrDef _isX []) expr' = valExprToString $ cstrIsCstr cid expr'
-                processConstructor (cid, CstrDef _isX _accessors) expr' = do
+                processConstructor (cid, CstrDef _isX accessors) expr' = do
                     cstr <- valExprToString $ cstrIsCstr cid expr'
-                    args' <- processArguments cid (zip (cstrargs cid) [0..]) expr'
+                    args' <- processArguments cid (zip3 (cstrargs cid) (map FuncId.name accessors) [0..]) expr'
                     case args' of
                         [arg]   -> return $ "(ite " <> cstr <> " " <> arg <> " false) "
                         _       -> do
@@ -264,10 +265,10 @@ randomValue p sid expr n | n > 0 =
                                     return $ "(ite " <> cstr <> " (and " <> T.intercalate " " shuffledAndList <> ") false) "
 
 
-                processArguments ::  (Variable v) => CstrId -> [(SortId,Int)] -> ValExpr v -> SMT [Text]
+                processArguments ::  (Variable v) => CstrId -> [(SortId,Text,Int)] -> ValExpr v -> SMT [Text]
                 processArguments _   [] _ =  return []
-                processArguments cid ((sid',pos):xs) expr' = do
-                    r <- randomValue p sid' (cstrAccess cid pos expr') (n-1)
+                processArguments cid ((sid',nm, pos):xs) expr' = do
+                    r <- randomValue p sid' (cstrAccess cid nm pos expr') (n-1)
                     rr <- processArguments cid xs expr'
                     return (r:rr)
 randomValue _p _sid _expr n = error ("Illegal argument n = " ++ show n)

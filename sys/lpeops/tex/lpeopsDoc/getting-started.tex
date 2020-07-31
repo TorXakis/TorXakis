@@ -1,0 +1,159 @@
+\chapter{Getting started}
+
+\section{Introduction}
+
+\txs{} offers several techniques to symbolically manipulate \txs{} models.
+This section gives an overview of how to get started with these techniques.
+
+\section{Installation}
+
+\begin{enumerate}
+\item Download \texttt{stack} as described on
+\begin{align*}
+\texttt{https://docs.haskellstack.org/en/stable/README/}
+\end{align*}
+
+and install it.
+
+\item Download and install an SMT solver such as
+\begin{align*}
+\texttt{Z3 version 4.8.3 - 64 bit - build hashcode cf4bf7b591b6}
+\end{align*}
+
+Add the binaries of the SMT solver to \texttt{PATH}.
+\item Clone the \texttt{develop} branch from
+\begin{align*}
+\texttt{https://github.com/ikbendedjurre/txs-develop}
+\end{align*}
+\item In a terminal, navigate to the repository directory and run
+\begin{itemize}
+\item \texttt{stack -v setup}
+\item \texttt{stack -v --profile build}
+\end{itemize}
+\item The \txs{} binaries can be found in
+\begin{align*}
+\texttt{/.stack-work/install/23f9efff/bin}
+\end{align*}
+
+in the repository directory (the \texttt{23f9efff} hash is build-dependent).
+
+Add the binaries to \texttt{PATH} (there may be a way to do this more easily with \texttt{stack}).
+\end{enumerate}
+
+\section{Starting \txs{}} \label{starttxs}
+
+\begin{enumerate}
+\item Make it so that \texttt{txsserver.exe} and \texttt{torxakis.exe} are in \texttt{PATH}.
+\item Start two terminals, one for the \txs{} server and one for the \txs{} client -- this has the advantage that errors that occur on the server-side will be visible.
+\item In both terminals, navigate to the directory with a \txs{} specification file (such as \texttt{example.txs}).
+\item In one terminal, run \texttt{txsserver --no-smt-log 50001} where the number \texttt{50001} is the port number that the \txs{} server will listen for clients.
+\item In the other terminal, run \texttt{torxakis 50001 example.txs}.
+\end{enumerate}
+
+\section{Process linearization} \label{processlinearization}
+
+The symbolic manipulation of \txs{} models requires the processes that underlie those models to be in \emph{LPE form} (see \ref{lpeform}).
+To make a \txs{} process linear in practice, do the following:
+
+\begin{enumerate}
+\item Start \txs{} (see \ref{starttxs}).
+\item Run
+\begin{align*}
+\texttt{lpe Model}
+\end{align*}
+
+in the client terminal, where \texttt{Model} is the name of the model in the \txs{} specification file.
+\txs{} will attempt to linearize the processes that underlie that model.
+
+Note that not all \txs{} models are linearizable.
+For those models, the \texttt{lpe} command will fail, with an error reported in the server terminal.
+\item If successful, the \texttt{lpe} command prints the name of a new \txs{} model that was created.
+This model can be manipulated symbolically (see \ref{modelmanipulation}).
+\end{enumerate}
+
+\section{Model manipulation} \label{modelmanipulation}
+
+After \ref{starttxs} and \ref{processlinearization}, symbolic manipulation of a \txs{} model can begin.
+To do this, use the \texttt{lpeop} command in the client terminal.
+
+The \texttt{lpeop} command has 3 space-separated arguments. In order, these arguments are:
+
+\begin{itemize}
+\item A chain of LPE operations.
+LPE operations are represented by their name, such as \texttt{cstelm} or \texttt{loop} (see \ref{lpeoperations}).
+These names are separated by the symbol \texttt{->}.
+
+LPE operations in the chain are executed from left to right, passing their output to the next LPE operation as input.
+If a problem occurs, the process ends immediately.
+Otherwise, the final output model is saved as a new model.
+\item The name of the input model.
+The process that underlies the input model should be in LPE form (see \ref{lpeform}).
+\item A base name \textit{base} for generated output.
+The name is primarily used for the output model (if any), the underlying process of which is in LPE form.
+However, LPE operations may adopt the name for their own purposes.
+The \texttt{export} operation, for example, will create a file by that name with the \texttt{.txs} extension.
+
+It is possible to use the \texttt{\%i} token in the base name.
+This will insert the current counter value into the name.
+Use the \texttt{inc} command to increase the counter (which starts at 1).
+\end{itemize}
+
+\section{Unit tests}
+
+\begin{enumerate}
+\item In a terminal, navigate to the repository directory.
+\item Execute \texttt{stack -v --profile test lpeops}.
+\end{enumerate}
+
+\section{Benchmarks}
+
+\subsection{Generation (Windows OS only)}
+First, benchmark files must be generated.
+This is done via script.
+
+\begin{enumerate}
+\item Navigate to \texttt{/examps} and open the file
+\begin{align*}
+\texttt{generateBenchmarkData.bat}
+\end{align*}
+
+\item Change \texttt{TXSDIR} to the directory where the \txs{} source files are located.
+Among others, it should contain the following sub-directories:
+\begin{center}
+\texttt{examps} \\
+\texttt{sys} \\
+\texttt{test}
+\end{center}
+
+\item In order to perform different benchmark measurements, change the contents of the function \texttt{:WriteCommands} (line 104, in particular, describes how the model should be produced that is compared to the original model and the linearized model).
+
+\item Run \texttt{generateBenchmarkData.bat} and wait for it to finish.
+\end{enumerate}
+
+\subsection{Execution}
+The main benchmark file of \txs{},
+\begin{align*}
+\texttt{/test/sqatt/src/Benchmarks/All.txs}
+\end{align*}
+
+has been changed, and so the benchmark for LPE operations is started in the same way as the original benchmark:
+
+\begin{enumerate}
+\item In a terminal, navigate to \texttt{/test/sqatt} in the repository directory.
+\item Execute
+\begin{center}
+\texttt{stack -v --profile bench --ba} \\
+\texttt{"--output data.html --csv data.csv --time-limit 1"}
+\end{center}
+
+The benchmark spends a maximum of 1 second on each part of the benchmark (default is 5 seconds).
+If there are no failures, the benchmark results will be exported to \texttt{data.html} and \texttt{data.csv} (note that previous results are not deleted from \texttt{data.csv}).
+For more benchmark parameters, see \url{http://www.serpentine.com/criterion/tutorial.html}.
+
+\item Wait for the benchmark to finish.
+\end{enumerate}
+
+
+
+
+

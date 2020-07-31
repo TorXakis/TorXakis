@@ -41,7 +41,7 @@ import qualified Data.Set      as Set
 import           Data.Text     (Text)
 import qualified Data.Text     as T
 
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
 import           FreeMonoidX
@@ -181,18 +181,18 @@ integer2smt :: Integer -> Text
 integer2smt n | n < 0 = "(- " <> (T.pack . show) (abs n) <> ")"
 integer2smt n = (T.pack . show) n
 -- ----------------------------------------------------------------------------------------- --
--- constToSMT: translate a const to a SMT constraint
+-- constToSMT: translate a constant to a SMT text
 -- ----------------------------------------------------------------------------------------- --
-constToSMT :: EnvNames -> Const -> Text
-constToSMT _ (Cbool b) = if b
-                            then "true"
-                            else "false"
-constToSMT _ (Cint n) = integer2smt n
-constToSMT _ (Cstring s)  =  "\"" <> stringToSMT s <> "\""
-constToSMT _ (Cregex r)  =  xsd2smt r
-constToSMT enames (Cstr cd [])   =         justLookupCstr cd enames
-constToSMT enames (Cstr cd args') = "(" <> justLookupCstr cd enames <> " " <> T.intercalate " " (map (constToSMT enames) args') <> ")"
-constToSMT _ x = error ("Illegal input constToSMT - " <> show x)
+constToSMT :: EnvNames -> Constant -> Text
+constToSMT _      (Cbool b)        = if b
+                                       then "true"
+                                       else "false"
+constToSMT _      (Cint n)         = integer2smt n
+constToSMT _      (Cstring s)      =  "\"" <> stringToSMT s <> "\""
+constToSMT _      (Cregex r)       =  xsd2smt r
+constToSMT enames (Ccstr cd [])    =        justLookupCstr cd enames
+constToSMT enames (Ccstr cd args') = "(" <> justLookupCstr cd enames <> " " <> T.intercalate " " (map (constToSMT enames) args') <> ")"
+constToSMT _      x                = error ("Illegal input constToSMT - " <> show x)
 
 -- ----------------------------------------------------------------------------------------- --
 -- valexprToSMT: translate a ValExpr to a SMT constraint
@@ -204,8 +204,8 @@ valexprToSMT enames (view -> Vfunc funcId args') = "(" <> justLookupFunc funcId 
 valexprToSMT enames (view -> Vcstr cd [])    =        justLookupCstr cd enames
 valexprToSMT enames (view -> Vcstr cd args') = "(" <> justLookupCstr cd enames <> " " <> T.intercalate " " (map (valexprToSMT enames) args') <> ")"
 
-valexprToSMT enames (view -> Viscstr cd arg)    = "(" <> toIsCstrName cd <> " " <> valexprToSMT enames arg <> ")"
-valexprToSMT enames (view -> Vaccess cd p arg)  = "(" <> toFieldName cd p <> " " <> valexprToSMT enames arg <> ")"
+valexprToSMT enames (view -> Viscstr cd arg)      = "(" <> toIsCstrName cd <> " " <> valexprToSMT enames arg <> ")"
+valexprToSMT enames (view -> Vaccess cd _n p arg) = "(" <> toFieldName cd p <> " " <> valexprToSMT enames arg <> ")"
 
 
 valexprToSMT enames (view -> Vconst c) = constToSMT enames c

@@ -1,5 +1,39 @@
 # Torxakis Changelog
 
+## v0.9.0
+
+Added [LPE operations](https://github.com/TorXakis/TorXakis/tree/develop/sys/lpeops) (thanks to Djurre van der Wal)
+
+Fixed a number of bugs, including some fundamental issues found in the [Refactor-All activity](https://github.com/TorXakis/TorXakis/tree/refactor/All/).
+
+## v0.8.1
+
+Bug fixes in
+- Linear Process Equation (LPE)
+- TorXakis Compiler
+
+## v0.8.0
+
+Added Linear Process Equation (LPE) command (thanks to Carsten Rütz)
+- The LPE command transforms process definition without dynamic process instantiation
+- The transformed process definitions execute faster, especially when a lot of parallellism is present.
+
+Fixed a number of bugs in the new torxakis compiler (thanks to Damian Nadales)
+
+Moved to newer versions of Z3, CVC4 and LTS Haskell.
+- CVC4 made a change which is not backwards compatible: please update your current `.torxakis.yaml` files accordingly.
+
+## v0.7.0
+
+New compiler
+- This fixes among others out of memory by big stautdef (#702)
+
+New randomization algorithm: IncrementBins
+- IncrementBins is the new default value for `param_Randomization`
+
+Many smart operators added to BExpr
+- For developers / internal representation 
+
 ## v0.6.0
 
 Removed hlint warnings from LPE

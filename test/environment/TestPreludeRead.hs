@@ -54,6 +54,7 @@ testControlCodeAbbreviation = TestCase $
 ----------------------------------------------------------------------------------------
 -- List of Tests
 ----------------------------------------------------------------------------------------
+testPreludeReadList :: Test
 testPreludeReadList = TestList [
       TestLabel "empty"                             testEmpty
     , TestLabel "quote"                             testQuote

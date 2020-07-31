@@ -50,6 +50,9 @@ packages:
 - sys/defs
 - sys/lexregexxsd
 - sys/lpe
+- sys/lpeops
+- sys/lpeq
+- sys/lpeutils
 - sys/server
 - sys/serverenv
 - sys/solve
@@ -63,12 +66,17 @@ packages:
 - sys/txs-lenses
 - sys/txs-webserver
 
+
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - git: https://github.com/TorXakis/text-via-sockets.git
   commit: e3228cd0407ec0d7991a544e154ea2def184fcae
 - servant-multipart-0.11.1
+
+flags:
+  hexpat:
+    bundle: true
 
 # Extra package databases containing global packages
 extra-package-dbs: []

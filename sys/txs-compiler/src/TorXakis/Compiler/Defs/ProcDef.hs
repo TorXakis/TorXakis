@@ -133,7 +133,6 @@ procDeclsToProcDefMap mm = gProcDeclsToProcDefMap emptyMpd
           let body = procDeclBody pd
               fss = dropHandler (innerMap mm)
               paramTypes = Map.fromList (fmap (second varsort) pvIds)
-
           bTypes  <- Map.fromList <$>
               inferVarTypes (  Map.fromList pvIds
                             :& mm
@@ -187,11 +186,10 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
           let pvIds' = snd <$> pvIds
           (stIds, innerVars, initS, vEnv, trans) <- stautItemToBExpr p
           -- Now we create the other two non-standard automata
-          id0   <- getNextId
           id1   <- getNextId
           let trans' = reverse trans -- NOTE: only needed for compatibility with the old compiler.
               (pd, iStaut) = translate (Map.empty :: Map.Map FuncId (FuncDef VarId))
-                                   (Id id0)
+                                   (ProcId.unid pIdStd)
                                    (Id id1)
                                    (ProcId.name pId)
                                    procChIds

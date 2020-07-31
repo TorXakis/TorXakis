@@ -7,13 +7,12 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE TemplateHaskell        #-}
 {-# LANGUAGE TypeFamilies           #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.Error
+-- Module      :  TorXakis.Parser.Data
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -39,8 +38,7 @@ module TorXakis.Parser.Data
     , HasLoc
     , IsVariable
     -- * Name
-    , Name
-    , toText
+    , Name (..)
     -- * Types of the entities.
     , ADTE
     , CstrE
@@ -49,6 +47,7 @@ module TorXakis.Parser.Data
     , FuncDeclE
     , VarDeclE
     , ExpDeclE
+    , ExpChildDeclE
     , VarRefE
     , ChanDeclE
     , ChanRefE
@@ -97,9 +96,13 @@ module TorXakis.Parser.Data
     -- ** Expressions
     , ExpDecl
     , ExpChild (..)
+    , ExpChildDecl
     , Const (..)
     , expChild
+    , childExpChild
+    , expMaybeSort
     , childExps
+    , mkExpDecl
     , mkVarExp
     , mkBoolConstExp
     , mkIntConstExp
@@ -343,8 +346,11 @@ data SortRefE = SortRefE deriving (Eq, Ord, Show, Data)
 -- | Function declaration.
 data FuncDeclE = FuncDeclE deriving (Eq, Ord, Show, Data)
 
--- | An expression
+-- | An expression (maybe typed)
 data ExpDeclE = ExpDeclE deriving (Eq, Ord, Show, Data)
+
+-- | A child expression (untyped)
+data ExpChildDeclE = ExpChildDeclE deriving (Eq, Ord, Show, Data)
 
 -- | A variable declaration.
 data VarDeclE = VarDeclE deriving (Eq, Ord, Show, Data)
@@ -515,11 +521,19 @@ varDeclSort :: VarDecl -> (Text, Loc SortRefE)
 varDeclSort f = (nodeNameT . child $ f, nodeLoc . child $ f)
 
 -- | Declaration of an expression.
-type ExpDecl = ParseTree ExpDeclE ExpChild
+type ExpDecl = ParseTree ExpDeclE (Maybe OfSort, ExpChild)
+
+--- | Make an expression declaration.
+mkExpDecl :: Loc ExpDeclE -> Maybe OfSort -> ExpChild -> ExpDecl
+mkExpDecl l ms c = ParseTree (Name "") ExpDeclE l (ms,c)
 
 -- | Child of an expression.
 expChild :: ExpDecl -> ExpChild
-expChild = child
+expChild = snd . child
+
+-- | Maybe Sort of an expression.
+expMaybeSort :: ExpDecl -> Maybe OfSort
+expMaybeSort = fst . child
 
 data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               | ConstLit Const
@@ -563,33 +577,39 @@ data Const = BoolConst Bool
 -- | Extract all the let-variable declarations of an expression.
 --
 expLetVarDecls :: ExpDecl -> [[LetVarDecl]]
-expLetVarDecls ParseTree { child = VarRef _ _  } = []
-expLetVarDecls ParseTree { child = ConstLit _  } = []
-expLetVarDecls ParseTree { child = LetExp vs e }
+expLetVarDecls ParseTree { child = (_, VarRef _ _)  } = []
+expLetVarDecls ParseTree { child = (_, ConstLit _)  } = []
+expLetVarDecls ParseTree { child = (_, LetExp vs e) }
     =  (toList <$> vs)
     ++ expLetVarDecls e
     ++ concatMap (concatMap (expLetVarDecls . varDeclExp)) (toList <$> vs)
-expLetVarDecls ParseTree { child = If e0 e1 e2 } =
+expLetVarDecls ParseTree { child = (_, If e0 e1 e2) } =
     expLetVarDecls e0 ++ expLetVarDecls e1 ++ expLetVarDecls e2
-expLetVarDecls ParseTree { child = Fappl _ _ exs } =
+expLetVarDecls ParseTree { child = (_, Fappl _ _ exs) } =
     concatMap expLetVarDecls exs
 
 -- | Get the child-expressions of an expression.
 --
 childExps :: ExpDecl -> [ExpDecl]
-childExps ParseTree { child = VarRef _ _  }    = []
-childExps ParseTree { child = ConstLit _  }    = []
-childExps ParseTree { child = LetExp _ e }     = [e]
-childExps ParseTree { child = If ex0 ex1 ex2 } = [ex0, ex1, ex2]
-childExps ParseTree { child = Fappl _ _ exs }  = exs
+childExps ParseTree { child = (_, VarRef _ _    ) } = []
+childExps ParseTree { child = (_, ConstLit _    ) } = []
+childExps ParseTree { child = (_, LetExp _ e    ) } = [e]
+childExps ParseTree { child = (_, If ex0 ex1 ex2) } = [ex0, ex1, ex2]
+childExps ParseTree { child = (_, Fappl _ _ exs ) } = exs
+
+type ExpChildDecl = ParseTree ExpChildDeclE ExpChild
+
+-- | Child of an child expression.
+childExpChild :: ExpChildDecl -> ExpChild
+childExpChild = child
+
+--- | Make an child expression declaration.
+mkExpChildDecl :: Loc ExpChildDeclE -> ExpChild -> ExpChildDecl
+mkExpChildDecl = ParseTree (Name "") ExpChildDeclE
 
 -- | Make a let-expression declaration.
-mkLetExpDecl :: [ParLetVarDecl] -> ExpDecl -> Loc ExpDeclE -> ExpDecl
-mkLetExpDecl vss subEx l = mkExpDecl l (LetExp vss subEx)
-
--- | Make an expression declaration.
-mkExpDecl :: Loc ExpDeclE -> ExpChild -> ExpDecl
-mkExpDecl = ParseTree (Name "") ExpDeclE
+mkLetExpDecl :: [ParLetVarDecl] -> ExpDecl -> Loc ExpChildDeclE -> ExpChildDecl
+mkLetExpDecl vss subEx l = mkExpChildDecl l (LetExp vss subEx)
 
 -- | Let-variable declarations.
 type LetVarDecl = ParseTree VarDeclE (Maybe OfSort, ExpDecl)
@@ -622,33 +642,33 @@ instance IsList ParLetVarDecl where
     toList (ParLetVarDecl ls) = ls
 
 -- | Make an if-then-else expression declaration.
-mkITEExpDecl :: Loc ExpDeclE -> ExpDecl -> ExpDecl -> ExpDecl -> ExpDecl
-mkITEExpDecl l ex0 ex1 ex2 = mkExpDecl l (If ex0 ex1 ex2)
+mkITEExpDecl :: Loc ExpChildDeclE -> ExpDecl -> ExpDecl -> ExpDecl -> ExpChildDecl
+mkITEExpDecl l ex0 ex1 ex2 = mkExpChildDecl l (If ex0 ex1 ex2)
 
 -- | Make a function-application expression declaration.
-mkFappl :: Loc ExpDeclE -> Loc VarRefE -> Text -> [ExpDecl] -> ExpDecl
-mkFappl le lr n exs = mkExpDecl le (Fappl (Name n) lr exs)
+mkFappl :: Loc ExpChildDeclE -> Loc VarRefE -> Text -> [ExpDecl] -> ExpChildDecl
+mkFappl le lr n exs = mkExpChildDecl le (Fappl (Name n) lr exs)
 
 -- | Make a variable expression. The location of the expression will become the
 -- location of the variable.
-mkVarExp :: Loc ExpDeclE -> Text -> ExpDecl
-mkVarExp l n = mkExpDecl l (VarRef (Name n) (locFromLoc l))
+mkVarExp :: Loc ExpChildDeclE -> Text -> ExpChildDecl
+mkVarExp l n = mkExpChildDecl l (VarRef (Name n) (locFromLoc l))
 
 -- | Make a Boolean constant expression.
-mkBoolConstExp :: Loc ExpDeclE -> Bool -> ExpDecl
-mkBoolConstExp l b = mkExpDecl l (ConstLit (BoolConst b))
+mkBoolConstExp :: Loc ExpChildDeclE -> Bool -> ExpChildDecl
+mkBoolConstExp l b = mkExpChildDecl l (ConstLit (BoolConst b))
 
 -- | Make an integer constant expression.
-mkIntConstExp :: Loc ExpDeclE -> Integer -> ExpDecl
-mkIntConstExp l i = mkExpDecl l (ConstLit (IntConst i))
+mkIntConstExp :: Loc ExpChildDeclE -> Integer -> ExpChildDecl
+mkIntConstExp l i = mkExpChildDecl l (ConstLit (IntConst i))
 
 -- | Make a string constant expression.
-mkStringConstExp :: Loc ExpDeclE -> Text -> ExpDecl
-mkStringConstExp l t = mkExpDecl l (ConstLit (StringConst t))
+mkStringConstExp :: Loc ExpChildDeclE -> Text -> ExpChildDecl
+mkStringConstExp l t = mkExpChildDecl l (ConstLit (StringConst t))
 
 -- | Make a regex constant expression.
-mkRegexConstExp :: Loc ExpDeclE -> Text -> ExpDecl
-mkRegexConstExp l t = mkExpDecl l (ConstLit (RegexConst t))
+mkRegexConstExp :: Loc ExpChildDeclE -> Text -> ExpChildDecl
+mkRegexConstExp l t = mkExpChildDecl l (ConstLit (RegexConst t))
 
 -- | Function declarations.
 type FuncDecl  = ParseTree FuncDeclE FuncComps

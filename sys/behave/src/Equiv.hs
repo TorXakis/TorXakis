@@ -32,7 +32,7 @@ import           TxsDefs
 import           Variable
 import           ValExpr
 import           SortOf
-import           ConstDefs
+import           Constant
 
 
 -- ----------------------------------------------------------------------------------------- --

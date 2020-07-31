@@ -53,6 +53,7 @@ import qualified IfServer            as IFS
 import qualified BuildInfo
 import qualified TxsCore
 import qualified VersionInfo
+import qualified EnvCore as IOC
 
 -- import from defs
 import qualified TxsDDefs
@@ -61,8 +62,15 @@ import qualified TxsShow
 import qualified Utils
 import qualified VarId
 
+-- import from bexpr
+import qualified ProcId
+import qualified ChanId
+
+-- import from lpeops
+import           ModelIdFactory
+
 -- import from valexpr
-import qualified ConstDefs
+import qualified Constant
 import           Id
 import qualified ValExpr
 
@@ -187,8 +195,13 @@ cmdsIntpr = do
        "NCOMP"     | not $ IOS.isInited   modus ->  cmdNoop      cmd
        "LPE"       |       IOS.isInited   modus ->  cmdLPE       args
        "LPE"       | not $ IOS.isInited   modus ->  cmdNoop      cmd
+       "LPEOP"     |       IOS.isInited   modus ->  cmdLPEOp     args
+       "LPEOP"     | not $ IOS.isInited   modus ->  cmdNoop      cmd
+       "LPEQ"      |       IOS.isInited   modus ->  cmdLPEQ      args
+       "LPEQ"      | not $ IOS.isInited   modus ->  cmdNoop      cmd
+       "MERGE"     |       IOS.isInited   modus ->  cmdMerge     args
+       "MERGE"     | not $ IOS.isInited   modus ->  cmdNoop      cmd
        _                                        ->  cmdUnknown   cmd
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis server individual command processing
@@ -235,7 +248,7 @@ cmdInit args = do
      unid               <- gets IOS.uid
      tdefs              <- lift TxsCore.txsGetTDefs
      sigs               <- gets IOS.sigs
-     srctxts            <- lift $ lift $ mapM readFile (words args)
+     srctxts            <- lift $ lift $ mapM readFile (read args :: [String])
      let srctxt          = List.intercalate "\n\n" srctxts
      ((unid',tdefs', sigs'),e) <- lift $ lift $ catch
                              ( let parsing = compileLegacy srctxt
@@ -250,7 +263,7 @@ cmdInit args = do
                                     , IOS.sigs   = sigs'
                                     }
                lift $ TxsCore.txsInit tdefs' sigs' ( IFS.hmack servhs . map TxsShow.pshow )
-               IFS.pack "INIT" ["input files parsed:", unwords (words args)]
+               IFS.pack "INIT" ["input files parsed:", args]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -978,7 +991,7 @@ cmdLPE :: String -> IOS.IOS ()
 cmdLPE args = do
      tdefs <- lift TxsCore.txsGetTDefs
      let mdefs = TxsDefs.modelDefs tdefs
-         mids  = [ modelid | (modelid@(TxsDefs.ModelId nm _uid), _) <- Map.toList mdefs
+         mids  = [ m | m@(TxsDefs.ModelId nm _uid, _) <- Map.toList mdefs
                            , T.unpack nm == args
                  ]
          chids = Set.toList $ Set.unions [ Set.unions (chins ++ chouts ++ spls)
@@ -986,8 +999,29 @@ cmdLPE args = do
                                            <- Map.toList mdefs
                                          ]
      case mids of
-       [ modelId ]
-         -> do mayModelId' <- lift $ TxsCore.txsLPE (Right modelId)
+       [ (_, TxsDefs.ModelDef chins chouts spls body) ]
+         -> do -- Create a new model and process:
+               -- - The new model instantiates the new process;
+               -- - The new process uses the body of the old model.
+               -- By doing this, LPEs can be generated for models that do not
+               -- have a body that consists of only a process instantiation:
+               newProcUnid <- lift IOC.newUnid
+               let newProcId = TxsDefs.ProcId { ProcId.name = T.pack "proxyProcess"
+                                              , ProcId.unid = newProcUnid
+                                              , ProcId.procchans = map (ProcId.ChanSort . ChanId.chansorts) chids
+                                              , ProcId.procvars = []
+                                              , ProcId.procexit = ProcId.NoExit }
+               let newProcDef = TxsDefs.ProcDef chids [] body
+               let newProcInit = TxsDefs.procInst newProcId chids []
+               newModelId <- lift $ getModelIdFromName "proxyModel"
+               let newModelDef = TxsDefs.ModelDef chins chouts spls newProcInit
+               let tdefs' = tdefs { TxsDefs.procDefs = Map.insert newProcId newProcDef (TxsDefs.procDefs tdefs)
+                                  , TxsDefs.modelDefs = Map.insert newModelId newModelDef (TxsDefs.modelDefs tdefs)
+                                  }
+               lift $ IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
+               -- Generate an LPE from the new model:
+               mayModelId' <- lift $ TxsCore.txsLPE (Right newModelId)
+               -- mayModelId' <- lift $ TxsCore.txsLPE (Right modelId)
                case mayModelId' of
                  Just (Right modelId') -> do IFS.pack "LPE" [ "LPE modeldef generated: "
                                                             , TxsShow.fshow modelId'
@@ -1005,9 +1039,55 @@ cmdLPE args = do
                  _                     -> do IFS.nack "LPE" [ "Could not generate LPE" ]
                                              cmdsIntpr
 
+-- ----------------------------------------------------------------------------------------- --
+
+cmdLPEQ :: String -> IOS.IOS ()
+cmdLPEQ args = do
+    let (inName, outName) = cutAfterSpace args
+    msgs <- lift $ TxsCore.txsLPEQ inName outName
+    IFS.pack "LPEQ" msgs
+    cmdsIntpr
+  where
+    cutAfterSpace :: String -> (String, String)
+    cutAfterSpace "" = ("", "")
+    cutAfterSpace (' ':xs) = ("", xs)
+    cutAfterSpace (x:xs) = let (s1, s2) = cutAfterSpace xs in (x:s1, s2)
+-- cmdLPEQ
 
 -- ----------------------------------------------------------------------------------------- --
---
+
+cmdLPEOp :: String -> IOS.IOS ()
+cmdLPEOp args = do
+    let (opChain, namesAndInvariant) = cutAfterSpace args
+    let (inName, outNameAndInvariant) = cutAfterSpace namesAndInvariant
+    let (outName, invariantText) = cutAfterSpace outNameAndInvariant
+    invariant <- readVExpr invariantText
+    msgs <- lift $ TxsCore.txsLPEOp opChain inName outName invariant
+    IFS.pack "LPEOP" msgs
+    cmdsIntpr
+  where
+    cutAfterSpace :: String -> (String, String)
+    cutAfterSpace "" = ("", "")
+    cutAfterSpace (' ':xs) = ("", xs)
+    cutAfterSpace (x:xs) = let (s1, s2) = cutAfterSpace xs in (x:s1, s2)
+-- cmdLPEOp
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdMerge :: String -> IOS.IOS ()
+cmdMerge args = do
+    let (firstName, secondNameAndOutputName) = cutAfterSpace args
+    let (secondName, outputName) = cutAfterSpace secondNameAndOutputName
+    msgs <- lift $ TxsCore.txsMerge firstName secondName outputName
+    IFS.pack "MERGE" msgs
+    cmdsIntpr
+  where
+    cutAfterSpace :: String -> (String, String)
+    cutAfterSpace "" = ("", "")
+    cutAfterSpace (' ':xs) = ("", xs)
+    cutAfterSpace (x:xs) = let (s1, s2) = cutAfterSpace xs in (x:s1, s2)
+-- cmdMerge
+
 -- Helper Functions
 --
 -- ----------------------------------------------------------------------------------------- --
@@ -1051,7 +1131,7 @@ readAction chids args = do
                                 IFS.nack "ERROR" [ "eval failed:\n  " ++ Utils.join "\n  " es ]
                                 return TxsDDefs.ActQui
     where
-        makeEither :: (TxsDefs.ChanId, [Either String ConstDefs.Const]) -> Either String (TxsDefs.ChanId, [ConstDefs.Const])
+        makeEither :: (TxsDefs.ChanId, [Either String Constant.Constant]) -> Either String (TxsDefs.ChanId, [Constant.Constant])
         makeEither (chid, macts) =
              case Either.partitionEithers macts of
                 ([], acts) -> Right (chid, acts)
@@ -1086,3 +1166,28 @@ readBExpr chids args = do
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
 
+readVExpr :: String -> IOS.IOS TxsDefs.VExpr
+readVExpr args =
+     if args == ""
+     then return (ValExpr.cstrConst (Constant.Cbool True))
+     else do env              <- get
+             let uid           = IOS.uid env
+                 sigs          = IOS.sigs env
+                 --vals          = IOS.locvals env
+             --tdefs            <- lift TxsCore.txsGetTDefs
+
+             ((_uid',vexp'),e) <- lift $ lift $ catch
+                                   ( let (i,p) = compileUnsafe $
+                                                 compileValExpr sigs [] (_id uid + 1) args
+                                      in return $!! ((i, Just p),"")
+                                   )
+                                   ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
+
+             case vexp' of
+              Just vexp'' -> return vexp''
+              Nothing -> do IFS.nack "ERROR" [ "incorrect value expression: " ++ e ]
+                            return (ValExpr.cstrConst (Constant.Cbool False))
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
+-- ----------------------------------------------------------------------------------------- --

@@ -1,0 +1,22 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+PROCDEF p [Input :: Int] () ::=
+       ISTEP
+   >-> Input ? x
+   >-> Input ? x | ISTEP
+   >-> ISTEP | Input ? x
+   >-> STOP
+ENDDEF
+
+CHANDEF chans ::= Input :: Int ENDDEF
+
+MODELDEF M ::=
+    CHAN IN Input
+    CHAN OUT
+    BEHAVIOUR
+        p[Input]()
+ENDDEF

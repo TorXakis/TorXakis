@@ -52,7 +52,7 @@ import qualified VersionInfo
 import           BehExprDefs                   (ChanOffer (Exclam, Quest),
                                                 Offer (Offer))
 import           ChanId                        (ChanId)
-import           ConstDefs                     (Const)
+import           Constant                      (Constant)
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_INFO, TXS_CORE_USER_INFO, TXS_CORE_USER_WARNING),
                                                 StateNr)
@@ -182,12 +182,12 @@ parseAction s act = do
         cstOfs <- traverse offerToAction (Set.toList offs)
         return $ Act (Set.fromList cstOfs)
     where
-      offerToAction :: Offer -> ExceptT Text IO (ChanId, [Const])
+      offerToAction :: Offer -> ExceptT Text IO (ChanId, [Constant])
       offerToAction (Offer cid offrs) = do
           csts <- traverse evalExclam  offrs
           return (cid, csts)
 
-      evalExclam :: ChanOffer -> ExceptT Text IO Const
+      evalExclam :: ChanOffer -> ExceptT Text IO Constant
       evalExclam (Quest _) = throwError "No ? offer allowed as input."
       evalExclam (Exclam choff) = do
           res <- lift (runIOC s (Core.txsEval choff))

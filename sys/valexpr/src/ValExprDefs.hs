@@ -30,9 +30,10 @@ where
 import           Control.DeepSeq
 import           Data.Data
 import           Data.Set        (Set)
+import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
-import           ConstDefs
+import           Constant (Constant)
 import           CstrId
 import           FuncId
 import           Id
@@ -47,7 +48,7 @@ import           Variable
 -- value expression
 
 -- | ValExprView: the public view of value expression 'ValExpr'
-data  ValExprView v = Vconst  Const
+data  ValExprView v = Vconst  Constant
                     | Vvar    v
                     -- Boolean
                     | Vequal    (ValExpr v) (ValExpr v)
@@ -80,7 +81,7 @@ data  ValExprView v = Vconst  Const
                     -- ADT
                     | Vcstr   CstrId [ValExpr v]
                     | Viscstr CstrId (ValExpr v)
-                    | Vaccess CstrId Int (ValExpr v)
+                    | Vaccess CstrId Text Int (ValExpr v)
 
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
@@ -129,10 +130,10 @@ instance (Ord v, Resettable v) => Resettable (ValExpr v)
 
 -- | Evaluate the provided value expression.
 -- Either the Right Constant Value is returned or a (Left) error message.
-eval :: Show v => ValExpr v -> Either String Const
+eval :: Show v => ValExpr v -> Either String Constant
 eval = evalView . view
 
-evalView :: Show v => ValExprView v -> Either String Const
+evalView :: Show v => ValExprView v -> Either String Constant
 evalView (Vconst v) = Right v
 evalView x          = Left $ "Value Expression is not a constant value " ++ show x
 
@@ -141,28 +142,27 @@ instance (Variable v) => SortOf (ValExpr v) where
   sortOf = sortOf'
 
 sortOf' :: (Variable v) => ValExpr v -> SortId
-sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps)       = fs
-sortOf' (view -> Vcstr (CstrId _nm _uid _ca cs) _vexps)       = cs
-sortOf' (view -> Viscstr { })                                 = sortIdBool
-sortOf' (view -> Vaccess (CstrId _nm _uid ca _cs) p _vexps)   = ca!!p
-sortOf' (view -> Vconst con)                                  = sortOf con
-sortOf' (view -> Vvar v)                                      = vsort v
-sortOf' (view -> Vite _cond vexp1 _vexp2)                     = sortOf' vexp1
-sortOf' (view -> Vequal { })                                  = sortIdBool
-sortOf' (view -> Vnot { })                                    = sortIdBool
-sortOf' (view -> Vand { })                                    = sortIdBool
-sortOf' (view -> Vsum { })                                    = sortIdInt
-sortOf' (view -> Vproduct { })                                = sortIdInt
-sortOf' (view -> Vmodulo { })                                 = sortIdInt
-sortOf' (view -> Vdivide { })                                 = sortIdInt
-sortOf' (view -> Vgez { })                                    = sortIdBool
-sortOf' (view -> Vlength { })                                 = sortIdInt
-sortOf' (view -> Vat { })                                     = sortIdString
-sortOf' (view -> Vconcat { })                                 = sortIdString
-sortOf' (view -> Vstrinre { })                                = sortIdBool
-sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps) = fs
-sortOf' (view -> Vpredef{})                                   = error "sortOf': Unexpected Ident with Vpredef"
-sortOf' _                                                     = error "sortOf': All items must be in view"
+sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps)         = fs
+sortOf' (view -> Vcstr (CstrId _nm _uid _ca cs) _vexps)         = cs
+sortOf' (view -> Viscstr { })                                   = sortIdBool
+sortOf' (view -> Vaccess (CstrId _nm _uid ca _cs) _n p _vexps)  = ca!!p
+sortOf' (view -> Vconst con)                                    = sortOf con
+sortOf' (view -> Vvar v)                                        = vsort v
+sortOf' (view -> Vite _cond vexp1 _vexp2)                       = sortOf' vexp1
+sortOf' (view -> Vequal { })                                    = sortIdBool
+sortOf' (view -> Vnot { })                                      = sortIdBool
+sortOf' (view -> Vand { })                                      = sortIdBool
+sortOf' (view -> Vsum { })                                      = sortIdInt
+sortOf' (view -> Vproduct { })                                  = sortIdInt
+sortOf' (view -> Vmodulo { })                                   = sortIdInt
+sortOf' (view -> Vdivide { })                                   = sortIdInt
+sortOf' (view -> Vgez { })                                      = sortIdBool
+sortOf' (view -> Vlength { })                                   = sortIdInt
+sortOf' (view -> Vat { })                                       = sortIdString
+sortOf' (view -> Vconcat { })                                   = sortIdString
+sortOf' (view -> Vstrinre { })                                  = sortIdBool
+sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)   = fs
+sortOf' _                                                       = error "sortOf': All items must be in view"
 
 
 

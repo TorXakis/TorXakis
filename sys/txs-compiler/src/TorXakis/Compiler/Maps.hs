@@ -136,18 +136,19 @@ determineF mm ls aSids mRSid =
 determineSH :: [(Signature, Handler VarId)]
              -> [SortId]     -- ^ @SortId@s of the arguments.
              -> Maybe SortId -- ^ Expected return @SortId@ (if known).
+             -> ErrorLoc     -- ^ Error Loc to be reported in case of error
              -> Either Error (Signature, Handler VarId)
-determineSH shs sargs msret =
+determineSH shs sargs msret el =
     case filter (sigMatches . fst) shs of
         [(sig, h)] -> return (sig, h)
         [] -> Left Error
             { _errorType = Undefined Function
-            , _errorLoc = NoErrorLoc
+            , _errorLoc = el
             , _errorMsg = "Could not determine the function based on the given signature "
             }
         _ -> Left Error
             { _errorType = MultipleDefinitions Function
-            , _errorLoc = NoErrorLoc
+            , _errorLoc = el
             , _errorMsg = "Found multiple functions that can be applied."
             }
     where
@@ -185,7 +186,7 @@ findRight vdefs l = Left ||| cErr ||| Right $ lookup l vdefs
       err = Error
             { _errorType = Undefined Function
             , _errorLoc  = getErrorLoc l
-            , _errorMsg  = "Could not function declaration."
+            , _errorMsg  = "Could not find function declaration."
             }
 
 -- | Find the variable declaration that corresponds to a variable reference.
@@ -198,7 +199,7 @@ findVarDecl mm l = Left ||| Right ||| cErr $ lookup l mm
       err = Error
             { _errorType = Undefined Variable
             , _errorLoc  = getErrorLoc l
-            , _errorMsg  = "Could not variable declaration."
+            , _errorMsg  = "Could not find variable declaration."
             }
 
 -- | Find the variable id that corresponds to a given variable reference.

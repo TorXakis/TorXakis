@@ -91,4 +91,4 @@ putMsgs mess  =  do
 
 -- | Get the function defined at in the current state.
 getFuncDefs :: IOB (Map.Map FuncId (FuncDef VarId))
-getFuncDefs = funcDefs . tdefs <$> get
+getFuncDefs = gets (funcDefs . tdefs)

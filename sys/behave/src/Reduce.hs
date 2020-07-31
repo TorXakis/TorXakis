@@ -28,7 +28,7 @@ import qualified Data.Map  as Map
 import qualified Data.Set  as Set
 
 import           BTree
-import           ConstDefs
+import           Constant
 import qualified EnvBTree  as IOB
 import           Subst
 import           TxsDefs
@@ -130,9 +130,7 @@ instance Reduce INode where
          inode1' <- reduce inode1
          case inode1' of
             BNbexpr _ bexpr | isStop bexpr -> return stopINode
-            _                              -> do
-                                                inode2' <- reduce inode2
-                                                return $ BNenable inode1' choffs inode2'
+            _                              -> BNenable inode1' choffs <$> reduce inode2
 
     reduce (BNdisable inode1 inode2) = do
          inode1' <- reduce inode1
@@ -211,9 +209,7 @@ reduce' (Enable bexp1 choffs bexp2) = do
      bexp1'  <- reduce bexp1
      if isStop bexp1'
         then return stop
-        else do
-                bexp2'  <- reduce bexp2
-                return $ enable bexp1' choffs bexp2'
+        else enable bexp1' choffs <$> reduce bexp2
 
 reduce' (Disable bexp1 bexp2) = do
      bexp1' <- reduce bexp1

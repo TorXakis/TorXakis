@@ -19,34 +19,48 @@ module TorXakis.ParserSpec
     (spec)
 where
 
+import           Control.Lens ((^?))
 import           Data.Either          (isRight)
 import           Data.Foldable        (traverse_)
 import           System.FilePath      ((</>))
-import           System.FilePath.Find (extension, find, (==?))
-import           Test.Hspec           (Spec, describe, it, parallel, runIO,
-                                       shouldSatisfy)
+import           Test.Hspec           (Spec, describe, it, parallel,
+                                       shouldSatisfy, shouldBe)
 
-import           TorXakis.Parser      (parseFile)
+import           Common                  (onAllFilesIn)
+import           TorXakis.Compiler.Error (errorLoc, ErrorLoc(ErrorLoc))
+import           TorXakis.Parser         (parseFile)
+
 
 
 spec :: Spec
 spec = do
-    describe "Parses the orthogonal examples" $ do
-        fs <- runIO $ find (return True) (extension ==? ".txs")
-              ("test" </> "data" </> "success")
-        parallel $ traverse_ testParser fs
+    describe "Parses the single-concept examples" $
+      testParser `onAllFilesIn` ("test" </> "data" </> "success")
 
-    describe "Parses the examples in the 'examps' folder" $ do
-        fs <- runIO $ find (return True) (extension ==? ".txs")
-              ("test" </> "data" </> "examps")
-        parallel $ traverse_ testParser fs
+    describe "Parses the examples in the 'examps' folder" $
+      testParser `onAllFilesIn` ("test" </> "data" </> "examps")
 
-    describe "Parses large models" $ do
-        fs <- runIO $ find (return True) (extension ==? ".txs")
-              ("test" </> "data" </> "large")
-        parallel $ traverse_ testParser fs
+    describe "Parses large models" $
+      testParser `onAllFilesIn` ("test" </> "data" </> "large")
+
+    describe "Parses the regression tests" $
+      testParser `onAllFilesIn` ("test" </> "data" </> "regression")
+
+    describe "Gives the expected errors" $
+      parallel $ traverse_ checkError errors
 
     where
         testParser fp = it (show fp) $ do
             r <- parseFile fp
             r `shouldSatisfy` isRight
+
+        checkError (fp, expErr) = it (show fp) $ do
+            Left err <- parseFile fp
+            err ^? errorLoc `shouldBe` Just expErr
+
+        errors
+          = [( prefix </> "UnmatchedParenthesis.txs", ErrorLoc 15 5)
+            ,( prefix </> "ReservedWordAsIdentifier.txs", ErrorLoc 7 30)
+            ]
+          where
+            prefix = "test" </> "data" </> "wrong"

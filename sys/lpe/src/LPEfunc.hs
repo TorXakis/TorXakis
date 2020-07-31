@@ -21,7 +21,9 @@ module LPEfunc
   lpeTransformFunc,
   lpeParFunc,
   lpeHideFunc,
+  lpeInterruptFunc,
   preGNFEnableFunc,
+  preGNFDisableFunc,
   gnfFunc,
   preGNFFunc,
   eqProcDef,
@@ -114,12 +116,23 @@ preGNFEnableFunc bexpr _chanOffers translatedProcDefs procDefs' =
   let envl = EnvL 0 (Map.fromList []) []
    in evalState (preGNFEnable bexpr translatedProcDefs procDefs') envl
 
+-- preGNFDisable :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
+preGNFDisableFunc :: BExpr -> Map.Map (Name, Int) VarId -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
+preGNFDisableFunc bexpr _chanOffers translatedProcDefs procDefs' =
+  let envl = EnvL 0 (Map.fromList []) []
+   in evalState (preGNFDisable bexpr translatedProcDefs procDefs') envl
+
+-- lpeInterrupt :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
+lpeInterruptFunc :: BExpr -> Map.Map (Name, Int) VarId -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
+lpeInterruptFunc bexpr _chanOffers translatedProcDefs procDefs' =
+  let envl = EnvL 0 (Map.fromList []) []
+   in evalState (lpeInterrupt bexpr translatedProcDefs procDefs') envl
 
 -- gnf :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb (ProcDefs)
-gnfFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
+gnfFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> (ProcDefs, Map.Map ProcId [ProcId])
 gnfFunc procId translatedProcDefs procDefs' =
  let envl = EnvL 0 (Map.fromList []) []
-  in evalState (gnf procId translatedProcDefs procDefs') envl
+  in evalState (gnf procId Map.empty translatedProcDefs procDefs') envl
 
 
   -- preGNF :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb ProcDefs

@@ -11,7 +11,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# OPTIONS_GHC -Wno-missing-monadfail-instances #-}
 -- We don't want a warning for the line '[se0s, se1s, se2s] <- traverse (inferExpTypes mm) [e0, e1, e2]'
@@ -65,14 +64,14 @@ import           Prelude                  hiding (lookup)
 import           ChanId                   (ChanId, chansorts)
 import           FuncTable                (Signature, sortArgs, sortRet)
 import           Id                       (Id (Id))
-import           ProcId                   (ExitSort (Exit, Hit, NoExit), ProcId,
+import           ProcId                   (ChanSort (ChanSort),
+                                           ExitSort (Exit, Hit, NoExit), ProcId,
                                            exitSortIds, procchans, procexit,
                                            procvars)
 import qualified ProcId
 import           SortId                   (SortId (SortId), sortIdBool,
                                            sortIdInt, sortIdRegex, sortIdString)
 import qualified SortId
-import           VarId                    (varsort)
 
 import           TorXakis.Compiler.Data   (CompilerM, getNextId)
 import           TorXakis.Compiler.Error  (Entity (Process, Sort),
@@ -93,6 +92,7 @@ import           TorXakis.Parser.Data     (ADTDecl, ActOfferDecl (ActOfferDecl),
                                            ChanRefE,
                                            Const (AnyConst, BoolConst, IntConst, RegexConst, StringConst),
                                            ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
+                                           expMaybeSort,
                                            ExpDecl, FuncDecl, FuncDeclE,
                                            LetVarDecl, Loc, OfSort,
                                            OfferDecl (OfferDecl), ParLetVarDecl,
@@ -209,55 +209,74 @@ inferExpTypes :: ( MapsTo Text SortId mm
               => mm
               -> ExpDecl
               -> Either Error [SortId]
-inferExpTypes mm ex =
-    case expChild ex of
-    VarRef _ l ->
-        -- Find the location of the variable reference
-        -- If it is a variable, return the sort id of the variable declaration.
-        -- If it is a function, return the sort id's of the functions.
-        (fmap pure . (`lookup` mm) ||| findFuncSortIds mm)
-            =<< (lookup l mm :: Either Error (Either (Loc VarDeclE) [Loc FuncDeclE]))
-    ConstLit c ->
-        return $ -- The type of any is any sort known!
-            maybe (values @Text mm) pure (sortIdConst c)
-    LetExp vss subEx -> do
-        vdsSid <- foldM (letVarTypes mm) Map.empty (toList <$> vss)
-        inferExpTypes (vdsSid <.+> mm) subEx
-    If e0 e1 e2 -> do
-        [se0s, se1s, se2s] <- traverse (inferExpTypes mm) [e0, e1, e2]
-        when (sortIdBool `notElem` se0s)
-            (Left Error
-                { _errorType = TypeMismatch
-                , _errorLoc  = getErrorLoc e0
-                , _errorMsg  = "Guard expression must be a Boolean."
-                           <> " Got " <> T.pack (show se0s)
-                })
-        let ses = se1s `intersect` se2s
-        when (null ses)
-            (Left Error
-                { _errorType = TypeMismatch
-                , _errorLoc  = getErrorLoc ex
-                , _errorMsg  = "The sort of the two IF branches don't match."
-                           <> "(" <> T.pack (show se1s)
-                           <>" and " <> T.pack (show se2s) <> ")"
-                }
-             )
-        return ses
-    Fappl _ l exs -> concat <$> do
-        sess <- traverse (inferExpTypes mm) exs
-        for (sequence sess) $ \ses -> do
-              fdis <- findFuncDecl mm l
-              let matchingFdis = determineF mm fdis ses Nothing
-              for matchingFdis $ \fdi -> do
-                  sig  <- lookup fdi mm
-                  when (ses /= sortArgs sig)
-                      (Left Error
-                       { _errorType = TypeMismatch
-                       , _errorLoc  = getErrorLoc l
-                       , _errorMsg  = "Function arguments sorts do not match "
-                                     <> T.pack (show ses)
-                       })
-                  return $ sortRet sig
+inferExpTypes mm ex = 
+    case expMaybeSort ex of
+        Nothing     -> implicitExpTypes
+        Just o      -> do
+                        s <- findSortId mm (sortRefName o, getLoc o)
+                        ss <- implicitExpTypes
+                        when (s `notElem` ss)
+                            (Left Error
+                                  { _errorType = TypeMismatch
+                                  , _errorLoc  = getErrorLoc ex
+                                  , _errorMsg  = "Explicit provided type \"" <> T.pack (show s) <> "\" not in implicitly derived types : " <> T.pack (show ss)
+                                  }
+                            )
+                        return [s]
+  where
+    implicitExpTypes :: Either Error [SortId]
+    implicitExpTypes =
+        case expChild ex of
+        VarRef _ l ->
+            -- Find the location of the variable reference
+            -- If it is a variable, return the sort id of the variable declaration.
+            -- If it is a function, return the sort id's of the functions.
+            (fmap pure . (`lookup` mm) ||| findFuncSortIds mm)
+                =<< (lookup l mm :: Either Error (Either (Loc VarDeclE) [Loc FuncDeclE]))
+        ConstLit c ->
+            return $ -- The type of any is any sort known!
+                maybe (values @Text mm) pure (sortIdConst c)
+        LetExp vss subEx -> do
+            vdsSid <- foldM (letVarTypes mm) Map.empty (toList <$> vss)
+            inferExpTypes (vdsSid <.+> mm) subEx
+        If e0 e1 e2 -> do
+            l <- traverse (inferExpTypes mm) [e0, e1, e2]
+            case l of
+                [se0s, se1s, se2s] -> do
+                                        when (sortIdBool `notElem` se0s)
+                                             (Left Error
+                                                   { _errorType = TypeMismatch
+                                                   , _errorLoc  = getErrorLoc e0
+                                                   , _errorMsg  = "Guard expression must be a Boolean."
+                                                              <> " Got " <> T.pack (show se0s)
+                                                   })
+                                        let ses = se1s `intersect` se2s
+                                        when (null ses)
+                                            (Left Error
+                                                { _errorType = TypeMismatch
+                                                , _errorLoc  = getErrorLoc ex
+                                                , _errorMsg  = "The sort of the two IF branches don't match."
+                                                           <> "(" <> T.pack (show se1s)
+                                                           <>" and " <> T.pack (show se2s) <> ")"
+                                                }
+                                             )
+                                        return ses
+                _                  -> error "inferExpTypes: 3 arguments should lead to 3 return values"
+        Fappl _ l exs -> concat <$> do
+            sess <- traverse (inferExpTypes mm) exs
+            for (sequence sess) $ \ses -> do
+                  fdis <- findFuncDecl mm l
+                  let matchingFdis = determineF mm fdis ses Nothing
+                  for matchingFdis $ \fdi -> do
+                      sig  <- lookup fdi mm
+                      when (ses /= sortArgs sig)
+                          (Left Error
+                           { _errorType = TypeMismatch
+                           , _errorLoc  = getErrorLoc l
+                           , _errorMsg  = "Function arguments sorts do not match "
+                                         <> T.pack (show ses)
+                           })
+                      return $ sortRet sig
 
 -- | Determine the types of variables in a let-expression.
 letVarTypes :: ( MapsTo Text SortId mm
@@ -295,8 +314,8 @@ checkSortIds sId0 sId1 =
     when (sId0 /= sId1) $ Left Error
     { _errorType = TypeMismatch
     , _errorLoc  = NoErrorLoc
-    , _errorMsg  = "Sorts do not match "
-                  <> T.pack (show sId0) <> T.pack (show sId1)
+    , _errorMsg  = "Sorts do not match: "
+                  <> T.pack (show sId0) <> " versus " <> T.pack (show sId1)
     }
 
 -- | An expression has typed-variables if a map can be found from the location
@@ -384,7 +403,13 @@ instance ( MapsTo Text SortId mm
          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
          , MapsTo ProcId () mm
          ) => HasTypedVars mm ActOfferDecl where
-    inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
+    inferVarTypes mm (ActOfferDecl os mEx) = do
+        xs <- inferVarTypes mm os
+        -- The offers can introduce typed variables which can be referred to in
+        -- the guard. That is why we need to infer the types in the offers, and
+        -- use these to infer the types of the variable expressions.
+        ys <- inferVarTypes (xs <.++> mm) mEx
+        return $ xs ++ ys
 
 instance ( HasTypedVars mm e ) => HasTypedVars mm (Maybe e) where
     inferVarTypes mm = maybe (return []) (inferVarTypes mm)
@@ -503,8 +528,8 @@ instance HasExitSorts BExpDecl where
         let candidate :: ProcId -> Bool
             candidate pId =
                    toText   n                     == ProcId.name pId
-                && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
-                && fmap varsort (procvars pId )  `elem` expsSidss
+                && procchans pId == fmap (ChanSort . chansorts) chIds -- Compare the sort id's of the channels
+                && procvars pId `elem` expsSidss
         case filter candidate $ keys @ProcId @() mm of
             [pId] -> return $ procexit pId
             []    -> throwError Error

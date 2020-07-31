@@ -18,7 +18,7 @@ import           Data.Maybe
 import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
 
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
 import           FuncId

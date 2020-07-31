@@ -1,0 +1,24 @@
+# Lines starting with '#' are comments.
+# Each line is a file pattern followed by one or more owners.
+
+sys/behave          @tretmans
+sys/behavedefs      @tretmans
+sys/behaveenv       @tretmans
+sys/bexpr           @tretmans       @pjljvandelaar
+sys/cnect           @tretmans
+sys/core            @tretmans
+sys/coreenv         @tretmans
+sys/defs            @tretmans       @pjljvandelaar
+sys/lexregexxsd     @pjljvandelaar
+sys/lpe             @CarstenRuetz   @pjljvandelaar
+sys/lpeops          @ikbendedjurre  @pjljvandelaar
+sys/lpeq            @ikbendedjurre  @pjljvandelaar
+sys/lpeuitls        @ikbendedjurre  @pjljvandelaar
+sys/server          @tretmans
+sys/serverenv       @tretmans
+sys/solve           @pjljvandelaar
+sys/testsel         @tretmans
+sys/txs-compiler    @dnadales       @pjljvandelaar
+sys/ui              @tretmans
+sys/valexpr         @pjljvandelaar
+sys/value           @pjljvandelaar

@@ -35,9 +35,10 @@ import           System.IO
 import           System.Random
 import           System.Random.Shuffle
 
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
+import           FuncId
 import           SMT
 import           SMTData
 import           Solve.Params
@@ -73,7 +74,7 @@ mkRanges :: (Integer -> Integer) -> Integer -> Integer -> [(Integer, Integer)]
 mkRanges nxt lw hgh = (lw, hgh-1): mkRanges nxt hgh (nxt hgh)
 
 basicIntRanges :: ParamIncrementBins -> [(Integer, Integer)]
-basicIntRanges p = take (nrOfBins p) (mkRanges (nextFunction p) 1 step)
+basicIntRanges p = take (nrOfBins p) (mkRanges (nextFunction p) 0 step)
 
 basicStringLengthRanges :: [(Integer, Integer)]
 basicStringLengthRanges = take 3 (mkRanges (3*) 0 3)
@@ -96,7 +97,7 @@ mkRndIntBins p v = do
         bins = mkIntConstraintBins v boundaryValues
     shuffleM bins
 
-findRndValue :: Variable v => v -> [ValExpr v] -> SMT Const
+findRndValue :: Variable v => v -> [ValExpr v] -> SMT Constant
 findRndValue _ [] = error "findRndValue - Solution exists, yet no solution found in all bins"
 findRndValue v (x:xs) = do
     push
@@ -261,15 +262,15 @@ randomSolveBins p ((v,d):xs) i    | vsort v == sortIdString =
 randomSolveBins p ((v,d):xs) i =
     do
         let sid = vsort v
-        cstrs <- lookupConstructors sid
+        cstrs <- lookupCstrIds sid
         (cid, d') <- case cstrs of
-                        []         -> error $ "Unexpected: no constructor for " ++ show v
-                        [(cid',_)] -> return (cid', d) -- No choice, no decrease of depth
-                        _          -> do
-                                        shuffledCstrs <- shuffleM cstrs
-                                        let shuffledBins = map (\(tempCid, _) -> cstrIsCstr tempCid (cstrVar v)) shuffledCstrs
-                                        Cstr{cstrId = cid'} <- findRndValue v shuffledBins
-                                        return (cid', d-1)
+                        []     -> error $ "Unexpected: no constructor for " ++ show v
+                        [cid'] -> return (cid', d) -- No choice, no decrease of depth
+                        _      -> do
+                                    shuffledCstrs <- shuffleM cstrs
+                                    let shuffledBins = map (\tempCid -> cstrIsCstr tempCid (cstrVar v)) shuffledCstrs
+                                    Ccstr{cstrId = cid'} <- findRndValue v shuffledBins
+                                    return (cid', d-1)
         addIsConstructor v cid
         fieldVars <- if d' > 1 then addFields v i cid
                               else return []
@@ -281,11 +282,11 @@ randomSolveBins p ((v,d):xs) i =
             else
                 randomSolve p xs i
 
--- lookup a constructor given its sort and constructor name
-lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
-lookupConstructors sid  =  do
+-- lookup constructors given its sort id
+lookupCstrIds :: SortId -> SMT [CstrId]
+lookupCstrIds sid  =  do
      edefs <- gets envDefs
-     return [(cstrid, cdef) | (cstrid@(CstrId _ _ _ sid'), cdef) <- Map.toList (cstrDefs edefs), sid == sid']
+     return [cstrid | cstrid@CstrId{cstrsort = sid'} <- Map.keys (cstrDefs edefs), sid == sid']
 
 addIsConstructor :: (Variable v) => v -> CstrId -> SMT ()
 addIsConstructor v cid = addAssertions [cstrIsCstr cid (cstrVar v)]
@@ -294,9 +295,15 @@ addFields :: (Variable v) => v -> Int -> CstrId -> SMT [v]
 addFields v i cid@CstrId{ cstrargs = args' } = do
     let fieldVars = map (\(iNew,sNew) -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sNew) (zip [i .. ] args')
     addDeclarations fieldVars
-    let exprs = map (\(pos, fieldVar) -> cstrEqual (cstrVar fieldVar) (cstrAccess cid pos (cstrVar v))) (zip [0..] fieldVars)
-    addAssertions exprs
-    return fieldVars
+    edefs <- gets envDefs
+    let mcdef = Map.lookup cid (cstrDefs edefs)
+    case mcdef of
+        Nothing               -> error $ "Unexpected: no constructor definition for " ++ show cid
+        Just (CstrDef _ fIds) -> do
+            let names = map FuncId.name fIds
+                exprs = map (\(nm, pos, fieldVar) -> cstrEqual (cstrVar fieldVar) (cstrAccess cid nm pos (cstrVar v))) (zip3 names [0..] fieldVars)
+            addAssertions exprs
+            return fieldVars
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

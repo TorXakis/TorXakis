@@ -1,0 +1,33 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+TYPEDEF List ::= Nil
+               | Cons{head::Int; tail::List}
+ENDDEF
+
+FUNCDEF  add (x :: Int; l :: List) :: List
+::= IF   isNil(l)
+    THEN Cons(x,Nil)
+    ELSE Cons(head(l),add(x,tail(l))
+    FI
+ENDDEF
+
+CHANDEF Chans ::=
+    Input, Output :: Int
+ENDDEF
+
+PROCDEF proc [Input, Output :: Int](l :: List) ::=
+        Input ? x >-> proc [Input, Output] (add(x,l))
+    ##  [[isCons(l)]] =>> Output ! head(l) >-> proc [Input, Output] (tail(l))
+ENDDEF
+
+MODELDEF Model ::=
+    CHAN IN    Input
+    CHAN OUT   Output
+
+    BEHAVIOUR
+        proc [Input,Output] (Nil)
+ENDDEF

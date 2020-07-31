@@ -12,53 +12,17 @@
 # will slow down the process. It would therefore make more sense to go to
 # containerized CI for TorXakis, which includes all the needed dependencies.
 
-# First build TorXakis
-export STACK_YAML="stack_linux.yaml"
-stack build
+if [ "$#" -ne 1 ]; then
+    echo "Missing TorXakis version"
+fi
 
-# Version of TorXakis that is being packaged.
-TXS_VERSION=0.6.0
+for ubuntu_dirs in `ls -d ci/mk-package/ubuntu/*/`
+do
+    ubuntu_version=`basename ${ubuntu_dirs}`
+    docker run --rm \
+           -e TXS_VERSION=$1 \
+           -e UBUNTU_VERSION=${ubuntu_version} \
+           -v $(pwd)/.package-build:/build \
+           -ti torxakis-packager:${ubuntu_version} mk-package.sh
 
-TXS_TMP=/tmp/torxakis/
-
-rm -fr $TXS_TMP
-mkdir -p ${TXS_TMP}/usr/bin
-
-echo "Temporary directory is: ${TXS_TMP}"
-
-TXS_BIN=`stack path --local-install-root --silent`/bin
-
-echo "TorXakis binary directory is: ${TXS_BIN}"
-
-cp ${TXS_BIN}/* ${TXS_TMP}/usr/bin/
-
-cd $TXS_TMP
-
-# Download and copy the CVC4 binary
-curl -L https://github.com/TorXakis/Dependencies/releases/download/cvc4-20180306/cvc4-20180306-x86_64-linux-opt -o cvc4
-mv cvc4 usr/bin
-chmod +x usr/bin/cvc4
-
-# Download and copy the Z3 binary
-curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.6.0/z3-4.6.0-x64-ubuntu-14.04.zip -o z3.zip 
-unzip -p z3.zip "bin/z3" > usr/bin/z3
-chmod +x usr/bin/z3
-
-cd -
-
-# Create the deb package
-fpm -s dir \
-    -t deb \
-    -n torxakis \
-    -v $TXS_VERSION \
-    -C $TXS_TMP \
-    -d "libgmp-dev" \
-    -d "libexpat1" \
-    -d "netbase" \
-    -d "libgomp1" \
-    -p torxakis_VERSION_ARCH.deb \
-    usr/bin
-
-
-# Create an rpm from the deb package
-fpm -t rpm -s deb torxakis_${TXS_VERSION}_amd64.deb
+done

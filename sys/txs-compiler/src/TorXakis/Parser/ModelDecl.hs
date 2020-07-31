@@ -32,5 +32,4 @@ modelDeclP = declP "MODELDEF" $ \n l -> do
     os <- chansOutDecl
     ys <- chansSyncDecl
     txsSymbol "BEHAVIOUR"
-    be <- bexpDeclP
-    return $ mkModelDecl n l is os ys be
+    mkModelDecl n l is os ys <$> bexpDeclP

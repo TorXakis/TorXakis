@@ -6,7 +6,7 @@ See LICENSE at root directory of this repository.
 
 
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE ViewPatterns      #-}
 module Expand
 
 -- ----------------------------------------------------------------------------------------- --
@@ -41,11 +41,11 @@ import qualified Data.Text           as T
 
 import           BTree
 import           ChanId
-import           ConstDefs
+import           Constant
 import qualified EnvBTree            as IOB
 import qualified EnvData
 import           Id
-import           Relabel(relabel)
+import           Relabel             (relabel)
 import           StdTDefs
 import           Subst
 import           TxsDefs
@@ -82,10 +82,9 @@ expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hidvars cnd
                               , vid `Map.notMember` ivenv
                               ]
      tds <- gets IOB.tdefs
-     let exclams' = map toEitherTuple
-                      [ (ivar, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp) )
-                      | (ivar, vexp) <- exclams
-                      ]
+     let exclams' = [ toEitherTuple (ivar, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+                    | (ivar, vexp) <- exclams
+                    ]
      case Data.Either.partitionEithers exclams' of
        ([],r) ->    return
                       [ CTpref { ctoffers  = ctoffs
@@ -171,8 +170,13 @@ expand chsets (BNbexpr we (TxsDefs.view -> ProcInst procid@(ProcId nm _ _ _ _) c
                     (s, _)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                                 ("Expand: Eval failed in expand - ProcInst " ++ show s) ]
                                   return []
-       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $
-                             "Expand: Undefined process name: " ++ T.unpack nm ]
+       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                             ("Expand: Undefined process name: " ++ T.unpack nm)
+                           , EnvData.TXS_CORE_SYSTEM_ERROR
+                             ("\twhen looking for: " ++ show procid)
+                           , EnvData.TXS_CORE_SYSTEM_ERROR
+                             ("\tprocess definition map:" ++ show (procDefs tdefs))
+                           ]
                return []
 
 -- ----------------------------------------------------------------------------------------- --
@@ -184,9 +188,9 @@ expand chsets (BNbexpr we (TxsDefs.view -> Hide chans bexp))  =
 
 expand chsets (BNbexpr we (TxsDefs.view -> ValueEnv venv bexp))  =  do
     tds   <- gets IOB.tdefs
-    let we' = map toEitherTuple [ (vid, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp))
-                                | (vid, vexp) <- Map.toList venv
-                                ]
+    let we' = [ toEitherTuple (vid, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp))
+              | (vid, vexp) <- Map.toList venv
+              ]
     case Data.Either.partitionEithers we' of
         ([],r) -> expand chsets $ BNbexpr (combineWEnv we (Map.fromList r)) bexp
         (s,_)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
@@ -201,9 +205,9 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
                                , vid `Map.notMember` ve
                                ]
     tds   <- gets IOB.tdefs
-    let vewals = map toEitherTuple [ (vid, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp) )
-                                   | (vid, vexp) <- Map.toList ve
-                                   ]
+    let vewals = [ toEitherTuple (vid, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+                 | (vid, vexp) <- Map.toList ve
+                 ]
     case Data.Either.partitionEithers vewals of
         ([], r) -> concatMapM (expandTrans chsets envwals (Map.fromList r)) [ tr | tr <- trns, from tr == ini ]
         (s,_)   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
@@ -225,10 +229,9 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
                        else error "ERROR: interaction and hidden variables shall be disjoint\n"
              we'   = envwals `combineWEnv` stswals
          tds <- gets IOB.tdefs
-         let exclams' = map toEitherTuple
-                          [ (ivar, ValExpr.eval (ValExpr.subst (Map.map cstrConst we') (funcDefs tds) vexp) )
-                          | (ivar, vexp) <- exclams
-                          ]
+         let exclams' = [ toEitherTuple (ivar, ValExpr.eval (ValExpr.subst (Map.map cstrConst we') (funcDefs tds) vexp) )
+                        | (ivar, vexp) <- exclams
+                        ]
          case Data.Either.partitionEithers exclams' of
             ([], r) -> do let we'' = Map.fromList [ (vid, wal)
                                                   | (vid, wal) <- Map.toList we'
@@ -341,7 +344,7 @@ expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
      ctree1      <- expand chsets cnode1
      (_, quests, exclams) <- expandOffer chsets (Offer chanIdExit chanoffs)
      let ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
-     let exclams' = map toEitherTuple [ (ivar, ValExpr.eval vexp) | (ivar, vexp) <- exclams ]
+     let exclams' = [ toEitherTuple (ivar, ValExpr.eval vexp) | (ivar, vexp) <- exclams ]
      case Data.Either.partitionEithers exclams' of
         ([], r) -> do let accpreds = [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
                           (exits, noExits) = List.partition (\(CTpref ctoffs1 _ _ _) -> chanIdExit `Set.member` Set.map ctchan ctoffs1) ctree1

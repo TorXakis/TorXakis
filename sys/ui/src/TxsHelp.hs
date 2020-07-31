@@ -91,6 +91,27 @@ helptxt  =
   "--------------------------------\n"++
   "ncomp                                 : test purpose generation via `N-Complete'-algorithm\n"++
   "lpe                                   : lpe transformation (Linear Process Equation)\n"++
+  "lpeop <op> <lpe> <out>                : apply lpe operation <op> to model <lpe> and produce output named <out>\n"++
+  "                                           stop       -> do nothing\n"++
+  "                                           show       -> print the lpe to console\n"++
+  "                                           export     -> generate torxakis file (do not change identifiers)\n"++
+  "                                           export*    -> generate compilable torxakis file\n"++
+  "                                           mcrl2      -> translate to mCRL2 specification file\n"++
+  "                                           clean      -> remove duplicate/unreachable summands\n"++
+  "                                           cstelm     -> remove parameters that never change value\n"++
+  "                                           parelm     -> remove behavior-independent parameters\n"++
+  "                                           istepelm   -> remove ISTEP actions (preserve weak bisimulation)\n"++
+  "                                           datareset  -> reset parameters based on control flow graphs\n"++
+  "                                           parreset   -> reset parameters based on summand reachability\n"++
+  "                                           isdet      -> determine if the lpe is deterministic\n"++
+  "                                           det        -> make the lpe deterministic\n"++
+  "                                           uguard     -> add guards for underspecified summands\n"++
+  "                                           angelic    -> make the lpe input-enabled (angelic completion)\n"++
+  --"                                           confelm    -> statically prioritize invisible steps\n"++
+  "                                           A->B       -> do two lpe operations in succession\n"++
+  "                                           loop       -> repeat lpe operations until a fixpoint is reached\n"++
+  "                                           loop*x     -> loop lpe operations x times or until a fixpoint is reached\n"++
+  " merge <mod1> <mod2> <out>            : put two models in parallel and save it as a new model\n"++
   "--------------------------------\n"++
   "systart <name> <command>              : start external system <command> with internal <name>\n"++
   "systop  <name>                        : stop external command with internal <name>\n"++

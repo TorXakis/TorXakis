@@ -1,0 +1,85 @@
+\chapter{Linearizing expressions with threads} \label{pbranch-flows:chapter}
+
+\section{Linearizing Parallel}
+
+Let $E$ be a Parallel expression that synchronizes the channels in the set $Z$ somewhere in a thread process $P$.
+
+\subsection{Ensuring variable freshness}
+
+Soon, \lpeq{} will be `merging' thread processes.
+These processes may use the same variables for different purposes, or there may be multiple instances of the same variable (because a thread process is instantiated multiple times).
+
+To avoid conflicts in a lazy but foolproof manner, \lpeq{} rewrites multiple threads of $E$ that depend on the same thread process $Q$ so that they each rely on a unique copy of $Q$ instead.
+Then \lpeq{} rewrites all thread processes of $E$ so that each data parameter and each communication variable only occurs once (across processes).
+All variables of all threads are now distinguishable and ready for the remainder of this procedure.
+
+\subsection{Updating process signature}
+
+\lpeq{} introduces a fresh data parameter $i_T$ for each thread $T$ of $E$.
+\lpeq{} also gathers the data parameters of all thread processes on which $E$ depends (which are all unique).
+Finally, \lpeq{} defines a new signature for $P$ (in particular, it defines new data parameters for $P$), consisting of $i_T$ for all $T$ of $E$ and all data parameters that were gathered.
+
+\begin{samepage}
+\subsection{Partitioning channels} \label{channelpartitions:subsection}
+
+Let $C_E$ be the set of all multi-channels -- remember, an action prefix can contain multiple channels -- that occur across the threads of $E$.
+The multi-channels are divided into two groups, $C_1$ and $C_2$, based on whether they share at least one channel with $Z$ or not, respectively.
+
+$C_1$ and $C_2$ are used to process synchronizing actions and independent actions, respectively, which is described in the following sections.
+\end{samepage}
+
+\subsection{Processing synchronizing actions}
+
+First, \lpeq{} `labels' all multi-channels in $C_1$ with their intersection with $Z$.
+For example, multi-channels $\texttt{A|B}$ and $\texttt{A|C}$ can synchronize over $\texttt{A} \in Z$.
+Simultaneously, multi-channels $\texttt{X|Y}$ and $\texttt{X|Z}$ might be able to synchronize over $\texttt{X} \in Z$.
+
+For each unique label $L$ that has been encountered, \lpeq{} considers per thread all choices that have a multi-channel with label $L$.
+\lpeq{} selects one considered choice per thread in all possible permutations.
+(Note that if there is a thread where no choice has a multi-channel with label $L$, then there are zero permutations.)
+
+Choice permutations in which multi-channels of different threads share channels that are \emph{not} in $Z$ are discarded.
+This is a restriction on synchronization that can be found in the semantics of \txs{}.
+
+Each remaining choice permutation $p$ is converted into $2^n$ new choices (where $n$ is the number of threads in $E$) because each thread could be initialized (indicated by $i_T \texttt{ == True}$) or uninitialized (indicated by $i_T \texttt{ == False}$).
+For all possible different assumptions about this, a new choice $v$ is constructed:
+\begin{itemize}
+\item The guard of $v$ is a conjunction of the guards of all choices in $p$.
+Furthermore, $i_T \texttt{ == True}$ or $i_T \texttt{ == False}$ is added to the guard for each $T$ in $E$ depending on whether $T$ is assumed to be initialized or not.
+\item For each $c \in Z$, the communication variable of the channel offer of each choice in $p$ is replaced by a fresh variable of the same sort (all threads share the same fresh variables for the same channel $c$ and the same channel offer).
+Appropriate substitutions are performed in the guard and in the recursive process instantiation.
+
+After doing the above, the channel offers of all choices in $p$ are combined into one multi-channel.
+\item In the recursive process instantiation of $v$, only the assignments from the choices in $p$ are used (all other data parameters remain unchanged).
+Furthermore, for all $T$ in $E$, if the value of $i_T$ is \texttt{False}, we substitute the data parameters of the thread process of $T$ by the values that are used by the instantiation of that process.
+\end{itemize}
+
+\begin{samepage}
+\subsection{Processing independent actions}
+
+\lpeq{} considers all choices in all threads that have a multi-channel that occurs in $C_2$ (see Section~\ref{channelpartitions:subsection}).
+According to the semantics of \txs{}, these choices can occur \emph{independently} of other threads.
+
+For each choice $H$ belonging to a thread $T$, \lpeq{} creates two new choices:
+\begin{itemize}
+\item One in which $i_T \texttt{ == True}$ has been added to the guard.
+In the recursive process instantiation, only the assignments from $H$ are used (all other data parameters remain unchanged).
+\item One in which $i_T \texttt{ == False}$ has been added to the guard.
+In the recursive process instantiation, only the assignments from $H$ are used (all other data parameters remain unchanged).
+Since the value of $i_T$ means that the thread has not yet been initialized, we also substitute the data parameters of the thread process of $T$ by the values that are used by the instantiation of that process.
+\end{itemize}
+In both cases, the recursive process instantiation is also updated, of course ($i_T$ is set to \texttt{True}).
+\end{samepage}
+
+\section{Linearizing Enable}
+
+Implemented and verified to work for some models, but undocumented.
+
+\section{Linearizing Disable}
+
+Implemented, but undocumented and untested.
+
+\section{Linearizing Interrupt}
+
+Implemented, but undocumented and untested.
+

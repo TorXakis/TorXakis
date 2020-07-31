@@ -43,7 +43,7 @@ import qualified Data.Text                    as T
 import           Network.TextViaSockets       (Connection)
 import qualified Network.TextViaSockets       as TVS
 
-import           ConstDefs                    (Const (Cstring))
+import           Constant                    (Constant (Cstring))
 import qualified TxsCore                      as Core
 import           TxsDDefs                     (Action (Act), ConnHandle (..))
 import           TxsDefs                      (CnectDef (..), CnectType (..),
@@ -113,7 +113,7 @@ initSocketWorld s fWCh cdef@(CnectDef _ cds) = do
 newtype Host = Host Text deriving (Eq, Ord)
 newtype Port = Port Integer deriving (Eq, Ord)
 
-sendToSocket :: Session -> ConnHandle -> [Const] -> IO (Response (Maybe Action))
+sendToSocket :: Session -> ConnHandle -> [Constant] -> IO (Response (Maybe Action))
 sendToSocket _ ConnHfroW{} _ = return $ Left "Shouldn't send to socket FROM world."
 sendToSocket s h@ConnHtoW{connection = c} consts = do
     rTxt <- encode s h consts
@@ -123,7 +123,7 @@ sendToSocket s h@ConnHtoW{connection = c} consts = do
             return $ Right Nothing
         Left  err -> return $ Left err
 
-encode ::  Session -> ConnHandle -> [Const] -> IO (Response Text)
+encode ::  Session -> ConnHandle -> [Constant] -> IO (Response Text)
 encode _ ConnHfroW{} _ = error "Shouldn't try to encode for socket connection FROM world."
 encode s (ConnHtoW _ _ vIds vExpr) consts = do
     let wenv = Map.fromList $ zip vIds consts

@@ -1,0 +1,107 @@
+\chapter{LPE operations} \label{lpeoperations}
+
+\section{Introduction}
+
+Techniques that symbolically manipulate \txs{} models are applied via \emph{LPE operations}.
+LPE operations are divided into 3 categories:
+
+\begin{itemize}
+\item Basic operations, which make it possible for the user to chain LPE operations together in a convenient manner;
+\item Analysis operations, which give information about their input LPE; and
+\item Rewrite operations, which may significantly change the input LPE.
+\end{itemize}
+
+\section{Basic operations}
+
+Table~\ref{basiclpeops:table} gives an overview of the basic LPE operations.
+
+\begin{table}[!ht]
+\begin{center}
+\begin{tabularx}{\linewidth}{l|X|}
+\textbf{Operation} & \textbf{Description} \\ \hline
+\texttt{stop} & End the chain of operations immediately. \\ \hline
+\texttt{valid} & Validate the input LPE. \\ \hline
+\texttt{show} & Print the input LPE to the terminal. \\ \hline
+\texttt{show*} & Same as \texttt{show}, but the output is compilable \txs{} code, and identifiers in the output have been shortened for readability. \\ \hline
+\texttt{export} & Save the input LPE to \textit{base}\texttt{.txt}. \\ \hline
+\texttt{export*} & Same as \texttt{export}, but the output is compilable \txs{} code, and identifiers in the output have been shortened for readability. \\ \hline
+\texttt{loop} & If the input LPE has not been encountered before, restart from the most recent \texttt{start} command, or from the first operation if no \texttt{start} command has been encountered yet. \\ \hline
+\texttt{loop*}$N$ & Same as \texttt{loop}, but the number of restarts is limited to $N$. \\ \hline
+\texttt{start} & Set the location where the command chain should continue when looping. \\ \hline
+\texttt{inc} & Increase the counter that can be used in \textit{base}. \\ \hline
+\end{tabularx}
+\caption{Basic LPE operations.}
+\label{basiclpeops:table}
+\end{center}
+\end{table}
+
+\section{Analysis operations}
+
+Table~\ref{lpeanalysisops:table} gives an overview of the LPE analysis operations.
+
+\begin{table}[!ht]
+\begin{center}
+\begin{tabularx}{\linewidth}{l|X|}
+\textbf{Operation} & \textbf{Description} \\ \hline
+\texttt{isdet} & Return the input LPE after assessing whether it is deterministic. May yield false negatives. \\ \hline
+\texttt{mcrl2} & Convert the current LPE to an \mcrl{} specification (so that \mcrl{} can analyze it), and save it to \textit{base}\texttt{.mcrl2}. \\ \hline
+\texttt{confcheck} & Perform a confluence analysis on the input LPE, and return the input LPE in which confluent \texttt{ISTEP}s have been renamed to \texttt{CISTEP}s. \\ \hline
+\texttt{step*}$N$ & Follow a trace of up to $N$ steps through the input LPE. \\ \hline
+\end{tabularx}
+\caption{LPE analysis operations.}
+\label{lpeanalysisops:table}
+\end{center}
+\end{table}
+
+\section{Rewrite operations}
+
+Table~\ref{lperewriteops:table} gives an overview of the LPE rewrite operations.
+Table~\ref{lperewriteopsprops:table} shows the equivalence that is preserved by each rewrite operation:
+\begin{itemize}
+\item \textbf{u-ioco}: Underspecified input-output conformance.
+\item \textbf{br. bis.}: Branching bisimulation.
+\item \textbf{strong bis.}: Strong bisimulation.
+\item \textbf{state sp. equiv.}: State space equivalence.
+\end{itemize}
+
+\begin{table}[!ht]
+\begin{center}
+\begin{tabularx}{\linewidth}{l|X|}
+\textbf{Operation} & \textbf{Description} \\ \hline
+\texttt{clean} & Remove summands of which it can be established that its behavior is also part of another summand in the same LPE; and remove summands of which it can be established via symbolic reachability that they cannot be reached from the initial state. \\ \hline
+\texttt{cstelm} & Remove parameters of which it can be established that their value never changes. \\ \hline
+\texttt{parelm} & Remove parameters of which it can be established that their value never affects the behavior of the LPE. \\ \hline
+\texttt{parreset} & Set parameters of which it can be established via symbolic reachability that their value is no longer used after a specific summand to a default value in the process instantiation of that summand. \\ \hline
+\texttt{datareset} & Set parameters of which it can be established via control-flow analysis that their value is no longer used after a specific summand to a default value in the process instantiation of that summand. \\ \hline
+\texttt{confelm} & Rewrite the input LPE so that confluent \texttt{ISTEP} summands are prioritized. \\ \hline
+\texttt{det} & \textit{Experimental.} Rewrite the input LPE in an attempt to reduce non-determinism. By design, \texttt{det} does not generally remove all non-determinism in one execution because it may not terminate (see if there is a fixed point with \texttt{loop}). \\ \hline
+\texttt{uguard} & \textit{Experimental.} Search for underspecified summands and remove them. \\ \hline
+\end{tabularx}
+\caption{LPE rewrite operations.}
+\label{lperewriteops:table}
+\end{center}
+\end{table}
+
+\begin{table}[!ht]
+\begin{center}
+\begin{tabularx}{\linewidth}{X|c|c|c|c|}
+\textbf{Operation} & \textbf{u-ioco} & \textbf{br. bis.} & \textbf{strong bis.} & \textbf{state sp. equiv.} \\ \hline
+\texttt{clean} & Yes & Yes & Yes & Yes \\ \hline
+\texttt{cstelm} & Yes & Yes & Yes & Yes$^{*}$ \\ \hline
+\texttt{parelm} & Yes & Yes & Yes & No \\ \hline
+\texttt{parreset} & Yes & Yes & Yes & No \\ \hline
+\texttt{datareset} & Yes & Yes & Yes & No \\ \hline
+\texttt{confelm} & Yes & Yes & No & No \\ \hline
+\texttt{det} & Yes & Yes & Yes & No \\ \hline
+\texttt{uguard} & Yes & No & No & No \\ \hline
+\end{tabularx}
+\caption{LPE rewrite operations.}
+\begin{small}
+$^{*}$ State vectors may be smaller; transitions and number of states do not change.
+\end{small}
+\label{lperewriteopsprops:table}
+\end{center}
+\end{table}
+
+
+

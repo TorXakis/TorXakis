@@ -154,7 +154,7 @@ SingleCharEscChar   :: { Text }
                     
 RegExp  :: { Text }
         : RegExp1
-            { "^"<> $1 <> "$" }
+            { "\\`(" <> $1 <> ")\\'" }
             
 RegExp1 :: { Text }
         : Branches

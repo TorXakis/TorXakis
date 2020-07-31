@@ -1,0 +1,62 @@
+name:                   lpeq
+version:                0.1
+synopsis:               LPE for TorXakis
+license:                BSD3
+license-file:           license.txt
+author:                 Djurre van der Wal
+
+maintainer:             djurrevanderwal@gmail.com
+copyright:              TNO?
+category:               Web
+build-type:             Simple
+cabal-version:          >=1.10
+
+library
+  hs-source-dirs:       src
+                      , src/texprs
+                      , src/preparation
+                      , src/utils
+
+  exposed-modules:      LPEQ
+
+  other-modules:        ExclamToQuest
+                      , VEnvElim
+                      , HideElim
+                      , Scopes
+                      , ProcSearch
+                      , ChanSearch
+                      , UniqueObjects
+                      , FlattenedChannels
+                      , ThreadInst
+                      , ProcDepTree
+                      , ProcInstUpdates
+                      , SeqProgramCounters
+                      , PrefixResolution
+                      , BranchUtils
+                      , BranchLinearityUtils
+                      , TExprLinearization
+                      , ThreadUtils
+                      , LinearizeParallel
+                      , LinearizeEnable
+                      , LinearizeDisable
+                      , LinearizeInterrupt
+
+  ghc-options:        -Werror -Wall -O2 -optc-O3 -optc-ffast-math
+
+  build-depends:        base
+                      , containers
+                      , mtl
+                      , text
+                      , behave
+                      , behaveenv
+                      , coreenv
+                      , deepseq
+                      , random
+                      , solve
+                      , defs
+                      , bexpr
+                      , valexpr
+                      , value
+                      , lpeutils
+
+  default-language:     Haskell2010

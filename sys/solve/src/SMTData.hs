@@ -59,7 +59,6 @@ data EnvNames = EnvNames { sortNames   :: Map.Map SortId Text
 
 data  SmtEnv  =  SmtEnv     { inHandle          :: Handle
                             , outHandle         :: Handle
-                            , errHandle         :: Handle
                             , smtProcessHandle  :: ProcessHandle
                             , logFileHandle     :: Maybe Handle
                             , envNames          :: EnvNames

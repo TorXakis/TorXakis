@@ -48,7 +48,7 @@ spec = return $ do
         describe "Get TorXakis info" $
             it "Info responds with 200 and info" $ do
                 r <- get (host ++ "/info")
-                r ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                r ^. respstack build --test --haddock  --no-haddock-hyperlink-sourceonseStatus . statusCode `shouldBe` 200 -- OK
                 let bodyStr = BSL.unpack $ r ^. responseBody
                 bodyStr `shouldContain` "\"version\""
                 bodyStr `shouldContain` "\"buildTime\""

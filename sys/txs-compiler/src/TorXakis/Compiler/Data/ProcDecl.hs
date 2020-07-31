@@ -25,7 +25,7 @@ See LICENSE at root directory of this repository.
 -- Compiler functions and instances on process declarations.
 --------------------------------------------------------------------------------
 module TorXakis.Compiler.Data.ProcDecl
-    (ProcInfo (ProcInfo), allProcIds)
+    (ProcInfo (ProcInfo), allProcIds, getPId)
 where
 
 import           Data.Map                           (Map)
@@ -34,14 +34,15 @@ import           Data.Text                          (Text)
 
 import           ChanId                             (ChanId)
 import           Id                                 (Id (Id))
-import           ProcId                             (ProcId (ProcId))
+import           ProcId                             (ProcId (ProcId), toChanSort)
 import           SortId                             (SortId, sortIdInt)
 import           StautDef                           (combineParameters)
 import           TxsDefs                            (ExitSort (Exit, Hit, NoExit))
-import           VarId                              (VarId (VarId))
+import           VarId                              (VarId (VarId), varsort)
 
 import           TorXakis.Compiler.Data             (CompilerM, getNextId)
 import           TorXakis.Compiler.Data.VarDecl     ()
+import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps             ((<!!>))
 import           TorXakis.Compiler.Maps.DefinesAMap (DefinesAMap, getKVs,
                                                      getMap, predefChDecls,
@@ -49,12 +50,14 @@ import           TorXakis.Compiler.Maps.DefinesAMap (DefinesAMap, getKVs,
 import           TorXakis.Compiler.MapsTo           ((:&) ((:&)), Contents, In,
                                                      MapsTo, values, (<.+>))
 import           TorXakis.Compiler.ValExpr.SortId   (sortIds)
+import           TorXakis.Compiler.Validation
 import           TorXakis.Parser.Data               (ChanDeclE, ChanRefE, ExitSortDecl (ExitD, HitD, NoExitD),
                                                      Loc (ExtraAut), ProcDecl,
                                                      ProcDeclE, StautDecl,
                                                      Transition (Transition),
                                                      VarDeclE, asProcDeclLoc,
-                                                     getLoc, procDeclChParams,
+                                                     chanDeclName, getLoc,
+                                                     procDeclChParams,
                                                      procDeclName,
                                                      procDeclParams,
                                                      procDeclRetSort,
@@ -75,6 +78,8 @@ instance ( MapsTo Text SortId mm
          , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
          ) => DefinesAMap (Loc ProcDeclE) ProcInfo ProcDecl mm where
     uGetKVs mm pd = do
+        checkUnique (getErrorLoc pd, Channel, "Process channel parameter")
+                    (chanDeclName <$> procDeclChParams pd)
         pId    <- getNextId
         allPChIds <- getKVs mm pd
             :: CompilerM [(Loc ChanDeclE, ChanId)]
@@ -89,8 +94,8 @@ instance ( MapsTo Text SortId mm
         return [( getLoc pd
                 , ProcInfo ( ProcId (procDeclName pd)
                                     (Id pId)
-                                    pChIds
-                                    (snd <$> pVIds)
+                                    (toChanSort <$> pChIds)
+                                    (varsort . snd <$> pVIds)
                                     eSort
                            )
                            allPChIds
@@ -137,8 +142,8 @@ instance ( MapsTo Text SortId mm
         return [ ( loc
                  , ProcInfo ( ProcId n
                                     (Id pId)
-                                    sChIds
-                                    (snd <$> pVIds)
+                                    (toChanSort <$> sChIds)
+                                    (varsort . snd <$> pVIds)
                                     eSort
                             )
                            allSChIds
@@ -147,8 +152,8 @@ instance ( MapsTo Text SortId mm
                , ( ExtraAut "std" loc
                  , ProcInfo ( ProcId ("std_" <> n)
                                     (Id pIdStd)
-                                    sChIds
-                                    stdVids
+                                    (toChanSort <$> sChIds)
+                                    (varsort <$> stdVids)
                                     eSort
                             )
                            allSChIds
@@ -157,8 +162,8 @@ instance ( MapsTo Text SortId mm
                , ( ExtraAut "stdi" loc
                  , ProcInfo ( ProcId ("stdi_" <> n)
                                     (Id pIdStdi)
-                                    sChIds
-                                    (snd <$> pVIds)
+                                    (toChanSort <$> sChIds)
+                                    (varsort . snd <$> pVIds)
                                     eSort
                             )
                            allSChIds

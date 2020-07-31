@@ -1,0 +1,42 @@
+Last update date,,,,,
+31-12-2018,,,,,
+Folder,File,Model,Proper LPE behavior?,Linearizable?,Deterministic?
+Adder,Adder.txs,Adder,Yes,Yes,Yes
+Adder,Adder.txs,Adder3,Yes,Yes,Yes
+Adder,MAdder.txs,Adder,Yes,Yes,Yes
+Ark,Ark.txs,Model,No,,
+Bakery,bakery.txs,Model,Yes,Yes,No
+ControlLoop,ControlLoopModel.txs,Model,Yes,No,
+ControlLoop,ControlLoopModel.txs (Djurre's modification),Model,Invalid output model,,
+CustomersOrders,CustomersOrders.txs (Pierre's modification),Model,Yes,Yes,Yes
+DispatchProcess/spec,DisPro01-processor.txs,Model,Yes,Yes,Yes
+DispatchProcess/spec,DisPro02-dispatch.txs,Model,Yes,Yes,Yes
+DispatchProcess/spec,DisPro03-processors.txs,Model,Yes,Yes,No
+DispatchProcess/spec,DisPro04-hide.txs,Model,Yes,Yes,No
+DispatchProcess/spec,DisPro05a-data-nohide.txs,Model,Yes,Yes,No
+DispatchProcess/spec,DisPro05-data.txs,Model,Yes,Yes,No
+DispatchProcess/spec,DisPro06a-datapos-nohide.txs,Model,Yes,Yes,No
+DispatchProcess/spec,DisPro06-datapos.txs,Model,Yes,Yes,No
+DispatchProcess/spec,DisPro07-gcd.txs,Model,Yes,Yes,No
+DispatchProcess/spec,DisPro08-gcdpurp.txs,Model,Yes,Yes,No
+DispatchProcess/spec,DisPro09-multiproc.txs,Model,Yes,No,
+DispatchProcess/spec,DisPro10-data.txs,Model,Yes,No,
+DispatchProcess/spec,DisPro11-robust.txs,Model,Yes,No,
+DispatchProcess/spec,DisPro12-unique-id.txs,Model,Yes,No,
+DispatchProcess/spec,DisPro12-unique-id.txs,ModelTraceRight,Yes,No,
+DispatchProcess/spec,DisPro12-unique-id.txs,ModelTraceWrong,Yes,No,
+Echo,Echo.txs,Model,Yes,Yes,Yes
+Echo,EchoDelay.txs,Model,Yes,Yes,Yes
+Echo,LPE.txs,Model,Yes,Yes,Yes
+Fibonacci,Fibonacci.txs,Model,No,,
+Leader,leader.txs,Model,Yes,Yes,Timeout
+LuckyPeople/spec,LuckyPeople.txs,Model,Yes,Yes,Yes
+MovingArms,MovingArm.txs,Model,Yes,Yes,Yes
+MovingArms,MovingArms.txs,Model,Yes,Yes,Timeout
+Point,Point.txs,Model,Yes,Yes,Yes
+Queue,Queue.txs,Queue,Yes,Yes,Yes
+Queue,Queue.txs,Lossy,Yes,Yes,No
+ReadWriteConflict,ReadWrite.txs,Model,Yes,Yes,No
+ReadWriteConflict,ReadWriteAdvanced.txs,Model,Yes,No,
+StimulusResponse,StimulusResponse.txs,Model,Yes,Yes,Yes
+StimulusResponse,StimulusResponseLoop.txs,Model,Yes,Yes,Yes

@@ -19,8 +19,9 @@ module SMTInternal
 
 where
 
+import           Control.Concurrent
 import           Control.Exception   (onException)
-import           Control.Monad.State (gets, lift, modify)
+import           Control.Monad.State (get, gets, lift, modify, unless)
 
 import qualified Data.List           as List
 import qualified Data.Map            as Map
@@ -29,10 +30,11 @@ import           Data.String.Utils   (endswith, replace, startswith, strip)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Time
+import           System.Exit
 import           System.IO
 import           System.Process
 
-import           ConstDefs
+import           Constant
 import           SMT2TXS
 import           SMTAlex
 import           SMTData
@@ -60,16 +62,15 @@ openSolver = do
 -- ----------------------------------------------------------------------------------------- --
 close :: SMT ()
 close  =  do
-    hin <- gets inHandle
-    hout <- gets outHandle
-    herr <- gets errHandle
-    lfmh <- gets logFileHandle
-    lift $ hClose hin
-    lift $ hClose hout
-    lift $ hClose herr
-    case lfmh of
+    put "(exit)"
+    st <- get
+    case logFileHandle st of
         Nothing  -> return ()
         Just lfh -> lift $ hClose lfh
+    ec <- lift $ waitForProcess (smtProcessHandle st)
+    case ec of
+        ExitSuccess   -> return ()
+        ExitFailure c -> error ("Smt Solver exited with error code " ++ show c)
 
 -- ----------------------------------------------------------------------------------------- --
 -- push
@@ -126,10 +127,12 @@ createSMTEnv cmd lgFlag =  do
     -- hSetNewlineMode hin  ( NewlineMode { inputNL = LF,   outputNL = CRLF } )
     -- hSetNewlineMode hout ( NewlineMode { inputNL = CRLF, outputNL = LF   } )
 
-
+    -- handle warning messages of Smt Solver (over herr)
+    -- note: errors in SMT are reported over hout with the response "(error <string>)"
+    _ <-  forkIO (showErrors herr "SMT WARN >> ")
+    
     return (SmtEnv hin
                    hout
-                   herr
                    ph
                    lg
                    initialEnvNames
@@ -214,7 +217,7 @@ getSolution vs    = do
     edefs <- gets envDefs
     return $ Map.fromList (map (toConst edefs vnameSMTValueMap) vs)
   where
-    toConst :: (Variable v) => EnvDefs -> Map.Map Text SMTValue -> v -> (v, Const)
+    toConst :: (Variable v) => EnvDefs -> Map.Map Text SMTValue -> v -> (v, Constant)
     toConst edefs mp v = case Map.lookup (vname v) mp of
                             Just smtValue   -> case smtValueToValExpr smtValue (cstrDefs edefs) (vsort v) of
                                                     Left t -> error $ "getSolution - SMT parse error:\n" ++ t
@@ -248,8 +251,8 @@ getInfo info = do
 
 init :: SMT ()
 init  =  do
-    put "(set-logic ALL)"
     put "(set-option :produce-models true)"
+    put "(set-logic ALL)"
     put "(set-info :smt-lib-version 2.5)"
     putT basicDefinitionsSMT
     return ()
@@ -257,19 +260,14 @@ init  =  do
 -- | execute the SMT command given as a string
 put :: String -> SMT ()
 put cmd  = do
-  lg <- gets logFileHandle
-  lift $ hPutSmtLog lg cmd
-  mapM_ putLine (lines cmd)
-  where
-        putLine :: String -> SMT ()
-        putLine cmd'  = do
-            hin <- gets inHandle
-            -- execute command
-            lift $ hPutStrLn hin cmd'
-            herr <- gets errHandle
-            -- show errors - if there are any - and wait for the command to finish executing
-            lift $ checkErrors herr "SMT WARN >> "
-            return ()
+    st <- get
+    let lg = logFileHandle st
+        hin = inHandle st
+      in do
+        case lg of
+            Nothing -> return ()
+            Just h  -> lift $ hPutStrLn h cmd
+        lift $ hPutStrLn hin cmd
 
 putT :: Text -> SMT ()
 putT = put . T.unpack
@@ -283,26 +281,13 @@ valExprToString v = do
 -- ----------------------------------------------------------------------------------------- --
 --  return error messages if any are present
 --  where the given prefix is prepended to every line
-
-checkErrors :: Handle -> String -> IO ()
-checkErrors herr prefix  = do
-    errors <- getAllInput herr
-    case errors of
-        []  -> return ()
-        _   -> let pes = unlines $ map (prefix ++) (lines errors) in
-                putStrLn pes
-
--- ---------------------------------------------------------------------------------------- --
--- read all available data from given handle
--- this operation doesn't block when no data can be read
-getAllInput :: Handle -> IO String
-getAllInput h = do
-    ready <- hReady h
-    if ready
-        then do x <- hGetChar h
-                xs <- getAllInput h
-                return $ x:xs
-        else return []
+showErrors :: Handle -> String -> IO ()
+showErrors h prefix  = do
+    s <- hIsEOF h
+    unless s $ do
+                    msg <- hGetLine h
+                    hPutStrLn stderr (prefix ++ msg)
+                    showErrors h prefix
 
 -- ----------------------------------------------------------------------------------------- --
 -- read the response (as lines) from the handle
@@ -344,11 +329,3 @@ skipCountInsideString ('"':'"':xxs) = skipCountInsideString xxs       -- escape 
 skipCountInsideString ('"':xs)      = countBracket xs            -- outside string
 skipCountInsideString (_:xs)        = skipCountInsideString xs
 skipCountInsideString []            = 0
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
-
-hPutSmtLog :: Maybe Handle -> String -> IO ()
-hPutSmtLog (Just lg) s = hPutStrLn lg s
-hPutSmtLog Nothing   _ = return ()

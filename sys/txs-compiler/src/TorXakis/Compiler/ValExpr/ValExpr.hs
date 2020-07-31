@@ -51,7 +51,7 @@ import           TorXakis.Compiler.Error             (Entity (Function),
 import           TorXakis.Compiler.Maps              (determineSH, findRight,
                                                       (.@))
 import           TorXakis.Compiler.Maps.VarRef       (varIdForRef)
-import           TorXakis.Compiler.ValExpr.ConstDefs (constToConstDef)
+import           TorXakis.Compiler.ValExpr.Constant  (constToConstant)
 import           TorXakis.Compiler.ValExpr.SortId    (checkSortIds, sortIdConst)
 import           TorXakis.Parser.Data                (ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
                                                       ExpDecl, LetVarDecl, Loc,
@@ -73,12 +73,12 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
                 checkSortIds (varsort vId) eSid
                 return $ cstrVar vId
             Right shs -> do
-                (sig, h)  <- determineSH shs [] (Just eSid)
+                (sig, h)  <- determineSH shs [] (Just eSid) (getErrorLoc l)
                 checkSortIds (sortRet sig) eSid
                 return $ h []
     ConstLit c -> do
         traverse_ (checkSortIds eSid) (sortIdConst c)
-        return $ cstrConst (constToConstDef eSid c)
+        return $ cstrConst (constToConstant eSid c)
     LetExp vss subEx -> do
         let
             letValDeclsToMaps :: Either Error [Map VarId (ValExpr VarId)]
@@ -86,8 +86,7 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
             fsM :: Map.Map FuncId (FuncDef VarId)
             fsM = Map.empty
         subValExpr <- expDeclToValExpr vdefs eSid subEx
-        vsM <- letValDeclsToMaps
-        return $ foldr (`subst` fsM) subValExpr vsM
+        foldr (`subst` fsM) subValExpr <$> letValDeclsToMaps
     If ex0 ex1 ex2 -> do
         ve0 <- expDeclToValExpr vdefs sortIdBool ex0
         ve1 <- expDeclToValExpr vdefs eSid ex1
@@ -116,7 +115,7 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
                   then Left Error
                        { _errorType = Undefined Function
                        , _errorLoc  = NoErrorLoc
-                       , _errorMsg  = "Length of arguments don't match"
+                       , _errorMsg  = "Length of arguments don't match "
                                      <> T.pack (show sig)
                        }
                   else do

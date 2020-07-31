@@ -7,23 +7,24 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleInstances #-}
 -- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
-( IOC -- IOC = StateT EnvC IO
-      -- torxakis core main state monad transformer
-, EnvC(..)
-, initEnvC
-, CoreState(..)
-, getSMT -- :: String -> IOC SMTData.SmtEnv
-, putSMT -- :: String -> SMTData.SmtEnv -> IOC ()
-, getParams -- :: [String] -> IOC [(String,String)]
-, setParams -- :: [(String,String)] -> IOC [(String,String)]
-, initUnid -- :: IOC.IOC Int
-, newUnid -- :: IOC.IOC Int
-, putMsgs -- :: [EnvData.Msg] -> IOC ()
--- * Operation on core-state
-, modifyCS
-, putCS
-, incUnid
-)
+  ( IOC -- IOC = StateT EnvC IO
+                  -- torxakis core main state monad transformer
+  , EnvC(..)
+  , initEnvC
+  , CoreState(..)
+  , getSMT -- :: String -> IOC SMTData.SmtEnv
+  , putSMT -- :: String -> SMTData.SmtEnv -> IOC ()
+  , getParams -- :: [String] -> IOC [(String,String)]
+  , setParams -- :: [(String,String)] -> IOC [(String,String)]
+  , initUnid -- :: IOC.IOC Int
+  , newUnid -- :: IOC.IOC Int
+  , putMsgs -- :: [EnvData.Msg] -> IOC ()
+  , putInfo -- :: [String] -> IOC ()
+  -- * Operation on core-state
+  , modifyCS
+  , putCS
+  , incUnid
+  )
 where
 
 import           Control.DeepSeq     (NFData, rnf)
@@ -226,6 +227,10 @@ putMsgs :: [EnvData.Msg] -> IOC ()
 putMsgs msg = do
      putMsgs' <- gets (putmsgs . state)
      putMsgs' msg
+
+
+putInfo :: [String] -> IOC ()
+putInfo = mapM_ (\m -> putMsgs [ EnvData.TXS_CORE_USER_INFO m ])
 
 -- ----------------------------------------------------------------------------------------- --
 -- set ChanOffers (needed during LPE translation)

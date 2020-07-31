@@ -48,8 +48,7 @@ cnectItemP = do
     txsSymbol "HOST"
     h     <- txsStringP
     txsSymbol "PORT"
-    p     <- txsIntP
-    return $ CnectItem ch cType h p
+    CnectItem ch cType h <$> txsIntP
 
 codecItemP :: TxsParser CodecItem
 codecItemP = do

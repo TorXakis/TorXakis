@@ -32,5 +32,4 @@ mapperDeclP =  declP "MAPPERDEF" $ \n l -> do
     os <- chansOutDecl
     ys <- chansSyncDecl
     txsSymbol "BEHAVIOUR"
-    be <- bexpDeclP
-    return $ mkMapperDecl n l is os ys be
+    mkMapperDecl n l is os ys <$> bexpDeclP

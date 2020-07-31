@@ -22,12 +22,12 @@ defaultSMTProcs =
 
 cmdCVC4 :: CreateProcess
 cmdCVC4 = proc "cvc4"
-                ["--lang=smt"
+                ["--lang=smt2.5"
                 , "--incremental"
                 , "--strings-exp"
                 , "--fmf-fun-rlv"
                 , "--uf-ss-fair"
-                , "--no-strings-std-ascii"
+                , "--no-strings-print-ascii"
                 ]
 
 cmdZ3 :: CreateProcess

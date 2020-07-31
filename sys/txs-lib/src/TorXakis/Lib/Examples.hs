@@ -36,7 +36,7 @@ import           System.Process               (StdStream (CreatePipe, NoStream),
 import           System.Timeout               (timeout)
 
 import           ChanId                       (ChanId (ChanId))
-import           ConstDefs                    (Const (Cstring))
+import           Constant                     (Constant (Cstring))
 import           EnvData                      (Msg)
 import           Id                           (Id (Id))
 import           SortId                       (SortId (SortId))
@@ -369,7 +369,7 @@ seconds = 10 ^ (6 :: Int)
 --     let Just mDef = st ^. tdefs . ix ("Model" :: Name)
 --         outChId = getOutChanId mDef
 --         inChId  = getInChanId  mDef
---         mSendToW :: ToWorldMapping -- [Const] -> IO (Maybe Action)
+--         mSendToW :: ToWorldMapping -- [Constant] -> IO (Maybe Action)
 --         mSendToW = ToWorldMapping $ \xs ->
 --             case xs of
 --                 [Cstr {cstrId = CstrId { name = "CmdInfo"}} ] ->
@@ -396,7 +396,7 @@ seconds = 10 ^ (6 :: Int)
 --     let Just mDef = st ^. tdefs . ix ("Model" :: Name)
 --         outChId = getOutChanId mDef
 --         inChId  = getInChanId  mDef
---         mSendToW :: ToWorldMapping -- [Const] -> IO (Maybe Action)
+--         mSendToW :: ToWorldMapping -- [Constant] -> IO (Maybe Action)
 --         mSendToW = ToWorldMapping $ \xs ->
 --             case xs of
 --                 [Cstr { cstrId = CstrId { name = "CmdInfo" }} ] -> Just <$> actInfo st outChId
@@ -511,7 +511,7 @@ seconds = 10 ^ (6 :: Int)
 --         Right cnst -> return $ Act $ Set.fromList [(outChId, [cnst])]
 --         Left  err  -> error $ "Can't create ResponseAction " ++ T.unpack rNm ++ " because: " ++ err
 
--- apply :: SessionSt -> FuncTable VarId -> Text -> [ValExpr VarId] -> SortId -> IO (Either String Const)
+-- apply :: SessionSt -> FuncTable VarId -> Text -> [ValExpr VarId] -> SortId -> IO (Either String Constant)
 -- apply st ft fn vs sId = do
 --     let sig = Signature (sortOf <$> vs) sId
 --     case Map.lookup sig (signHandler fn ft) of

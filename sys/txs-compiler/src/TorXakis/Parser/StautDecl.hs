@@ -49,7 +49,7 @@ stautItemP
 
       stUpdatesP :: TxsParser [StUpdate]
       stUpdatesP = txsSymbol "{" *> stUpdateP `sepBy` txsSymbol ";" <* txsSymbol "}"
-                 <|> return []
+               <|> return []
 
       stUpdateP :: TxsParser StUpdate
       stUpdateP =
@@ -59,18 +59,13 @@ stautItemP
       varRefP = flip mkVarRef <$> mkLoc <*> tryIdentifier
 
       transitionP :: TxsParser Transition
-      transitionP = try $ do
-          src <- stateRefP
-          txsSymbol "->"
+      transitionP = do
+          src <- try (stateRefP <* txsSymbol "->")
           ofrs <- actOfferP
           upds <- stUpdatesP
           txsSymbol "->"
-          dst <- stateRefP
-          return $ Transition src ofrs upds dst
+          Transition src ofrs upds <$> stateRefP
 
 
 statesDecP :: TxsParser StateDecl
 statesDecP = mkStateDecl <$> tryIdentifier <*> mkLoc
-
-
-

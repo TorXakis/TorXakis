@@ -15,7 +15,8 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      ConstDefs
+  exposed-modules:      Boute
+                      , Constant
                       , CstrDef
                       , CstrId
                       , FreeMonoidX
@@ -33,11 +34,11 @@ library
                       , VarId
                       , Id
 
-  other-modules:        ValExprDefs
+  other-modules:        ConstantAlex
+                      , ConstantHappy
+                      , ValExprDefs
                       , ValExprImpls
                       , ValExprImplsExtension
-                      , ValueAlex
-                      , ValueHappy
 
   ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math
 
@@ -55,22 +56,23 @@ library
                       , lexregexxsd
                       
   default-language:     Haskell2010
-                    
 
 test-suite valexpr-BlackBox
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
-                     
+
   main-is:             Spec.hs
-  
-  other-modules:       GenProduct
-                     , ValExprSpec
-                     , ProductSpec
+
+  other-modules:       ConstantGen
+                     , ConstantSpec
                      , FreeMonoidXSpec
+                     , ProductGen
+                     , ProductSpec
+                     , ValExprSpec
                      , XSD2PosixSpec
-                       
+
   ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
-  
+
   build-depends:       base
                      , hspec
                      , hspec-contrib
@@ -80,4 +82,5 @@ test-suite valexpr-BlackBox
                      , QuickCheck
                      
                      , valexpr
+
   default-language:    Haskell2010

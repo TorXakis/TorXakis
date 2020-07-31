@@ -1,0 +1,93 @@
+\chapter{isdet} \label{isdet}
+
+\section{Introduction}
+
+The \texttt{isdet} command checks whether the specified LPE is deterministic.
+The command may yield false negatives.
+
+\section{Formal background}
+
+\subsection{Summand determinism}
+
+Consider two summands, $s_\alpha$ and $s_\beta$, and reference their elements conform \ref{summandelements}.
+
+Summands $s_\alpha$ and $s_\beta$ are said to be \emph{deterministic} if one of these conditions holds:
+
+\begin{itemize}
+\item $s_\alpha$ and $s_\beta$ are the same summand; that is, $s_\alpha = s_\beta$.
+
+\item $s_\alpha$ and $s_\beta$ communicate over different channels:
+\begin{align*}
+C_\alpha \neq C_\beta \land (C_\alpha \in \{\istep{}, \cistep{}\} \not\leftrightarrow C_\beta \in \{\istep{}, \cistep{}\})
+\end{align*}
+
+\item $s_\alpha$ and $s_\beta$ communicate with different numbers of communication variables; that is, $m_\alpha \neq m_\beta$.
+
+\item $s_\alpha$ and $s_\beta$ are never simultaneously enabled, or $s_\alpha$ and $s_\beta$ always lead to the same next state.
+In order to determine this, check if
+\begin{align*}
+g_\alpha[X_\beta] \land g_\beta \rightarrow \bigwedge\limits_{j=1}^{k} v_\alpha(p_j)[X_\beta] = v_\beta(p_j)
+\end{align*}
+
+is a tautology, where $X_\beta$ is defined as
+\begin{align*}
+X_{\beta} &= [x_\alpha(j) \rightarrow x_\beta(j) \;|\; 1 \leq j \leq \text{min}(m_\alpha, m_\beta)]
+\end{align*}
+\end{itemize}
+
+Note that this approach is \emph{not} guaranteed to correctly recognize that two summands are deterministic (false negatives are tolerated)!
+
+\section{Algorithm}
+
+The algorithm invoked by the \texttt{isdet} command checks for all pairs of different summands whether the first summand is deterministic with the second summand (see the previous section).
+The algorithm yields \textbf{true} if and only if this is the case for all summand pairs.
+
+\section{Example}
+
+Consider the following LPE:
+
+\begin{lstlisting}
+//Process definition:
+PROCDEF example[A :: Int](x, y :: Int)
+  = A ? i [[x==0 /\ i>=0 /\ i<=5]] >-> example[A](1, 0)
+  + A ? i [[y==0 /\ i>=5 /\ i<=9]] >-> example[A](0, 1)
+  ;
+
+//Initialization:
+example[A](0, 1);
+\end{lstlisting}
+
+Consider the two summands, calling the first $s_1$ and the second $s_2$.
+
+The first three conditions for detecting determinism are false.
+
+For the fourth condition, the antecedent is
+\begin{align*}
+g_1[X_2] \land g_2 &\Leftrightarrow (\texttt{x} = 0 \land \texttt{i} \geq 0 \land \texttt{i} \leq 5)[\texttt{i} \rightarrow \texttt{i}] \land (\texttt{y} = 0 \land \texttt{i} \geq 5 \land \texttt{i} \leq 9) \\
+&\Leftrightarrow \texttt{x} = 0 \land \texttt{y} = 0 \land \texttt{i} = 5
+\end{align*}
+
+Given the antecedent, the conclusion must hold.
+This is not the case:
+\begin{align*}
+v_1(\texttt{x})[X_2] = 1[\texttt{i} \rightarrow \texttt{i}] = 1 \neq 0 = v_2(\texttt{x}) \\
+v_1(\texttt{y})[X_2] = 0[\texttt{i} \rightarrow \texttt{i}] = 0 \neq 1 = v_2(\texttt{y}) \\
+\end{align*}
+
+$s_1$ is therefore \emph{not} deterministic with $s_2$.
+
+Changing the LPE to
+
+\begin{lstlisting}
+//Process definition:
+PROCDEF example[A :: Int](x, y :: Int)
+  = A ? i [[x==0 /\ i>=0 /\ i<=4]] >-> example[A](1, 0)
+  + A ? i [[y==0 /\ i>=5 /\ i<=9]] >-> example[A](0, 1)
+  ;
+
+//Initialization:
+example[A](0, 1);
+\end{lstlisting}
+
+will result in an antecedent that is false; therefore, $s_1$ is deterministic with $s_2$.
+

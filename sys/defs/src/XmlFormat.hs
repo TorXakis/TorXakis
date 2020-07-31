@@ -21,7 +21,7 @@ import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Text.XML.Expat.Tree
 
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
 import           FuncId
@@ -105,7 +105,7 @@ lookupConstructor tdefs sid n
 rootName :: Text
 rootName = "TorXakisMsg"
 
-constToXml :: TxsDefs -> Const -> Text
+constToXml :: TxsDefs -> Constant -> Text
 constToXml tdefs w =
   xmlTreeToText $ pairNameConstToXml tdefs (rootName, w)
 
@@ -113,7 +113,7 @@ getFieldNames :: TxsDef -> [Text]
 getFieldNames (DefCstr (CstrDef _ funcIds))   = map FuncId.name funcIds
 getFieldNames _                               = error "getFieldNames: unexpected input"
 
-pairNameConstToXml :: TxsDefs -> (Text, Const)  -> XMLTree
+pairNameConstToXml :: TxsDefs -> (Text, Constant)  -> XMLTree
 pairNameConstToXml _ (n, Cbool True) =
   n ~> ["true"]
 pairNameConstToXml _ (n, Cbool False) =
@@ -122,7 +122,7 @@ pairNameConstToXml _ (n, Cint i) =
   n ~> [XLeaf (T.pack (show i))]
 pairNameConstToXml _ (n, Cstring s) =
   n ~> [XLeaf (encodeString s)]
-pairNameConstToXml tdefs (n, Cstr cid wals) =
+pairNameConstToXml tdefs (n, Ccstr cid wals) =
   let cName = CstrId.name cid
       cDef = lookupConstructorDef tdefs cid
       nodes = map (pairNameConstToXml tdefs)
@@ -147,13 +147,13 @@ stringFromList = T.concat . go
     go (x:_) =
       error ("XmlFormat - stringFromList : unexpected item " ++ show x)
 
-constFromXml :: TxsDefs -> SortId -> Text -> Const
+constFromXml :: TxsDefs -> SortId -> Text -> Constant
 constFromXml tdefs sid s =
   case parse' defaultParseOptions{ overrideEncoding = Just ISO88591 } (pack $ map c2w (T.unpack s)) of
     Left err   -> error ("constFromXml parse error " ++ show err)
     Right tree -> pairNameConstFromXml tdefs sid tree rootName
 
-pairNameConstFromXml :: TxsDefs -> SortId -> Node Text Text -> Text -> Const
+pairNameConstFromXml :: TxsDefs -> SortId -> Node Text Text -> Text -> Constant
 pairNameConstFromXml _ sid (Element nt [] list) n
   | n == nt, sid == sortIdBool = Cbool ("true" == stringFromList list)
 pairNameConstFromXml _     sid     (Element nt [] list) n
@@ -171,7 +171,7 @@ pairNameConstFromXml tdefs sid (Element nt [] [Element cname [] list]) n
         uncurry3 f (a, b, c) = f a b c
     in
       if length (cstrargs cstrid) == length list
-      then Cstr cstrid vexprArgs
+      then Ccstr cstrid vexprArgs
       else error $  "XmlFormat - constFromXml: Number of arguments mismatch "
                  ++ "in constructor " ++ show cname
                  ++ " of sort " ++ show (SortId.name sid)

@@ -50,7 +50,7 @@ import           TxsShow
 import           XmlFormat
 
 -- import from valexpr
-import           ConstDefs
+import           Constant
 import           FuncDef
 import           FuncId
 import           Id
@@ -71,10 +71,10 @@ evalTuple (v,i) = do
 -- eval :  evaluation of value expression
 --         eval shall only work on closed vexpr
 
-eval :: Variable v => ValExpr v -> IOB.IOB (Either String Const)
+eval :: Variable v => ValExpr v -> IOB.IOB (Either String Constant)
 eval = eval' . ValExpr.view
 
-eval' :: Variable v => ValExprView v -> IOB.IOB (Either String Const)
+eval' :: Variable v => ValExprView v -> IOB.IOB (Either String Constant)
 eval' (Vfunc fid vexps) = do
      envb <- get
      let tdefs = IOB.tdefs envb
@@ -93,22 +93,22 @@ eval' (Vfunc fid vexps) = do
 eval' (Vcstr cid vexps) = do
     mvals <- mapM eval vexps
     case partitionEithers mvals of
-        ([], vals) -> return $ Right $ Cstr cid vals
+        ([], vals) -> return $ Right $ Ccstr cid vals
         (es, _)    -> return $ Left $ Utils.join "\n" es
 
 eval' (Viscstr cid1 arg) = do
     mval <- eval arg
     case mval of
-        Right (Cstr cid2 _) -> return $ Right $ Cbool ( cid1 == cid2 )
+        Right (Ccstr cid2 _)-> return $ Right $ Cbool ( cid1 == cid2 )
         Right t             -> return $ Left $ "iscstr : wrong value " ++ show t
         Left t              -> return $ Left $ "iscstr : " ++ t
 
-eval' (Vaccess _cid1 p arg) = do
+eval' (Vaccess _cid1 _n p arg) = do
     mval <- eval arg
     case mval of
-        Right (Cstr _cid2 args') -> return $ Right $ args'!!p
-        Right t                  -> return $ Left $ "access : wrong value " ++ show t
-        Left t                   -> return $ Left $ "access : " ++ t
+        Right (Ccstr _cid2 args') -> return $ Right $ args'!!p
+        Right t                   -> return $ Left $ "access : wrong value " ++ show t
+        Left t                    -> return $ Left $ "access : " ++ t
 
 eval' (Vconst const') = return $ Right const'
 
@@ -190,14 +190,14 @@ eval' (Vand vexps) = do
     case partitionEithers mconsts of
         ([], consts) -> return $ Right $ Cbool $ all unBool consts
         (es, _)      -> return $ Left $ "And: " ++ Utils.join "\n  " es
-  where unBool :: Const -> Bool
+  where unBool :: Constant -> Bool
         unBool (Cbool b) = b
         unBool _         = error "unBool applied on non-Bool"
 
 eval' (Vlength vexp) = do
     mexp <- eval vexp
     case mexp of
-        Right (Cstring val) -> return $ Right $ Cint $ toInteger (T.length val)
+        Right (Cstring val) -> return $ Right $ Cint $ Prelude.toInteger (T.length val)
         Right x           -> return $ Left $ "length: not a string " ++ show x
         Left t            -> return $ Left $ "length: not a string value " ++ show t
 
@@ -294,7 +294,7 @@ readBool "False" = False
 readBool "false" = False
 readBool x       = error $ "Unable to parse bool " ++ show x
 
-evalSSB :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB (Either String Const)
+evalSSB :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB (Either String Constant)
 evalSSB (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "toString",    [v]    ) -> do
@@ -328,7 +328,7 @@ evalSSB (FuncId nm _ _ _) vexps =
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: evaluation of standard functions for Int - SSI
 
-evalSSI :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB (Either String Const)
+evalSSI :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB (Either String Constant)
 evalSSI (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "toString",    [v]    ) -> do
@@ -362,7 +362,7 @@ evalSSI (FuncId nm _ _ _) vexps =
 -- evaluation of value expression: evaluation of standard functions for String - SSS
 
 
-evalSSS :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB (Either String Const)
+evalSSS :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB (Either String Constant)
 evalSSS (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "toString",   [v] ) -> do es <- txs2str v

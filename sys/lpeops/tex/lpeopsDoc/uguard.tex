@@ -1,0 +1,102 @@
+\chapter{uguard}
+
+\section{Introduction}
+
+\txs{} checks whether or not there is \emph{input-output-conformance} of an implementation with the \emph{underspecified} traces of its specification (u-ioco, see \cite{volpato2013towards}).
+In this context, the specification has only to be u-ioco with itself, and it can therefore potentially be rewritten more aggressively than when a models must preserve a stronger equivalence relation.
+
+Unfortunately, there is no information about the traces of a model that can be extracted directly from that model while it is in LPE form.
+The \texttt{uguard} command is an attempt to symbolically detect a specific, relatively simple pattern with actions that do not follow the u-ioco definition.
+Upon detection, the command adds guards to the LPE to exclude the underspecified actions from the model (hence its name).
+
+\section{Formal background}
+
+\subsection{Summand implication}
+
+Consider two summands, $s_\alpha$ and $s_\beta$, and reference their elements conform \ref{summandelements}.
+
+Summand $s_\alpha$ is said to \emph{imply} $s_\beta$ if these two conditions hold:
+
+\begin{itemize}
+\item $s_\alpha$ and $s_\beta$ must communicate over the exact same channel with exactly as many channel variables; that is, $C_\alpha = C_\beta \land m_\alpha = m_\beta$.
+
+\item Define the mapping
+\begin{align*}
+X_\beta = [x_\alpha(j) \rightarrow x_\beta(j) \;|\; 1 \leq j \leq \text{min}(m_1, m_2)]
+\end{align*}
+
+The following condition must be a tautology:
+\begin{align*}
+g_\alpha[X_\beta] \rightarrow g_\beta
+\end{align*}
+\end{itemize}
+
+\subsection{Possible input-successors}
+
+Consider a summand pair $(s_\alpha, s_\beta)$, referencing the elements of $s_\alpha$ and $s_\beta$ conform \ref{summandelements}.
+Summand $s_\beta$ is said to be a \emph{possible input-successor} of $s_\alpha$ if $C_\beta$ is an input channel and if the following expression is satisfiable:
+\begin{align*}
+g_\alpha \land {g_\beta}[v \rightarrow q(v) \;|\; v \in \varsof{g_\beta} \setminus P][p \rightarrow v_\alpha(p) \;|\; p \in P]
+\end{align*}
+
+where $q(v)$ is a bijective function that relates variable $v$ to a fresh variable.
+
+\subsection{Definite input-successors}
+
+Consider a summand pair $(s_\alpha, s_\beta)$, referencing the elements of $s_\alpha$ and $s_\beta$ conform \ref{summandelements}.
+Summand $s_\beta$ is said to be a \emph{definite input-successor} of $s_\alpha$ if $C_\beta$ is an input channel and if the following expression is a tautology:
+\begin{align*}
+g_\alpha \rightarrow {g_\beta}[v \mapsto q(v) \;|\; v \in \varsof{g_\beta} \setminus P][p \mapsto v_\alpha(p) \;|\; p \in P]
+\end{align*}
+
+where $q(v)$ is a bijective function that relates variable $v$ to a fresh variable.
+
+\section{Algorithm}
+
+Let the input LPE model be $M$ and the underlying LPE be $P$.
+The \texttt{uguard} algorithm follows these steps for all summand pairs $(s_\alpha, s_\beta)$ such that $s_\alpha$ implies $s_\beta$:
+
+\begin{enumerate}
+\item Compute $\Delta = (D_\beta \setminus P_\alpha) \cup (D_\alpha \setminus P_\beta)$ where
+\begin{itemize}
+\item $P_\alpha$ is the set of all possible input-successors of $s_\alpha$;
+\item $P_\beta$ is the set of all possible input-successors of $s_\beta$;
+\item $D_\alpha$ is the set of all definite input-successors of $s_\alpha$; and
+\item $D_\beta$ is the set of all definite input-successors of $s_\beta$.
+\end{itemize}
+
+If $\Delta = \emptyset{}$, the \texttt{uguard} algorithm does not make any changes and stops.
+Otherwise, it continues.
+
+\item Create a new LPE $P'$ with the same parameters as $P$, but without any summands.
+Create a new LPE model $M'$ that has the same definition as $M$, except that its references to $P$ have been replaced by references to $P'$.
+
+\item Add a new, fresh parameter $f$ of type \texttt{Bool} to $P'$.
+Where $M'$ instantiates $P'$, initialize $f$ with $\textbf{true}$.
+
+\item For each summand $s_i$ of $P$ -- referencing its elements conform \ref{summandelements} -- add to $P'$ a new summand ${s_i}'$ that is defined as
+\begin{align*}
+{s_i}' = C_i \; \texttt{?} \; x_i(1) \; &\cdots{} \; \texttt{?} \; x_i(m_i) \; [[\Gamma(s_i) \land g_i]] \\
+&\texttt{>->} \; P(v_i(p_1), \cdots{}, v_i(p_k), \Upsilon(s_i))
+\end{align*}
+
+where
+\begin{align*}
+\Gamma(s) = \begin{cases}
+f \text{ if } s \in \Delta \\
+\textbf{true} \text{ if } s \notin \Delta
+\end{cases}
+\end{align*}
+
+and
+\begin{align*}
+\Upsilon(s) = \begin{cases}
+\textbf{true} \text{ if } s \neq s_\alpha \land s \neq s_\beta \\
+\textbf{false} \text{ if } s = s_\alpha \lor s = s_\beta
+\end{cases}
+\end{align*}
+\end{enumerate}
+
+Intuitively, the algorithm first detects that certain summands are underspecified: they are enabled after a certain action if that action is performed by summand $s_\alpha$, but they are not enabled after that action is performed by summand $s_\beta$.
+The algorithm therefore makes it so that the underspecified summands are always disabled after $s_\alpha$ or $s_\beta$ (preserving equivalence up to u-ioco).
+

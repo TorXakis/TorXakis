@@ -24,6 +24,7 @@ See LICENSE at root directory of this repository.
 --------------------------------------------------------------------------------
 module TorXakis.Compiler
     ( compileFile
+    , compileString
     , compileUnsafe
     , compileValDefs
     , compileVarDecls
@@ -63,8 +64,9 @@ import           SortId                             (SortId, sortIdBool,
                                                      sortIdInt, sortIdRegex,
                                                      sortIdString)
 import           StdTDefs                           (stdFuncTable, stdTDefs)
-import           TxsDefs                            (BExpr, ProcDef, ProcId,
-                                                     TxsDefs, chanid, cnectDefs,
+import           TxsDefs                            (BExpr, ProcDef,
+                                                     ProcId, TxsDefs,
+                                                     chanid, cnectDefs,
                                                      fromList, funcDefs,
                                                      mapperDefs, modelDefs,
                                                      procDefs, purpDefs, union)
@@ -76,7 +78,7 @@ import qualified VarId
 import           TorXakis.Compiler.Data             (CompilerM, getNextId,
                                                      getUnid, newState,
                                                      runCompiler, setUnid)
-import           TorXakis.Compiler.Data.ProcDecl    (ProcInfo)
+import           TorXakis.Compiler.Data.ProcDecl    (ProcInfo, getPId)
 import           TorXakis.Compiler.Defs.BehExprDefs (toBExpr, toOffer)
 import           TorXakis.Compiler.Defs.FuncTable   (adtsToFuncTable,
                                                      fLocToSignatureHandlers)
@@ -90,7 +92,9 @@ import           TorXakis.Compiler.Defs.TxsDefs     (adtsToTxsDefs,
                                                      mapperDeclsToTxsDefs,
                                                      modelDeclsToTxsDefs,
                                                      purpDeclsToTxsDefs)
-import           TorXakis.Compiler.Error            (Error)
+import           TorXakis.Compiler.Error            (Entity (Channel, Function, Process),
+                                                     Error,
+                                                     ErrorLoc (NoErrorLoc))
 import           TorXakis.Compiler.Maps             (getUniqueElement,
                                                      idefsNames, (.@@))
 import           TorXakis.Compiler.Maps.DefinesAMap (DefinesAMap, getMap)
@@ -118,6 +122,7 @@ import           TorXakis.Compiler.ValExpr.ValExpr  (expDeclToValExpr,
                                                      parValDeclToMap)
 import           TorXakis.Compiler.ValExpr.VarId    (DeclaresVariables,
                                                      generateVarIds, mkVarIds)
+import           TorXakis.Compiler.Validation
 import           TorXakis.Parser                    (parse, parseFile,
                                                      parseString)
 import           TorXakis.Parser.BExpDecl           (bexpDeclP, offersP)
@@ -127,22 +132,28 @@ import           TorXakis.Parser.Data               (ChanDeclE, ChanRefE, CstrE,
                                                      Loc (PredefLoc),
                                                      ParsedDefs, ProcDeclE,
                                                      VarDeclE, VarRefE, adts,
-                                                     chdecls, cnects, consts,
-                                                     funcs, getLoc, loc',
-                                                     mappers, models, procs,
-                                                     purps, stauts)
+                                                     chanDeclName, chdecls,
+                                                     cnects, consts, funcs,
+                                                     getLoc, loc', mappers,
+                                                     models, procs, purps,
+                                                     stauts)
 import           TorXakis.Parser.ValExprDecl        (letVarDeclsP, valExpP)
 import           TorXakis.Parser.VarDecl            (varDeclsP)
 
--- | Compile a string into a TorXakis model.
+-- | Compile a file into a TorXakis model.
 --
 compileFile :: FilePath -> IO (Either Error (Id, TxsDefs, Sigs VarId))
-compileFile fp = do
-    ePd <- parseFile fp
-    case ePd of
-        Left err -> return . Left $ err
-        Right pd -> return $
-            evalStateT (runCompiler . compileParsedDefs $ pd) newState
+compileFile fp = parseFile fp >>= compileParsedDefsIO
+
+-- | Compile a string into a TorXakis model.
+--
+compileString :: String -> IO (Either Error (Id, TxsDefs, Sigs VarId))
+compileString str = compileParsedDefsIO $ parseString "" str
+
+compileParsedDefsIO :: Either Error ParsedDefs -> IO (Either Error (Id, TxsDefs, Sigs VarId))
+compileParsedDefsIO (Left err) = return . Left $ err
+compileParsedDefsIO (Right pd) = return $
+    evalStateT (runCompiler . compileParsedDefs $ pd) newState
 
 -- | Run the compiler throwing an error if the compiler returns an 'Error'.
 compileUnsafe :: CompilerM a -> a
@@ -165,65 +176,73 @@ throwOnError = throwOnLeft ||| id
 
 -- | Compile parsed definitions into TorXakis data-types.
 compileParsedDefs :: ParsedDefs -> CompilerM (Id, TxsDefs, Sigs VarId)
-compileParsedDefs pd = do
+compileParsedDefs parsedDefs = do
     -- Generate a map from 'Text' to 'SortId' using the ADT's that are declared
-    -- in 'pd', as well as the predefined Sorts ("Bool", "Int", "Regex",
+    -- in 'parsedDefs', as well as the predefined Sorts ("Bool", "Int", "Regex",
     -- "String").
-    sIds <- compileToSortIds pd
+    sIds <- compileToSortIds parsedDefs
 
     -- Generate a map from constructor declarations to 'CstrId''s.
-    cstrIds <- compileToCstrId sIds (pd ^. adts)
+    cstrIds <- compileToCstrId sIds (parsedDefs ^. adts)
 
     -- Generate a map from locations of function declarations to 'FuncId''s.
     -- This map includes the predefined functions (standard functions) such as
     -- '*', '++', 'toString', 'fromString'.
-    stdFuncIds <- Map.fromList <$> getStdFuncIds
-    cstrFuncIds <- Map.fromList <$> adtsToFuncIds sIds (pd ^. adts)
-    fIds <- Map.fromList <$> funcDeclsToFuncIds sIds (allFuncs pd)
-    let allFids = stdFuncIds <> cstrFuncIds <> fIds
+    stdFuncIdsL  <- getStdFuncIds
+    cstrFuncIdsL <- adtsToFuncIds sIds (parsedDefs ^. adts)
+    fIdsL        <- funcDeclsToFuncIds sIds (allFuncs parsedDefs)
+    checkUnique (NoErrorLoc, Function, "Functions ")
+                (fmap snd $ stdFuncIdsL <> cstrFuncIdsL <> fIdsL)
+    let
+        stdFuncIds = Map.fromList stdFuncIdsL
+        cstrFuncIds = Map.fromList cstrFuncIdsL
+        fIds = Map.fromList fIdsL
+        allFids = stdFuncIds <> cstrFuncIds <> fIds
         lfDefs = compileToFuncLocs allFids
 
     -- Generate a map from locations of variable references to the location in
     -- which these entities (variables or functions) are declared.
-    decls <- compileToDecls lfDefs pd
+    decls <- compileToDecls lfDefs parsedDefs
 
     -- Infer the types of all variable declarations.
     let emptyVdMap = Map.empty :: Map (Loc VarDeclE) SortId
     -- We pass to 'inferTypes' an empty map from 'Loc VarDeclE' to 'SortId'
     -- since no variables can be declared at the top level.
     let allFSigs = funcIdAsSignature <$> allFids
-    vdSortMap <- inferTypes (sIds :& decls :& allFSigs :& emptyVdMap) (allFuncs pd)
+    vdSortMap <- inferTypes (sIds :& decls :& allFSigs :& emptyVdMap) (allFuncs parsedDefs)
     -- Construct the variable declarations to 'VarId''s lookup table.
-    vIds <- generateVarIds vdSortMap (allFuncs pd)
+    vIds <- generateVarIds vdSortMap (allFuncs parsedDefs)
 
     -- Create a map from locations of function declarations to their signature
     -- and handlers.
-    adtsFt <- adtsToFuncTable (sIds :& cstrIds) (pd ^. adts)
+    adtsFt <- adtsToFuncTable (sIds :& cstrIds) (parsedDefs ^. adts)
     stdSHs <- fLocToSignatureHandlers stdFuncIds stdFuncTable
     adtsSHs <- fLocToSignatureHandlers cstrFuncIds adtsFt
-    fSHs <- Map.fromList <$> traverse (funcDeclToSH allFids) (allFuncs pd)
+    fSHs <- Map.fromList <$> traverse (funcDeclToSH allFids) (allFuncs parsedDefs)
 
     -- Generate a map from function declarations to their definitions.
     fdefs <- funcDeclsToFuncDefs (vIds :& allFids :& decls)
                                  (stdSHs <> adtsSHs <> fSHs)
-                                 (allFuncs pd)
+                                 (allFuncs parsedDefs)
     let fdefsSHs = innerSigHandlerMap (fIds :& fdefs)
         allFSHs = stdSHs <> adtsSHs <> fdefsSHs
 
-    -- Generate a map from process declarations to their definitons.
-    pdefs <- compileToProcDefs (sIds :& cstrIds :& allFids :& allFSHs :& decls) pd
-    chIds <- getMap sIds (pd ^. chdecls) :: CompilerM (Map (Loc ChanDeclE) ChanId)
+    -- Generate a map from process declarations to their definitions.
+    pdefs <- compileToProcDefs (sIds :& cstrIds :& allFids :& allFSHs :& decls) parsedDefs
+    checkUnique (NoErrorLoc, Channel, "Channel definition")
+                (chanDeclName <$> (parsedDefs ^. chdecls))
+    chIds <- getMap sIds (parsedDefs ^. chdecls) :: CompilerM (Map (Loc ChanDeclE) ChanId)
     let mm = sIds :& pdefs :& cstrIds :& allFids :& fdefs
 
     -- Generate the 'TorXakis' 'Sigs'.
-    sigs    <- toSigs (mm :& chIds) pd
+    sigs    <- toSigs (mm :& chIds) parsedDefs
 
     -- Generate the 'TorXakis' 'TxsDefs'.
-    chNames <-  getMap () (pd ^. chdecls) :: CompilerM (Map Text (Loc ChanDeclE))
+    chNames <-  getMap () (parsedDefs ^. chdecls) :: CompilerM (Map Text (Loc ChanDeclE))
     -- We need the map from channel names to the locations in which these
     -- channels are declared, because the model definitions rely on channels
     -- declared outside its scope.
-    txsDefs <- toTxsDefs (func sigs) (mm :& decls :& vIds :& vdSortMap :& chNames :& chIds :& allFSHs) pd
+    txsDefs <- toTxsDefs (func sigs) (mm :& decls :& vIds :& vdSortMap :& chNames :& chIds :& allFSHs) parsedDefs
 
     -- We need to return the next unique id as well.
     i <- getUnid
@@ -368,6 +387,7 @@ compileToProcDefs mm pd = do
     pmsP <- getMap mm (pd ^. procs)  :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
     pmsS <- getMap mm (pd ^. stauts) :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
     let pms = pmsP <> pmsS
+    checkUnique (NoErrorLoc, Process, "Process") (getPId <$> Map.elems pms) 
     procPDefMap  <- procDeclsToProcDefMap (pms :& mm) (pd ^. procs)
     stautPDefMap <- stautDeclsToProcDefMap (pms :& mm) (pd ^. stauts)
     return $ procPDefMap <> stautPDefMap

@@ -41,9 +41,10 @@ import           GHC.Exts                          (toList)
 
 import           BehExprDefs                       (chanIdExit, chanIdIstep)
 import           ChanId                            (ChanId, chansorts)
-import           ConstDefs                         (Const (Cbool))
+import           Constant                          (Constant (Cbool))
 import           FuncTable                         (Handler, Signature)
-import           ProcId                            (ExitSort (Exit), ProcId,
+import           ProcId                            (ChanSort (ChanSort),
+                                                    ExitSort (Exit), ProcId,
                                                     exitSortIds, procchans,
                                                     procvars)
 import qualified ProcId
@@ -59,9 +60,10 @@ import           ValExpr                           (ValExpr, cstrConst)
 import           VarId                             (VarId, varsort)
 
 import           TorXakis.Compiler.Data            (CompilerM, forCatch)
-import           TorXakis.Compiler.Error           (Entity (Process),
+import           TorXakis.Compiler.Error           (Entity (Process, Channel),
                                                     Error (Error),
                                                     ErrorType (MultipleDefinitions, NoDefinition, ParseError, TypeMismatch),
+                                                    ErrorLoc (NoErrorLoc),
                                                     getErrorLoc, _errorLoc,
                                                     _errorMsg, _errorType)
 import           TorXakis.Compiler.Maps            (chRefsToIds, dropHandler,
@@ -75,6 +77,7 @@ import           TorXakis.Compiler.ValExpr.ValExpr (expDeclToValExpr)
 import           TorXakis.Parser.Data              (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
                                                     ChanDeclE,
                                                     ChanOfferDecl (ExclD, QuestD),
+                                                    chanRefOfOfferDecl,
                                                     ChanRefE, FuncDeclE,
                                                     LetVarDecl, Loc,
                                                     OfferDecl (OfferDecl),
@@ -109,12 +112,12 @@ toBExpr mm vrvds (Pappl n l crs exs) = do
     chIds <- chRefsToIds mm crs
     let candidate :: ProcId -> Bool
         candidate pId =
-               toText   n                     == ProcId.name pId
-            && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
-            && length (procvars pId)          == length exs
+               toText   n            == ProcId.name pId
+            && procchans pId         == fmap (ChanSort . chansorts) chIds -- Compare the sort id's of the channels
+            && length (procvars pId) == length exs
     -- Try to find a matching process definition:
     res <- forCatch (filter candidate $ keys @ProcId @() mm) $ \pId -> do
-        let eSids = varsort <$> procvars pId
+        let eSids = procvars pId
         vExps <- liftEither $
             traverse (uncurry $ expDeclToValExpr vrvds) $ zip eSids exs
         return (pId, procInst pId chIds vExps)
@@ -129,7 +132,7 @@ toBExpr mm vrvds (Pappl n l crs exs) = do
         (ls, _)             -> throwError Error
             { _errorType = NoDefinition
             , _errorLoc  = getErrorLoc l
-            , _errorMsg  = "No matching process definition found: "
+            , _errorMsg  = "No matching process definition found for '" <> toText n <> "[..](..)': "
                          <> T.pack (show ls)
             }
 toBExpr mm vrvds (Par _ sOn be0 be1) = do
@@ -211,14 +214,35 @@ toActOffer :: ( MapsTo Text SortId mm
            -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
            -> ActOfferDecl
            -> CompilerM ActOffer
-toActOffer mm vrvds (ActOfferDecl osd mc) = do
-    os <- traverse (toOffer mm vrvds) osd
-    c  <- maybe (return . cstrConst . Cbool $ True)
-                (liftEither . expDeclToValExpr vrvds sortIdBool)
-                mc
-    -- Filter the internal actions (to comply with the current TorXakis compiler).
-    let os' = filter ((chanIdIstep /=) . chanid) os
-    return $ ActOffer (Set.fromList os') Set.empty c
+toActOffer mm vrvds (ActOfferDecl osd mc) =
+    let chanRefList :: [Text]
+        chanRefList = map (chanRefName . chanRefOfOfferDecl) osd
+        chanRefSet :: Set.Set Text
+        chanRefSet = Set.fromList chanRefList
+    in
+        if Set.size chanRefSet == length chanRefList
+        then do
+            os <- traverse (toOffer mm vrvds) osd
+            c  <- maybe (return . cstrConst . Cbool $ True)
+                        (liftEither . expDeclToValExpr vrvds sortIdBool)
+                        mc
+            -- Filter the internal actions (to comply with the current TorXakis compiler).
+            let os' = filter ((chanIdIstep /=) . chanid) os
+            return $ ActOffer (Set.fromList os') Set.empty c
+        else
+            throwError Error
+                        { _errorType = MultipleDefinitions Channel
+                        , _errorLoc  = NoErrorLoc
+                        , _errorMsg  = "List of Channels that occur multiple times in ActOffer: " <> T.pack (show (findDuplicates chanRefSet chanRefList))
+                        }
+    where
+        -- find the Duplicates
+        -- alternative implementation, make multiset and use elements with occurrence > 1
+        findDuplicates :: Ord a => Set.Set a -> [a] -> Set.Set a
+        findDuplicates _ []                        = Set.empty
+        findDuplicates s l      | Set.null s       = Set.fromList l
+        findDuplicates s (x:xs) | x `Set.member` s = findDuplicates (Set.delete x s) xs
+                                | otherwise        = Set.insert x (findDuplicates s xs)
 
 -- | Compile a list offer declarations on a channel into a list of offer
 -- declarations.
@@ -250,9 +274,17 @@ toOffer mm vrvds (OfferDecl cr cods) = case chanRefName cr of
         return $ Offer chanIdExit ofrs
     _      -> do
         cId  <- lookupChId mm (getLoc cr)
-        ofrs <- traverse (uncurry (toChanOffer vrvds))
-                     (zip (chansorts cId) cods)
-        return $ Offer cId ofrs
+        let definedLength = length (chansorts cId)
+            actualLength = length cods
+          in if definedLength == actualLength
+                then Offer cId <$> traverse (uncurry (toChanOffer vrvds))
+                                            (zip (chansorts cId) cods)
+                else throwError Error
+                        { _errorType = TypeMismatch
+                        , _errorLoc  = getErrorLoc cr
+                        , _errorMsg  = "Mismatch in defined (" <> T.pack (show definedLength) 
+                                           <> ") and actual (" <> T.pack (show actualLength) <> ") channel parameters."
+                        }
 
 -- | Compile a channel offer declaration into a channel offer.
 toChanOffer :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])

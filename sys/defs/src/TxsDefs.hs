@@ -50,6 +50,7 @@ where
 import           Control.Arrow   ((***))
 import           Control.DeepSeq
 import qualified Data.Map        as Map
+import qualified Data.Text       as Text
 import           GHC.Generics    (Generic)
 
 import           BehExprDefs     as X
@@ -96,11 +97,13 @@ data  TxsDefs  =  TxsDefs { sortDefs   :: Map.Map SortId SortDef
                           , goalDefs   :: Map.Map GoalId () --BExpr    -- local, part of PurpDefs
                           , mapperDefs :: Map.Map MapperId MapperDef
                           , cnectDefs  :: Map.Map CnectId CnectDef
+                          , usedNames  :: Map.Map Text.Text Int
                           }
                   deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 empty :: TxsDefs
 empty = TxsDefs  Map.empty
+                 Map.empty
                  Map.empty
                  Map.empty
                  Map.empty
@@ -231,6 +234,7 @@ union a b = TxsDefs
                 (Map.union (goalDefs a)  (goalDefs b)   )
                 (Map.union (mapperDefs a)(mapperDefs b) )
                 (Map.union (cnectDefs a) (cnectDefs b)  )
+                (Map.union (usedNames a) (usedNames b)  )
 
 
 -- ----------------------------------------------------------------------------------------- --
