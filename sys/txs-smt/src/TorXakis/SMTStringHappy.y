@@ -45,6 +45,8 @@ import Data.Tuple
 %token
     "\""           { Tquotes            pos }
     escSequence    { TescSequence       pos  $$ }
+    escUSequence   { TescUSequence      pos  $$ }
+    escXSequence   { TescXSequence      pos  $$ }
     char           { Tchar              pos  $$ }
 
 %% ----------------------------------------------------------------------------------------- --
@@ -65,9 +67,7 @@ StringValue :: { String }
 CharValue   :: { String }
             : escSequence
                 {
-                    case (length $1) of
-                    {   4 -> [chr (fst (head (readHex (drop 2 $1))))]
-                    ;   2 -> case (tail $1) of
+                    case (tail $1) of
                         {   "\\"    -> "\\"
                         ;   "a"     -> "\a"
                         ;   "b"     -> "\b"
@@ -78,8 +78,14 @@ CharValue   :: { String }
                         ;   "t"     -> "\t"
                         ;   "v"     -> "\v"
                         }
-                    ;   _ -> error $ "SMTStringHappy: unexpected length (" ++ (show (length $1)) ++ ") for '"++(show $1)++"'"
-                    }
+                }
+            | escUSequence
+                {
+                    [chr (fst (head (readHex (drop 3 (init $1)))))]
+                }
+            | escXSequence
+                {
+                    [chr (fst (head (readHex (drop 2 $1))))]
                 }
             | "\"" "\""
                 {

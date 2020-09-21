@@ -32,13 +32,17 @@ where
 $escchar    = [\\abefnrtv]
 $hexdig     = [0-9A-Fa-f]   
 
-@escSequence     = \\ ($escchar | x $hexdig{2})
+@escSequence     = \\ $escchar 
+@escUSequence    = \\ u \{ $hexdig+ \}
+@escXSequence    = \\ x $hexdig{2}
 
 tokens :-                                          -- Each right-hand side has type
                                                    -- :: AlexPosn -> String -> Token
 
    \"                                    { tok ( \p _s -> Tquotes p ) }
    @escSequence                          { tok ( \p s -> TescSequence p s) }
+   @escUSequence                         { tok ( \p s -> TescUSequence p s) }
+   @escXSequence                         { tok ( \p s -> TescXSequence p s) }
    $printable                            { tok ( \p s -> Tchar p s ) }
       
 -- ----------------------------------------------------------------------------------------- --
@@ -50,6 +54,8 @@ tok f p s = f p s
 -- | Data structure for Smt String Tokens.
 data  Token  =  Tquotes           AlexPosn
               | TescSequence      AlexPosn  String
+              | TescUSequence     AlexPosn  String
+              | TescXSequence     AlexPosn  String
               | Tchar             AlexPosn  String
    deriving (Eq,Show)
 
