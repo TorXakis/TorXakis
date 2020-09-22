@@ -442,7 +442,7 @@ randomSolveBins ((v,d):xs) = do
                                                                                                         ctx'' <- toValExprContext
                                                                                                         let varRefs :: [RefByName VarDef]
                                                                                                             varRefs = Data.List.map RefByName varNames
-                                                                                                            exprs = Data.List.map (\(r,p) -> justEqual ctx'' (justVar ctx'' r) (justAt ctx'' (justVar ctx'' v) (justConst ctx'' (mkInt p)))) (zip varRefs [0..])
+                                                                                                            exprs = zipWith (\ r p -> justEqual ctx'' (justVar ctx'' r) (justAt ctx'' (justVar ctx'' v) (justConst ctx'' (mkInt p)))) varRefs [0..]
                                                                                                         addAssertions exprs
                                                                                                         sxs <- liftIO $ shuffleM (xs ++ zip varRefs (repeat (-123)))
                                                                                                         randomSolve sxs
@@ -484,7 +484,7 @@ randomSolveBins ((v,d):xs) = do
                                                                                                                         ctx' <- toValExprContext
                                                                                                                         let varRefs :: [RefByName VarDef]
                                                                                                                             varRefs = Data.List.map (RefByName . TorXakis.Var.name) varDefs
-                                                                                                                            exprs = Data.List.map (\(r,n) -> justEqual ctx' (justVar ctx' r) (justAccess ctx' ar cr (RefByName n) (justVar ctx' v))) (zip varRefs (map fieldName (elemsField cd)))
+                                                                                                                            exprs = zipWith (\ r n -> justEqual ctx' (justVar ctx' r) (justAccess ctx' ar cr (RefByName n) (justVar ctx' v))) varRefs (map fieldName (elemsField cd))
                                                                                                                         addAssertions exprs
                                                                                                                         sxs <- liftIO $ shuffleM (xs ++ zip varRefs (repeat d'))
                                                                                                                         randomSolve sxs

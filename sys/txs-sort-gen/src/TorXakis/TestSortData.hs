@@ -110,8 +110,8 @@ afterAddADTs _ as tsd =
             addToMapSortSize :: [ADTDef] -> Map.Map Sort Int -> Map.Map Sort Int
             addToMapSortSize adefs defined =
                 let newDefined = foldl addCurrent defined adefs
-                    in if newDefined == defined 
-                        then if any (`Map.notMember` newDefined) (map (SortADT . RefByName . adtName) adefs)
+                    in if newDefined == defined
+                        then if any ((`Map.notMember` newDefined) . SortADT . RefByName . adtName) adefs
                                 then error ("Invariant violated: non constructable ADTDefs in " ++ show adefs)
                                 else newDefined
                         else addToMapSortSize adefs newDefined

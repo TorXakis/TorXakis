@@ -89,7 +89,7 @@ test_CharsLowRange =
         matchRanges c = let (invalidRange, validRange) = splitAt (Data.Char.ord c - Data.Char.ord regexRangeLow) allChars
                             in
                                 (      all (inRange c regexRangeHigh) validRange
-                                    && all (not . inRange c regexRangeHigh) invalidRange
+                                    && not (any (inRange c regexRangeHigh) invalidRange)
                                 )
                                 || trace ("Char " ++ show c ++ " fails") False
 
@@ -104,7 +104,7 @@ test_CharsHighRange =
         matchRanges c = let (validRange, invalidRange) = splitAt (Data.Char.ord c - Data.Char.ord regexRangeLow + 1) allChars
                             in
                                 (      all (inRange regexRangeLow c) validRange
-                                    && all (not . inRange regexRangeLow c) invalidRange
+                                    && not (any (inRange regexRangeLow c) invalidRange)
                                 )
                                 || trace ("Char " ++ show c ++ " fails") False
 
@@ -215,8 +215,8 @@ prop_Equivalent_LoopNestedCondition_LimitedLimited =
                         u = b*d
                        in   
                             if c==d || (b-a)*c >= a-1
-                            then all agree [l .. u]         || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ "," ++ show d ++ "} fails on [" ++ show l ++ "," ++ show u ++ "]") False
-                            else any (not . agree) [l .. u] || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ "," ++ show d ++ "} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
+                            then all agree [l .. u]       || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ "," ++ show d ++ "} fails on [" ++ show l ++ "," ++ show u ++ "]") False
+                            else not (all agree [l .. u]) || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ "," ++ show d ++ "} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
             where
                 agree :: Integer -> Bool
                 agree i = let string = genericReplicate i 'x'
@@ -246,8 +246,8 @@ prop_Equivalent_LoopNestedCondition_LimitedUnlimited =
                                       -- note for b == 0, the upperbound is 0!
                        in   
                             if (b-a)*c >= a-1
-                            then all agree [l .. u]         || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ ",} fails on [" ++ show l ++ "," ++ show u ++ "]") False
-                            else any (not . agree) [l .. u] || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ ",} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
+                            then all agree [l .. u]       || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ ",} fails on [" ++ show l ++ "," ++ show u ++ "]") False
+                            else not (all agree [l .. u]) || trace ("(x{" ++ show a ++ "," ++ show b ++ "}){" ++ show c ++ ",} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
             where
                 agree :: Integer -> Bool
                 agree i = let string = genericReplicate i 'x'
@@ -276,8 +276,8 @@ prop_Equivalent_LoopNestedCondition_UnlimitedLimited =
                       u = (high+1)*d
                        in   
                             if c==d || c/=0 || a<=1
-                            then all agree [l .. u]         || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ "," ++ show d ++ "} fails on [" ++ show l ++ "," ++ show u ++ "]") False
-                            else any (not . agree) [l .. u] || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ "," ++ show d ++ "} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
+                            then all agree [l .. u]       || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ "," ++ show d ++ "} fails on [" ++ show l ++ "," ++ show u ++ "]") False
+                            else not (all agree [l .. u]) || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ "," ++ show d ++ "} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
             where
                 agree :: Integer -> Bool
                 agree i = let string = genericReplicate i 'x'
@@ -302,8 +302,8 @@ prop_Equivalent_LoopNestedCondition_UnlimitedUnlimited =
                     u = (high+1)^(2::Integer)
                        in   
                             if c/=0 || a<=1
-                            then all agree [l .. u]         || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ ",} fails on [" ++ show l ++ "," ++ show u ++ "]") False
-                            else any (not . agree) [l .. u] || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ ",} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
+                            then all agree [l .. u]       || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ ",} fails on [" ++ show l ++ "," ++ show u ++ "]") False
+                            else not (all agree [l .. u]) || trace ("(x{" ++ show a ++ ",}){" ++ show c ++ ",} succeeds on [" ++ show l ++ "," ++ show u ++ "]") False
             where
                 agree :: Integer -> Bool
                 agree i = let string = genericReplicate i 'x'

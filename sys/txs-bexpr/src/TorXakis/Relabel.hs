@@ -62,12 +62,12 @@ mkRelabelMap m | nrOfElems /= nrOfKeys    = Left $ Error ("Not injective: number
        nrOfElems :: Int
        nrOfElems = Set.size (Set.fromList (Map.elems m))
 
--- | hide set of names from RelableMap
+-- | hide set of names from RelabelMap
 hide :: Set.Set Name -> RelabelMap -> RelabelMap
 hide s (RelabelMap m) = let l  = Set.toList s
                             m' = deleteAll l m
                             r  = reverseMap m'
-                            evasiveMoves = (Map.fromList . catMaybes) (map (evasiveMove r) l)
+                            evasiveMoves = Map.fromList (mapMaybe (evasiveMove r) l)
                         in
                             RelabelMap (Map.union m' evasiveMoves)
     where
