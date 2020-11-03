@@ -1,0 +1,543 @@
+
+-- Simple DropBox Model for 3 Clients, a la Hughes et al.
+-- Monolithic State Machine
+-- -------------------------------------------------------------------- --
+
+
+-- -------------------------------------------------------------------- --
+-- constants
+
+CONSTDEF testdir  :: String  ::=  "testdir"  ;
+         testfile :: String  ::=  "testfile"
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+-- Channels
+
+CHANDEF MyChans
+ ::=
+    In0,  In1,  In2   :: Cmd ;
+    Out0, Out1, Out2  :: Rsp 
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+-- Channel Messages
+
+TYPEDEF Cmd
+ ::=
+      Read
+    | Write      { value :: Value  }
+    | Stabilize
+    | ChangeDir  { name  :: String }
+ENDDEF
+
+TYPEDEF Rsp
+ ::=
+      Ack
+    | NAck       { error :: String }
+    | File       { value :: Value  }
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+-- Node
+
+TYPEDEF Node
+ ::=
+      Node { node :: Int }
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+-- Value
+
+TYPEDEF Value
+ ::=
+    Value { value :: String }
+ENDDEF
+
+
+FUNCDEF isValidValue ( val :: Value ) :: Bool
+ ::=
+    strinre( value(val), REGEX('[A-Z]{1,3}') )
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+-- Lists
+
+TYPEDEF ValueList
+ ::=
+      NoValues
+    | Values   { hd :: Value
+               ; tl :: ValueList
+               }
+ENDDEF
+
+TYPEDEF BoolList
+ ::=
+      NoBools
+    | Bools    { hd :: Bool
+               ; tl :: BoolList
+               }
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+-- Functions on Lists
+
+FUNCDEF isValueInList ( vals :: ValueList; v :: Value ) :: Bool
+ ::=
+    IF   isNoValues(vals)
+    THEN False
+    ELSE IF   v == hd(vals)
+         THEN True
+         ELSE isValueInList(tl(vals),v)
+         FI
+    FI
+ENDDEF
+
+FUNCDEF removeListValue ( vals :: ValueList; v :: Value ) :: ValueList
+ ::=
+    IF   isNoValues(vals)
+    THEN NoValues
+    ELSE IF   v == hd(vals)
+         THEN removeListValue(tl(vals),v)
+         ELSE Values(hd(vals),removeListValue(tl(vals),v))
+         FI
+    FI
+ENDDEF
+
+FUNCDEF lookup ( vals :: ValueList; n :: Node ) :: Value
+ ::=
+    IF   isNoValues(vals)
+    THEN Value("$")
+    ELSE IF   node(n) == 0
+         THEN hd(vals)
+         ELSE lookup(tl(vals),Node(node(n)-1))
+         FI
+    FI
+ENDDEF
+
+FUNCDEF lookup ( bools :: BoolList; n :: Node ) :: Bool
+ ::=
+    IF   isNoBools(bools)
+    THEN False
+    ELSE IF   node(n) == 0
+         THEN hd(bools)
+         ELSE lookup(tl(bools),Node(node(n)-1))
+         FI
+    FI
+ENDDEF
+
+FUNCDEF update ( vals :: ValueList; n :: Node; v :: Value ) :: ValueList
+ ::=
+    IF   isNoValues(vals)
+    THEN NoValues
+    ELSE IF   node(n) == 0
+         THEN Values(v,tl(vals))
+         ELSE Values(hd(vals),update(tl(vals),Node(node(n)-1),v))          
+         FI
+    FI
+ENDDEF
+
+FUNCDEF update ( bools :: BoolList; n :: Node; b :: Bool ) :: BoolList
+ ::=
+    IF   isNoBools(bools)
+    THEN NoBools
+    ELSE IF   node(n) == 0
+         THEN Bools(b,tl(bools))
+         ELSE Bools(hd(bools),update(tl(bools),Node(node(n)-1),b))
+         FI
+    FI
+ENDDEF
+
+FUNCDEF othersUpdate ( bools :: BoolList; n :: Node; b :: Bool ) :: BoolList
+ ::=
+    IF   isNoBools(bools)
+    THEN NoBools
+    ELSE IF   node(n) <> 0
+         THEN Bools(b,othersUpdate(tl(bools),Node(node(n)-1),b))
+         ELSE Bools(hd(bools),othersUpdate(tl(bools),Node(node(n)-1),b))
+         FI
+    FI
+ENDDEF
+
+FUNCDEF allTrue ( bools :: BoolList ) :: Bool
+ ::=
+    IF   isNoBools(bools)
+    THEN True
+    ELSE hd(bools) /\ allTrue(tl(bools))
+    FI
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+-- Process dropBox, as in Hughes et al.
+
+PROCDEF dropBox [ In0,  In1,  In2     :: Cmd
+                ; Out0, Out1, Out2    :: Rsp
+                ; Down0, Down1, Down2
+                ; Up0, Up1, Up2
+                ]
+                ( serverVal :: Value
+                ; conflicts :: ValueList
+                ; localVal  :: ValueList
+                ; fresh     :: BoolList
+                ; clean     :: BoolList
+                )
+ ::=
+            In0     !Read
+        >-> Out0    ?f   [[ IF   isFile(f)
+                            THEN lookup(localVal,Node(0)) == value(f)
+                            ELSE False
+                            FI ]]
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( serverVal
+                    , conflicts
+                    , localVal
+                    , fresh
+                    , clean
+                    )
+    ##
+            In1     !Read
+        >-> Out1    ?f   [[ IF   isFile(f)
+                            THEN lookup(localVal,Node(1)) == value(f)
+                            ELSE False
+                            FI ]]
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( serverVal
+                    , conflicts
+                    , localVal
+                    , fresh
+                    , clean
+                    )
+    ##
+            In2     !Read
+        >-> Out2    ?f   [[ IF   isFile(f)
+                            THEN lookup(localVal,Node(2)) == value(f)
+                            ELSE False
+                            FI ]]
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( serverVal
+                    , conflicts
+                    , localVal
+                    , fresh
+                    , clean
+                    )
+    ##
+            In0     ?cmd [[ IF   isWrite(cmd)
+                            THEN isValidValue(value(cmd))
+                            ELSE False
+                            FI ]]
+        >-> Out0    ?f   [[ IF   isFile(f)
+                            THEN lookup(localVal,Node(0)) == value(f)
+                            ELSE False
+                            FI ]]
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( serverVal
+                    , conflicts
+                    , update(localVal,Node(0),value(cmd))
+                    , fresh
+                    , update(clean,Node(0),False)
+                    )
+    ##
+            In1     ?cmd [[ IF   isWrite(cmd)
+                            THEN isValidValue(value(cmd))
+                            ELSE False
+                            FI ]]
+        >-> Out1    ?f   [[ IF   isFile(f)
+                            THEN lookup(localVal,Node(1)) == value(f)
+                            ELSE False
+                            FI ]]
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( serverVal
+                    , conflicts
+                    , update(localVal,Node(1),value(cmd))
+                    , fresh
+                    , update(clean,Node(1),False)
+                    )
+    ##
+            In2     ?cmd [[ IF   isWrite(cmd)
+                            THEN isValidValue(value(cmd))
+                            ELSE False
+                            FI ]]
+        >-> Out2    ?f   [[ IF   isFile(f)
+                            THEN lookup(localVal,Node(2)) == value(f)
+                            ELSE False
+                            FI ]]
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( serverVal
+                    , conflicts
+                    , update(localVal,Node(2),value(cmd))
+                    , fresh
+                    , update(clean,Node(2),False)
+                    )
+    ##
+        [[ not(lookup(fresh,Node(0)))
+           /\  lookup(clean,Node(0)) ]]
+        =>> Down0
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( serverVal
+                    , conflicts
+                    , update(localVal,Node(0),serverVal)
+                    , update(fresh,Node(0),True)
+                    , clean
+                    )
+    ##
+        [[ not(lookup(fresh,Node(1)))
+           /\  lookup(clean,Node(1)) ]]
+        =>> Down1
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( serverVal
+                    , conflicts
+                    , update(localVal,Node(1),serverVal)
+                    , update(fresh,Node(1),True)
+                    , clean
+                    )
+    ##
+        [[ not(lookup(fresh,Node(2)))
+           /\  lookup(clean,Node(2)) ]]
+        =>> Down2
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( serverVal
+                    , conflicts
+                    , update(localVal,Node(2),serverVal)
+                    , update(fresh,Node(2),True)
+                    , clean
+                    )
+    ##
+        [[ not(lookup(clean,Node(0))) ]]
+        =>> Up0
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( IF   lookup(fresh,Node(0))
+                        /\ (lookup(localVal,Node(0)) <> serverVal)
+                      THEN lookup(localVal,Node(0))
+                      ELSE serverVal
+                      FI
+                    , IF   not(lookup(fresh,Node(0)))
+                        /\ (lookup(localVal,Node(0)) <> serverVal)
+                        /\ (lookup(localVal,Node(0)) <> Value("$"))
+                      THEN Values(lookup(localVal,Node(0)),conflicts)
+                      ELSE conflicts
+                      FI
+                    , localVal
+                    , IF   lookup(fresh,Node(0))
+                        /\ (lookup(localVal,Node(0)) <> serverVal)
+                      THEN othersUpdate(fresh,Node(0),False)
+                      ELSE fresh
+                      FI
+                    , update(clean,Node(0),True)
+                    )
+    ##
+        [[ not(lookup(clean,Node(1))) ]]
+        =>> Up1
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( IF   lookup(fresh,Node(1))
+                        /\ (lookup(localVal,Node(1)) <> serverVal)
+                      THEN lookup(localVal,Node(1))
+                      ELSE serverVal
+                      FI
+                    , IF   not(lookup(fresh,Node(1)))
+                        /\ (lookup(localVal,Node(1)) <> serverVal)
+                        /\ (lookup(localVal,Node(1)) <> Value("$"))
+                      THEN Values(lookup(localVal,Node(1)),conflicts)
+                      ELSE conflicts
+                      FI
+                    , localVal
+                    , IF   lookup(fresh,Node(1))
+                        /\ (lookup(localVal,Node(1)) <> serverVal)
+                      THEN othersUpdate(fresh,Node(1),False)
+                      ELSE fresh
+                      FI
+                    , update(clean,Node(1),True)
+                    )
+    ##
+        [[ not(lookup(clean,Node(2))) ]]
+        =>> Up2
+        >-> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                    , Down0,Down1,Down2,Up0,Up1,Up2
+                    ]
+                    ( IF   lookup(fresh,Node(2))
+                        /\ (lookup(localVal,Node(2)) <> serverVal)
+                      THEN lookup(localVal,Node(2))
+                      ELSE serverVal
+                      FI
+                    , IF   not(lookup(fresh,Node(2)))
+                        /\ (lookup(localVal,Node(2)) <> serverVal)
+                        /\ (lookup(localVal,Node(2)) <> Value("$"))
+                      THEN Values(lookup(localVal,Node(2)),conflicts)
+                      ELSE conflicts
+                      FI
+                    , localVal
+                    , IF   lookup(fresh,Node(2))
+                        /\ (lookup(localVal,Node(2)) <> serverVal)
+                      THEN othersUpdate(fresh,Node(2),False)
+                      ELSE fresh
+                      FI
+                    , update(clean,Node(2),True)
+                    )
+    ##
+        [[ allTrue(fresh) /\ allTrue(clean) ]]
+        =>> (         In0  !Stabilize
+                  >-> fileAndConflicts [Out0] (Values(serverVal,conflicts))
+              >>> dropBox [ In0,In1,In2,Out0,Out1,Out2
+                          , Down0,Down1,Down2,Up0,Up1,Up2
+                          ]
+                          ( serverVal
+                          , conflicts
+                          , localVal
+                          , fresh
+                          , clean
+                          )
+            )
+ENDDEF   -- dropBox
+
+PROCDEF fileAndConflicts [ Out :: Rsp ] ( values :: ValueList ) EXIT
+ ::=
+            Out ?rsp [[ IF   isFile(rsp)
+                        THEN isValueInList(values,value(rsp))
+                        ELSE False
+                        FI ]]
+        >-> fileAndConflicts [Out] (removeListValue(values,value(rsp)))
+    ## 
+        [[ isNoValues(values) ]]
+        =>> Out !Ack
+        >-> EXIT
+ENDDEF   -- fileAndConflicts
+
+
+-- -------------------------------------------------------------------- --
+-- Model
+
+MODELDEF Mod
+ ::=
+    CHAN IN   In0,  In1,  In2
+    CHAN OUT  Out0, Out1, Out2 
+
+    BEHAVIOUR
+        preAmble [In0,In1,In2,Out0,Out1,Out2] ()
+    >>>
+        HIDE  [ Up0, Up1, Up2, Down0, Down1, Down2 ]
+        IN
+            dropBox [ In0,   In1,   In2
+                    , Out0,  Out1,  Out2
+                    , Down0, Down1, Down2
+                    , Up0,   Up1,   Up2
+                    ]
+                    ( Value("$")
+                    , NoValues
+                    , Values(Value("$")
+                            ,Values(Value("$")
+                                   ,Values(Value("$"),NoValues)))
+                    , Bools(True,Bools(True,Bools(True,NoBools)))
+                    , Bools(True,Bools(True,Bools(True,NoBools)))
+                    )
+        NI
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+-- Test Pre-Amble
+
+PROCDEF preAmble [ In0,  In1,  In2  :: Cmd
+                 ; Out0, Out1, Out2 :: Rsp
+                 ] () EXIT
+ ::=
+          In0  !ChangeDir(testdir)
+      >-> Out0 !Ack
+      >-> In1  !ChangeDir(testdir)
+      >-> Out1 !Ack
+      >-> In2  !ChangeDir(testdir)
+      >-> Out2 !Ack
+      >-> EXIT
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+-- Connections
+
+CNECTDEF Sut
+ ::=
+     CLIENTSOCK
+
+     CHAN OUT  In0   HOST "lubu0" PORT 7890
+     ENCODE    In0   ?cmd            ->  !encodeCmd(cmd)
+
+     CHAN IN   Out0  HOST "lubu0" PORT 7890
+     DECODE    Out0  !decodeRsp(s)  <-  ?s
+
+     CHAN OUT  In1   HOST "lubu1" PORT 7891
+     ENCODE    In1   ?cmd            ->  !encodeCmd(cmd)
+
+     CHAN IN   Out1  HOST "lubu1" PORT 7891
+     DECODE    Out1  !decodeRsp(s)  <-  ?s
+
+     CHAN OUT  In2   HOST "lubu2" PORT 7892
+     ENCODE    In2   ?cmd            ->  !encodeCmd(cmd)
+
+     CHAN IN   Out2  HOST "lubu2" PORT 7892
+     DECODE    Out2  !decodeRsp(s)  <-  ?s
+ENDDEF
+
+FUNCDEF encodeCmd ( cmd :: Cmd ) :: String
+ ::=
+    IF   isRead(cmd)
+    THEN "cat " ++ testfile
+    ELSE
+    IF   isWrite(cmd)
+    THEN "cat " ++ testfile ++ " ; "
+         ++ "echo \"" ++ value(value(cmd)) ++ "\" > " ++ testfile
+    ELSE
+    IF   isStabilize(cmd)
+    THEN "sleep 30 ; cat * ; echo " 
+    ELSE
+    IF   isChangeDir(cmd)
+    THEN "cd " ++ testdir ++ " ; echo "
+    ELSE ""
+    FI FI FI FI
+ENDDEF
+
+FUNCDEF decodeRsp ( s :: String ) :: Rsp
+ ::=
+    IF   s == ""
+    THEN Ack
+    ELSE IF   s == "$"
+         THEN File(Value("$"))
+         ELSE IF   strinre(s,REGEX('[A-Z]+'))
+              THEN File(Value(s))
+              ELSE NAck(s)
+              FI
+         FI   
+    FI   
+ENDDEF
+
+
+-- -------------------------------------------------------------------- --
+--                                                                      --
+-- -------------------------------------------------------------------- --
+
