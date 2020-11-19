@@ -60,9 +60,6 @@ B.  Second time testing (using saved virtual machines)
 1'. Restart your SUTs
     (Dropbox is already running; you are in directory "Dropbox/dropboxtest").
 
-2'. On one SUT, remove all files in "dropboxtest/testdir"
-    (the other SUTs will synchronize)
-
 8.  On SUT<i>, for i = 0,1,2, start the sut by running the bash script:
     $ bash sut<i>.sh
 
