@@ -52,6 +52,7 @@ import           TxsDefs
 import           TxsUtils
 import           Utils
 import           ValExpr
+import qualified Eval
 import           Variable
 import           VarId
 
@@ -163,7 +164,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> ProcInst procid@(ProcId nm _ _ _ _) c
      case Map.lookup procid (procDefs tdefs) of
        Just (ProcDef chids vids bexp)
          -> do let chanmap = Map.fromList (zip chids chans)
-               let wals = map ( ValExpr.eval . ValExpr.subst (Map.map cstrConst we) (funcDefs tdefs) ) vexps
+               wals <- mapM ( Eval.eval . ValExpr.subst (Map.map cstrConst we) (funcDefs tdefs) ) vexps
                case Data.Either.partitionEithers wals of
                     ([], r) -> do let we' = Map.fromList (zip vids r)
                                   expand chsets $ BNbexpr Map.empty (relabel chanmap (Subst.subst (Map.map cstrConst we') (funcDefs tdefs) bexp) )

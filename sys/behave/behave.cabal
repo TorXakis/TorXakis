@@ -38,8 +38,9 @@ library
                       , defs
                       , solve
                       , valexpr
+                      , value
 
-                      
+
   default-language:     Haskell2010
   
 test-suite behave-test
@@ -77,5 +78,6 @@ test-suite behave-test
                      , solve
                      , txs-compiler
                      , valexpr
+                     , value
                      
   default-language:    Haskell2010
