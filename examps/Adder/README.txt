@@ -24,8 +24,8 @@ for testing Adder:
 Communication between TorXakis and SUT (Adder) occurs via sockets,
 where the SUT acts as the server-side.
 
-Inputs: Plus <n> <m>
-        Minus  <n> <m>
+Inputs: Plus(<n>,<m>)
+        Minus(<n>,<m>)
 Output: <n+m> or <n-m>, respectively
 
 
@@ -48,7 +48,7 @@ usage:  $ javac Adder.java              # compile Adder
         $ java Adder <portnr>           # start Adder
 test    <in separate window>
         $ telnet localhost <portnr>
-        Plus 25 17
+        Plus(25,17)
          42
         ...
 
