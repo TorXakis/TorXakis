@@ -70,7 +70,7 @@ newtype KindOfProblem = KindOfProblem { -- | to Maybe
                                         toMaybeKindOfSolution :: Maybe KindOfSolution
                                       } deriving (Eq, Ord, Read, Show)
 -- | The Problem Solver class.
-class MonadIO p => ProblemSolver p where
+class (MonadIO p, MonadFail p) => ProblemSolver p where
     -- | Info on Problem Solver
     info :: p String
 

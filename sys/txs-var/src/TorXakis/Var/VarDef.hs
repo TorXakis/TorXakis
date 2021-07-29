@@ -39,7 +39,7 @@ import           GHC.Generics         (Generic)
 
 import           TorXakis.Error
 import           TorXakis.Name
-import           TorXakis.Sort (Sort, HasSort(getSort), UsedSorts(..))
+import           TorXakis.Sort (HasSort(getSort), UsedSorts(..))
 import           TorXakis.SortContext
 
 -- | Data for a variable definition.

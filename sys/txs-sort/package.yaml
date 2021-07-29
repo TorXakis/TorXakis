@@ -38,6 +38,7 @@ tests:
         - -rtsopts
         - -with-rtsopts=-N
         dependencies:
+        - containers
         - hspec
         - txs-sort
 

@@ -11,9 +11,8 @@
 # Resolver to choose a 'specific' stackage snapshot or a compiler version.
 # A snapshot resolver dictates the compiler version and the set of packages
 # to be used for project dependencies.
-resolver: lts-11.22
-ghc-variant: integersimple
-
+resolver: lts-16.31
+  
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 #
@@ -66,21 +65,15 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
+- Unique-0.4.7.8
+- regex-posix-0.96.0.1
+- regex-posix-clib-2.7
 
 # Override default flag values for local packages and extra-deps
 flags:
   # hexpat requires the bundling of expat
   hexpat:
     bundle: true
-  # BSD3 license prohibit usage of integer-gmp on Windows, use integer-simple instead
-  hashable:
-    integer-gmp: false
-  integer-logarithms:
-    integer-gmp: false
-  scientific:
-    integer-simple: true
-  text:
-    integer-simple: true
 
 # Extra package databases containing global packages
 extra-package-dbs:

@@ -22,7 +22,6 @@ module TorXakis.Regex.Posix
   toPosix
 )
 where
-import           Data.Monoid            ((<>))
 import           Data.Set
 import           Data.Text
 

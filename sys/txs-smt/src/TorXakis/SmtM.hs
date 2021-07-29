@@ -184,7 +184,7 @@ destroySmtState s = do
 newtype SmtM a = SmtM { -- | to `StateT`
                         toStateT :: StateT SmtState (ExceptT Error IO) a
                       }
-                      deriving (Functor, Applicative, Monad, MonadState SmtState, MonadIO, MonadError Error)
+                      deriving (Functor, Applicative, Monad, MonadState SmtState, MonadIO, MonadError Error, MonadFail)
 
 -- TODO: is it worthwhile to implement a specific solve that uses get-model? See -- https://github.com/TorXakis/TorXakis/issues/932
 instance ProblemSolver SmtM where

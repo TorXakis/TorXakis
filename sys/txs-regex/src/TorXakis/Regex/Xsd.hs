@@ -23,7 +23,6 @@ module TorXakis.Regex.Xsd
 , fromXsd
 )
 where
-import           Data.Monoid            ((<>))
 import           Data.Set
 import           Data.Text
 

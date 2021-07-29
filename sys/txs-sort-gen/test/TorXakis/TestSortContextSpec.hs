@@ -20,6 +20,7 @@ module TorXakis.TestSortContextSpec
 )
 where
 import           Debug.Trace
+import           Data.Set            (fromList)
 import qualified Data.Text           as T
 import           Test.Hspec
 
@@ -137,16 +138,22 @@ prop_ADTDefs_Dependent =
       in
         case addADTs [cDef, bDef, aDef] (empty::ContextTestSort) of
             Left  _      -> False
-            Right newCtx ->     elemsADT newCtx == [ aDef, bDef, cDef ]
-                            &&  (adtSize aRef newCtx == complexityA)
-                            &&  (adtSize bRef newCtx == complexityB)
-                            &&  (adtSize cRef newCtx == complexityC)
-                            &&  (constructorSize aRef depRef newCtx == complexityDep)
-                            &&  (constructorSize aRef cstrRef newCtx == complexityA)
-                            &&  (constructorSize bRef depRef newCtx == complexityDep)
-                            &&  (constructorSize bRef cstrRef newCtx == complexityB)
-                            &&  (constructorSize cRef depRef newCtx == complexityDep)
-                            &&  (constructorSize cRef cstrRef newCtx == complexityC)
+            Right newCtx -> let actual_list :: [ADTDef]
+                                actual_list = elemsADT newCtx
+                                expected_list :: [ADTDef]
+                                expected_list = [aDef, bDef, cDef]
+                                in
+                                       length actual_list == length expected_list 
+                                    && fromList actual_list == fromList expected_list
+                                    && (adtSize aRef newCtx == complexityA)
+                                    && (adtSize bRef newCtx == complexityB)
+                                    && (adtSize cRef newCtx == complexityC)
+                                    && (constructorSize aRef depRef newCtx == complexityDep)
+                                    && (constructorSize aRef cstrRef newCtx == complexityA)
+                                    && (constructorSize bRef depRef newCtx == complexityDep)
+                                    && (constructorSize bRef cstrRef newCtx == complexityB)
+                                    && (constructorSize cRef depRef newCtx == complexityDep)
+                                    && (constructorSize cRef cstrRef newCtx == complexityC)
 
 prop_initial :: Bool
 prop_initial =

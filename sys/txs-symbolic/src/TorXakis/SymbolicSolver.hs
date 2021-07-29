@@ -50,7 +50,7 @@ trueExpression = case mkConst TorXakis.ContextSort.empty (mkBool True) of
 newtype SymbolicM p a = SymbolicM { -- | to `StateT`
                                     toStateT :: StateT SymbolicState p a
                                   }
-                               deriving (Functor, Applicative, Monad, MonadState SymbolicState, MonadIO, MonadTrans)
+                               deriving (Functor, Applicative, Monad, MonadState SymbolicState, MonadIO, MonadTrans, MonadFail)
 
 
 instance ProblemSolver p => ProblemSolver (SymbolicM p) where

@@ -22,12 +22,6 @@ module TorXakis.Cover
 , coverReadShow
 )
 where
--- imports needed to ensure right linking by haddock 
--- (see https://github.com/haskell/haddock/issues/375 for more info)
-import Data.Eq(Eq)
-import Data.Ord(Ord)
-import Text.Read (Read)
-import Text.Show (Show)
 
 -- | Tautology of 'Data.Eq.Eq' that covers all functions
 coverEq :: Eq e => e -> Bool 

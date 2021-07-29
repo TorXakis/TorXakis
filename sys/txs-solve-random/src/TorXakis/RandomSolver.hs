@@ -85,7 +85,7 @@ mkRandomState m n r = RandomState m n r 0
 newtype RandomM p a = RandomM { -- | to `StateT`
                                 toStateT :: StateT RandomState p a
                               }
-                              deriving (Functor, Applicative, Monad, MonadState RandomState, MonadIO, MonadTrans)
+                              deriving (Functor, Applicative, Monad, MonadState RandomState, MonadIO, MonadTrans, MonadFail)
 
 
 instance ProblemSolver p => ProblemSolver (RandomM p) where

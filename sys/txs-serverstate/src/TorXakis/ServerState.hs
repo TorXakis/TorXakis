@@ -37,7 +37,7 @@ module TorXakis.ServerState
 where
 
 import           Control.Monad.State
-import           Network
+import           Network.Socket
 import           System.IO
 
 import qualified Data.HashMap        as Map

@@ -33,7 +33,6 @@ import qualified Data.MultiMap       as MultiMap
 import           Test.QuickCheck
 
 import           TorXakis.Error
-import           TorXakis.Sort ( Sort )
 import           TorXakis.SortContext
 
 

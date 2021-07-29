@@ -58,7 +58,8 @@ class SortContext c where
     memberADT :: Name -> c -> Bool
     -- | lookup ADTDef using the provided name
     lookupADT :: Name -> c -> Maybe ADTDef
-    -- | All ADTDef elements in the context
+    -- | All ADTDef elements in the context 
+    -- TODO: should this be a set instead of a list?
     elemsADT :: c -> [ADTDef]
     -- | Add ADT definitions to sort context.
     -- When the ADT definitions are accepted, a Sort Context is returned

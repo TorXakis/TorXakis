@@ -29,7 +29,6 @@ import qualified Data.Set                 as Set
 import           Test.QuickCheck
 
 import           TorXakis.NameGen
-import           TorXakis.Sort (Sort)
 import           TorXakis.SortGenContext
 import           TorXakis.TestSortContext
 import           TorXakis.Var

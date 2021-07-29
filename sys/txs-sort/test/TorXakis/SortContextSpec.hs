@@ -19,6 +19,7 @@ module TorXakis.SortContextSpec
 (spec
 )
 where
+import           Data.Set            (fromList)
 import qualified Data.Text           as T
 import           Test.Hspec
 
@@ -120,7 +121,13 @@ prop_ADTDefs_Dependent =
       in
         case addADTs [aDef, bDef, cDef] (empty :: ContextSort) of
             Left  _      -> False
-            Right newCtx -> elemsADT newCtx == [aDef, bDef, cDef]
+            Right newCtx -> let actual_list :: [ADTDef]
+                                actual_list = elemsADT newCtx
+                                expected_list :: [ADTDef]
+                                expected_list = [aDef, bDef, cDef]
+                                in 
+                                    length actual_list == length expected_list &&
+                                    fromList actual_list == fromList expected_list
 
 
 spec :: Spec

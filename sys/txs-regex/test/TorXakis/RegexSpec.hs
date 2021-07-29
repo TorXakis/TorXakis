@@ -64,9 +64,8 @@ allChars = [regexRangeLow..regexRangeHigh]
 -- | Are all chars correctly handled (by escaping when needed)
 test_Chars :: Bool
 test_Chars =
-        and [ all matchCharRegex allChars
-            , all matchCharRegex ['\r', '\n', '\t', '\v']
-            ]
+           all matchCharRegex allChars 
+        && all matchCharRegex ['\r', '\n', '\t', '\v']
     where
         matchCharRegex :: Char -> Bool
         matchCharRegex c = [c] =~ posixRegex

@@ -40,7 +40,6 @@ import           TorXakis.FuncSignature
 import           TorXakis.Language
 import           TorXakis.Name
 import           TorXakis.Sort          ( Sort ( .. )
-                                        , ADTDef
                                         , adtName
                                         , elemsConstructor
                                         , ConstructorDef
