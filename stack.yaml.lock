@@ -12,12 +12,12 @@ packages:
   original:
     hackage: Unique-0.4.7.8
 - completed:
-    hackage: regex-posix-0.96.0.1@sha256:b6421e5356766b0c0a78b6094ae2e3a6259b42c147b717283c03c1cb09163dca,2920
+    hackage: MissingH-1.4.3.0@sha256:32f9892ec98cd21df4f4d3ed8d95a3831ae74287ea0641d6f09b2dc6ef061d39,4859
     pantry-tree:
-      size: 748
-      sha256: 040eef96bb1f9a25995f973931f4bf0b2210d0c1816ebd6725896ef056b6e4c8
+      size: 5271
+      sha256: 6cd6a7213615d72a7db3234c7fcd4346ceb4889bc8fb14b302b5878768018fcd
   original:
-    hackage: regex-posix-0.96.0.1
+    hackage: MissingH-1.4.3.0
 - completed:
     hackage: regex-posix-clib-2.7@sha256:998fca06da3d719818f0691ef0b8b9b7375afeea228cb08bd9e2db53f96b0cd7,1232
     pantry-tree:
@@ -27,7 +27,7 @@ packages:
     hackage: regex-posix-clib-2.7
 snapshots:
 - completed:
-    size: 534126
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/31.yaml
-    sha256: 637fb77049b25560622a224845b7acfe81a09fdb6a96a3c75997a10b651667f6
-  original: lts-16.31
+    size: 568097
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2021/7/29.yaml
+    sha256: d346ad9d97b6e115b21f21a704bff054f2a8e099208b16ce1fa211b84cc12700
+  original: nightly-2021-07-29

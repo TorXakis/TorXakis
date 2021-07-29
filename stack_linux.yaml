@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-11.22
+resolver: nightly-2021-07-29
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -73,10 +73,12 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- git: https://github.com/TorXakis/text-via-sockets.git
-  commit: e3228cd0407ec0d7991a544e154ea2def184fcae
+- Unique-0.4.7.8
+- MissingH-1.4.3.0
+- regex-posix-clib-2.7
 
 flags:
+  # hexpat requires the bundling of expat
   hexpat:
     bundle: true
 

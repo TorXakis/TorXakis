@@ -11,7 +11,7 @@
 # Resolver to choose a 'specific' stackage snapshot or a compiler version.
 # A snapshot resolver dictates the compiler version and the set of packages
 # to be used for project dependencies.
-resolver: lts-16.31
+resolver: nightly-2021-07-29
   
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -47,7 +47,7 @@ packages:
 - sys/txs-regex
 - sys/txs-regex-gen
 #- sys/txs-server
-- sys/txs-serverstate
+#- sys/txs-serverstate
 - sys/txs-smt
 - sys/txs-solve
 - sys/txs-solve-random
@@ -66,7 +66,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - Unique-0.4.7.8
-- regex-posix-0.96.0.1
+- MissingH-1.4.3.0
 - regex-posix-clib-2.7
 
 # Override default flag values for local packages and extra-deps

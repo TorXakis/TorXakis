@@ -26,12 +26,12 @@ module TorXakis.SmtLanguage
 , toString
 , toText
   -- * SmtString operators
-, TorXakis.SmtLanguage.empty
-, TorXakis.SmtLanguage.singleton
-, TorXakis.SmtLanguage.length
-, TorXakis.SmtLanguage.intercalate
-, TorXakis.SmtLanguage.concat
+, empty
+, singleton
+, intercalate
 , append
+, TorXakis.SmtLanguage.length
+, TorXakis.SmtLanguage.concat
   -- * Smt Commands
 , smtExit
 , smtAssert
@@ -62,7 +62,7 @@ where
 import           Control.DeepSeq     (NFData)
 import           Data.Char           (ord)
 import           Data.Data           (Data)
-import           Data.List
+import qualified Data.List
 import           Data.Hashable       (Hashable(hashWithSalt))
 import qualified Data.Set
 import qualified Data.Text
