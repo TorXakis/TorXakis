@@ -35,7 +35,7 @@ module TorXakis.ValExpr.ValExprBasis
 , mkLE
   -- **** Function Call
 , mkFunc
-  -- **** PredefNonSolvableined Function Call
+  -- **** Predefined NonSolvable Function Call
 , mkPredefNonSolvable
   -- *** Boolean Operators to create Value Expressions
   -- **** Not
