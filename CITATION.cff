@@ -1,0 +1,15 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: TorXakis
+message: Please cite this software using these metadata.
+type: software
+authors:
+  - given-names: Jan
+    family-names: Tretmans
+  - family-names: van de Laar
+    given-names: Piërre
+repository-code: 'https://github.com/TorXakis/Torxakis'
+url: 'https://torxakis.org/'
+license: BSD-3-Clause
