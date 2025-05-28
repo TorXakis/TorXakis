@@ -3,7 +3,6 @@
 # See LICENSE at root directory of this repository.
 
 resolver: lts-18.28
-ghc-variant: integersimple
 
 packages:
 - sys/behave
@@ -41,13 +40,9 @@ extra-deps:
 # Override default flag values for local packages and extra-deps
 flags:
   hexpat:
+    # Set for https://github.com/TorXakis/TorXakis/issues/796. 
+    # However, this seems like a linux oriented option so it is a bit strange to have this is the windows stack file.
     bundle: true
-  hashable:
-    integer-gmp: false
-  integer-logarithms:
-    integer-gmp: false
-  scientific:
-    integer-simple: true
 
 # Extra package databases containing global packages
 extra-package-dbs:

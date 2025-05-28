@@ -14,8 +14,6 @@
 
 # NOTE: This has to manually be kept up to date with the resolver used in the main stack.yaml file.
 resolver: lts-18.28
-ghc-variant: integersimple
-
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 #
@@ -41,9 +39,9 @@ packages:
 # Override default flag values for local packages and extra-deps
 flags: 
   hexpat:
+    # Set for https://github.com/TorXakis/TorXakis/issues/796.
+    # However, this seems like a linux oriented option so it is a bit strange to have this is the windows stack file.
     bundle: true
-  text: 
-    integer-simple: true
 
 # Extra package databases containing global packages
 extra-package-dbs: []

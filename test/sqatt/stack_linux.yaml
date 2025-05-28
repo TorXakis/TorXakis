@@ -15,8 +15,6 @@
 # needed for cache space: same as torxakis
 # NOTE: This has to manually be kept up to date with the resolver used in the main stack.yaml file.
 resolver: lts-18.28
-ghc-variant: integersimple
-
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 #
