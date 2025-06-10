@@ -68,7 +68,7 @@ extra-deps:
 
 flags:
   hexpat:
-    # Set for https://github.com/TorXakis/TorXakis/issues/796.
+    # Use bundled version of expat dependency 
     bundle: true
 
 # Extra package databases containing global packages

@@ -29,6 +29,34 @@ packages:
       size: 1366
   original:
     hackage: Unique-0.4.7.9@sha256:7c37e22b7bb9df935c22112e67043177461aedcebe3a958854f6c0e9ecb54083,2155
+- completed:
+    hackage: hspec-2.11.12@sha256:d16b4a90470b415d56a1b561a1735566b2d8529bdbc5b26a965785768cd26ca1,1766
+    pantry-tree:
+      sha256: 465ac3cc77ed2a549bec9a104e150601c4445a68f411cb85bb03e11f72123235
+      size: 584
+  original:
+    hackage: hspec-2.11.12
+- completed:
+    hackage: hspec-core-2.11.12@sha256:4856221a10a31935006fa03cd2a4f185d89810d79616b9cbb714cf2c0f5cde17,7498
+    pantry-tree:
+      sha256: eece5609a7bc0fc6f514f03f1286d9f8efc03c8260d569f595bfc19fb311ae08
+      size: 6935
+  original:
+    hackage: hspec-core-2.11.12
+- completed:
+    hackage: hspec-expectations-0.8.4@sha256:4237f094a7931202ff57ac6475542b0b314b50a7024550e2b6eb87cfb0d4ff93,1702
+    pantry-tree:
+      sha256: 87681840d430b84686f83f1ab8b5873b09c349775698665233443914acf9ba2b
+      size: 741
+  original:
+    hackage: hspec-expectations-0.8.4
+- completed:
+    hackage: hspec-discover-2.11.12@sha256:cb6b6048b6f0fa539176f4b8012241e4c518c9803eb7ef58097c42a68b15b1c3,2171
+    pantry-tree:
+      sha256: 987023acb858acbd765dbc2173d64479cf7a376554f8318717388020a6d27101
+      size: 829
+  original:
+    hackage: hspec-discover-2.11.12
 snapshots:
 - completed:
     sha256: 428ec8d5ce932190d3cbe266b9eb3c175cd81e984babf876b64019e2cbe4ea68

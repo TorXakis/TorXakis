@@ -39,8 +39,7 @@ packages:
 # Override default flag values for local packages and extra-deps
 flags: 
   hexpat:
-    # Set for https://github.com/TorXakis/TorXakis/issues/796.
-    # However, this seems like a linux oriented option so it is a bit strange to have this is the windows stack file.
+    # Use bundled version of expat dependency 
     bundle: true
 
 # Extra package databases containing global packages
