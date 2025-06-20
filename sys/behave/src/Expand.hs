@@ -32,7 +32,6 @@ import           Control.Arrow
 import           Control.Monad.Extra
 import           Control.Monad.State
 import           Data.Either
-import           Data.Monoid
 
 import qualified Data.List           as List
 import qualified Data.Map            as Map

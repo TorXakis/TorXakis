@@ -343,7 +343,6 @@ valExpr2dataExpr' f (ValExpr.view -> ValExpr.Vfunc funcId paramValues) = do
 valExpr2dataExpr' f (ValExpr.view -> ValExpr.Vpredef _predefKind funcId _paramValues) = do -- TODO what is Vpredef exactly?
     tdefs <- gets txsdefs
     f (sort2defaultValue tdefs (FuncId.funcsort funcId))
-valExpr2dataExpr' _f _ = return $ MCRL2Defs.DBool False
 -- valExpr2dataExpr'
 
 -- Used exclusively to translate FreeSums and FreeProducts (FreeMonoidXs):

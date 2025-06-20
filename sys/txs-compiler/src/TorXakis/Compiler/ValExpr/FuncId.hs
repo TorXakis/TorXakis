@@ -30,7 +30,6 @@ module TorXakis.Compiler.ValExpr.FuncId
 where
 
 import qualified Data.Map                         as Map
-import           Data.Semigroup                   ((<>))
 import           Data.Text                        (Text)
 
 import           CstrId                           (CstrId, cstrsort, name)

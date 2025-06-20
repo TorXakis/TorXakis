@@ -36,7 +36,7 @@ import           Control.Applicative
 import           Control.Arrow
 import           Control.Concurrent.Async
 import           Control.Exception
-import           Control.Foldl
+import           Control.Foldl hiding (either)
 import           Control.Monad.Except
 import           Control.Monad.Extra
 import           Criterion.Main
@@ -154,9 +154,17 @@ javaCmd = addExeSuffix "java"
 javacCmd :: Text
 javacCmd = addExeSuffix "javac"
 
+-- Run the torxakis server version build from this repo, if it exists.
+-- Returns the command and list of needed arguments seperately.
+-- In order to use these as a regular shell command, the arguments here must be given before any other arguments
+-- Needs to be kept up to date with the pattern matching format used in checkStackCommand, or be restructured to be less fragile.
 txsServerCmd :: Text
 txsServerCmd = addExeSuffix "txsserver"
 
+-- Run the torxakis version build from this repo, if it exists.
+-- Returns the command and list of needed arguments seperately.
+-- In order to use these as a regular shell command, the arguments here must be given before any other arguments
+-- Needs to be kept up to date with the pattern matching format used in checkStackCommand, or be restructured to be less fragile.
 txsUICmd :: Text
 txsUICmd = addExeSuffix "torxakis"
 
@@ -199,7 +207,7 @@ checkSMTSolvers :: IO ()
 checkSMTSolvers = 
   traverse_ checkCommand txsSupportedSolvers
   where
-    txsSupportedSolvers = Prelude.map addExeSuffix ["z3","cvc4"]
+    txsSupportedSolvers = Prelude.map addExeSuffix ["z3"]
 
 -- | Check that the given command exists in the search path of the host system.
 checkCommand :: Text -> IO ()
@@ -343,8 +351,7 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
-    txsServerProc sLogDir =
-      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd
+    txsServerProc sLogDir args = runInprocNI ((</> "txsserver.out.log") <$> sLogDir)  txsServerCmd args
 
 -- | Run a process.
 runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @Nothing@ if no logging is desired.
@@ -387,7 +394,7 @@ runTxsAsSut mLogDir modelFiles cmdsFile = do
       runInproc mCLogDir txsUICmd (port:imf) (input cmdsFile)
     txsServerProc port = Concurrently $
       let mCLogDir = (</> "txsserver.SUT.out.log") <$> mLogDir in
-      runInprocNI mCLogDir txsServerCmd [port]
+      runInprocNI mCLogDir  txsServerCmd [port]
 
 mkTest :: Maybe FilePath -> RunnableExample -> Test ()
 mkTest mLogDir (ExampleWithSut ex cSUT args) = do
@@ -430,9 +437,12 @@ getRandomPort = randomRIO (10000, 60000)
 -- | Check that the file exists.
 pathMustExist :: FilePath -> Test ()
 pathMustExist path =
-  unlessM (testpath path) (throwError sqattErr)
-  where sqattErr =
-          FilePathError $ format ("file "%s%" does not exists ") (repr path)
+  unlessM (testpath path) $ do
+    workingdirpath <- pwd
+    let workingdir = either id id $ toText workingdirpath
+    throwError (sqattErr workingdir)
+  where sqattErr dir =
+          FilePathError (format ("file "%s%" does not exists. Looking in working directory: "%s) (repr path) (repr dir))
 
 -- | Retrieve all the file paths from an example
 exampleInputFiles :: TxsExample -> [FilePath]

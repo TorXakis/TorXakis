@@ -43,7 +43,6 @@ import           Control.Monad.State                (evalStateT)
 import           Data.Data                          (Data)
 import           Data.Map.Strict                    (Map)
 import qualified Data.Map.Strict                    as Map
-import           Data.Semigroup                     ((<>))
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)

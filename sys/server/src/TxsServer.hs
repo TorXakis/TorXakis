@@ -36,8 +36,8 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.String.Utils   as Utils
 import qualified Data.Text           as T
-import           Network             hiding (socketPort)
-import           Network.Socket      hiding (accept, sClose)
+import           Network.Socket  
+import           Network.TextViaSockets  (listenOn) 
 import           System.IO
 
 -- import from local
@@ -92,7 +92,10 @@ main = withSocketsDo $ do
       hPrint stderr xs
     Right config -> do
       (portNr, sock) <- txsListenOn $ (clPortNumber . SC.cmdLineCfg) uConfig
-      (hs, host, _) <- accept sock
+      --(hs, host, _) <- accept sock
+      (clientSock,clientAddr) <- accept sock
+      (Just host, _) <- getNameInfo [] True False clientAddr -- args : [options] dolookuphost dolookupservice adress
+      hs <- socketToHandle clientSock ReadWriteMode
       hSetBuffering hs LineBuffering
       hSetEncoding hs latin1
       hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
@@ -107,14 +110,14 @@ main = withSocketsDo $ do
           coreConfig = config
       TxsCore.runTxsCore coreConfig cmdsIntpr initS
       threadDelay 1000000    -- 1 sec delay on closing
-      sClose sock
+      close sock
       hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
 
 -- | Listen on the given port. If no port number is given, then a free port is
 -- determined, and this port number is printed to the standard output.
 txsListenOn :: Maybe PortNumber -> IO (PortNumber, Socket)
 txsListenOn Nothing = do -- Get a free port to listen to.
-    sock <- listenOn (PortNumber aNY_PORT)
+    sock <- listenOn defaultPort
     portNr <- socketPort sock
     -- If no port was specified, then we print the port number in case the
     -- process that is starting 'txsserver' (most likely the 'torxakis'
@@ -122,7 +125,7 @@ txsListenOn Nothing = do -- Get a free port to listen to.
     print portNr
     return (portNr, sock)
 txsListenOn (Just portNr) = do
-    sock <- listenOn (PortNumber portNr)
+    sock <- listenOn portNr
     return (portNr, sock)
 
 -- * TorXakis server commands processing

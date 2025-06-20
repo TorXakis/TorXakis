@@ -10,12 +10,11 @@
 
 # Resolver to choose a 'specific' stackage snapshot or a compiler version.
 # A snapshot resolver dictates the compiler version and the set of packages
-# to be used for project dependencies. For example:
+# to be used for project dependencies.
 #
 # needed for cache space: same as torxakis
-resolver: lts-11.22
-ghc-variant: integersimple
-
+# Note: This has to manually be kept up to date with the resolver version in the main stack.yaml file, or the test results might not match with the release build.
+resolver: lts-18.28
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 #
@@ -38,17 +37,6 @@ packages:
 - '.'
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
-
-# Override default flag values for local packages and extra-deps
-flags: 
-  text: 
-    integer-simple: true
-  hashable:
-    integer-gmp: false
-  integer-logarithms:
-    integer-gmp: false
-  scientific:
-    integer-simple: true
 
 # Extra package databases containing global packages
 extra-package-dbs:

@@ -30,7 +30,6 @@ import           Control.Monad.Error.Class    (catchError, throwError)
 import           Data.List.Unique             (repeated)
 import           Data.Map                     (Map)
 import qualified Data.Map                     as Map
-import           Data.Semigroup               ((<>))
 import           Data.Text                    (Text)
 import           GHC.Exts                     (toList)
 

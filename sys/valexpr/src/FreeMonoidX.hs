@@ -113,7 +113,6 @@ import           Data.Foldable
 import           Data.List       hiding (partition)
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import           Data.Semigroup  (Semigroup, (<>))
 import           GHC.Exts
 import           GHC.Generics    (Generic)
 
@@ -162,7 +161,7 @@ instance Ord a => Semigroup (FreeMonoidX a) where
 
 instance Ord a => Monoid (FreeMonoidX a) where
     mempty = FMX []
-    mappend = (<>)
+    
 
 instance Ord a => IsList (FreeMonoidX a) where
     type Item (FreeMonoidX a) = a

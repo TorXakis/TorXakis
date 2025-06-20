@@ -25,7 +25,6 @@ import           Control.Monad.State (get, gets, lift, modify, unless)
 
 import qualified Data.List           as List
 import qualified Data.Map            as Map
-import           Data.Monoid
 import           Data.String.Utils   (endswith, replace, startswith, strip)
 import           Data.Text           (Text)
 import qualified Data.Text           as T

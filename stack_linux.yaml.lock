@@ -5,22 +5,33 @@
 
 packages:
 - completed:
-    cabal-file:
-      size: 2956
-      sha256: 9da5461d379734adabacb3e9dbdac70a2bb4b19307155f0b9309fe2f851798f5
+    commit: 8817cb4210103d92ba96aca525ddcd08e1cc96e9
+    git: https://github.com/gijsvcuyck/text-via-sockets.git
     name: text-via-sockets
-    version: 0.1.0.0
-    git: https://github.com/TorXakis/text-via-sockets.git
     pantry-tree:
-      size: 682
-      sha256: 5e30ecba223e12674b7b37e668af407bbdebeea117fd3a60306a42dd636056c0
-    commit: e3228cd0407ec0d7991a544e154ea2def184fcae
+      sha256: 2eb38d4b899bf5c45da210b4c8cdfa752e68150e3607c3e2718c6931894ad20b
+      size: 959
+    version: 0.1.1.0
   original:
-    git: https://github.com/TorXakis/text-via-sockets.git
-    commit: e3228cd0407ec0d7991a544e154ea2def184fcae
+    commit: 8817cb4210103d92ba96aca525ddcd08e1cc96e9
+    git: https://github.com/gijsvcuyck/text-via-sockets.git
+- completed:
+    hackage: MissingH-1.5.0.1@sha256:34bdc3ddc94a5c58d76d3c36bc7af052213c2584492cf81f7b005c03b210a985,4791
+    pantry-tree:
+      sha256: a708a8d90e6370fb4150d6eb45cb88034660c56c7ac799c27211fa6fc253af68
+      size: 5272
+  original:
+    hackage: MissingH-1.5.0.1
+- completed:
+    hackage: Unique-0.4.7.9@sha256:7c37e22b7bb9df935c22112e67043177461aedcebe3a958854f6c0e9ecb54083,2155
+    pantry-tree:
+      sha256: 67d44a292c49ab6cf09225c05186f1ab64b359e965017d9d389411e4c79f0803
+      size: 1366
+  original:
+    hackage: Unique-0.4.7.9@sha256:7c37e22b7bb9df935c22112e67043177461aedcebe3a958854f6c0e9ecb54083,2155
 snapshots:
 - completed:
-    size: 527836
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/11/22.yaml
-    sha256: 341870ac98d8a9f8f77c4adf2e9e0b22063e264a7fbeb4c85b7af5f380dac60e
-  original: lts-11.22
+    sha256: 428ec8d5ce932190d3cbe266b9eb3c175cd81e984babf876b64019e2cbe4ea68
+    size: 590100
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/28.yaml
+  original: lts-18.28

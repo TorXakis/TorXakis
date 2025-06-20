@@ -22,7 +22,6 @@ where
 
 import           Control.Monad.Error.Class (throwError)
 import           Data.List.Unique          (count)
-import           Data.Semigroup            ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           Id                        (Resettable, reset)

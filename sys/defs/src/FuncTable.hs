@@ -39,8 +39,6 @@ import qualified Data.Map        as Map
 import           Data.Maybe
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
-
-import           Id (Resettable)
 import           SortId
 import           ValExpr
 

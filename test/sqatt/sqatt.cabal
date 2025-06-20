@@ -124,6 +124,7 @@ benchmark bench
   build-depends:       base
                      , criterion
                      , sqatt
+                     , turtle
   ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N -O
   default-language:    Haskell2010
 

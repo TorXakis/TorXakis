@@ -57,8 +57,7 @@ import           Control.Monad.Except     (catchError, liftEither, throwError)
 import           Data.List                (nub, sortBy)
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
-import           Data.Maybe               (catMaybes, maybe)
-import           Data.Monoid              ((<>))
+import           Data.Maybe               (catMaybes)
 import           Data.Set                 (Set)
 import qualified Data.Set                 as Set
 import           Data.Text                (Text)

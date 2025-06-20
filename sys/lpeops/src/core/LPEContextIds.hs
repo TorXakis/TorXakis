@@ -127,7 +127,6 @@ getValExprIds = customData . visitValExpr searchVisitor
                     (view -> Vconcat _)               -> idsInSubExps
                     (view -> Vstrinre _ _)            -> idsInSubExps
                     (view -> Vpredef _ fid _)         -> Set.insert (TxsDefs.IdFunc fid) idsInSubExps
-                    _                                 -> error ("GetValExprIds.searchVisitor not defined for " ++ show expr ++ "!")
         in ValExprVisitorOutput expr 1 (ids Set.\\ stdIds)
     -- searchVisitor
 -- getValExprIds

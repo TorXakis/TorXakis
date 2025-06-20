@@ -27,7 +27,6 @@ import           Control.Monad.State
 import qualified Data.Char             as Char
 import qualified Data.Map              as Map
 import           Data.Maybe
-import           Data.Monoid
 import qualified Data.Set              as Set
 import           Data.Text             (Text)
 import qualified Data.Text             as T

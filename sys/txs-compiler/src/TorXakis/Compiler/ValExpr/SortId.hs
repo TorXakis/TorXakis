@@ -54,7 +54,6 @@ import           Data.List                (intersect)
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
 import           Data.Maybe               (catMaybes)
-import           Data.Monoid              ((<>))
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Data.Traversable         (for)

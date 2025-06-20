@@ -89,12 +89,11 @@ instance Applicative ProductTerm where
     pure = ProductTerm
     fa <*> a = ProductTerm $ factor fa (factor a)
 
-instance Num a => Semigroup (ProductTerm a ) where
+instance Num a => Semigroup (ProductTerm a) where
     pt0 <> pt1 = pure (*) <*> pt0 <*> pt1
 
 instance Num a => Monoid (ProductTerm a) where
     mempty = pure 1
-    mappend = (<>)
 
 instance TermWrapper ProductTerm where
     wrap = ProductTerm

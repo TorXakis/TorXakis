@@ -10,6 +10,7 @@ module Paths
     , ITest (ITest)
     , txsFilePath
     , txsCmdPath
+    , insqatt
     )
 where
 
@@ -55,3 +56,7 @@ txsCmdPath :: TestType a
            -> FilePath
 txsCmdPath tt currExampDir fp =
   dataDir tt </> currExampDir </> fromText fp <.> "txscmd"
+
+-- | Takes a relative path starting in the torxakis directory, and shifts it to the squatt folder
+insqatt :: FilePath -> FilePath
+insqatt p = "test" </> "sqatt" </> p

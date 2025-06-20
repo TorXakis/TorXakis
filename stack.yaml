@@ -2,8 +2,7 @@
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
 
-resolver: lts-11.22
-ghc-variant: integersimple
+resolver: lts-18.28
 
 packages:
 - sys/behave
@@ -31,21 +30,24 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- git: https://github.com/TorXakis/text-via-sockets.git
-  commit: e3228cd0407ec0d7991a544e154ea2def184fcae
+- git: https://github.com/gijsvcuyck/text-via-sockets.git
+  commit: 8817cb4210103d92ba96aca525ddcd08e1cc96e9
+- MissingH-1.5.0.1
+# Temporary import of deprecated package used by new compiler.
+# Can be removed if txs-compiler module is phased out again for happy based compiler.
+- Unique-0.4.7.9@sha256:7c37e22b7bb9df935c22112e67043177461aedcebe3a958854f6c0e9ecb54083,2155
+# These manually override the versions of the hspec related dependencies used.
+# This fixes broken test paralelization, and can be removed if the LTS version is increased enough to include them by
+- hspec-2.11.12
+- hspec-core-2.11.12
+- hspec-expectations-0.8.4
+- hspec-discover-2.11.12
 
 # Override default flag values for local packages and extra-deps
 flags:
   hexpat:
+    # Use bundled version of expat dependency 
     bundle: true
-  text:
-    integer-simple: true
-  hashable:
-    integer-gmp: false
-  integer-logarithms:
-    integer-gmp: false
-  scientific:
-    integer-simple: true
 
 # Extra package databases containing global packages
 extra-package-dbs:

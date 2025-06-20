@@ -11,11 +11,10 @@ module CmdLineParser
   )
 where
 
-import           Data.Semigroup      ((<>))
 import           Options.Applicative
 
 -- imports from `core`
-import           Network
+import           Network.Socket (PortNumber)
 
 -- | Configuration options read by the command line.
 data CmdLineConfig = CmdLineConfig

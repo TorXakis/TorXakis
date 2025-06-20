@@ -12,7 +12,6 @@ where
 
 import           Control.Arrow ((&&&))
 import qualified Data.Map      as Map
-import           Data.Monoid
 import qualified Data.Set      as Set
 import qualified Data.Text     as T
 

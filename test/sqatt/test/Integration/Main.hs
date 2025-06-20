@@ -11,4 +11,7 @@ import           Test.Hspec
 main :: IO ()
 main = do
     logDir <- mkLogDir "integration-test-"
-    hspec $ parallel $ testExampleSets logDir allTests
+    --parallel causes nondeterministic crashes. Removed until it can be fixed.
+    --hspec $ parallel $ testExampleSets logDir allTests
+    hspec  $ testExampleSets logDir allTests
+

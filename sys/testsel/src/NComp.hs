@@ -24,7 +24,6 @@ module NComp
 where
 
 import qualified Data.List   as List
-import           Data.Monoid
 import qualified Data.Set    as Set
 import qualified Data.Text           as T
 

@@ -34,7 +34,6 @@ import           Control.Monad.Except              (liftEither)
 import           Data.Either                       (partitionEithers)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
-import           Data.Monoid                       (mempty, (<>))
 import           GHC.Exts                          (fromList)
 import           Prelude                           hiding (lookup)
 
@@ -70,7 +69,6 @@ funcDeclToSH fids f = do
 funcDeclsToFuncDefs :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                        , MapsTo (Loc VarDeclE) VarId mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
-                       , In (FuncId, FuncDefInfo) (Contents mm) ~ 'False
                        , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False )
                     => mm
                     -> Map (Loc FuncDeclE) (Signature, Handler VarId) -- ^ Standard functions, ADT functions, and user defined functions.

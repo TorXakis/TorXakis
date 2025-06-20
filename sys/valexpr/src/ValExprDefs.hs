@@ -162,7 +162,6 @@ sortOf' (view -> Vat { })                                       = sortIdString
 sortOf' (view -> Vconcat { })                                   = sortIdString
 sortOf' (view -> Vstrinre { })                                  = sortIdBool
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)   = fs
-sortOf' _                                                       = error "sortOf': All items must be in view"
 
 
 

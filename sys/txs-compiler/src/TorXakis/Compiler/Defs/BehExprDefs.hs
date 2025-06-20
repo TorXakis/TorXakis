@@ -33,7 +33,6 @@ import           Control.Monad.Except              (liftEither, throwError)
 import           Data.List                         (nub)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
-import           Data.Semigroup                    ((<>))
 import qualified Data.Set                          as Set
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T

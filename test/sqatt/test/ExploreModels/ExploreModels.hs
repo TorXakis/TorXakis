@@ -12,4 +12,4 @@ main :: IO ()
 main = do
     cd $ ".." </> ".."
     logDir <- mkLogDir "explore-model-test-"
-    hspec $ parallel $ testExampleSets logDir allTests
+    hspec $ testExampleSets logDir allTests

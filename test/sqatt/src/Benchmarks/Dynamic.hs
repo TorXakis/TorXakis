@@ -30,9 +30,9 @@ benchDir = "Dynamic"
 nonDistinguishing :: TxsExample
 nonDistinguishing = emptyExample
     { exampleName = "non distinguishing output"
-    , txsModelFiles = [ txsFilePath BenchTest benchDir "nonDistinguishing" ]
+    , txsModelFiles = [insqatt $ txsFilePath BenchTest benchDir "nonDistinguishing" ]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "nonDistinguishing"
+                     , insqatt $ txsCmdPath BenchTest benchDir "nonDistinguishing"
                      ]
     , expectedResult = Pass
     }
@@ -40,9 +40,9 @@ nonDistinguishing = emptyExample
 distinguishByValue :: TxsExample
 distinguishByValue = emptyExample
     { exampleName = "distinguishing output by Value"
-    , txsModelFiles = [ txsFilePath BenchTest benchDir "distinguishByValue" ]
+    , txsModelFiles = [insqatt $ txsFilePath BenchTest benchDir "distinguishByValue" ]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "distinguishByValue"
+                     , insqatt $ txsCmdPath BenchTest benchDir "distinguishByValue"
                      ]
     , expectedResult = Pass
     }
@@ -50,9 +50,9 @@ distinguishByValue = emptyExample
 distinguishByOrder :: TxsExample
 distinguishByOrder = emptyExample
     { exampleName = "distinguishing output by Order"
-    , txsModelFiles = [ txsFilePath BenchTest benchDir "distinguishByOrder" ]
+    , txsModelFiles = [ insqatt $ txsFilePath BenchTest benchDir "distinguishByOrder" ]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "distinguishByOrder"
+                     , insqatt $ txsCmdPath BenchTest benchDir "distinguishByOrder"
                      ]
     , expectedResult = Pass
     }

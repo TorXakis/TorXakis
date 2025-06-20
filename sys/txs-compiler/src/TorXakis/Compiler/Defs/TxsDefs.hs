@@ -36,7 +36,6 @@ import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
 import           Data.Map.Merge.Strict              (mergeA, traverseMissing,
                                                      zipWithAMatched)
-import           Data.Semigroup                     ((<>))
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T

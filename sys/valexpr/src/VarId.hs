@@ -15,7 +15,6 @@ where
 
 import           Control.DeepSeq
 import           Data.Data
-import           Data.Monoid
 import qualified Data.Text       as T
 import           GHC.Generics    (Generic)
 import           Id

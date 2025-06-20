@@ -27,7 +27,6 @@ import           System.Random.Shuffle
 import qualified Data.Char             as Char
 import qualified Data.Map              as Map
 
-import           Data.Monoid
 import           Data.Text             (Text)
 import qualified Data.Text             as T
 

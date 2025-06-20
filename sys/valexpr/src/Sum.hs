@@ -44,8 +44,6 @@ module Sum
 import           Control.DeepSeq
 import           Data.Data
 import           Data.Foldable   hiding (sum)
-import           Data.Monoid     hiding ((<>))
-import           Data.Semigroup  (Semigroup, (<>))
 import           FreeMonoidX     (FreeMonoidX, IntMultipliable, TermWrapper,
                                   (<.>))
 import qualified FreeMonoidX     as FMX
@@ -80,7 +78,6 @@ instance Num a => Semigroup (SumTerm a) where
 
 instance Num a => Monoid (SumTerm a) where
     mempty = SumTerm 0
-    mappend = (<>)
 
 instance TermWrapper SumTerm where
     wrap = SumTerm

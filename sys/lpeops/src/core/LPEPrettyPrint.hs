@@ -317,7 +317,6 @@ showValExprInContext f g = customData . visitValExpr showVisitor
                     (view -> Vconcat _)               -> List.intercalate ":" pars
                     (view -> Vstrinre _ _)            -> "strinre(" ++ head pars ++ ", " ++ pars !! 1 ++ ")"
                     (view -> Vpredef _ fid _)         -> showFuncId f fid ++ "(" ++ List.intercalate ", " pars ++ ")"
-                    _                                 -> error ("ShowValExprInContext.showVisitor not defined for " ++ show expr ++ "!")
         in ValExprVisitorOutput expr 1 str
     -- showVisitor
     

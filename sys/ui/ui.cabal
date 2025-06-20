@@ -34,4 +34,6 @@ executable torxakis
                       , filepath
                       , directory
                       , async
+                      , text-via-sockets
+                      , exceptions
   default-language:     Haskell2010

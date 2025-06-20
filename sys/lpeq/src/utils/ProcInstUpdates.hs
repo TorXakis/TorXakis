@@ -153,7 +153,6 @@ applyMapToBExpr procInstUpdateMap currentBExpr =
           error ("ValueEnv should have been eliminated by now (\"" ++ show currentBExpr ++ "\")!")
       (TxsDefs.view -> StAut _sid _venv _transitions) ->
           error ("StAut should have been eliminated by now (\"" ++ show currentBExpr ++ "\")!")
-      _ -> error ("Behavioral expression not accounted for (\"" ++ show currentBExpr ++ "\")!")
 -- applyMapToBExpr
 
 

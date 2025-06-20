@@ -36,7 +36,6 @@ module BTree
 
 where
 
-import           Data.Monoid
 import qualified Data.Set    as Set
 import qualified Data.Text   as T
 

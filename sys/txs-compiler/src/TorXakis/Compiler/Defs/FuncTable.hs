@@ -29,7 +29,6 @@ import           Data.Foldable                     (foldl')
 import           Data.List.Index                   (imapM)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
-import           Data.Semigroup                    ((<>))
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 

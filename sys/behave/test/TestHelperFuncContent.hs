@@ -12,7 +12,6 @@ import qualified Data.Map          as Map
 import qualified Data.Set          as Set
 import qualified Data.String.Utils as Utils
 import qualified Data.Text         as T
-import           Data.Tuple        (fst, snd)
 
 import           ChanId
 import           Constant

@@ -16,4 +16,4 @@ benchCommonDir :: FilePath
 benchCommonDir = "Common"
 
 seedSetupCmdFile :: FilePath
-seedSetupCmdFile = txsCmdPath BenchTest benchCommonDir "seedSetup"
+seedSetupCmdFile = insqatt $ txsCmdPath BenchTest benchCommonDir "seedSetup"

@@ -15,8 +15,8 @@ benchDir :: FilePath
 benchDir = "Synchronization"
 
 modelFiles :: [FilePath]
-modelFiles = [ txsFilePath BenchTest benchDir "Synchronization"
-             , txsFilePath BenchTest "Sequence" "SingleActionSequence"
+modelFiles = [ insqatt $ txsFilePath BenchTest benchDir "Synchronization"
+             , insqatt $ txsFilePath BenchTest "Sequence" "SingleActionSequence"
              ]
 
 do100Acts3procs :: TxsExample
@@ -24,7 +24,7 @@ do100Acts3procs = emptyExample
     { exampleName = "3 processes"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "ForeverSynchronized3"
+                     , insqatt $ txsCmdPath BenchTest benchDir "ForeverSynchronized3"
                      ]
     , expectedResult = Pass
     }
@@ -34,7 +34,7 @@ alternateTwoProcs = emptyExample
     { exampleName = "alternate 2 processes"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "ForeverSyncAlt2"
+                     , insqatt $ txsCmdPath BenchTest benchDir "ForeverSyncAlt2"
                      ]
     , expectedResult = Pass
     }
@@ -44,7 +44,7 @@ do100Acts3procsIStep = emptyExample
     { exampleName = "3 processes with internal action"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "ForeverSynchronizedIStep3"
+                     , insqatt $ txsCmdPath BenchTest benchDir "ForeverSynchronizedIStep3"
                      ]
     , expectedResult = Pass
     }
@@ -54,7 +54,7 @@ manySeqSync = emptyExample
     { exampleName = "6 sequential processes synchronizing in two actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "SyncAlternate6"
+                     , insqatt $ txsCmdPath BenchTest benchDir "SyncAlternate6"
                      ]
     , expectedResult = Pass
     }
@@ -64,7 +64,7 @@ manyActsSyncTop = emptyExample
     { exampleName = "many processes synchronizing at the top"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "ManyActsSyncTop"
+                     , insqatt $ txsCmdPath BenchTest benchDir "ManyActsSyncTop"
                      ]
     , expectedResult = Pass
     }
@@ -74,7 +74,7 @@ manySyncPairs = emptyExample
     { exampleName = "many processes synchronizing in pairs"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "ManySyncPairs"
+                     , insqatt $ txsCmdPath BenchTest benchDir "ManySyncPairs"
                      ]
     , expectedResult = Pass
     }

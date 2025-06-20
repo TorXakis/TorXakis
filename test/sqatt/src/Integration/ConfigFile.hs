@@ -6,7 +6,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 module Integration.ConfigFile (testSet) where
 
-import           Data.Text          (Text)
 import qualified Data.Text          as T
 import           Prelude     hiding (FilePath)
 

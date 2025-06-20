@@ -44,7 +44,6 @@ import qualified SortId
 import qualified SortOf
 import qualified SolveDefs
 import qualified TxsDefs
-import qualified ValExpr
 import qualified Constant
 import VarId
 import ValExpr

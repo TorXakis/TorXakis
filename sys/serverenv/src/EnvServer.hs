@@ -40,7 +40,7 @@ where
 
 import           Control.Concurrent
 import           Control.Monad.State
-import           Network
+import           Network.Socket
 import           System.IO
 
 import qualified Data.Map            as Map

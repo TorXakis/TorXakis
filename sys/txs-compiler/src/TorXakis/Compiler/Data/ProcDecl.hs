@@ -29,7 +29,6 @@ module TorXakis.Compiler.Data.ProcDecl
 where
 
 import           Data.Map                           (Map)
-import           Data.Semigroup                     ((<>))
 import           Data.Text                          (Text)
 
 import           ChanId                             (ChanId)

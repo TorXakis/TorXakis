@@ -5,22 +5,61 @@
 
 packages:
 - completed:
-    cabal-file:
-      size: 2957
-      sha256: 86721de77129c198aa3f033c79c0f7aaebce16615e6e4ea73cefb3d9771e5a94
+    commit: 8817cb4210103d92ba96aca525ddcd08e1cc96e9
+    git: https://github.com/gijsvcuyck/text-via-sockets.git
     name: text-via-sockets
-    version: 0.1.0.0
-    git: https://github.com/TorXakis/text-via-sockets.git
     pantry-tree:
-      size: 682
-      sha256: 5e30ecba223e12674b7b37e668af407bbdebeea117fd3a60306a42dd636056c0
-    commit: e3228cd0407ec0d7991a544e154ea2def184fcae
+      sha256: 2eb38d4b899bf5c45da210b4c8cdfa752e68150e3607c3e2718c6931894ad20b
+      size: 959
+    version: 0.1.1.0
   original:
-    git: https://github.com/TorXakis/text-via-sockets.git
-    commit: e3228cd0407ec0d7991a544e154ea2def184fcae
+    commit: 8817cb4210103d92ba96aca525ddcd08e1cc96e9
+    git: https://github.com/gijsvcuyck/text-via-sockets.git
+- completed:
+    hackage: MissingH-1.5.0.1@sha256:34bdc3ddc94a5c58d76d3c36bc7af052213c2584492cf81f7b005c03b210a985,4791
+    pantry-tree:
+      sha256: a708a8d90e6370fb4150d6eb45cb88034660c56c7ac799c27211fa6fc253af68
+      size: 5272
+  original:
+    hackage: MissingH-1.5.0.1
+- completed:
+    hackage: Unique-0.4.7.9@sha256:7c37e22b7bb9df935c22112e67043177461aedcebe3a958854f6c0e9ecb54083,2155
+    pantry-tree:
+      sha256: 67d44a292c49ab6cf09225c05186f1ab64b359e965017d9d389411e4c79f0803
+      size: 1366
+  original:
+    hackage: Unique-0.4.7.9@sha256:7c37e22b7bb9df935c22112e67043177461aedcebe3a958854f6c0e9ecb54083,2155
+- completed:
+    hackage: hspec-2.11.12@sha256:d16b4a90470b415d56a1b561a1735566b2d8529bdbc5b26a965785768cd26ca1,1766
+    pantry-tree:
+      sha256: 465ac3cc77ed2a549bec9a104e150601c4445a68f411cb85bb03e11f72123235
+      size: 584
+  original:
+    hackage: hspec-2.11.12
+- completed:
+    hackage: hspec-core-2.11.12@sha256:4856221a10a31935006fa03cd2a4f185d89810d79616b9cbb714cf2c0f5cde17,7498
+    pantry-tree:
+      sha256: eece5609a7bc0fc6f514f03f1286d9f8efc03c8260d569f595bfc19fb311ae08
+      size: 6935
+  original:
+    hackage: hspec-core-2.11.12
+- completed:
+    hackage: hspec-expectations-0.8.4@sha256:4237f094a7931202ff57ac6475542b0b314b50a7024550e2b6eb87cfb0d4ff93,1702
+    pantry-tree:
+      sha256: 87681840d430b84686f83f1ab8b5873b09c349775698665233443914acf9ba2b
+      size: 741
+  original:
+    hackage: hspec-expectations-0.8.4
+- completed:
+    hackage: hspec-discover-2.11.12@sha256:cb6b6048b6f0fa539176f4b8012241e4c518c9803eb7ef58097c42a68b15b1c3,2171
+    pantry-tree:
+      sha256: 987023acb858acbd765dbc2173d64479cf7a376554f8318717388020a6d27101
+      size: 829
+  original:
+    hackage: hspec-discover-2.11.12
 snapshots:
 - completed:
-    size: 527836
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/11/22.yaml
-    sha256: 341870ac98d8a9f8f77c4adf2e9e0b22063e264a7fbeb4c85b7af5f380dac60e
-  original: lts-11.22
+    sha256: 428ec8d5ce932190d3cbe266b9eb3c175cd81e984babf876b64019e2cbe4ea68
+    size: 590100
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/28.yaml
+  original: lts-18.28

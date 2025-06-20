@@ -14,13 +14,13 @@ import           Test.Hspec
 
 spec :: Spec
 spec = beforeAll
-         ( do checkSMTSolvers
+         ( do cd $ ".." </> ".."
+              checkSMTSolvers
               checkCompilers
               checkTxsInstall
               hSetBuffering System.IO.stdout NoBuffering
          )
          ( do
-             runIO $ cd $ ".." </> ".."
              logDir <- runIO $ mkLogDir "test-"
              testExampleSets logDir allExamples
          )

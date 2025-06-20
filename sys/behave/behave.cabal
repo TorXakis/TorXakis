@@ -60,7 +60,10 @@ test-suite behave-test
                       , TestHelperFuncContent
                       , TestProcessBehaviour
 
-  ghc-options:       -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
+                      
+
+  ghc-options:       -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N 
+  -- -fmax-pmcheck-iterations=100000000 flag is deprecated, might need to be replaced with some value n in -fmax-pmcheck-models=n , but may just removing it will also work?
   
   build-depends:       base
                      , containers

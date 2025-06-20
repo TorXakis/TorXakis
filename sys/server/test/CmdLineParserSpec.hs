@@ -9,7 +9,7 @@ module CmdLineParserSpec (spec) where
 
 import           CmdLineParser
 import           Data.Maybe
-import           Network
+import           Network.Socket (PortNumber)
 import           Options.Applicative
 import           Test.Hspec
 import           Test.QuickCheck     hiding (Failure, Success)

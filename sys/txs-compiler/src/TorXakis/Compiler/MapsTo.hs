@@ -56,10 +56,10 @@ import           Data.Either.Utils       (maybeToEither)
 import           Data.Map                (Map)
 import qualified Data.Map                as Map
 import           Data.Proxy              (Proxy (Proxy))
-import           Data.Semigroup          ((<>))
 import qualified Data.Text               as T
 import           Data.Type.Bool          (type (||))
 import           Data.Typeable           (Typeable, typeOf)
+import           Data.Kind               (Type)
 import           GHC.TypeLits            (ErrorMessage ((:<>:), ShowType, Text),
                                           TypeError)
 import           Prelude                 hiding (lookup)
@@ -108,7 +108,7 @@ values mm = Map.elems im
       im = innerMap mm
 
 -- | Compute when a type is in a tree.
-type family In (x :: *) (ys :: Tree *) :: Bool where
+type family In (x :: Type) (ys :: Tree Type) :: Bool where
     In x ('Leaf y)   = x == y
     In x ('Node l r) = In x l || In x r
 
@@ -118,7 +118,7 @@ type family y == x :: Bool where
     x == y = 'False
 
 -- | Type family that represents the contents of a map.
-type family Contents mm :: Tree *
+type family Contents mm :: Tree Type
 
 -- | Search tree for types. This type would contain the key-value pairs found
 -- in a composite map.

@@ -76,13 +76,12 @@ module ValExprImpls
 )
 where
 
-import           Control.Arrow      (first)
-import           Control.Exception  (assert)
-import qualified Data.Map           as Map
-import           Data.Maybe         (fromMaybe)
-import           Data.Monoid        ((<>))
-import qualified Data.Set           as Set
-import qualified Data.Text          as T
+import           Control.Arrow   (first)
+import           Control.Exception ( assert )
+import qualified Data.Map        as Map
+import           Data.Maybe      (fromMaybe)
+import qualified Data.Set        as Set
+import qualified Data.Text       as T
 import           Text.Regex.TDFA
 
 import qualified Boute

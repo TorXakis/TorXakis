@@ -17,9 +17,9 @@ benchDir = "RealWorld"
 multipleControlLoops :: TxsExample
 multipleControlLoops = emptyExample
     { exampleName = "Multiple Control Loops Stepper"
-    , txsModelFiles = [ txsFilePath BenchTest benchDir "MultipleControlLoops" ]
+    , txsModelFiles = [ insqatt $ txsFilePath BenchTest benchDir "MultipleControlLoops" ]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "MultipleControlLoops"
+                     , insqatt $ txsCmdPath BenchTest benchDir "MultipleControlLoops"
                      ]
     , expectedResult = Pass
     }
@@ -27,17 +27,17 @@ multipleControlLoops = emptyExample
 customersAndOrders :: TxsExample
 customersAndOrders = emptyExample
     { exampleName = "Customers and Orders"
-    , txsModelFiles = [ txsFilePath BenchTest benchDir "CustomersOrders" ]
-    , txsCmdsFiles = [ txsCmdPath BenchTest benchDir "CustomersOrders" ]
+    , txsModelFiles = [ insqatt $ txsFilePath BenchTest benchDir "CustomersOrders" ]
+    , txsCmdsFiles = [ insqatt $ txsCmdPath BenchTest benchDir "CustomersOrders" ]
     , expectedResult = Pass
     }
 
 movingArms :: TxsExample
 movingArms = emptyExample
     { exampleName = "Moving Arms"
-    , txsModelFiles = [ txsFilePath BenchTest benchDir "MovingArms" ]
+    , txsModelFiles = [ insqatt $ txsFilePath BenchTest benchDir "MovingArms" ]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "MovingArms"
+                     , insqatt $ txsCmdPath BenchTest benchDir "MovingArms"
                      ]
     , expectedResult = Pass
     }
@@ -45,9 +45,9 @@ movingArms = emptyExample
 movingArmsPurpose :: TxsExample
 movingArmsPurpose = emptyExample
     { exampleName = "Moving Arms (Purpose)"
-    , txsModelFiles = [ txsFilePath BenchTest benchDir "MovingArms" ]
+    , txsModelFiles = [ insqatt $ txsFilePath BenchTest benchDir "MovingArms" ]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "MovingArmsPurpose"
+                     , insqatt $ txsCmdPath BenchTest benchDir "MovingArmsPurpose"
                      ]
     , expectedResult = Pass
     }

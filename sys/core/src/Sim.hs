@@ -49,7 +49,7 @@ simN depth step = do
      [(_,parval)] <- IOC.getParams ["param_InputCompletion"]
      case (read parval, IOC.state envc) of
         { ( ParamCore.ANGELIC
-          , IOC.Simuling {..}
+          , IOC.Simuling {}
           ) -> simA depth step
 --      ;  ParamCore.DEMONIC  -> simD depth step
 --      ;  ParamCore.BUFFERED -> simB depth step

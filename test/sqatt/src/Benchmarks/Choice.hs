@@ -17,9 +17,9 @@ benchDir = "Choice"
 do100Choices :: TxsExample
 do100Choices = emptyExample
     { exampleName = "100 choices"
-    , txsModelFiles = [txsFilePath BenchTest benchDir "Choice"]
+    , txsModelFiles = [insqatt $ txsFilePath BenchTest benchDir "Choice"]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPath BenchTest benchDir "ForeverChoice"
+                     , insqatt $ txsCmdPath BenchTest benchDir "ForeverChoice"
                      ]
     , expectedResult = Pass
     }

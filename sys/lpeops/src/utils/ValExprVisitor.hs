@@ -128,7 +128,6 @@ visitValExprM f expr = do
       (view -> Vpredef _kd _fid vexps) ->
           do newVExps <- Monad.mapM visitValExprM1 vexps
              f newVExps expr
-      _ -> error ("VisitValExprM not defined for " ++ show expr ++ "!")
 -- visitValExprM
 
 -- Here, we think we know better (which we do) and
@@ -175,7 +174,6 @@ defaultValExprVisitorM defaultDat subExps expr = do
                   (view -> Vconcat _)                     -> cstrConcat (map expression subExps)
                   (view -> Vstrinre _ _)                  -> cstrStrInRe (expression (head subExps)) (expression (subExps !! 1))
                   (view -> Vpredef kd fid _)              -> cstrPredef kd fid (map expression subExps)
-                  _                                       -> error ("DefaultValExprVisitorM not defined for " ++ show expr ++ "!")
     return (ValExprVisitorOutput expr' 1 defaultDat)
   where
     emptyFis :: Map.Map FuncId.FuncId (FuncDef.FuncDef VarId.VarId)

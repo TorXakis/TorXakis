@@ -29,9 +29,11 @@ import           Data.Maybe
 import           Data.String.Utils
 import           Data.Time
 import           GHC.IO.Handle
-import           Network
-import           System.Console.Haskeline         hiding (bracket)
+import           Network.Socket
+import           Network.TextViaSockets
+import           System.Console.Haskeline
 import           System.Console.Haskeline.History
+import           Control.Monad.Catch              (handle)
 import           System.Directory
 import           System.FilePath
 import           System.IO
@@ -108,6 +110,7 @@ main  =  withSocketsDo $ do
           hClose (errHandle tsi)
           cancel (monitorAsync tsi)
 
+
 -- | Connect to the server. If the port number of the `TxsServerAddress`
 -- argument is 'Nothing` then a new 'txsserver' process is started on
 -- "localhost". The port to which UI and server connect is determined by
@@ -122,7 +125,8 @@ connectToServer :: FilePath -- ^ Log directory.
 connectToServer logDir sAddr = do
     (p, mTsi) <- findTxsServer logDir (portId sAddr)
     threadDelay 1000000    -- 1 sec delay on trying to connect
-    hc <- connectTo (hostName sAddr) p
+    sock <- connectToSocket (hostName sAddr) (show p)
+    hc <- socketToHandle sock ReadWriteMode
     hSetBuffering hc NoBuffering
     hSetEncoding hc latin1
     return (hc, mTsi)
@@ -141,7 +145,7 @@ data TxsServerInfo = TxsServerInfo
 -- and return the port that will be used for communication with it. If the
 -- argument contains a port number this port number is returned and no process
 -- is started (the TorXakis server is assumed to be running).
-findTxsServer :: FilePath -> Maybe PortID -> IO (PortID, Maybe TxsServerInfo)
+findTxsServer :: FilePath -> Maybe PortNumber -> IO (PortNumber, Maybe TxsServerInfo)
 findTxsServer logDir Nothing = do
     errh <- openFile (logDir </> "txsserver-err.log") ReadWriteMode
     hSetBuffering errh LineBuffering
@@ -156,7 +160,7 @@ findTxsServer logDir Nothing = do
     -- need to read its answer.
     line <- hGetLine outh
     a <- async $ monitor outh outFileH
-    return ( PortNumber . fromInteger $ (read line :: Integer)
+    return ( (read line :: PortNumber)
            , Just TxsServerInfo { procHandle = ph
                                  , errHandle = errh
                                  , monitorAsync = a

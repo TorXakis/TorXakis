@@ -134,9 +134,6 @@ validateValExpr location scope xpr = customData (visitValExpr getProblemsVisitor
                         -- Signatures of predefined functions must be used properly:
                         (view -> Vpredef _ fid args)      ->
                             validateSortList ("predefined function \"" ++ Text.unpack (FuncId.name fid) ++ "\" call in " ++ location) (FuncId.funcargs fid) (map SortOf.sortOf args)
-                        -- We should have found a matching pattern by now:
-                        _                                 ->
-                            error ("GetValExprProblems.getProblemsVisitor not defined for " ++ show expr ++ "!")
         in ValExprVisitorOutput expr 1 (concatMap customData subExps ++ problems)
 -- getValExprProblems
 

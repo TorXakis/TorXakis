@@ -27,7 +27,6 @@ import           Data.Either                         (partitionEithers)
 import           Data.Foldable                       (traverse_)
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
-import           Data.Semigroup                      ((<>))
 import qualified Data.Set                            as Set
 import qualified Data.Text                           as T
 import           GHC.Exts                            (toList)

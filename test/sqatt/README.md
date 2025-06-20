@@ -3,6 +3,7 @@
 This folder contains the quality assurance tests for TorXakis.
 
 ## Integration tests
+NOTE: These tests are executed on the torxakis executable which is first found on the path. I.E. the globally installed version. Test execution is sequential, as parallel test execution currently leads to nondeterministic test failure.
 
 To run the integration tests execute:
 
@@ -23,6 +24,11 @@ used:
 
 ```sh
 stack test --test-arguments=--match=Stimulus
+```
+
+To run a specific test suite as defined in sqatt.cabal, run
+```sh
+stack test sqatt:TESTSUITE_NAME
 ```
 
 ### Adding new tests
