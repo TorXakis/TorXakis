@@ -64,15 +64,15 @@ toXsd = toXsdView . viewCharRepr
                                                 <> toXsdView r
                                                 <> Data.Text.singleton ')'
                                                 <> Data.Text.singleton '{'
-                                                <> pack (show l)
+                                                <> pack (Prelude.show l)
                                                 <> Data.Text.singleton ','
-                                                <> pack (show u)
+                                                <> pack (Prelude.show u)
                                                 <> Data.Text.singleton '}'
         toXsdView (RegexLoop r l Nothing)     =    Data.Text.singleton '('
                                                 <> toXsdView r
                                                 <> Data.Text.singleton ')'
                                                 <> Data.Text.singleton '{'
-                                                <> pack (show l)
+                                                <> pack (Prelude.show l)
                                                 <> Data.Text.singleton ','
                                                 <> Data.Text.singleton '}'
         toXsdView (RegexRange l u)            =    Data.Text.singleton '['

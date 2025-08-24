@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- Module      :  TorXakis.PrettyPrint.TorXakis
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
@@ -122,7 +122,7 @@ instance PrettyPrint c ConstructorDef where
                                 )
         where cName :: TxsString
               cName = fromText (TorXakis.Name.toText (constructorName cv))
-              
+
               wsField :: TxsString
               wsField = if multiline o then append txsNewLine (replicate (2+ length cName + length txsOpenScopeConstructor) txsSpace)
                                        else txsSpace
@@ -211,12 +211,17 @@ instance PrettyPrint c Regex where
                                  , txsRegularExpressionClose
                                  ]
     where
+        charREC :: Char
+        charREC = case TorXakis.Language.toString txsRegularExpressionClose of
+                    [c] -> c
+                    _   -> error ("txsRegularExpressionClose is unexpectedly not a single char")
+
         encode :: Text -> TxsString
         encode = fromText . Data.Text.concatMap encodeChar
-        
+
         encodeChar :: Char -> Text
-        encodeChar c | c == head (TorXakis.Language.toString txsRegularExpressionClose) = Data.Text.pack ("&#" ++ show (ord c) ++ ";")
-        encodeChar c                                                                    = Data.Text.singleton c
+        encodeChar c | c == charREC = Data.Text.pack ("&#" ++ show (ord c) ++ ";")
+        encodeChar c                = Data.Text.singleton c
 ---------------------------------------------------------
 -- ValExpr
 ---------------------------------------------------------
@@ -356,7 +361,7 @@ occuranceOperator o txsOp1 txsOp2 occuranceList =
         tupleToText (v,  p) = infixOperator o txsOp2 [v, fromString (show p)]
 
 instance SortContext c => PrettyPrint c FuncDef where
-    prettyPrint o c fd = 
+    prettyPrint o c fd =
         concat [ txsKeywordFuncDef
                , txsSpace
                , fromText (TorXakis.FunctionName.toText (TorXakis.FuncDef.funcName fd))

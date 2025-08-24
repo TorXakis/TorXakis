@@ -63,15 +63,15 @@ toPosix t = pack "\\`(" <> toPosixView (viewStringRepr t) <> pack ")\\'"
                                                   <> toPosixView r
                                                   <> Data.Text.singleton ')'
                                                   <> Data.Text.singleton '{'
-                                                  <> pack (show l)
+                                                  <> pack (Prelude.show l)
                                                   <> Data.Text.singleton ','
-                                                  <> pack (show u)
+                                                  <> pack (Prelude.show u)
                                                   <> Data.Text.singleton '}'
         toPosixView (RegexLoop r l Nothing)     =    Data.Text.singleton '('
                                                   <> toPosixView r
                                                   <> Data.Text.singleton ')'
                                                   <> Data.Text.singleton '{'
-                                                  <> pack (show l)
+                                                  <> pack (Prelude.show l)
                                                   <> Data.Text.singleton ','
                                                   <> Data.Text.singleton '}'
         toPosixView (RegexRange '-' ']')      =      Data.Text.pack "[].-\\-]"

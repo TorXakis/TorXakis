@@ -73,7 +73,7 @@ instance ProblemSolver p => ProblemSolver (SymbolicM p) where
     pop = do
             d <- lift pop
             st <- get
-            put st { assertionsStack = tail (assertionsStack st) }
+            put st { assertionsStack = drop 1 (assertionsStack st) }
             return d
 
     declareVariables vs = lift $ declareVariables vs

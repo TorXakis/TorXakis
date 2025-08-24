@@ -41,22 +41,22 @@ $singleNoEsc  = [\x00-\xff] # [\\\[\]]
 tokens :-                                          -- Each right-hand side has type
                                                    -- :: AlexPosn -> String -> Token
 
-   \,                        { tok ( \p _s -> Tcomma p ) }
-   \.                        { tok ( \p _s -> Tdot p ) }
-   \-                        { tok ( \p _s -> Tdash p ) }
-   \(                        { tok ( \p _s -> Tbracketopen p ) }
-   \)                        { tok ( \p _s -> Tbracketclose p ) }
-   \{                        { tok ( \p _s -> Tcurlybracketopen p ) }
-   \}                        { tok ( \p _s -> Tcurlybracketclose p ) }
-   \[                        { tok ( \p _s -> Tsquarebracketopen p ) }
-   \]                        { tok ( \p _s -> Tsquarebracketclose p ) }
-   \\                        { tok ( \p _s -> Tesc p ) }
-   \|                        { tok ( \p _s -> Tunion p ) }
-   \^                        { tok ( \p _s -> Ttop p ) }
-   $digit                    { tok ( \p [c]-> Tdigit p c ) }
-   $quantifier               { tok ( \p [c]-> Tquantifier p c ) }
-   $formatEsc                { tok ( \p [c]-> Tformatesc p c ) }
-   $normal                   { tok ( \p [c]-> Tnormal p c ) }
+   \,                        { tok ( \p _ -> Tcomma p ) }
+   \.                        { tok ( \p _ -> Tdot p ) }
+   \-                        { tok ( \p _ -> Tdash p ) }
+   \(                        { tok ( \p _ -> Tbracketopen p ) }
+   \)                        { tok ( \p _ -> Tbracketclose p ) }
+   \{                        { tok ( \p _ -> Tcurlybracketopen p ) }
+   \}                        { tok ( \p _ -> Tcurlybracketclose p ) }
+   \[                        { tok ( \p _ -> Tsquarebracketopen p ) }
+   \]                        { tok ( \p _ -> Tsquarebracketclose p ) }
+   \\                        { tok ( \p _ -> Tesc p ) }
+   \|                        { tok ( \p _ -> Tunion p ) }
+   \^                        { tok ( \p _ -> Ttop p ) }
+   $digit                    { tok ( \p s -> Tdigit p (fromSingleCharStringToChar s) ) }
+   $quantifier               { tok ( \p s -> Tquantifier p (fromSingleCharStringToChar s) ) }
+   $formatEsc                { tok ( \p s -> Tformatesc p (fromSingleCharStringToChar s) ) }
+   $normal                   { tok ( \p s -> Tnormal p (fromSingleCharStringToChar s) ) }
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -86,5 +86,10 @@ data  Token  = Tcomma AlexPosn
 -- | Lexer for regular expressions.
 regexFromXsdLexer :: String -> [Token]
 regexFromXsdLexer = alexScanTokens
+
+fromSingleCharStringToChar :: String -> Char
+fromSingleCharStringToChar [c] = c
+fromSingleCharStringToChar s   = error ("String is unexpectedly not a single character but '" ++ s ++ "'")
+
 }
 -- ----------------------------------------------------------------------------------------- --

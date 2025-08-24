@@ -11,7 +11,7 @@
 # Resolver to choose a 'specific' stackage snapshot or a compiler version.
 # A snapshot resolver dictates the compiler version and the set of packages
 # to be used for project dependencies.
-resolver: nightly-2021-07-29
+resolver: lts-24.6
   
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -65,9 +65,9 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- Unique-0.4.7.8
-- MissingH-1.4.3.0
 - regex-posix-clib-2.7
+- Unique-0.4.8.0
+- hashable-1.4.7.0
 
 # Override default flag values for local packages and extra-deps
 flags:
