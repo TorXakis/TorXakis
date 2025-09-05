@@ -19,15 +19,12 @@ module TorXakis.RegexSpec
 (spec
 )
 where
-import qualified Control.Exception
-import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.List
 import qualified Data.Text
 import           Debug.Trace
 import           Test.Hspec
 import           Test.QuickCheck
-import           Test.QuickCheck.Monadic
 import           Text.Regex.TDFA ((=~))
 
 import           TorXakis.Regex
@@ -46,20 +43,25 @@ test_RegexEmpty =
       &&    ("" =~ "^$")
       &&    ("" =~ "\\`\\'")
 
--- | We must work around this error in ranged
-test_Ranges :: Property
-test_Ranges = monadicIO $
-    liftIO $ Control.Exception.catch (Control.Exception.evaluate $ "A" =~ "[--@]")
-                                                                    -- A is outside range so False should be produced, unless an error occurs
-                                                                    -- see https://github.com/ChrisKuklewicz/regex-tdfa/issues/24
-                                     handler
-  where
-    handler :: Control.Exception.ErrorCall -> IO Bool
-    handler = const (return True)
-
 -- | all Char in Regex Range
 allChars :: String
 allChars = [regexRangeLow..regexRangeHigh]
+
+-- | Show that all characters are handled correctly in a particular range [--@].
+--   This range was problematic, see https://github.com/ChrisKuklewicz/regex-tdfa/issues/24, but not anymore!
+test_SpecialRange :: Bool
+test_SpecialRange = 
+            all matchSpecialRange allChars
+  where
+       matchSpecialRange :: Char -> Bool
+       matchSpecialRange c = actual == expected
+                   || trace ("Char " ++ show c ++ " fails: " ++ show actual ++ " versus " ++ show expected) False
+           where 
+                actual :: Bool
+                actual = [c] =~ "[--@]"
+
+                expected :: Bool
+                expected = '-' <= c && c <= '@'
 
 -- | Are all chars correctly handled (by escaping when needed)
 test_Chars :: Bool
@@ -80,8 +82,8 @@ inRange l h x = [x] =~ case mkRegexRange l h of
                                 Left e -> error ("Unexpected failure of mkRegexRange with "++ show e)
                                 Right r -> Data.Text.unpack (toPosix r)
 
--- | Are all chars correctly handled (by escaping when needed) in the lowerbound Position of a range
--- In posix, the character at the position of u at [l - u]
+-- | Are all chars correctly handled (by escaping when needed) in the lowerbound position of a range
+-- In posix, the character at the position of l at [l - u]
 test_CharsLowRange :: Bool
 test_CharsLowRange =
        all matchRanges allChars
@@ -96,7 +98,7 @@ test_CharsLowRange =
 
 
 
--- | Are all chars correctly handled (by escaping when needed) in the Upperbound Position of a range
+-- | Are all chars correctly handled (by escaping when needed) in the upperbound position of a range
 -- In posix, the character at the position of u at [l - u]
 test_CharsHighRange :: Bool
 test_CharsHighRange =
@@ -316,7 +318,7 @@ spec :: Spec
 spec = do
   describe "A Regex" $ do
     it "can be satisfied by an empty string" test_RegexEmpty
-    it "handle special ranges correctly" test_Ranges
+    it "handle special range correctly" test_SpecialRange
     it "handle chars correctly" test_Chars
     it "handle chars correctly in lowerbound position of a range" test_CharsLowRange
     it "handle chars correctly in upperbound position of a range" test_CharsHighRange
