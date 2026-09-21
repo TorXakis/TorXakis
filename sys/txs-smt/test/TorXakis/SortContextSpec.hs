@@ -75,14 +75,14 @@ constructableADTByConstructor vr ar cr = do
     let Solved (Solution solution) = resp
         Right answer = subst ctx (Data.HashMap.map (\v -> case mkConst ctx v of
                                                                Right ve -> ve
-                                                               Left e   -> error ("mkConst failed unexpectedly on constant " ++ show v ++ " with error " ++ show e)
+                                                               Left e   -> error ("mkConst failed unexpectedly on constant " ++ Prelude.show v ++ " with error " ++ Prelude.show e)
                                                    )
                                                    solution
                                   )
                                   expr
     case TorXakis.ValExpr.view answer of
-        Vconst (TorXakis.Value.view -> Cbool b) -> return ( b || trace (i ++ "\nUnexpectedly it is impossible to make an instance for the ADT (" ++ show ar ++ ") with constructor (" ++ show cr ++ ")") False)
-        _                                       -> error ("Answer of and is unexpectedly not a constant boolean, but " ++ show answer)
+        Vconst (TorXakis.Value.view -> Cbool b) -> return ( b || trace (i ++ "\nUnexpectedly it is impossible to make an instance for the ADT (" ++ Prelude.show ar ++ ") with constructor (" ++ Prelude.show cr ++ ")") False)
+        _                                       -> error ("Answer of and is unexpectedly not a constant boolean, but " ++ Prelude.show answer)
 
 -- | Data types are constructable
 prop_Constructable :: Property
@@ -95,7 +95,7 @@ prop_Constructable = monadicIO $ do
         prop_Constructable_Solver (fp,as) ads = do
             es <- liftIO $ mkSmtState fp as False
             case es of
-                Left err -> error (show err)
+                Left err -> error (Prelude.show err)
                 Right ss -> do
                             r <- liftIO $ runExceptT $ -- smt Solver
                                               runStateT (TorXakis.SmtM.toStateT
@@ -113,11 +113,11 @@ prop_Constructable = monadicIO $ do
                                                          )
                                                          ss
                             case r of
-                                Left err  -> error (show err)
+                                Left err  -> error (Prelude.show err)
                                 Right (b,ss') -> do
                                                 me <- liftIO $ destroySmtState ss'
                                                 case me of
-                                                    Just err -> error (show err)
+                                                    Just err -> error (Prelude.show err)
                                                     Nothing  -> return b
 
 

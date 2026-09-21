@@ -57,7 +57,7 @@ runSolver exec (fp,as) = do
                                 -- uncaught exception: IOException of type ResourceBusy (logSMT.2019-09-27-16-45-21.7920361.smt2: openFile: resource busy (file is locked))
     es <- liftIO $ mkSmtState fp as False
     case es of
-        Left err -> error (show err)
+        Left err -> error (show err ++ " as = " ++ show as)
         Right ss -> do
                     res <- liftIO $ runExceptT $ -- smt Solver
                                       runStateT (TorXakis.SmtM.toStateT exec)

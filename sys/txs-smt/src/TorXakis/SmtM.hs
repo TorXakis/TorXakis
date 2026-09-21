@@ -30,6 +30,7 @@ module TorXakis.SmtM
 where
 import           Control.Concurrent
 import           Control.Exception
+import           Control.Monad
 import           Control.Monad.State
 import           Control.Monad.Except
 import           Data.Bimap
